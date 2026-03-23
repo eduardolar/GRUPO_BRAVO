@@ -16,10 +16,8 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.panel,
         elevation: 0,
-        title: Text("NombreRestaurante", style: TextStyle(
-          color: Colors.black
-        )),
-      centerTitle: true,
+        title: Text("NombreRestaurante", style: TextStyle(color: Colors.black)),
+        centerTitle: true,
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -27,20 +25,19 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text("Bienvenido", style: TextStyle(
-                fontSize: 26, fontWeight: FontWeight.bold
-              )),
-              const SizedBox(height: 10,),
-              const Text("Selecciona una opcion", style: TextStyle(
-                fontSize: 16, color: AppColors.panel;
-              ))
+              const Text(
+                "Bienvenido",
+                style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                "Selecciona una opcion",
+                style: TextStyle(fontSize: 16, color: AppColors.panel),
+              ),
             ],
-                ),
-        )
+          ),
+        ),
       ),
-      
-
-      
     );
   }
 }
