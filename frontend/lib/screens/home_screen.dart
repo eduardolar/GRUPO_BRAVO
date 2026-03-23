@@ -32,7 +32,7 @@ class _HomeScreenState extends State<HomeScreen> {
               )),
               const SizedBox(height: 10,),
               const Text("Selecciona una opcion", style: TextStyle(
-                fontSize: 16, color: AppColors.panel;
+                fontSize: 16, color: AppColors.panel
               ))
             ],
                 ),
