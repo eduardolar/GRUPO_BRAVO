@@ -84,7 +84,6 @@ USE comandas_db;
 -- 9. Tabla de Clientes (Faltaba para reservas y domicilio)
 CREATE TABLE IF NOT EXISTS clientes (
     id_cliente INT AUTO_INCREMENT PRIMARY KEY,
-    dni VARCHAR(10) UNIQUE,
     nombre VARCHAR(100) NOT NULL,
     email VARCHAR(100),
     telefono VARCHAR(20),
