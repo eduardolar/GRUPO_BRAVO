@@ -78,6 +78,7 @@ Widget build(BuildContext context) {
                   height: 200,
                   child: DomicilioButton(),
                 ),
+                SizedBox(height: 30),
                  SizedBox(
                   width: double.infinity,
                   height: 200,
