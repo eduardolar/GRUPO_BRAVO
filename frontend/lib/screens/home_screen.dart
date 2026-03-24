@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/core/colors_style.dart';
+import 'package:frontend/screens/login_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -34,6 +35,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 "Selecciona una opcion",
                 style: TextStyle(fontSize: 16, color: AppColors.panel),
               ),
+              ElevatedButton(onPressed: (){
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => loginScreen()));
+              }, child: Text("Login"))
             ],
           ),
         ),
