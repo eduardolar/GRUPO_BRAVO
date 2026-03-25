@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/components/entrada_texto.dart';
 import 'package:frontend/core/colors_style.dart';
 
 class ForgottenPassword extends StatefulWidget {
@@ -17,7 +18,10 @@ class _ForgottenPasswordState extends State<ForgottenPassword> {
       body: Column(
         children: [
           Spacer(),
-          _customInput(label: "Correo electrónico", icon: Icons.mail),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: EntradaTexto(etiqueta: "Correo electrónico", icono: Icons.mail),
+          ),
           Padding(
             padding: EdgeInsets.only(top: 20,),
 
@@ -45,38 +49,7 @@ class _ForgottenPasswordState extends State<ForgottenPassword> {
   }
 }
 
-Widget _customInput({
-  required String label,
-  required IconData icon,
-  TextInputType keyboardType = TextInputType.text,
-}) {
-  return Padding(
-    padding: const EdgeInsets.only(bottom: 20),
-    child: TextFormField(
-      keyboardType: keyboardType,
-      style: const TextStyle(color: AppColors.textPrimary),
-      decoration: InputDecoration(
-        prefixIcon: Icon(icon, color: AppColors.gold), // Icono Dorado
-        labelText: label,
-        labelStyle: const TextStyle(color: AppColors.textSecondary),
-        filled: true,
-        fillColor: AppColors.panel, // Fondo Gris muy oscuro
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(15),
-          borderSide: const BorderSide(color: AppColors.line), // Borde sutil
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(15),
-          borderSide: const BorderSide(
-            color: AppColors.button,
-            width: 2,
-          ), // Borde dorado al escribir
-        ),
-        errorStyle: const TextStyle(color: AppColors.error),
-      ),
-    ),
-  );
-}
+
 
 AppBar appBarLogin() {
   return AppBar(

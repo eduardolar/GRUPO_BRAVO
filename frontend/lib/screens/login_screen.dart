@@ -3,6 +3,7 @@ import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/screens/forgotten_password.dart';
 import 'package:frontend/screens/menu_screen.dart';
 import 'package:frontend/screens/register_screen.dart';
+import 'package:frontend/components/entrada_texto.dart';
 
 class loginScreen extends StatefulWidget {
   const loginScreen({super.key});
@@ -42,11 +43,11 @@ class _MyWidgetState extends State<loginScreen> {
             children: [
               Padding(
                 padding: const EdgeInsets.only(bottom: 16, left: 16, right: 16),
-                child: _customInput(label: "Correo electrónico", icon: Icons.mail)
+                child: EntradaTexto(etiqueta: "Correo electrónico", icono: Icons.mail,)
               ),
               Padding(
                 padding: const EdgeInsets.only(top: 16, left: 16, right: 16),
-                child: _customPasswordInput(label: "contraseña")
+                child: EntradaTexto(etiqueta: 'Contraseña', icono: Icons.visibility_off, esContrasena: true, mostrarTexto: true,)
               ),
               TextButton(
                 onPressed: () {
@@ -129,73 +130,4 @@ class _MyWidgetState extends State<loginScreen> {
     );
   }
 
-  Widget _customPasswordInput({required String label}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
-      child: TextFormField(
-        obscureText: _obscureText,
-        style: const TextStyle(color: AppColors.textPrimary),
-        decoration: InputDecoration(
-          prefixIcon: const Icon(
-            Icons.lock_outline,
-            color: AppColors.gold,
-          ),
-          suffixIcon: IconButton(
-            icon: Icon(
-              _obscureText
-                  ? Icons.visibility_off_outlined
-                  : Icons.visibility_outlined,
-              color: AppColors.iconPrimary,
-            ),
-            onPressed: () => setState(() => _obscureText = !_obscureText),
-          ),
-          labelText: label,
-          labelStyle: const TextStyle(color: AppColors.textSecondary),
-          filled: true,
-          fillColor: AppColors.panel,
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(15),
-            borderSide: const BorderSide(color: AppColors.line),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(15),
-            borderSide: const BorderSide(color: AppColors.button, width: 2),
-          ),
-          errorStyle: const TextStyle(color: AppColors.error),
-        ),
-      ),
-    );
-  }
-  Widget _customInput({
-    required String label,
-    required IconData icon,
-    TextInputType keyboardType = TextInputType.text,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
-      child: TextFormField(
-        keyboardType: keyboardType,
-        style: const TextStyle(color: AppColors.textPrimary),
-        decoration: InputDecoration(
-          prefixIcon: Icon(icon, color: AppColors.gold), // Icono Dorado
-          labelText: label,
-          labelStyle: const TextStyle(color: AppColors.textSecondary),
-          filled: true,
-          fillColor: AppColors.panel, // Fondo Gris muy oscuro
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(15),
-            borderSide: const BorderSide(color: AppColors.line), // Borde sutil
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(15),
-            borderSide: const BorderSide(
-              color: AppColors.button,
-              width: 2,
-            ), // Borde dorado al escribir
-          ),
-          errorStyle: const TextStyle(color: AppColors.error),
-        ),
-      ),
-    );
-  }
 }
