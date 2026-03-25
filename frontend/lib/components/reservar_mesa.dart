@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/core/colors_style.dart';
-import 'package:frontend/screens/scanner_qr.dart';
 
 class ReservarMesa extends StatefulWidget {
   const ReservarMesa({super.key});

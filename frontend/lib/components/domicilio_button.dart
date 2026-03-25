@@ -27,23 +27,14 @@ class _DomicilioButtonState extends State<DomicilioButton> {
             border: Border.all(color: AppColors.gold),
             borderRadius: BorderRadius.circular(16),
              ),
-             child: Row(
+             child: Column(
               children: [
-                //ICONO DE A DOMICILIO
-              Icon(Icons.motorcycle, size: 150, color: AppColors.iconPrimary,),
-              //BOTON DE PEDIR A DOMICILIO O REOCOGER
-              Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text("A DOMICILIO", style: TextStyle(
-                    fontSize: 25, color: AppColors.textPrimary, fontWeight: FontWeight.bold
-                  ),),
-                  const SizedBox(height: 8,),
-                  Text("A RECOGER", style: TextStyle(
-                    fontSize: 25, color: AppColors.textPrimary, fontWeight: FontWeight.bold
-                  ),)
-                ],
-              )
+                //ICONO DEL QR
+              Icon(Icons.motorcycle, size: 100, color: AppColors.iconPrimary,),
+              //BOTON DE QR SCAN
+              Text("HACER PEDIDO", style: TextStyle(
+                fontSize: 32, color: AppColors.textPrimary, fontWeight: FontWeight.bold
+              ),)
               ],
               
              ),
