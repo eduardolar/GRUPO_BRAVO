@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/screens/login_screen.dart';
 import '../core/colors_style.dart';
 import '../components/entrada_texto.dart';
 import '../components/crear_cuenta_button.dart'; // Importamos el nuevo botón
@@ -125,7 +126,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     Navigator.pushReplacement(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const HomeScreen(),
+                        builder: (context) => const LoginScreen(),
                       ),
                     );
                   },
