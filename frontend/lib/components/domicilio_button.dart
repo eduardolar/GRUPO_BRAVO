@@ -18,7 +18,7 @@ class _DomicilioButtonState extends State<DomicilioButton> {
       //WIDGET QUE CONVIERTE EL CONTAINER EN BOTON
       child: GestureDetector(
         onTap: () {
-          Navigator.push(context, MaterialPageRoute(builder: (context) => loginScreen()));
+          Navigator.push(context, MaterialPageRoute(builder: (context) => LoginScreen()));
         },
         child: Container(
             width: double.infinity,

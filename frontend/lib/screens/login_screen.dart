@@ -5,14 +5,15 @@ import 'package:frontend/screens/menu_screen.dart';
 import 'package:frontend/screens/register_screen.dart';
 import 'package:frontend/components/entrada_texto.dart';
 
-class loginScreen extends StatefulWidget {
-  const loginScreen({super.key});
+// ignore: camel_case_types
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
 
   @override
-  State<loginScreen> createState() => _MyWidgetState();
+  State<LoginScreen> createState() => _MyWidgetState();
 }
 
-class _MyWidgetState extends State<loginScreen> {
+class _MyWidgetState extends State<LoginScreen> {
 
   bool _obscureText = true;
 
