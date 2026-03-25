@@ -14,9 +14,6 @@ class MainApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       home: Scaffold(
-        appBar: AppBar(title: Text("Nombre_Restaurante"),
-        backgroundColor: AppColors.panel,
-        foregroundColor: Colors.white,),
         backgroundColor: AppColors.background,
         body: HomeScreen(),
         ),

@@ -15,9 +15,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   @override
 Widget build(BuildContext context) {
-  return Padding(
-    padding: const EdgeInsets.all(16),
-    child: Container(
+    return Container(
       width: double.infinity,
       height: double.infinity,
       decoration: BoxDecoration(
@@ -91,6 +89,6 @@ Widget build(BuildContext context) {
           ),
         ),
       ),
-    ),
-  );
+    );
+  
 }}
