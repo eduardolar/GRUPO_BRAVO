@@ -1,33 +1,50 @@
 import 'package:flutter/material.dart';
-import '../data/mock_data.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import '../models/usuario_model.dart';
 
 class AuthProvider with ChangeNotifier {
   Usuario? _usuarioActual;
+  
+  // IP de tu PC (poner aqui tu ip real , no localhost)
+  final String _baseUrl = "http://192.168.1.134:8000";
 
   Usuario? get usuarioActual => _usuarioActual;
   bool get estaAutenticado => _usuarioActual != null;
 
-  // Método para iniciar sesión
+  // LOGIN REAL
   Future<bool> iniciarSesion(String email, String contrasena) async {
-    // Simular delay de red
-    await Future.delayed(const Duration(seconds: 1));
-
-    // Buscar usuario en mock data
     try {
-      final usuario = MockData.usuarios.firstWhere(
-        (u) => u.email == email && u.contrasena == contrasena,
+      final response = await http.post(
+        Uri.parse('$_baseUrl/login'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'correo': email,
+          'password_hash': contrasena,
+        }),
       );
 
-      _usuarioActual = usuario;
-      notifyListeners();
-      return true;
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        // Aquí podrías crear el objeto usuario con lo que devuelve tu API
+        _usuarioActual = Usuario(
+          id: 'temp_id', 
+          nombre: data['nombre'],
+          email: email,
+          contrasena: contrasena,
+          telefono: '',
+          direccion: '',
+        );
+        notifyListeners();
+        return true;
+      }
+      return false;
     } catch (e) {
-      throw Exception('Credenciales incorrectas');
+      throw Exception('Error de conexión: $e');
     }
   }
 
-  // Método para registrarse
+  // REGISTRO REAL (Directo a comandas_db)
   Future<bool> registrarse({
     required String nombre,
     required String email,
@@ -35,34 +52,41 @@ class AuthProvider with ChangeNotifier {
     required String telefono,
     required String direccion,
   }) async {
-    // Simular delay de red
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/registro'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'nombre': nombre,
+          'correo': email,
+          'password_hash': contrasena,
+          'telefono': telefono,
+          'direccion': direccion,
+          'rol': 'cliente'
+        }),
+      );
 
-    // Verificar si el email ya existe
-    final emailExiste = MockData.usuarios.any((u) => u.email == email);
-    if (emailExiste) {
-      throw Exception('El email ya está registrado');
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        _usuarioActual = Usuario(
+          id: responseData['id'],
+          nombre: nombre,
+          email: email,
+          contrasena: contrasena,
+          telefono: telefono,
+          direccion: direccion,
+        );
+        notifyListeners();
+        return true;
+      } else {
+        final errorMsg = jsonDecode(response.body)['detail'] ?? 'Error desconocido';
+        throw Exception(errorMsg);
+      }
+    } catch (e) {
+      throw Exception('Servidor no alcanzado. Revisa tu IP: $e');
     }
-
-    // Crear nuevo usuario
-    final nuevoUsuario = Usuario(
-      id: 'u_${MockData.usuarios.length + 1}',
-      nombre: nombre,
-      email: email,
-      contrasena: contrasena,
-      telefono: telefono,
-      direccion: direccion,
-    );
-
-    // Agregar a mock data (en una app real, esto iría a una API)
-    MockData.usuarios.add(nuevoUsuario);
-
-    _usuarioActual = nuevoUsuario;
-    notifyListeners();
-    return true;
   }
 
-  // Método para cerrar sesión
   void cerrarSesion() {
     _usuarioActual = null;
     notifyListeners();
