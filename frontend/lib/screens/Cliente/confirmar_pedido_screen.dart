@@ -300,7 +300,8 @@ class ConfirmarPedidoScreen extends StatelessWidget {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const DeliveryOptionsScreen(),
+                              builder: (context) =>
+                                  const PantallaOpcionesEntrega(),
                             ),
                           );
                         },
