@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../core/colors_style.dart';
 import '../../data/mock_data.dart';
 import '../../components/Cliente/producto_card.dart';
 import '../../models/producto_model.dart';
+import '../../providers/cart_provider.dart';
+import 'confirmar_pedido_screen.dart';
 
 class MenuScreen extends StatefulWidget {
   const MenuScreen({super.key});
@@ -14,19 +17,10 @@ class MenuScreen extends StatefulWidget {
 class _MenuScreenState extends State<MenuScreen> {
   int selectedCategoryIndex = 0;
 
-  // LÓGICA DEL CARRITO (Estado local por ahora)
- 
-  final Map<String, int> _cart = {};
-
   // Método para agregar al carrito
-  void _addToCart(Producto product) {
-    setState(() {
-      if (_cart.containsKey(product.id)) {
-        _cart[product.id] = _cart[product.id]! + 1;
-      } else {
-        _cart[product.id] = 1;
-      }
-    });
+  void _addToCart(BuildContext context, Producto product) {
+    final cart = Provider.of<CartProvider>(context, listen: false);
+    cart.addItem(product);
 
     // Feedback visual rápido para el usuario
     ScaffoldMessenger.of(context).clearSnackBars();
@@ -39,10 +33,6 @@ class _MenuScreenState extends State<MenuScreen> {
       ),
     );
   }
-
-  // Calculamos el total de items en el carrito sumando las cantidades
-  int get _totalCartItems =>
-      _cart.values.fold(0, (sum, quantity) => sum + quantity);
 
   @override
   Widget build(BuildContext context) {
@@ -65,48 +55,56 @@ class _MenuScreenState extends State<MenuScreen> {
           ),
         ),
         actions: [
-          // ICONO DE CARRITO 
+          // ICONO DE CARRITO
           Padding(
             padding: const EdgeInsets.only(right: 16, top: 8),
-            child: Stack(
-              children: [
-                IconButton(
-                  onPressed: () {
-                    // Aquí navegaremos a la pantalla de Checkout
-                    //TODO: Implementar navegación a Confirmar CArrito
-                  },
-                  icon: const Icon(
-                    Icons.shopping_bag_outlined,
-                    color: AppColors.gold,
-                    size: 28,
-                  ),
-                ),
-                if (_totalCartItems > 0)
-                  Positioned(
-                    right: 5,
-                    top: 5,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(
-                        color: Colors.red,
-                        shape: BoxShape.circle,
-                      ),
-                      constraints: const BoxConstraints(
-                        minWidth: 18,
-                        minHeight: 18,
-                      ),
-                      child: Text(
-                        '$_totalCartItems',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
+            child: Consumer<CartProvider>(
+              builder: (context, cart, child) {
+                return Stack(
+                  children: [
+                    IconButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ConfirmarPedidoScreen(),
+                          ),
+                        );
+                      },
+                      icon: const Icon(
+                        Icons.shopping_bag_outlined,
+                        color: AppColors.gold,
+                        size: 28,
                       ),
                     ),
-                  ),
-              ],
+                    if (cart.totalQuantity > 0)
+                      Positioned(
+                        right: 5,
+                        top: 5,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 18,
+                            minHeight: 18,
+                          ),
+                          child: Text(
+                            '${cart.totalQuantity}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
             ),
           ),
         ],
@@ -139,7 +137,7 @@ class _MenuScreenState extends State<MenuScreen> {
                         final product = filteredProducts[index];
                         return ProductoCard(
                           product: product,
-                          onAdd: () => _addToCart(product),
+                          onAdd: () => _addToCart(context, product),
                         );
                       },
                     ),

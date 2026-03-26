@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:frontend/core/colors_style.dart';
-import 'package:frontend/screens/forgotten_password.dart';
-import 'package:frontend/screens/menu_screen.dart';
+import 'package:frontend/screens/Cliente/forgotten_password.dart';
+import 'package:frontend/screens/Cliente/menu_screen.dart';
 import 'package:frontend/screens/register_screen.dart';
-import 'package:frontend/components/entrada_texto.dart';
+import 'package:frontend/components/Cliente/entrada_texto.dart';
 import 'package:frontend/providers/auth_provider.dart';
 
 class LoginScreen extends StatefulWidget {

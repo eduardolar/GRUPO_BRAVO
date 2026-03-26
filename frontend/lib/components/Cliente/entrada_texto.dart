@@ -9,6 +9,7 @@ class EntradaTexto extends StatelessWidget {
   final VoidCallback? alPresionarIcono; // Acción al tocar el ojo
   final TextInputType tipoTeclado; // Si es email, números, etc.
   final String? Function(String?)? validador;
+  final TextEditingController? controlador;
 
   const EntradaTexto({
     super.key,
@@ -18,7 +19,8 @@ class EntradaTexto extends StatelessWidget {
     this.mostrarTexto,
     this.alPresionarIcono,
     this.tipoTeclado = TextInputType.text,
-    this.validador, 
+    this.validador,
+    this.controlador,
   });
 
   @override
@@ -26,6 +28,7 @@ class EntradaTexto extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
       child: TextFormField(
+        controller: controlador,
         validator: validador,
         // Si es contraseña y mostrarTexto es false, oculta los caracteres
         obscureText: esContrasena ? (mostrarTexto ?? true) : false,

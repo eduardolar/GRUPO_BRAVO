@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:frontend/components/codigo_qr.dart';
-import 'package:frontend/components/domicilio_button.dart';
-import 'package:frontend/components/reservar_mesa.dart';
+import 'package:frontend/components/Cliente/codigo_qr.dart';
+import 'package:frontend/components/Cliente/domicilio_button.dart';
+import 'package:frontend/components/Cliente/reservar_mesa.dart';
 import 'package:frontend/core/colors_style.dart';
 //import 'package:frontend/screens/login_screen.dart';
 

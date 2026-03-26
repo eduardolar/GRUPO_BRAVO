@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../core/colors_style.dart';
-import '../providers/cart_provider.dart';
+import '../../core/colors_style.dart';
+import '../../providers/cart_provider.dart';
 import 'delivery_options_screen.dart';
 
 class ConfirmarPedidoScreen extends StatelessWidget {

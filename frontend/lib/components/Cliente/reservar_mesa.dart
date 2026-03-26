@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/core/colors_style.dart';
+import 'package:frontend/screens/Cliente/login_screen.dart';
 
 class ReservarMesa extends StatefulWidget {
   const ReservarMesa({super.key});
@@ -17,7 +18,7 @@ class _ReservarMesaState extends State<ReservarMesa> {
       //WIDGET QUE CONVIERTE EL CONTAINER EN BOTON
       child: GestureDetector(
         onTap: () {
-            //REDIRECCIONA A SCREEN RESERVAR MESA
+          Navigator.push(context, MaterialPageRoute(builder: (context) => LoginScreen()));
         },
         child: Container(
             width: double.infinity,
