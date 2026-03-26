@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '../core/colors_style.dart';
+import '../../core/colors_style.dart';
 
 class CrearCuentaButton extends StatelessWidget {
-  final VoidCallback alPresionar;
+  final VoidCallback? alPresionar;
   final String texto;
 
   const CrearCuentaButton({

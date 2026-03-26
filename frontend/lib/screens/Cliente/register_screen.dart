@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
-import '../core/colors_style.dart';
-import '../components/entrada_texto.dart';
-import '../components/crear_cuenta_button.dart'; // Importamos el nuevo botón
-import 'home_screen.dart';
+import 'package:provider/provider.dart';
+import '../../core/colors_style.dart';
+import '../../components/Cliente/entrada_texto.dart';
+import '../../components/Cliente/crear_cuenta_button.dart';
+import '../../providers/auth_provider.dart';
+import 'login_screen.dart';
+import 'menu_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -14,6 +17,15 @@ class RegisterScreen extends StatefulWidget {
 class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _ocultarPass = true;
+
+  // Controladores para los campos
+  final TextEditingController _nombreController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _telefonoController = TextEditingController();
+  final TextEditingController _direccionController = TextEditingController();
+
+  bool _isLoading = false;
 
   @override
   Widget build(BuildContext context) {
@@ -48,6 +60,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 EntradaTexto(
                   etiqueta: "Nombre",
                   icono: Icons.person_outline,
+                  controlador: _nombreController,
                   validador: (v) => v!.isEmpty ? "Campo requerido" : null,
                 ),
 
@@ -58,6 +71,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   mostrarTexto: _ocultarPass,
                   alPresionarIcono: () =>
                       setState(() => _ocultarPass = !_ocultarPass),
+                  controlador: _passwordController,
                   validador: (v) =>
                       v!.length < 6 ? "Mínimo 6 caracteres" : null,
                 ),
@@ -66,6 +80,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   etiqueta: "Correo electrónico",
                   icono: Icons.email_outlined,
                   tipoTeclado: TextInputType.emailAddress,
+                  controlador: _emailController,
                   validador: (v) => !v!.contains("@") ? "Email inválido" : null,
                 ),
 
@@ -73,6 +88,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   etiqueta: "Teléfono",
                   icono: Icons.phone_android_outlined,
                   tipoTeclado: TextInputType.phone, // Abre el teclado numérico
+                  controlador: _telefonoController,
                   validador: (valor) {
                     if (valor == null || valor.isEmpty) {
                       return "Por favor, introduce tu teléfono";
@@ -91,6 +107,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   icono: Icons.map_outlined,
                   tipoTeclado: TextInputType
                       .streetAddress, // Optimiza el teclado para direcciones
+                  controlador: _direccionController,
                   validador: (valor) {
                     if (valor == null || valor.isEmpty) {
                       return "La dirección es obligatoria para el envío";
@@ -105,17 +122,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const SizedBox(height: 40),
 
                 CrearCuentaButton(
-                  alPresionar: () {
-                    if (_formKey.currentState!.validate()) {
-                      // Lógica de navegación al Home
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const HomeScreen(),
-                        ),
-                      );
-                    }
-                  },
+                  alPresionar: _isLoading ? null : _registrarse,
+                  texto: _isLoading ? "CREANDO..." : "CREAR CUENTA",
                 ),
 
                 const SizedBox(height: 20),
@@ -125,7 +133,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     Navigator.pushReplacement(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const HomeScreen(),
+                        builder: (context) => const LoginScreen(),
                       ),
                     );
                   },
@@ -140,5 +148,41 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
       ),
     );
+  }
+
+  void _registrarse() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      await authProvider.registrarse(
+        nombre: _nombreController.text.trim(),
+        email: _emailController.text.trim(),
+        contrasena: _passwordController.text,
+        telefono: _telefonoController.text.trim(),
+        direccion: _direccionController.text.trim(),
+      );
+
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const MenuScreen()),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 }

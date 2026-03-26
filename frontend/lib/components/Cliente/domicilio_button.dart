@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/core/colors_style.dart';
+import 'package:frontend/screens/Cliente/login_screen.dart';
 
 class DomicilioButton extends StatefulWidget {
   const DomicilioButton({super.key});
@@ -17,7 +18,7 @@ class _DomicilioButtonState extends State<DomicilioButton> {
       //WIDGET QUE CONVIERTE EL CONTAINER EN BOTON
       child: GestureDetector(
         onTap: () {
-            //RELLENAR PARA ABRIR LA CAMARA Y ESCANEE QR
+          Navigator.push(context, MaterialPageRoute(builder: (context) => LoginScreen()));
         },
         child: Container(
             width: double.infinity,
@@ -26,23 +27,14 @@ class _DomicilioButtonState extends State<DomicilioButton> {
             border: Border.all(color: AppColors.gold),
             borderRadius: BorderRadius.circular(16),
              ),
-             child: Row(
+             child: Column(
               children: [
-                //ICONO DE A DOMICILIO
-              Icon(Icons.motorcycle, size: 150, color: AppColors.iconPrimary,),
-              //BOTON DE PEDIR A DOMICILIO O REOCOGER
-              Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text("A DOMICILIO", style: TextStyle(
-                    fontSize: 25, color: AppColors.textPrimary, fontWeight: FontWeight.bold
-                  ),),
-                  const SizedBox(height: 8,),
-                  Text("A RECOGER", style: TextStyle(
-                    fontSize: 25, color: AppColors.textPrimary, fontWeight: FontWeight.bold
-                  ),)
-                ],
-              )
+                //ICONO DEL QR
+              Icon(Icons.motorcycle, size: 100, color: AppColors.iconPrimary,),
+              //BOTON DE QR SCAN
+              Text("HACER PEDIDO", style: TextStyle(
+                fontSize: 32, color: AppColors.textPrimary
+              ),)
               ],
               
              ),

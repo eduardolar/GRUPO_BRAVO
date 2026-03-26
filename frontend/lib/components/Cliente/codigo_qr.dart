@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/core/colors_style.dart';
+import 'package:frontend/screens/Cliente/scanner_qr.dart';
 
 class CodigoQr extends StatefulWidget {
   const CodigoQr({super.key});
@@ -17,7 +18,11 @@ class _CodigoQrState extends State<CodigoQr> {
       //WIDGET QUE CONVIERTE EL CONTAINER EN BOTON
       child: GestureDetector(
         onTap: () {
-            //RELLENAR PARA ABRIR LA CAMARA Y ESCANEE QR
+            //VENTANA SCANNER QR
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const QRScanner()),
+            );
         },
         child: Container(
             width: double.infinity,
@@ -32,7 +37,7 @@ class _CodigoQrState extends State<CodigoQr> {
               Icon(Icons.qr_code_sharp, size: 100, color: AppColors.iconPrimary,),
               //BOTON DE QR SCAN
               Text("QR", style: TextStyle(
-                fontSize: 32, color: AppColors.textPrimary, fontWeight: FontWeight.bold
+                fontSize: 32, color: AppColors.textPrimary
               ),)
               ],
               

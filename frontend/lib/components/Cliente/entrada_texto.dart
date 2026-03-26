@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../core/colors_style.dart';
+import '../../core/colors_style.dart';
 
 class EntradaTexto extends StatelessWidget {
   final String etiqueta; // El texto que flota (Label)
@@ -9,6 +9,7 @@ class EntradaTexto extends StatelessWidget {
   final VoidCallback? alPresionarIcono; // Acción al tocar el ojo
   final TextInputType tipoTeclado; // Si es email, números, etc.
   final String? Function(String?)? validador;
+  final TextEditingController? controlador;
 
   const EntradaTexto({
     super.key,
@@ -19,6 +20,7 @@ class EntradaTexto extends StatelessWidget {
     this.alPresionarIcono,
     this.tipoTeclado = TextInputType.text,
     this.validador,
+    this.controlador,
   });
 
   @override
@@ -26,6 +28,7 @@ class EntradaTexto extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
       child: TextFormField(
+        controller: controlador,
         validator: validador,
         // Si es contraseña y mostrarTexto es false, oculta los caracteres
         obscureText: esContrasena ? (mostrarTexto ?? true) : false,
