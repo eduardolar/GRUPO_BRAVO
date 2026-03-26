@@ -37,7 +37,7 @@ class _CodigoQrState extends State<CodigoQr> {
               Icon(Icons.qr_code_sharp, size: 100, color: AppColors.iconPrimary,),
               //BOTON DE QR SCAN
               Text("QR", style: TextStyle(
-                fontSize: 32, color: AppColors.textPrimary, fontWeight: FontWeight.bold
+                fontSize: 32, color: AppColors.textPrimary
               ),)
               ],
               

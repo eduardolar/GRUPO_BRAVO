@@ -33,7 +33,7 @@ class _DomicilioButtonState extends State<DomicilioButton> {
               Icon(Icons.motorcycle, size: 100, color: AppColors.iconPrimary,),
               //BOTON DE QR SCAN
               Text("HACER PEDIDO", style: TextStyle(
-                fontSize: 32, color: AppColors.textPrimary, fontWeight: FontWeight.bold
+                fontSize: 32, color: AppColors.textPrimary
               ),)
               ],
               
