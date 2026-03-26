@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../core/colors_style.dart';
-import '../components/Cliente/entrada_texto.dart';
-import '../components/Cliente/crear_cuenta_button.dart';
-import '../providers/auth_provider.dart';
-import 'Cliente/login_screen.dart';
-import 'Cliente/menu_screen.dart';
+import '../../core/colors_style.dart';
+import '../../components/Cliente/entrada_texto.dart';
+import '../../components/Cliente/crear_cuenta_button.dart';
+import '../../providers/auth_provider.dart';
+import 'login_screen.dart';
+import 'menu_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});

@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/screens/Cliente/forgotten_password.dart';
 import 'package:frontend/screens/Cliente/menu_screen.dart';
-import 'package:frontend/screens/register_screen.dart';
+import 'package:frontend/screens/Cliente/register_screen.dart';
 import 'package:frontend/components/Cliente/entrada_texto.dart';
 import 'package:frontend/providers/auth_provider.dart';
 
@@ -220,9 +220,9 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
       }
     } finally {
       if (mounted) {
