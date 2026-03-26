@@ -1,0 +1,18 @@
+[
+  {
+    "ingrediente": "Tomate",
+    "cantidad_actual": 50,
+    "unidad": "kg",
+    "stock_minimo": 10,
+    "estado": "suficiente",
+    "ultima_compra": "2026-03-20T10:00:00Z"
+  },
+  {
+    "ingrediente": "Carne de Vacuno",
+    "cantidad_actual": 5,
+    "unidad": "kg",
+    "stock_minimo": 15,
+    "estado": "crítico",
+    "notas": "Pedir urgente al proveedor habitual"
+  }
+]
