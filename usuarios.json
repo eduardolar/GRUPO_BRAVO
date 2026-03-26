@@ -1,0 +1,14 @@
+[
+  {
+    "nombre": "Leslie Gonzales",
+    "username": "leslie_g",
+    "password_hash": "...",
+    "rol": "admin"
+  },
+  {
+    "nombre": "Pablo Admin",
+    "username": "pablo_admin",
+    "password_hash": "...",
+    "rol": "admin"
+  }
+]
