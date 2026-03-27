@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../data/mock_data.dart';
 import '../models/usuario_model.dart';
+import '../services/api_service.dart';
 
 class AuthProvider with ChangeNotifier {
   Usuario? _usuarioActual;
@@ -10,16 +10,14 @@ class AuthProvider with ChangeNotifier {
 
   // Método para iniciar sesión
   Future<bool> iniciarSesion(String email, String contrasena) async {
-    // Simular delay de red
-    await Future.delayed(const Duration(seconds: 1));
-
-    // Buscar usuario en mock data
     try {
-      final usuario = MockData.usuarios.firstWhere(
-        (u) => u.email == email && u.contrasena == contrasena,
+      final response = await ApiService.iniciarSesion(
+        correo: email,
+        contrasena: contrasena,
       );
 
-      _usuarioActual = usuario;
+      _usuarioActual = Usuario.fromJson(response);
+
       notifyListeners();
       return true;
     } catch (e) {
@@ -35,31 +33,29 @@ class AuthProvider with ChangeNotifier {
     required String telefono,
     required String direccion,
   }) async {
-    // Simular delay de red
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      final response = await ApiService.registrarUsuario(
+        nombre: nombre,
+        correo: email,
+        contrasena: contrasena,
+        telefono: telefono,
+        direccion: direccion,
+      );
 
-    // Verificar si el email ya existe
-    final emailExiste = MockData.usuarios.any((u) => u.email == email);
-    if (emailExiste) {
-      throw Exception('El email ya está registrado');
+      _usuarioActual = Usuario(
+        id: response['id'] ?? '',
+        nombre: nombre,
+        email: email,
+        contrasena: contrasena,
+        telefono: telefono,
+        direccion: direccion,
+      );
+
+      notifyListeners();
+      return true;
+    } catch (e) {
+      rethrow;
     }
-
-    // Crear nuevo usuario
-    final nuevoUsuario = Usuario(
-      id: 'u_${MockData.usuarios.length + 1}',
-      nombre: nombre,
-      email: email,
-      contrasena: contrasena,
-      telefono: telefono,
-      direccion: direccion,
-    );
-
-    // Agregar a mock data (en una app real, esto iría a una API)
-    MockData.usuarios.add(nuevoUsuario);
-
-    _usuarioActual = nuevoUsuario;
-    notifyListeners();
-    return true;
   }
 
   // Método para actualizar perfil

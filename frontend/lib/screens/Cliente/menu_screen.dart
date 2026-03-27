@@ -63,9 +63,7 @@ class _MenuScreenState extends State<MenuScreen> {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => const PerfilScreen(),
-                  ),
+                  MaterialPageRoute(builder: (context) => const PerfilScreen()),
                 );
               },
               icon: const Icon(

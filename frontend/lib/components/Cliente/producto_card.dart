@@ -5,6 +5,7 @@ import '../../core/colors_style.dart';
 class ProductoCard extends StatelessWidget {
   final Producto product;
   final VoidCallback onAdd;
+  static DateTime _lastTap = DateTime(2000);
 
   const ProductoCard({super.key, required this.product, required this.onAdd});
 
@@ -100,7 +101,13 @@ class ProductoCard extends StatelessWidget {
                             borderRadius: BorderRadius.circular(10),
                           ),
                         ),
-                        onPressed: onAdd,
+                        onPressed: () {
+                          final now = DateTime.now();
+                          if (now.difference(_lastTap).inMilliseconds < 300)
+                            return;
+                          _lastTap = now;
+                          onAdd();
+                        },
                         icon: const Icon(Icons.add, size: 20),
                       ),
                     ),

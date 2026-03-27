@@ -26,7 +26,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
     _nombreController = TextEditingController(text: usuario?.nombre ?? '');
     _emailController = TextEditingController(text: usuario?.email ?? '');
     _telefonoController = TextEditingController(text: usuario?.telefono ?? '');
-    _direccionController = TextEditingController(text: usuario?.direccion ?? '');
+    _direccionController = TextEditingController(
+      text: usuario?.direccion ?? '',
+    );
 
     _nombreController.addListener(_detectarCambios);
     _emailController.addListener(_detectarCambios);
@@ -37,7 +39,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
   void _detectarCambios() {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final usuario = auth.usuarioActual;
-    final cambio = _nombreController.text != (usuario?.nombre ?? '') ||
+    final cambio =
+        _nombreController.text != (usuario?.nombre ?? '') ||
         _emailController.text != (usuario?.email ?? '') ||
         _telefonoController.text != (usuario?.telefono ?? '') ||
         _direccionController.text != (usuario?.direccion ?? '');
@@ -97,7 +100,6 @@ class _PerfilScreenState extends State<PerfilScreen> {
             letterSpacing: 1.2,
           ),
         ),
-
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -107,11 +109,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
             const CircleAvatar(
               radius: 50,
               backgroundColor: AppColors.panel,
-              child: Icon(
-                Icons.person,
-                size: 50,
-                color: AppColors.gold,
-              ),
+              child: Icon(Icons.person, size: 50, color: AppColors.gold),
             ),
             const SizedBox(height: 24),
 
@@ -122,7 +120,11 @@ class _PerfilScreenState extends State<PerfilScreen> {
             const SizedBox(height: 16),
             _buildCampo('Teléfono', _telefonoController, Icons.phone_outlined),
             const SizedBox(height: 16),
-            _buildCampo('Dirección', _direccionController, Icons.location_on_outlined),
+            _buildCampo(
+              'Dirección',
+              _direccionController,
+              Icons.location_on_outlined,
+            ),
             const SizedBox(height: 24),
 
             // Botón guardar cambios
@@ -131,8 +133,12 @@ class _PerfilScreenState extends State<PerfilScreen> {
               child: ElevatedButton(
                 onPressed: _hayCambios ? _guardarCambios : null,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _hayCambios ? AppColors.button : AppColors.panel,
-                  foregroundColor: _hayCambios ? Colors.black : AppColors.textSecondary,
+                  backgroundColor: _hayCambios
+                      ? AppColors.button
+                      : AppColors.panel,
+                  foregroundColor: _hayCambios
+                      ? Colors.black
+                      : AppColors.textSecondary,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -140,10 +146,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                 ),
                 child: const Text(
                   'Guardar cambios',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                 ),
               ),
             ),
@@ -185,7 +188,11 @@ class _PerfilScreenState extends State<PerfilScreen> {
     );
   }
 
-  Widget _buildCampo(String label, TextEditingController controller, IconData icon) {
+  Widget _buildCampo(
+    String label,
+    TextEditingController controller,
+    IconData icon,
+  ) {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.panel,
@@ -202,7 +209,10 @@ class _PerfilScreenState extends State<PerfilScreen> {
           ),
           prefixIcon: Icon(icon, color: AppColors.gold),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
         ),
       ),
     );
