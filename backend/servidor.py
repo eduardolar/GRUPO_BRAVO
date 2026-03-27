@@ -6,7 +6,7 @@ from pymongo import MongoClient
 # Conexión a MongoDB Atlas
 MONGO_URI = "mongodb+srv://dam_grupo_bravo:cduEJRiDSc99ErTG@cluster0.wdmtidw.mongodb.net/?appName=Cluster0"
 cliente = MongoClient(MONGO_URI)
-db = cliente['restaurante_bravo']
+db = cliente['comandas_db']
 coleccion_usuarios = db['usuarios']
 
 app = FastAPI(title="API Restaurante Bravo")
