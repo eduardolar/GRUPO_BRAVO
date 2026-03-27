@@ -13,11 +13,8 @@ class MainApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home: Scaffold(
-        appBar: AppBar(title: Text("Nombre_Restaurante"),
+      home: Scaffold(     
         backgroundColor: AppColors.panel,
-        foregroundColor: Colors.white,),
-        backgroundColor: AppColors.background,
         body: HomeScreen(),
         ),
       )

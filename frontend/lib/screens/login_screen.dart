@@ -14,8 +14,6 @@ class loginScreen extends StatefulWidget {
 
 class _MyWidgetState extends State<loginScreen> {
 
-  bool _obscureText = true;
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
