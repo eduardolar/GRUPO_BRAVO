@@ -1,0 +1,6 @@
+[
+  {"nombre": "Entrantes", "icono": "appetizer_icon.png"},
+  {"nombre": "Principales", "icono": "main_course_icon.png"},
+  {"nombre": "Bebidas", "icono": "drink_icon.png"},
+  {"nombre": "Postres", "icono": "dessert_icon.png"}
+]

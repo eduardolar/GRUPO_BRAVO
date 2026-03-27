@@ -1,0 +1,13 @@
+[
+  {
+    "nombre": "Hamburguesa Queso",
+    "precio": 10.50,
+    "categoria": "comida",
+    "ingredientes": ["pan", "carne", "queso"]
+  },
+  {
+    "nombre": "Refresco",
+    "precio": 2.50,
+    "categoria": "bebida"
+  }
+]
