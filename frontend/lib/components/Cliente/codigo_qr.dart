@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/core/colors_style.dart';
+import 'package:frontend/screens/Cliente/scanner_qr.dart';
 
-class ReservaMesa extends StatefulWidget {
-  const ReservaMesa({super.key});
+class CodigoQr extends StatefulWidget {
+  const CodigoQr({super.key});
 
   @override
-  State<ReservaMesa> createState() => _ReservaMesaState();
+  State<CodigoQr> createState() => _CodigoQrState();
 }
 
-class _ReservaMesaState extends State<ReservaMesa> {
+class _CodigoQrState extends State<CodigoQr> {
   @override
   Widget build(BuildContext context) {
     //AÑADO PADDING
@@ -17,7 +18,11 @@ class _ReservaMesaState extends State<ReservaMesa> {
       //WIDGET QUE CONVIERTE EL CONTAINER EN BOTON
       child: GestureDetector(
         onTap: () {
-            //RELLENAR PARA ABRIR LA CAMARA Y ESCANEE QR
+            //VENTANA SCANNER QR
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const QRScanner()),
+            );
         },
         child: Container(
             width: double.infinity,
@@ -26,14 +31,14 @@ class _ReservaMesaState extends State<ReservaMesa> {
             border: Border.all(color: AppColors.gold),
             borderRadius: BorderRadius.circular(16),
              ),
-             child: Row(
+             child: Column(
               children: [
-                Text("Reserva ya tu mesa", style: TextStyle(
-                  fontSize: 24,
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.bold,
-                ),)
-              
+                //ICONO DEL QR
+              Icon(Icons.qr_code_sharp, size: 100, color: AppColors.iconPrimary,),
+              //BOTON DE QR SCAN
+              Text("QR", style: TextStyle(
+                fontSize: 32, color: AppColors.textPrimary
+              ),)
               ],
               
              ),

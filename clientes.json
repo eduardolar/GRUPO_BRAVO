@@ -1,0 +1,15 @@
+[
+  {
+    "nombre": "Leslie Gonzales",
+    "email": "leslie@ejemplo.com",
+    "telefono": "622111222",
+    "puntos_fidelidad": 150,
+    "notas": "Alérgica a los frutos secos"
+  },
+  {
+    "nombre": "Pablo de Francisco",
+    "email": "pablo@ejemplo.com",
+    "telefono": "633444555",
+    "puntos_fidelidad": 50
+  }
+]
