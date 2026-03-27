@@ -6,6 +6,7 @@ import '../../components/Cliente/producto_card.dart';
 import '../../models/producto_model.dart';
 import '../../providers/cart_provider.dart';
 import 'confirmar_pedido_screen.dart';
+import 'perfil_screen.dart';
 
 class MenuScreen extends StatefulWidget {
   const MenuScreen({super.key});
@@ -55,56 +56,23 @@ class _MenuScreenState extends State<MenuScreen> {
           ),
         ),
         actions: [
-          // ICONO DE CARRITO
+          // ICONO DE PERFIL
           Padding(
             padding: const EdgeInsets.only(right: 16, top: 8),
-            child: Consumer<CartProvider>(
-              builder: (context, cart, child) {
-                return Stack(
-                  children: [
-                    IconButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const ConfirmarPedidoScreen(),
-                          ),
-                        );
-                      },
-                      icon: const Icon(
-                        Icons.shopping_bag_outlined,
-                        color: AppColors.gold,
-                        size: 28,
-                      ),
-                    ),
-                    if (cart.totalQuantity > 0)
-                      Positioned(
-                        right: 5,
-                        top: 5,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(
-                            color: Colors.red,
-                            shape: BoxShape.circle,
-                          ),
-                          constraints: const BoxConstraints(
-                            minWidth: 18,
-                            minHeight: 18,
-                          ),
-                          child: Text(
-                            '${cart.totalQuantity}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      ),
-                  ],
+            child: IconButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const PerfilScreen(),
+                  ),
                 );
               },
+              icon: const Icon(
+                Icons.person_outline,
+                color: AppColors.gold,
+                size: 28,
+              ),
             ),
           ),
         ],
@@ -144,6 +112,57 @@ class _MenuScreenState extends State<MenuScreen> {
             ),
           ),
         ],
+      ),
+      // BOTÓN FLOTANTE DEL CARRITO (abajo a la derecha)
+      floatingActionButton: Consumer<CartProvider>(
+        builder: (context, cart, child) {
+          return Stack(
+            clipBehavior: Clip.none,
+            children: [
+              FloatingActionButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ConfirmarPedidoScreen(),
+                    ),
+                  );
+                },
+                backgroundColor: AppColors.button,
+                child: const Icon(
+                  Icons.shopping_bag_outlined,
+                  color: Colors.black,
+                  size: 28,
+                ),
+              ),
+              if (cart.totalQuantity > 0)
+                Positioned(
+                  right: -4,
+                  top: -4,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 20,
+                      minHeight: 20,
+                    ),
+                    child: Text(
+                      '${cart.totalQuantity}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
+          );
+        },
       ),
     );
   }

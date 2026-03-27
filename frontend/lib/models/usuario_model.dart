@@ -27,6 +27,24 @@ class Usuario {
     );
   }
 
+  // Copia con campos modificados
+  Usuario copyWith({
+    String? nombre,
+    String? email,
+    String? contrasena,
+    String? telefono,
+    String? direccion,
+  }) {
+    return Usuario(
+      id: id,
+      nombre: nombre ?? this.nombre,
+      email: email ?? this.email,
+      contrasena: contrasena ?? this.contrasena,
+      telefono: telefono ?? this.telefono,
+      direccion: direccion ?? this.direccion,
+    );
+  }
+
   // Convertir a JSON
   Map<String, dynamic> toJson() {
     return {

@@ -62,6 +62,23 @@ class AuthProvider with ChangeNotifier {
     return true;
   }
 
+  // Método para actualizar perfil
+  void actualizarPerfil({
+    required String nombre,
+    required String email,
+    required String telefono,
+    required String direccion,
+  }) {
+    if (_usuarioActual == null) return;
+    _usuarioActual = _usuarioActual!.copyWith(
+      nombre: nombre,
+      email: email,
+      telefono: telefono,
+      direccion: direccion,
+    );
+    notifyListeners();
+  }
+
   // Método para cerrar sesión
   void cerrarSesion() {
     _usuarioActual = null;
