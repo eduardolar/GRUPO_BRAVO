@@ -3,7 +3,7 @@ import 'package:frontend/components/Cliente/codigo_qr.dart';
 import 'package:frontend/components/Cliente/domicilio_button.dart';
 import 'package:frontend/components/Cliente/reservar_mesa.dart';
 import 'package:frontend/core/colors_style.dart';
-//import 'package:frontend/screens/login_screen.dart';
+import 'package:frontend/screens/Cliente/perfil_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});

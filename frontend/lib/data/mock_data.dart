@@ -1,6 +1,9 @@
+import '../models/mesa_model.dart';
 import '../models/producto_model.dart';
+import '../models/reserva_model.dart';
 import '../models/usuario_model.dart';
 import 'mock_categories.dart';
+import 'mock_mesas.dart';
 import 'mock_pedidos.dart';
 import 'mock_products.dart';
 import 'mock_users.dart';
@@ -17,4 +20,10 @@ class MockData {
 
   // Re-export de pedidos
   static final List<Map<String, dynamic>> pedidos = MockPedidos.pedidos;
+
+  // Re-export de mesas
+  static final List<Mesa> mesas = MockMesas.mesas;
+
+  // Reservas en memoria (se llenan en runtime)
+  static final List<Reserva> reservas = [];
 }
