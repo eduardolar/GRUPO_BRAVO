@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/core/colors_style.dart';
 
+// ─── Paleta 60-30-10 ───────────────────────────────────────────────
+// 60% → negro cálido profundo:  AppColors.background
+// 30% → marrón oscuro cálido:   AppColors.backgroundButton
+// 10% → dorado:                 AppColors.gold
+// ───────────────────────────────────────────────────────────────────
+
 class GestionReservas extends StatefulWidget {
   const GestionReservas({super.key});
 
@@ -12,89 +18,217 @@ class _GestionReservasState extends State<GestionReservas> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      // 60% — fondo dominante, negro cálido
+      backgroundColor: AppColors.background,
+
       body: SafeArea(
-        child: Container(
-          margin: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            border: Border.all(color: AppColors.gold, width: 2),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            children: [
-              const SizedBox(height: 20),
+        child: Column(
+          children: [
+            // ── HEADER — superficie 30% ──────────────────────────
+            _buildHeader(),
 
-              const Text(
-                "Gestión de reservas",
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 26,
-                ),
+            // ── CUERPO — fondo 60% ───────────────────────────────
+            const Spacer(),
+
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+              child: Column(
+                children: [
+                  _menuButton(
+                    icon: Icons.add_circle_outlined,
+                    text: "Crear reserva",
+                    subtitle: "Crear una nueva reserva",
+                    onTap: () {},
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  _menuButton(
+                    icon: Icons.edit_outlined,
+                    text: "Modificar reserva",
+                    subtitle: "Editar fecha, hora o personas",
+                    onTap: () {},
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  _menuButton(
+                    icon: Icons.delete_outline,
+                    text: "Eliminar reserva",
+                    subtitle: "Cancelar una reserva existente",
+                    onTap: () {},
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  _menuButton(
+                    icon: Icons.list_alt_outlined,
+                    text: "Lista de reservas",
+                    subtitle: "Agenda y disponibilidad",
+                    onTap: () {},
+                  ),
+                ],
               ),
+            ),
 
-              const Spacer(), 
-
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: Column(
-                  children: [
-                    _menuButton(
-                      icon: Icons.edit,
-                      text: "Modificar reserva",
-                      onTap: () {},
-                    ),
-
-                    const SizedBox(height: 70),
-
-                    _menuButton(
-                      icon: Icons.list,
-                      text: "Lista de reservas",
-                      onTap: () {},
-                    ),
-                  ],
-                ),
-              ),
-
-              const Spacer(), 
-            ],
-          ),
+            const Spacer(),
+          ],
         ),
       ),
     );
   }
 
-  Widget _menuButton({
-  required IconData icon,
-  required String text,
-  required VoidCallback onTap,
-}) {
-  return GestureDetector(
-    onTap: onTap,
-    child: Container(
-      height: 70,
-      decoration: BoxDecoration(
-        border: Border.all(color: AppColors.gold, width: 2),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row( 
-        mainAxisAlignment: MainAxisAlignment.center,
+  // ── Header con superficie 30% y acento dorado 10% ─────────────────
+  Widget _buildHeader() {
+    return Container(
+      width: double.infinity,
+      // 30% — superficie cálida para el encabezado
+      color: AppColors.backgroundButton,
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+      child: Column(
         children: [
-          Icon(
-            icon, 
-            color: AppColors.gold,
-            size: 28,
-          ),
-          const SizedBox(width: 15), 
-          Text(
-            text,
-            style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 20,
+          // Círculo con icono — acento dorado 10%
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.gold, width: 1.5),
             ),
+            child: const Icon(
+              Icons.calendar_month_outlined,
+              color: AppColors.gold,  // 10% dorado
+              size: 24,
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // Título principal
+          const Text(
+            "Gestión de reservas",
+            style: TextStyle(
+              fontFamily: 'Playfair Display', // elegante y distintivo
+              color: Color(0xFFF5ECD4),        // blanco cálido
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.5,
+            ),
+          ),
+
+          const SizedBox(height: 6),
+
+          // Subtítulo en dorado — acento 10%
+          Text(
+            "SELECCIONA UNA OPCIÓN",
+            style: TextStyle(
+              color: AppColors.gold.withOpacity(0.8), // 10% dorado
+              fontSize: 10,
+              letterSpacing: 3,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Separador con degradado dorado — acento 10%
+          Row(
+            children: [
+              const Expanded(child: Divider(color: Color(0xFF2e2418))),
+              Container(
+                width: 60,
+                height: 1.5,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.transparent,
+                      AppColors.gold,       // 10% dorado
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+              const Expanded(child: Divider(color: Color(0xFF2e2418))),
+            ],
           ),
         ],
       ),
-    ),
-  );
-}
+    );
+  }
+
+  // ── Botón de menú con diseño 60-30-10 ────────────────────────────
+  Widget _menuButton({
+    required IconData icon,
+    required String text,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        decoration: BoxDecoration(
+          // 30% — superficie de la tarjeta
+          color: AppColors.backgroundButton,
+          border: Border.all(color: const Color(0xFF2e2418)),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          children: [
+            // Icono en su contenedor — 30% con acento 10%
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: const Color(0xFF251D12), // 30% más oscuro
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFF3a2e1e)),
+              ),
+              child: Icon(
+                icon,
+                color: AppColors.gold, // 10% dorado
+                size: 20,
+              ),
+            ),
+
+            const SizedBox(width: 14),
+
+            // Textos
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    text,
+                    style: const TextStyle(
+                      color: Color(0xFFF0E4C8), // blanco cálido
+                      fontSize: 17,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      color: Color(0xFF7a6a50), // gris dorado apagado
+                      fontSize: 11,
+                      fontWeight: FontWeight.w300,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Flecha — acento dorado 10%
+            Icon(
+              Icons.chevron_right,
+              color: AppColors.gold.withOpacity(0.7), // 10% dorado
+              size: 20,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:frontend/components/Cliente/entrada_texto.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/providers/auth_provider.dart';
-import 'package:frontend/screens/Cliente/menu_screen.dart';
 import 'package:frontend/screens/home_screen_trabajador.dart';
 import 'package:provider/provider.dart';
+
 
 class LoginTrabajador extends StatefulWidget {
   const LoginTrabajador({super.key});
@@ -25,58 +25,110 @@ class _LoginTrabajadorState extends State<LoginTrabajador> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: appBarLogin(),
+      appBar: _appBarLogin(),
       body: SingleChildScrollView(
         child: SizedBox(
           height: MediaQuery.of(context).size.height - 100,
-          child: bodyLogin(),
+          child: _bodyLogin(),
         ),
       ),
     );
   }
 
-  Widget bodyLogin() {
+  Widget _bodyLogin() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0),
       child: Column(
         children: [
           const Spacer(flex: 2),
 
-          Text(
-            "Iniciar Sesión",
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1.5,
+          Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.gold, width: 1.5),
+            ),
+            child: const Icon(
+              Icons.restaurant,
+              color: AppColors.gold, 
+              size: 28,
             ),
           ),
-          const SizedBox(height: 10),
+
+          const SizedBox(height: 20),
+
           const Text(
-            "Bienvenido a NombreRestaurante",
-            style: TextStyle(color: Colors.grey, fontSize: 16),
+            "Iniciar Sesión",
+            style: TextStyle(
+              fontFamily: 'Playfair Display',
+              color: Color(0xFFF5ECD4),
+              fontSize: 30,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.5,
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          Text(
+            "BIENVENIDO A NOMBRERESTAURANTE",
+            style: TextStyle(
+              color: AppColors.gold.withOpacity(0.7),
+              fontSize: 10,
+              letterSpacing: 2.5,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          Row(
+            children: [
+              const Expanded(child: Divider(color: Color(0xFF2e2418))),
+              Container(
+                width: 60,
+                height: 1.5,
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.transparent,
+                      AppColors.gold, 
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+              const Expanded(child: Divider(color: Color(0xFF2e2418))),
+            ],
           ),
 
           const Spacer(flex: 2),
 
-          EntradaTexto(
-            etiqueta: "Correo electrónico",
-            icono: Icons.mail_outline,
-            tipoTeclado: TextInputType.emailAddress,
-            controlador: _emailController,
+          _inputWrapper(
+            child: EntradaTexto(
+              etiqueta: "Correo electrónico",
+              icono: Icons.mail_outline,
+              tipoTeclado: TextInputType.emailAddress,
+              controlador: _emailController,
+            ),
           ),
 
-          EntradaTexto(
-            etiqueta: 'Contraseña',
-            icono: Icons.lock_outline,
-            esContrasena: true,
-            mostrarTexto: _oscurecerContrasena,
-            alPresionarIcono: () {
-              setState(() {
-                _oscurecerContrasena = !_oscurecerContrasena;
-              });
-            },
-            controlador: _passwordController,
+          const SizedBox(height: 12),
+
+          _inputWrapper(
+            child: EntradaTexto(
+              etiqueta: 'Contraseña',
+              icono: Icons.lock_outline,
+              esContrasena: true,
+              mostrarTexto: _oscurecerContrasena,
+              alPresionarIcono: () {
+                setState(() {
+                  _oscurecerContrasena = !_oscurecerContrasena;
+                });
+              },
+              controlador: _passwordController,
+            ),
           ),
 
           const Spacer(flex: 1),
@@ -89,45 +141,62 @@ class _LoginTrabajadorState extends State<LoginTrabajador> {
     );
   }
 
+  Widget _inputWrapper({required Widget child}) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.backgroundButton, 
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFF2e2418)),
+      ),
+      child: child,
+    );
+  }
+
   Widget _botonLogin() {
     return Container(
       width: double.infinity,
       height: 55,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(14),
+        // Borde dorado sutil — 10%
+        border: Border.all(color: AppColors.gold, width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: AppColors.button.withOpacity(0.2),
-            blurRadius: 12,
+            color: AppColors.gold.withOpacity(0.15),
+            blurRadius: 16,
             offset: const Offset(0, 6),
           ),
         ],
       ),
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.button,
-          foregroundColor: AppColors.background,
+          backgroundColor: AppColors.backgroundButton, 
+          foregroundColor: AppColors.gold,              
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
+            borderRadius: BorderRadius.circular(13),
           ),
           elevation: 0,
         ),
         onPressed: _isLoading ? null : _iniciarSesion,
         child: _isLoading
-            ? const CircularProgressIndicator(color: Colors.white)
+            ? const CircularProgressIndicator(
+                color: AppColors.gold, 
+                strokeWidth: 2,
+              )
             : const Text(
                 "ENTRAR",
                 style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  letterSpacing: 2,
+                  fontFamily: 'Playfair Display',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                  letterSpacing: 3,
                 ),
               ),
       ),
     );
   }
 
-  AppBar appBarLogin() {
+  AppBar _appBarLogin() {
     return AppBar(
       backgroundColor: Colors.transparent,
       elevation: 0,
@@ -160,9 +229,9 @@ class _LoginTrabajadorState extends State<LoginTrabajador> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}')),
+        );
       }
     } finally {
       if (mounted) {
