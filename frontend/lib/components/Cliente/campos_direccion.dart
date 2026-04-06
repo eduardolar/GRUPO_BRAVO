@@ -21,6 +21,7 @@ class CamposDireccion extends StatelessWidget {
       labelText: etiqueta,
       labelStyle: const TextStyle(color: AppColors.textSecondary),
       hintText: pista,
+      hintStyle: TextStyle(color: AppColors.textSecondary.withOpacity(0.5)),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: AppColors.line),
@@ -45,6 +46,7 @@ class CamposDireccion extends StatelessWidget {
         if (mostrarDireccionAlternativa) ...[
           TextField(
             controller: controladorDireccion,
+            style: const TextStyle(color: AppColors.textPrimary),
             decoration: _decoracionCampo(
               etiqueta: 'Dirección alternativa',
               pista: 'Calle, número, piso, código postal...',
@@ -55,6 +57,7 @@ class CamposDireccion extends StatelessWidget {
         ],
         TextField(
           controller: controladorNotas,
+          style: const TextStyle(color: AppColors.textPrimary),
           decoration: _decoracionCampo(
             etiqueta: 'Notas adicionales (opcional)',
             pista: 'Timbre, piso, instrucciones especiales...',

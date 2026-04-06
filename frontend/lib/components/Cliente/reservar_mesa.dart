@@ -18,26 +18,36 @@ class _ReservarMesaState extends State<ReservarMesa> {
       //WIDGET QUE CONVIERTE EL CONTAINER EN BOTON
       child: GestureDetector(
         onTap: () {
-          Navigator.push(context, MaterialPageRoute(builder: (context) => LoginScreen()));
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) =>
+                  const LoginScreen(destino: DestinoLogin.reservar),
+            ),
+          );
         },
         child: Container(
-            width: double.infinity,
+          width: double.infinity,
           decoration: BoxDecoration(
             color: AppColors.background,
             border: Border.all(color: AppColors.gold),
             borderRadius: BorderRadius.circular(16),
-             ),
-             child: Column(
-              children: [
-                //ICONO DEL QR
-              Icon(Icons.table_bar_rounded, size: 100, color: AppColors.iconPrimary,),
+          ),
+          child: Column(
+            children: [
+              //ICONO DEL QR
+              Icon(
+                Icons.table_bar_rounded,
+                size: 100,
+                color: AppColors.iconPrimary,
+              ),
               //BOTON DE QR SCAN
-              Text("RESERVA YA", style: TextStyle(
-                fontSize: 32, color: AppColors.textPrimary
-              ),)
-              ],
-              
-             ),
+              Text(
+                "RESERVA YA",
+                style: TextStyle(fontSize: 32, color: AppColors.textPrimary),
+              ),
+            ],
+          ),
         ),
       ),
     );

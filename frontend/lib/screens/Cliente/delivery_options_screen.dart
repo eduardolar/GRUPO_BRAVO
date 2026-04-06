@@ -4,12 +4,14 @@ import '../../core/colors_style.dart';
 import '../../models/opciones_pedido.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/api_service.dart';
 import '../../components/Cliente/tarjeta_opcion_entrega.dart';
 import '../../components/Cliente/tarjeta_opcion_direccion.dart';
 import '../../components/Cliente/tarjeta_opcion_pago.dart';
 import '../../components/Cliente/campos_direccion.dart';
 import '../../components/Cliente/campos_tarjeta.dart';
 import '../../components/Cliente/resumen_pedido.dart';
+import 'pedido_confirmado_screen.dart';
 
 // Re-exporta para mantener compatibilidad con imports existentes
 export '../../models/opciones_pedido.dart';
@@ -237,7 +239,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
     );
   }
 
-  void _confirmarPedido() {
+  void _confirmarPedido() async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
 
     if (_entregaSeleccionada == OpcionEntrega.domicilio) {
@@ -282,21 +284,59 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
         ? 'Efectivo'
         : 'Tarjeta';
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('¡Pedido confirmado! $tipoEntrega - Pago: $tipoPago'),
-        backgroundColor: AppColors.button,
-        duration: const Duration(seconds: 3),
-      ),
-    );
+    final cart = Provider.of<CartProvider>(context, listen: false);
+    final costeEnvio = _entregaSeleccionada == OpcionEntrega.domicilio
+        ? 3.99
+        : 0.0;
+    final total = cart.totalPrice + costeEnvio;
 
-    Provider.of<CartProvider>(context, listen: false).clearCart();
+    final direccionEntrega = _entregaSeleccionada == OpcionEntrega.domicilio
+        ? (_direccionSeleccionada == OpcionDireccion.registrada
+              ? (auth.usuarioActual?.direccion ?? '')
+              : _controladorDireccion.text.trim())
+        : null;
 
-    Future.delayed(const Duration(seconds: 2), () {
+    try {
+      final items = cart.items.values
+          .map(
+            (item) => {
+              'producto_id': item.producto.id,
+              'nombre': item.producto.nombre,
+              'cantidad': item.cantidad,
+              'precio': item.producto.precio,
+            },
+          )
+          .toList();
+
+      await ApiService.crearPedido(
+        userId: auth.usuarioActual?.id ?? '',
+        items: items,
+        tipoEntrega: tipoEntrega,
+        metodoPago: tipoPago,
+        total: total,
+        direccionEntrega: direccionEntrega,
+        notas: _controladorNotas.text.trim(),
+      );
+
+      cart.clearCart();
+
       if (mounted) {
-        Navigator.of(context).popUntil((route) => route.isFirst);
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PedidoConfirmadoScreen(
+              tipoEntrega: tipoEntrega,
+              tipoPago: tipoPago,
+              total: total,
+            ),
+          ),
+        );
       }
-    });
+    } catch (e) {
+      if (mounted) {
+        _mostrarError('Error al crear pedido: ${e.toString()}');
+      }
+    }
   }
 
   void _mostrarError(String mensaje) {

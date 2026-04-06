@@ -11,45 +11,66 @@ class QRScanner extends StatefulWidget {
 
 class _QRScannerState extends State<QRScanner> {
   String? qrText;
+  bool _yaDetectado = false;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          color: AppColors.background,
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.background,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: AppColors.iconPrimary),
+        title: const Text(
+          'ESCANEAR QR',
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.2,
+          ),
         ),
-        child: Column(
-          children: [
-            Expanded(
-              flex: 4,
-              child: MobileScanner(
-                onDetect: (capture) {
-                  final barcode = capture.barcodes.first;
-                  final String? code = barcode.rawValue;
-        
-                  if (code != null) {
-                    setState(() {
-                      qrText = code;
-                    });
-        
-                    // Si quieres volver a la pantalla anterior con el resultado:
-                    // Navigator.pop(context, code);
-                  }
-                },
-              ),
-            ),
-            Expanded(
-              flex: 1,
-              child: Center(
-                child: Text(
-                  qrText ?? "Escanea un código QR",
-                  style: const TextStyle(fontSize: 18),
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            flex: 4,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                MobileScanner(
+                  onDetect: (capture) {
+                    if (_yaDetectado) return;
+                    final barcode = capture.barcodes.first;
+                    final String? code = barcode.rawValue;
+
+                    if (code != null) {
+                      _yaDetectado = true;
+                      Navigator.pop(context, code);
+                    }
+                  },
                 ),
+                // Marco visual de escaneo
+                Container(
+                  width: 250,
+                  height: 250,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: AppColors.gold, width: 2),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            flex: 1,
+            child: Center(
+              child: Text(
+                'Apunta al código QR de la mesa',
+                style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

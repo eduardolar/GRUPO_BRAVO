@@ -59,19 +59,36 @@ class AuthProvider with ChangeNotifier {
   }
 
   // Método para actualizar perfil
-  void actualizarPerfil({
+  Future<void> actualizarPerfil({
     required String nombre,
     required String email,
     required String telefono,
     required String direccion,
-  }) {
+  }) async {
     if (_usuarioActual == null) return;
+
+    await ApiService.actualizarPerfil(
+      userId: _usuarioActual!.id,
+      nombre: nombre,
+      email: email,
+      telefono: telefono,
+      direccion: direccion,
+    );
+
     _usuarioActual = _usuarioActual!.copyWith(
       nombre: nombre,
       email: email,
       telefono: telefono,
       direccion: direccion,
     );
+    notifyListeners();
+  }
+
+  // Método para eliminar cuenta
+  Future<void> eliminarCuenta() async {
+    if (_usuarioActual == null) return;
+    await ApiService.eliminarCuenta(userId: _usuarioActual!.id);
+    _usuarioActual = null;
     notifyListeners();
   }
 

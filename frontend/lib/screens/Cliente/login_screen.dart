@@ -4,11 +4,16 @@ import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/screens/Cliente/forgotten_password.dart';
 import 'package:frontend/screens/Cliente/menu_screen.dart';
 import 'package:frontend/screens/Cliente/register_screen.dart';
+import 'package:frontend/screens/Cliente/reservar_mesa_screen.dart';
 import 'package:frontend/components/Cliente/entrada_texto.dart';
 import 'package:frontend/providers/auth_provider.dart';
 
+enum DestinoLogin { menu, reservar }
+
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final DestinoLogin destino;
+
+  const LoginScreen({super.key, this.destino = DestinoLogin.menu});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -129,7 +134,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const RegisterScreen(),
+                      builder: (context) =>
+                          RegisterScreen(destino: widget.destino),
                     ),
                   );
                 },
@@ -213,9 +219,12 @@ class _LoginScreenState extends State<LoginScreen> {
       final success = await authProvider.iniciarSesion(email, password);
 
       if (success && mounted) {
+        final pantallaDestino = widget.destino == DestinoLogin.reservar
+            ? const ReservarMesaScreen()
+            : const MenuScreen();
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const MenuScreen()),
+          MaterialPageRoute(builder: (context) => pantallaDestino),
         );
       }
     } catch (e) {

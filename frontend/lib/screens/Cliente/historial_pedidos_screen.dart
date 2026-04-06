@@ -1,14 +1,72 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../core/colors_style.dart';
-import '../../data/mock_data.dart';
+import '../../models/pedido_model.dart';
+import '../../services/api_service.dart';
+import '../../providers/auth_provider.dart';
 
-class HistorialPedidosScreen extends StatelessWidget {
+class HistorialPedidosScreen extends StatefulWidget {
   const HistorialPedidosScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final pedidos = MockData.pedidos;
+  State<HistorialPedidosScreen> createState() => _HistorialPedidosScreenState();
+}
 
+class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
+  List<Pedido> _pedidos = [];
+  bool _cargando = true;
+  int _expandido = -1;
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarPedidos();
+  }
+
+  Future<void> _cargarPedidos() async {
+    try {
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      final userId = auth.usuarioActual?.id ?? '';
+      final pedidos = await ApiService.obtenerHistorialPedidos(userId: userId);
+      if (!mounted) return;
+      setState(() {
+        _pedidos = pedidos;
+        _cargando = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _cargando = false);
+    }
+  }
+
+  Color _colorEstado(String estado) {
+    switch (estado) {
+      case 'Entregado':
+        return Colors.green;
+      case 'Cancelado':
+        return Colors.redAccent;
+      case 'En preparación':
+        return Colors.orange;
+      default:
+        return AppColors.gold;
+    }
+  }
+
+  IconData _iconoEstado(String estado) {
+    switch (estado) {
+      case 'Entregado':
+        return Icons.check_circle_outline;
+      case 'Cancelado':
+        return Icons.cancel_outlined;
+      case 'En preparación':
+        return Icons.access_time;
+      default:
+        return Icons.receipt_long;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -28,7 +86,11 @@ class HistorialPedidosScreen extends StatelessWidget {
           ),
         ),
       ),
-      body: pedidos.isEmpty
+      body: _cargando
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.button),
+            )
+          : _pedidos.isEmpty
           ? const Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -47,95 +109,212 @@ class HistorialPedidosScreen extends StatelessWidget {
             )
           : ListView.builder(
               padding: const EdgeInsets.all(16),
-              itemCount: pedidos.length,
+              itemCount: _pedidos.length,
               itemBuilder: (context, index) {
-                final pedido = pedidos[index];
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.panel,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppColors.line),
-                  ),
-                  child: Row(
-                    children: [
-                      // Icono
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: AppColors.gold.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(
-                          Icons.shopping_bag_outlined,
-                          color: AppColors.gold,
-                        ),
+                final pedido = _pedidos[index];
+                final estaExpandido = _expandido == index;
+                final colorEstado = _colorEstado(pedido.estado);
+
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _expandido = estaExpandido ? -1 : index;
+                    });
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.panel,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: estaExpandido
+                            ? AppColors.gold.withOpacity(0.5)
+                            : AppColors.line,
                       ),
-                      const SizedBox(width: 14),
-                      // Info del pedido
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                    ),
+                    child: Column(
+                      children: [
+                        // ── Cabecera ──
+                        Row(
                           children: [
-                            Text(
-                              'Pedido ${pedido['id']}',
-                              style: const TextStyle(
-                                color: AppColors.textPrimary,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15,
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: colorEstado.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(
+                                _iconoEstado(pedido.estado),
+                                color: colorEstado,
                               ),
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '${pedido['fecha']} · ${pedido['items']} artículos',
-                              style: TextStyle(
-                                color: AppColors.textSecondary.withOpacity(0.7),
-                                fontSize: 13,
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Pedido ${pedido.id}',
+                                    style: const TextStyle(
+                                      color: AppColors.textPrimary,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${pedido.fecha} · ${pedido.items} artículos',
+                                    style: TextStyle(
+                                      color: AppColors.textSecondary
+                                          .withOpacity(0.7),
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  '${pedido.total.toStringAsFixed(2)} €',
+                                  style: const TextStyle(
+                                    color: AppColors.gold,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: colorEstado.withOpacity(0.15),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    pedido.estado,
+                                    style: TextStyle(
+                                      color: colorEstado,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(width: 4),
+                            AnimatedRotation(
+                              turns: estaExpandido ? 0.5 : 0,
+                              duration: const Duration(milliseconds: 300),
+                              child: Icon(
+                                Icons.expand_more,
+                                color: AppColors.textSecondary.withOpacity(0.5),
+                                size: 22,
                               ),
                             ),
                           ],
                         ),
-                      ),
-                      // Precio y estado
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            '${(pedido['total'] as double).toStringAsFixed(2)} €',
-                            style: const TextStyle(
-                              color: AppColors.gold,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.green.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              '${pedido['estado']}',
-                              style: const TextStyle(
-                                color: Colors.green,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+
+                        // ── Contenido expandido ──
+                        AnimatedCrossFade(
+                          firstChild: const SizedBox.shrink(),
+                          secondChild: _buildDetalle(pedido, colorEstado),
+                          crossFadeState: estaExpandido
+                              ? CrossFadeState.showSecond
+                              : CrossFadeState.showFirst,
+                          duration: const Duration(milliseconds: 300),
+                        ),
+                      ],
+                    ),
                   ),
                 );
               },
             ),
+    );
+  }
+
+  Widget _buildDetalle(Pedido pedido, Color colorEstado) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Divider(color: AppColors.line.withOpacity(0.5), height: 1),
+          const SizedBox(height: 12),
+
+          // ── Productos ──
+          ...pedido.productos.map(
+            (p) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  Text(
+                    '${p.cantidad}x',
+                    style: TextStyle(
+                      color: AppColors.gold,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      p.nombre,
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '${p.subtotal.toStringAsFixed(2)} €',
+                    style: TextStyle(
+                      color: AppColors.textSecondary.withOpacity(0.8),
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 8),
+          Divider(color: AppColors.line.withOpacity(0.5), height: 1),
+          const SizedBox(height: 10),
+
+          // ── Info de entrega y pago ──
+          _buildInfoRow(Icons.delivery_dining, pedido.tipoEntrega),
+          const SizedBox(height: 6),
+          _buildInfoRow(Icons.payment, pedido.metodoPago),
+          if (pedido.direccion != null) ...[
+            const SizedBox(height: 6),
+            _buildInfoRow(Icons.location_on_outlined, pedido.direccion!),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String text) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: AppColors.textSecondary.withOpacity(0.6)),
+        const SizedBox(width: 8),
+        Text(
+          text,
+          style: TextStyle(
+            color: AppColors.textSecondary.withOpacity(0.8),
+            fontSize: 12,
+          ),
+        ),
+      ],
     );
   }
 }
