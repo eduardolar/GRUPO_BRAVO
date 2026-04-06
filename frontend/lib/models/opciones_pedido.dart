@@ -1,4 +1,4 @@
-enum OpcionEntrega { domicilio, recoger }
+enum OpcionEntrega { domicilio, recoger, enMesa }
 
 enum MetodoPago { efectivo, tarjeta }
 

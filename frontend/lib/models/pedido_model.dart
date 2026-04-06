@@ -33,6 +33,8 @@ class Pedido {
   final String tipoEntrega;
   final String metodoPago;
   final String? direccion;
+  final String? mesaId;
+  final int? numeroMesa;
   final List<ProductoPedido> productos;
 
   Pedido({
@@ -44,6 +46,8 @@ class Pedido {
     required this.tipoEntrega,
     required this.metodoPago,
     this.direccion,
+    this.mesaId,
+    this.numeroMesa,
     required this.productos,
   });
 
@@ -62,6 +66,8 @@ class Pedido {
       tipoEntrega: mapa['tipo_entrega'] ?? '',
       metodoPago: mapa['metodo_pago'] ?? '',
       direccion: mapa['direccion'],
+      mesaId: mapa['mesa_id'],
+      numeroMesa: mapa['numero_mesa'],
       productos: productosList,
     );
   }
@@ -76,6 +82,8 @@ class Pedido {
       'tipo_entrega': tipoEntrega,
       'metodo_pago': metodoPago,
       'direccion': direccion,
+      'mesa_id': mesaId,
+      'numero_mesa': numeroMesa,
       'productos': productos.map((p) => p.toMap()).toList(),
     };
   }

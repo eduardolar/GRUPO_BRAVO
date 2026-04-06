@@ -134,19 +134,21 @@ class _HomeTrabajadorState extends State<HomeTrabajador> {
       child: Container(
         height: 70,
         decoration: BoxDecoration(
-          border: Border.all(color: AppColors.gold, width: 2),
+          color: AppColors.button,
           borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.sombra, width: 1),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: AppColors.textPrimary, size: 28),
+            Icon(icon, color: Colors.white, size: 28),
             const SizedBox(width: 12),
             Text(
               text,
               style: const TextStyle(
-                color: AppColors.textPrimary,
+                color: Colors.white,
                 fontSize: 20,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],

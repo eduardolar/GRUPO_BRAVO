@@ -63,12 +63,63 @@ class _QRScannerState extends State<QRScanner> {
           ),
           Expanded(
             flex: 1,
-            child: Center(
-              child: Text(
-                'Apunta al código QR de la mesa',
-                style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
-              ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'Apunta al código QR de la mesa',
+                  style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
+                ),
+                const SizedBox(height: 12),
+                TextButton.icon(
+                  onPressed: _introducirCodigoManual,
+                  icon: const Icon(Icons.keyboard, color: AppColors.button),
+                  label: const Text(
+                    'Introducir código manual',
+                    style: TextStyle(color: AppColors.button),
+                  ),
+                ),
+              ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _introducirCodigoManual() {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Código de mesa'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: 'Introduce el código de la mesa',
+          ),
+          onSubmitted: (value) {
+            if (value.trim().isNotEmpty) {
+              Navigator.pop(ctx);
+              Navigator.pop(context, value.trim());
+            }
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () {
+              final value = controller.text.trim();
+              if (value.isNotEmpty) {
+                Navigator.pop(ctx);
+                Navigator.pop(context, value);
+              }
+            },
+            child: const Text('Aceptar'),
           ),
         ],
       ),

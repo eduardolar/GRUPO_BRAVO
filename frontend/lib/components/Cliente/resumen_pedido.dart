@@ -33,9 +33,11 @@ class ResumenPedido extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               _filaResumen(
-                etiqueta: opcionEntrega == OpcionEntrega.domicilio
-                    ? 'Entrega a domicilio:'
-                    : 'Recoger en restaurante:',
+                etiqueta: switch (opcionEntrega) {
+                  OpcionEntrega.domicilio => 'Entrega a domicilio:',
+                  OpcionEntrega.recoger => 'Recoger en restaurante:',
+                  OpcionEntrega.enMesa => 'Comer en el local:',
+                },
                 valor: costeEnvio == 0
                     ? 'Gratis'
                     : '${costeEnvio.toStringAsFixed(2)} €',

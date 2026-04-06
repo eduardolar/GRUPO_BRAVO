@@ -12,8 +12,14 @@ class CartItem {
 
 class CartProvider with ChangeNotifier {
   final Map<String, CartItem> _items = {};
+  String? _mesaId;
+  int? _numeroMesa;
 
   Map<String, CartItem> get items => _items;
+
+  String? get mesaId => _mesaId;
+  int? get numeroMesa => _numeroMesa;
+  bool get tienemesa => _mesaId != null;
 
   int get itemCount => _items.length;
 
@@ -48,6 +54,20 @@ class CartProvider with ChangeNotifier {
 
   void clearCart() {
     _items.clear();
+    _mesaId = null;
+    _numeroMesa = null;
+    notifyListeners();
+  }
+
+  void asignarMesa({required String mesaId, required int numeroMesa}) {
+    _mesaId = mesaId;
+    _numeroMesa = numeroMesa;
+    notifyListeners();
+  }
+
+  void desasignarMesa() {
+    _mesaId = null;
+    _numeroMesa = null;
     notifyListeners();
   }
 

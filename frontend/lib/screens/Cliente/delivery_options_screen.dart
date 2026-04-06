@@ -25,7 +25,7 @@ class PantallaOpcionesEntrega extends StatefulWidget {
 }
 
 class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
-  OpcionEntrega _entregaSeleccionada = OpcionEntrega.domicilio;
+  late OpcionEntrega _entregaSeleccionada;
   MetodoPago _pagoSeleccionado = MetodoPago.efectivo;
   OpcionDireccion _direccionSeleccionada = OpcionDireccion.registrada;
 
@@ -35,6 +35,14 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
   final _controladorFechaExpiracion = TextEditingController();
   final _controladorCvv = TextEditingController();
   final _controladorNombreTitular = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    final cart = Provider.of<CartProvider>(context, listen: false);
+    _entregaSeleccionada =
+        cart.tienemesa ? OpcionEntrega.enMesa : OpcionEntrega.domicilio;
+  }
 
   @override
   void dispose() {
@@ -80,41 +88,70 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
             const SizedBox(height: 20),
 
             // --- Sección entrega ---
-            TarjetaOpcionEntrega(
-              titulo: 'Entrega a domicilio',
-              subtitulo: 'Recibe tu pedido en la puerta de tu casa',
-              icono: Icons.delivery_dining,
-              seleccionada: _entregaSeleccionada == OpcionEntrega.domicilio,
-              coste: '3,99 €',
-              alPulsar: () => setState(
-                () => _entregaSeleccionada = OpcionEntrega.domicilio,
-              ),
-            ),
+            Consumer<CartProvider>(
+              builder: (context, cart, _) {
+                if (cart.tienemesa) {
+                  // ── Viene de QR: solo opción "en mesa" ──
+                  return TarjetaOpcionEntrega(
+                    titulo: 'Comer en mesa ${cart.numeroMesa}',
+                    subtitulo: 'Pedido asignado a tu mesa',
+                    icono: Icons.restaurant,
+                    seleccionada:
+                        _entregaSeleccionada == OpcionEntrega.enMesa,
+                    coste: 'Gratis',
+                    alPulsar: () => setState(
+                      () => _entregaSeleccionada = OpcionEntrega.enMesa,
+                    ),
+                  );
+                }
 
-            if (_entregaSeleccionada == OpcionEntrega.domicilio) ...[
-              const SizedBox(height: 20),
-              const Text(
-                'Dirección de entrega',
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              _seccionDireccion(),
-            ],
-
-            const SizedBox(height: 16),
-
-            TarjetaOpcionEntrega(
-              titulo: 'Recoger en restaurante',
-              subtitulo: 'Ven a recoger tu pedido cuando esté listo',
-              icono: Icons.store,
-              seleccionada: _entregaSeleccionada == OpcionEntrega.recoger,
-              coste: 'Gratis',
-              alPulsar: () =>
-                  setState(() => _entregaSeleccionada = OpcionEntrega.recoger),
+                // ── Sin QR: domicilio y recoger ──
+                return Column(
+                  children: [
+                    TarjetaOpcionEntrega(
+                      titulo: 'Entrega a domicilio',
+                      subtitulo:
+                          'Recibe tu pedido en la puerta de tu casa',
+                      icono: Icons.delivery_dining,
+                      seleccionada:
+                          _entregaSeleccionada == OpcionEntrega.domicilio,
+                      coste: '3,99 €',
+                      alPulsar: () => setState(
+                        () =>
+                            _entregaSeleccionada = OpcionEntrega.domicilio,
+                      ),
+                    ),
+                    if (_entregaSeleccionada ==
+                        OpcionEntrega.domicilio) ...[
+                      const SizedBox(height: 20),
+                      const Text(
+                        'Dirección de entrega',
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      _seccionDireccion(),
+                    ],
+                    const SizedBox(height: 16),
+                    TarjetaOpcionEntrega(
+                      titulo: 'Recoger en restaurante',
+                      subtitulo:
+                          'Ven a recoger tu pedido cuando esté listo',
+                      icono: Icons.store,
+                      seleccionada:
+                          _entregaSeleccionada == OpcionEntrega.recoger,
+                      coste: 'Gratis',
+                      alPulsar: () => setState(
+                        () =>
+                            _entregaSeleccionada = OpcionEntrega.recoger,
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
 
             const SizedBox(height: 40),
@@ -277,9 +314,11 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       }
     }
 
-    final tipoEntrega = _entregaSeleccionada == OpcionEntrega.domicilio
-        ? 'Entrega a domicilio'
-        : 'Recoger en restaurante';
+    final tipoEntrega = switch (_entregaSeleccionada) {
+      OpcionEntrega.domicilio => 'Entrega a domicilio',
+      OpcionEntrega.recoger => 'Recoger en restaurante',
+      OpcionEntrega.enMesa => 'Comer en el local',
+    };
     final tipoPago = _pagoSeleccionado == MetodoPago.efectivo
         ? 'Efectivo'
         : 'Tarjeta';
@@ -315,6 +354,12 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
         metodoPago: tipoPago,
         total: total,
         direccionEntrega: direccionEntrega,
+        mesaId: _entregaSeleccionada == OpcionEntrega.enMesa
+            ? cart.mesaId
+            : null,
+        numeroMesa: _entregaSeleccionada == OpcionEntrega.enMesa
+            ? cart.numeroMesa
+            : null,
         notas: _controladorNotas.text.trim(),
       );
 
