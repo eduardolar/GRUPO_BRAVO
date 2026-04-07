@@ -4,9 +4,7 @@ import '../services/api_service.dart';
 
 class AuthProvider with ChangeNotifier {
   Usuario? _usuarioActual;
-  
-  // IP de tu PC (poner aqui tu ip real , no localhost)
-  final String _baseUrl = "http://192.168.1.134:8000";
+
 
   Usuario? get usuarioActual => _usuarioActual;
   bool get estaAutenticado => _usuarioActual != null;
