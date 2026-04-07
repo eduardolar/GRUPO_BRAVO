@@ -36,6 +36,12 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _cargando = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al cargar pedidos: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 

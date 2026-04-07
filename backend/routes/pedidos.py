@@ -93,12 +93,14 @@ def obtener_pedidos(usuario_id: str = Query(...)):
     pedidos = coleccion_pedidos.find({"usuario_id": usuario_id})
     resultado = []
     for p in pedidos:
+        items_raw = p.get("items", [])
         resultado.append({
             "id": str(p["_id"]),
             "fecha": p.get("fecha", ""),
             "total": p.get("total", 0),
             "estado": p.get("estado", "pendiente"),
-            "items": p.get("items", []),
+            "items": len(items_raw) if isinstance(items_raw, list) else items_raw,
+            "productos": items_raw if isinstance(items_raw, list) else [],
             "tipo_entrega": p.get("tipo_entrega", ""),
             "metodo_pago": p.get("metodo_pago", ""),
             "direccion_entrega": p.get("direccion_entrega", ""),
