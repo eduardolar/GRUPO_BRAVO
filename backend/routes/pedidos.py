@@ -54,8 +54,11 @@ TIPO_ENTREGA_MAP = {
     "entrega a domicilio": "domicilio",
     "a domicilio": "domicilio",
     "recoger en local": "recoger",
+    "recoger en el local": "recoger",
     "comer en local": "local",
+    "comer en el local": "local",
     "en local": "local",
+    "en el local": "local",
 }
 
 @router.post("")
