@@ -41,17 +41,35 @@ def _descontar_stock(items: list):
             if nombre_ing in ingredientes_excluidos:
                 continue
 
-            # Descontar 1 unidad por cada cantidad pedida
+            # Descontar 1 unidad por cada cantidad pedida (sin bajar de 0)
             coleccion_ingredientes.update_one(
-                {"nombre": {"$regex": f"^{nombre_ing}$", "$options": "i"}},
+                {
+                    "nombre": {"$regex": f"^{nombre_ing}$", "$options": "i"},
+                    "cantidad_actual": {"$gte": cantidad_pedida}
+                },
                 {"$inc": {"cantidad_actual": -cantidad_pedida}}
             )
+
+TIPO_ENTREGA_MAP = {
+    "entrega a domicilio": "domicilio",
+    "a domicilio": "domicilio",
+    "recoger en local": "recoger",
+    "comer en local": "local",
+    "en local": "local",
+}
 
 @router.post("")
 def crear_pedido(pedido: PedidoCrear):
     pedido_dict = pedido.dict()
     pedido_dict["fecha"] = datetime.now().isoformat()
     pedido_dict["estado"] = "pendiente"
+
+    # Normalizar tipo_entrega al valor que espera MongoDB (local|domicilio|recoger)
+    tipo = pedido_dict.get("tipo_entrega", "").strip().lower()
+    pedido_dict["tipo_entrega"] = TIPO_ENTREGA_MAP.get(tipo, tipo)
+
+    # Eliminar campos con valor None para evitar error de validación en MongoDB
+    pedido_dict = {k: v for k, v in pedido_dict.items() if v is not None}
 
     # Descontar stock de ingredientes
     _descontar_stock(pedido.items)

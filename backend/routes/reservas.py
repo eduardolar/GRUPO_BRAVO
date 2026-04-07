@@ -7,7 +7,7 @@ router = APIRouter(prefix="/reservas", tags=["Reservas"])
 
 @router.post("")
 def crear_reserva(reserva: ReservaCrear):
-    reserva_dict = reserva.dict()
+    reserva_dict = {k: v for k, v in reserva.dict().items() if v is not None}
     resultado = coleccion_reservas.insert_one(reserva_dict)
     reserva_dict["id"] = str(resultado.inserted_id)
     reserva_dict.pop("_id", None)

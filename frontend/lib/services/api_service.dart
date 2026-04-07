@@ -47,9 +47,8 @@ class ApiService {
     direccion: direccion,
   );
 
-  static Future<Map<String, dynamic>> verPerfil({
-    required String userId,
-  }) => AuthService.verPerfil(userId: userId);
+  static Future<Map<String, dynamic>> verPerfil({required String userId}) =>
+      AuthService.verPerfil(userId: userId);
 
   static Future<bool> eliminarPerfil({required String userId}) =>
       AuthService.eliminarPerfil(userId: userId);
@@ -115,7 +114,7 @@ class ApiService {
     notas: notas,
   );
 
-  static bool hayDisponibilidad({
+  static Future<bool> hayDisponibilidad({
     required DateTime fecha,
     required String hora,
     required int comensales,

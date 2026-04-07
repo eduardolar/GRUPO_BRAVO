@@ -77,19 +77,24 @@ class ReservaService {
   }
 
   /// Comprueba si hay mesa disponible para una fecha, hora y nº de comensales.
-  static bool hayDisponibilidad({
+  static Future<bool> hayDisponibilidad({
     required DateTime fecha,
     required String hora,
     required int comensales,
-  }) {
-    final fechaStr =
-        '${fecha.day.toString().padLeft(2, '0')}/${fecha.month.toString().padLeft(2, '0')}/${fecha.year}';
-    return _buscarMesaDisponible(
-          fecha: fechaStr,
-          hora: hora,
-          comensales: comensales,
-        ) !=
-        null;
+  }) async {
+    if (!usarApiReal) {
+      final fechaStr =
+          '${fecha.day.toString().padLeft(2, '0')}/${fecha.month.toString().padLeft(2, '0')}/${fecha.year}';
+      return _buscarMesaDisponible(
+            fecha: fechaStr,
+            hora: hora,
+            comensales: comensales,
+          ) !=
+          null;
+    }
+
+    // Con API real, el servidor valida al crear la reserva
+    return true;
   }
 
   /// Obtener reservas de un usuario

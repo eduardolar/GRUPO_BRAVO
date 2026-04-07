@@ -24,6 +24,9 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
   final TextEditingController _notasController = TextEditingController();
   bool _isLoading = false;
 
+  // ── Disponibilidad por hora (caché local) ──
+  Map<String, bool> _disponibilidadHoras = {};
+
   // ── Turno ──
   String _turnoSeleccionado = 'comida';
 
@@ -55,6 +58,7 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
     _tabController.addListener(() {
       if (_tabController.index == 1) _cargarReservas();
     });
+    _cargarDisponibilidad();
   }
 
   @override
@@ -68,8 +72,8 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
     setState(() {
       _turnoSeleccionado = turno;
       _horaSeleccionada = _horasPorTurno[turno]!.first;
-      _autoSeleccionarHoraDisponible();
     });
+    _cargarDisponibilidad();
   }
 
   Future<void> _seleccionarFecha() async {
@@ -96,8 +100,8 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
     if (fecha != null) {
       setState(() {
         _fechaSeleccionada = fecha;
-        _autoSeleccionarHoraDisponible();
       });
+      _cargarDisponibilidad();
     }
   }
 
@@ -105,24 +109,35 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
   /// selecciona automáticamente la primera hora libre del turno.
   void _autoSeleccionarHoraDisponible() {
     final horaActualStr = _formatearHora(_horaSeleccionada);
-    final disponible = ApiService.hayDisponibilidad(
-      fecha: _fechaSeleccionada,
-      hora: horaActualStr,
-      comensales: _numComensales,
-    );
+    final disponible = _disponibilidadHoras[horaActualStr] ?? true;
     if (!disponible) {
       final horas = _horasPorTurno[_turnoSeleccionado] ?? [];
       for (final h in horas) {
-        if (ApiService.hayDisponibilidad(
-          fecha: _fechaSeleccionada,
-          hora: _formatearHora(h),
-          comensales: _numComensales,
-        )) {
+        if (_disponibilidadHoras[_formatearHora(h)] ?? true) {
           _horaSeleccionada = h;
           return;
         }
       }
     }
+  }
+
+  /// Carga la disponibilidad de todas las horas del turno actual.
+  Future<void> _cargarDisponibilidad() async {
+    final horas = _horasPorTurno[_turnoSeleccionado] ?? [];
+    final Map<String, bool> resultado = {};
+    for (final h in horas) {
+      final horaStr = _formatearHora(h);
+      resultado[horaStr] = await ApiService.hayDisponibilidad(
+        fecha: _fechaSeleccionada,
+        hora: horaStr,
+        comensales: _numComensales,
+      );
+    }
+    if (!mounted) return;
+    setState(() {
+      _disponibilidadHoras = resultado;
+      _autoSeleccionarHoraDisponible();
+    });
   }
 
   String _formatearFecha(DateTime fecha) {
@@ -286,6 +301,12 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
     } catch (e) {
       if (!mounted) return;
       setState(() => _cargandoReservas = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al cargar reservas: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -510,11 +531,7 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
             runSpacing: 10,
             children: (_horasPorTurno[_turnoSeleccionado] ?? []).map((hora) {
               final horaStr = _formatearHora(hora);
-              final disponible = ApiService.hayDisponibilidad(
-                fecha: _fechaSeleccionada,
-                hora: horaStr,
-                comensales: _numComensales,
-              );
+              final disponible = _disponibilidadHoras[horaStr] ?? true;
               final seleccionada = hora == _horaSeleccionada && disponible;
               return GestureDetector(
                 onTap: disponible
@@ -588,10 +605,10 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
               children: [
                 IconButton(
                   onPressed: _numComensales > 1
-                      ? () => setState(() {
-                          _numComensales--;
-                          _autoSeleccionarHoraDisponible();
-                        })
+                      ? () {
+                          setState(() => _numComensales--);
+                          _cargarDisponibilidad();
+                        }
                       : null,
                   icon: Icon(
                     Icons.remove_circle_outline,
@@ -621,10 +638,10 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
                 const SizedBox(width: 20),
                 IconButton(
                   onPressed: _numComensales < 12
-                      ? () => setState(() {
-                          _numComensales++;
-                          _autoSeleccionarHoraDisponible();
-                        })
+                      ? () {
+                          setState(() => _numComensales++);
+                          _cargarDisponibilidad();
+                        }
                       : null,
                   icon: Icon(
                     Icons.add_circle_outline,
