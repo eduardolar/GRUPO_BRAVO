@@ -5,6 +5,15 @@ import '../data/mock_data.dart';
 import 'api_config.dart';
 
 class IngredienteService {
+  // Datos mock para ingredientes
+  static final List<Ingrediente> _mockIngredientes = [
+    Ingrediente(id: '1', nombre: 'Tomate', cantidadActual: 50, unidad: 'kg', stockMinimo: 10),
+    Ingrediente(id: '2', nombre: 'Queso', cantidadActual: 20, unidad: 'kg', stockMinimo: 5),
+    Ingrediente(id: '3', nombre: 'Lechuga', cantidadActual: 15, unidad: 'kg', stockMinimo: 8),
+    Ingrediente(id: '4', nombre: 'Carne', cantidadActual: 30, unidad: 'kg', stockMinimo: 12),
+    Ingrediente(id: '5', nombre: 'Pan', cantidadActual: 100, unidad: 'unidades', stockMinimo: 20),
+  ];
+
   /// Obtener lista de categorías
   static Future<List<String>> obtenerCategorias() async {
     if (!usarApiReal) {
@@ -25,11 +34,7 @@ class IngredienteService {
   static Future<List<Ingrediente>> obtenerIngredientes({String? categoria}) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 300));
-      final ingredientes = MockData.productos
-          .where((p) => categoria == null || p.categoria == categoria)
-          .map((p) => Ingrediente(id: p.id, nombre: p.nombre))
-          .toList();
-      return ingredientes;
+      return List.from(_mockIngredientes);
     }
 
     final uri = categoria != null

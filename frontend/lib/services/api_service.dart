@@ -2,9 +2,11 @@ import '../models/producto_model.dart';
 import '../models/pedido_model.dart';
 import '../models/mesa_model.dart';
 import '../models/reserva_model.dart';
+import '../models/ingrediente_model.dart';
 
 import 'auth_service.dart';
 import 'producto_service.dart';
+import 'ingredientes_service.dart';
 import 'pedido_service.dart';
 import 'reserva_service.dart';
 import 'mesa_service.dart';
@@ -64,9 +66,8 @@ class ApiService {
   static Future<List<Producto>> obtenerProductos({String? categoria}) =>
       ProductoService.obtenerProductos(categoria: categoria);
 
-  static Future<List<Producto>> obtenerIngredientes({String? categoria}) =>
-      ProductoService.obtenerIngredientes(categoria: categoria);
-
+  static Future<List<Ingrediente>> obtenerIngredientes({String? categoria}) =>
+      IngredienteService.obtenerIngredientes(categoria: categoria);
   // ─── PEDIDOS ─────────────────────────────────────────────────
 
   static Future<Map<String, dynamic>> crearPedido({

@@ -82,7 +82,7 @@ class _GestionStockState extends State<GestionStock> {
             ),
             child: const Icon(
               Icons.inventory_2_outlined,
-              color: Colors.white, 
+              color: AppColors.background, 
               size: 24,
             ),
           ),
@@ -169,7 +169,7 @@ class _GestionStockState extends State<GestionStock> {
               ),
               child: Icon(
                 icon,
-                color: Colors.white, 
+                color: AppColors.background, 
                 size: 20,
               ),
             ),
@@ -184,7 +184,7 @@ class _GestionStockState extends State<GestionStock> {
                   Text(
                     text,
                     style: const TextStyle(
-                      color: Colors.white, 
+                      color: AppColors.background, 
                       fontSize: 17,
                       fontWeight: FontWeight.w600,
                       letterSpacing: 0.2,
