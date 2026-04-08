@@ -1,3 +1,6 @@
+import 'package:frontend/data/mock_stock.dart';
+import 'package:frontend/models/stock_model.dart';
+
 import '../models/producto_model.dart';
 import '../models/usuario_model.dart';
 import 'mock_categories.dart';
@@ -13,4 +16,7 @@ class MockData {
 
   // Re-export de usuarios
   static final List<Usuario> usuarios = MockUsers.usuarios;
+
+    // Re-export de usuarios
+  static final List<Stock> stock = MockStock.stock;
 }

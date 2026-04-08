@@ -24,4 +24,8 @@ class AppColors{
   //Sombras
   static const Color shadow = Color(0x66000000);
 
+  //Lógica
+  static const Color disp = Color.fromARGB(255, 40, 184, 11);
+  static const Color noDisp = Color.fromARGB(255, 223, 78, 10);
+
 }

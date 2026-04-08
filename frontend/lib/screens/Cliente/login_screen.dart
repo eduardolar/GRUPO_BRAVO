@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/screens/Administrador/admin_home_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/screens/Cliente/forgotten_password.dart';
@@ -141,6 +142,31 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ),
+              ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.button,
+                      foregroundColor: AppColors
+                          .background, // Texto oscuro sobre fondo dorado
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                    ),
+                    onPressed: () {
+                      Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => MenuAdministrador()),  // Direccionar a la pantalla de menú
+                  );
+                        
+                      }
+                    ,
+                    child: const Text(
+                      "IINICIAR SESIÓN",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
             ],
           ),
           const SizedBox(height: 20),
