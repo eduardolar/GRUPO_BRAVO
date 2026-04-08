@@ -21,6 +21,7 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
   DateTime _fechaSeleccionada = DateTime.now().add(const Duration(days: 1));
   TimeOfDay _horaSeleccionada = const TimeOfDay(hour: 14, minute: 0);
   int _numComensales = 2;
+  int _maxComensales = 12;
   final TextEditingController _notasController = TextEditingController();
   bool _isLoading = false;
 
@@ -59,6 +60,7 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
       if (_tabController.index == 1) _cargarReservas();
     });
     _cargarDisponibilidad();
+    _cargarMaxComensales();
   }
 
   @override
@@ -74,6 +76,16 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
       _horaSeleccionada = _horasPorTurno[turno]!.first;
     });
     _cargarDisponibilidad();
+  }
+
+  Future<void> _cargarMaxComensales() async {
+    try {
+      final mesas = await ApiService.obtenerMesas();
+      if (mesas.isNotEmpty && mounted) {
+        final max = mesas.map((m) => m.capacidad).reduce((a, b) => a > b ? a : b);
+        setState(() => _maxComensales = max);
+      }
+    } catch (_) {}
   }
 
   Future<void> _seleccionarFecha() async {
@@ -637,7 +649,7 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
                 ),
                 const SizedBox(width: 20),
                 IconButton(
-                  onPressed: _numComensales < 12
+                  onPressed: _numComensales < _maxComensales
                       ? () {
                           setState(() => _numComensales++);
                           _cargarDisponibilidad();
@@ -645,7 +657,7 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
                       : null,
                   icon: Icon(
                     Icons.add_circle_outline,
-                    color: _numComensales < 12
+                    color: _numComensales < _maxComensales
                         ? AppColors.gold
                         : AppColors.line,
                     size: 32,

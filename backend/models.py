@@ -37,6 +37,7 @@ class ReservaCrear(BaseModel):
     hora: str
     comensales: int
     turno: str
+    mesa_id: Optional[str] = None
     notas: Optional[str] = None
 
 class ValidarQR(BaseModel):

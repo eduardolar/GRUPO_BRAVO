@@ -28,6 +28,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
       final auth = Provider.of<AuthProvider>(context, listen: false);
       final userId = auth.usuarioActual?.id ?? '';
       final pedidos = await ApiService.obtenerHistorialPedidos(userId: userId);
+      pedidos.sort((a, b) => b.fecha.compareTo(a.fecha));
       if (!mounted) return;
       setState(() {
         _pedidos = pedidos;
@@ -42,6 +43,15 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
           backgroundColor: Colors.red,
         ),
       );
+    }
+  }
+
+  String _formatearFecha(String fecha) {
+    try {
+      final dt = DateTime.parse(fecha);
+      return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    } catch (_) {
+      return fecha;
     }
   }
 
@@ -164,7 +174,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Pedido ${pedido.id}',
+                                    _formatearFecha(pedido.fecha),
                                     style: const TextStyle(
                                       color: AppColors.textPrimary,
                                       fontWeight: FontWeight.bold,
@@ -173,7 +183,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    '${pedido.fecha} · ${pedido.items} artículos',
+                                    '${pedido.items} artículos · ${pedido.estado}',
                                     style: TextStyle(
                                       color: AppColors.textSecondary
                                           .withOpacity(0.7),

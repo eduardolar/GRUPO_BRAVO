@@ -60,7 +60,7 @@ class ReservaService {
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'usuario_id': userId,
-        'fecha': fecha.toIso8601String(),
+        'fecha': fecha.toIso8601String().split('T').first,
         'hora': hora,
         'comensales': comensales,
         'turno': turno,
@@ -93,8 +93,19 @@ class ReservaService {
           null;
     }
 
-    // Con API real, el servidor valida al crear la reserva
-    return true;
+    final fechaStr = fecha.toIso8601String().split('T').first;
+
+    final response = await http.get(
+      Uri.parse(
+        '$baseUrl/reservas/mesas-disponibles?fecha=$fechaStr&hora=$hora&comensales=$comensales',
+      ),
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> mesas = jsonDecode(response.body);
+      return mesas.isNotEmpty;
+    }
+    return false;
   }
 
   /// Obtener reservas de un usuario

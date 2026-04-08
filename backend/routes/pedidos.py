@@ -50,16 +50,18 @@ def _descontar_stock(items: list):
                 {"$inc": {"cantidad_actual": -cantidad_pedida}}
             )
 
-TIPO_ENTREGA_MAP = {
-    "entrega a domicilio": "domicilio",
-    "a domicilio": "domicilio",
-    "recoger en local": "recoger",
-    "recoger en el local": "recoger",
-    "comer en local": "local",
-    "comer en el local": "local",
-    "en local": "local",
-    "en el local": "local",
-}
+VALORES_ENTREGA_VALIDOS = {"local", "domicilio", "recoger"}
+
+def _normalizar_tipo_entrega(valor: str) -> str:
+    """Convierte cualquier texto de tipo_entrega al enum que espera MongoDB."""
+    texto = valor.strip().lower()
+    if texto in VALORES_ENTREGA_VALIDOS:
+        return texto
+    if "domicilio" in texto:
+        return "domicilio"
+    if "recoger" in texto:
+        return "recoger"
+    return "local"
 
 @router.post("")
 def crear_pedido(pedido: PedidoCrear):
@@ -68,8 +70,7 @@ def crear_pedido(pedido: PedidoCrear):
     pedido_dict["estado"] = "pendiente"
 
     # Normalizar tipo_entrega al valor que espera MongoDB (local|domicilio|recoger)
-    tipo = pedido_dict.get("tipo_entrega", "").strip().lower()
-    pedido_dict["tipo_entrega"] = TIPO_ENTREGA_MAP.get(tipo, tipo)
+    pedido_dict["tipo_entrega"] = _normalizar_tipo_entrega(pedido_dict.get("tipo_entrega", ""))
 
     # Eliminar campos con valor None para evitar error de validación en MongoDB
     pedido_dict = {k: v for k, v in pedido_dict.items() if v is not None}

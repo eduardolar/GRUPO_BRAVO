@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/screens/Cliente/login_screen.dart';
 import 'package:provider/provider.dart';
 import '../../core/colors_style.dart';
 import '../../providers/auth_provider.dart';
@@ -150,7 +151,12 @@ class _PerfilScreenState extends State<PerfilScreen> {
     try {
       await auth.eliminarCuenta();
       if (!mounted) return;
-      Navigator.of(context).popUntil((route) => route.isFirst);
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (context) => const LoginScreen(), 
+        ),
+        (route) => false, 
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -354,10 +360,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                   icon: const Icon(Icons.delete_forever, size: 22),
                   label: const Text(
                     'Eliminar cuenta',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.redAccent,
