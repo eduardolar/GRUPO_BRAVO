@@ -27,7 +27,7 @@ class MainApp extends StatelessWidget {
         theme: ThemeData(
           textTheme: GoogleFonts.frederickaTheGreatTextTheme(),
         ),
-        home: const HomeScreen(),
+        home: const HomeTrabajador(),
       ),
     );
   }

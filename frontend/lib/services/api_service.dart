@@ -64,6 +64,9 @@ class ApiService {
   static Future<List<Producto>> obtenerProductos({String? categoria}) =>
       ProductoService.obtenerProductos(categoria: categoria);
 
+  static Future<List<Producto>> obtenerIngredientes({String? categoria}) =>
+      ProductoService.obtenerIngredientes(categoria: categoria);
+
   // ─── PEDIDOS ─────────────────────────────────────────────────
 
   static Future<Map<String, dynamic>> crearPedido({
