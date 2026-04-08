@@ -1,0 +1,50 @@
+class Mesa {
+  final String id;
+  final int numero;
+  final int capacidad;
+  final String ubicacion; // 'interior', 'terraza', 'privado'
+  final bool disponible;
+  final String codigoQr;
+
+  Mesa({
+    required this.id,
+    required this.numero,
+    required this.capacidad,
+    required this.ubicacion,
+    this.disponible = true,
+    String? codigoQr,
+  }) : codigoQr = codigoQr ?? 'mesa_$numero';
+
+  factory Mesa.fromMap(Map<String, dynamic> mapa) {
+    return Mesa(
+      id: mapa['id'] ?? '',
+      numero: mapa['numero'] ?? 0,
+      capacidad: mapa['capacidad'] ?? 2,
+      ubicacion: mapa['ubicacion'] ?? 'interior',
+      disponible: mapa['disponible'] ?? true,
+      codigoQr: mapa['codigo_qr'],
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'numero': numero,
+      'capacidad': capacidad,
+      'ubicacion': ubicacion,
+      'disponible': disponible,
+      'codigo_qr': codigoQr,
+    };
+  }
+
+  Mesa copyWith({bool? disponible, String? codigoQr}) {
+    return Mesa(
+      id: id,
+      numero: numero,
+      capacidad: capacidad,
+      ubicacion: ubicacion,
+      disponible: disponible ?? this.disponible,
+      codigoQr: codigoQr ?? this.codigoQr,
+    );
+  }
+}

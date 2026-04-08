@@ -24,6 +24,7 @@ class CamposTarjeta extends StatelessWidget {
       labelText: etiqueta,
       labelStyle: const TextStyle(color: AppColors.textSecondary),
       hintText: pista,
+      hintStyle: TextStyle(color: AppColors.textSecondary.withOpacity(0.5)),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: AppColors.line),
@@ -58,6 +59,7 @@ class CamposTarjeta extends StatelessWidget {
         const SizedBox(height: 16),
         TextField(
           controller: controladorNumero,
+          style: const TextStyle(color: AppColors.textPrimary),
           decoration: _decoracionCampo(
             etiqueta: 'Número de tarjeta',
             pista: '1234 5678 9012 3456',
@@ -75,6 +77,7 @@ class CamposTarjeta extends StatelessWidget {
             Expanded(
               child: TextField(
                 controller: controladorFechaExpiracion,
+                style: const TextStyle(color: AppColors.textPrimary),
                 decoration: _decoracionCampo(
                   etiqueta: 'Fecha expiración',
                   pista: 'MM/AA',
@@ -87,6 +90,7 @@ class CamposTarjeta extends StatelessWidget {
             Expanded(
               child: TextField(
                 controller: controladorCvv,
+                style: const TextStyle(color: AppColors.textPrimary),
                 decoration: _decoracionCampo(etiqueta: 'CVV', pista: '123'),
                 keyboardType: TextInputType.number,
                 maxLength: 4,
@@ -98,6 +102,7 @@ class CamposTarjeta extends StatelessWidget {
         const SizedBox(height: 12),
         TextField(
           controller: controladorNombreTitular,
+          style: const TextStyle(color: AppColors.textPrimary),
           decoration: _decoracionCampo(
             etiqueta: 'Nombre del titular',
             pista: 'Como aparece en la tarjeta',

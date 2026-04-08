@@ -1,33 +1,32 @@
 import 'package:flutter/material.dart';
-import '../data/mock_data.dart';
 import '../models/usuario_model.dart';
+import '../services/api_service.dart';
 
 class AuthProvider with ChangeNotifier {
   Usuario? _usuarioActual;
 
+
   Usuario? get usuarioActual => _usuarioActual;
   bool get estaAutenticado => _usuarioActual != null;
 
-  // Método para iniciar sesión
+  // LOGIN REAL
   Future<bool> iniciarSesion(String email, String contrasena) async {
-    // Simular delay de red
-    await Future.delayed(const Duration(seconds: 1));
-
-    // Buscar usuario en mock data
     try {
-      final usuario = MockData.usuarios.firstWhere(
-        (u) => u.email == email && u.contrasena == contrasena,
+      final response = await ApiService.iniciarSesion(
+        correo: email,
+        contrasena: contrasena,
       );
 
-      _usuarioActual = usuario;
+      _usuarioActual = Usuario.fromJson(response);
+
       notifyListeners();
       return true;
     } catch (e) {
-      throw Exception('Credenciales incorrectas');
+      throw Exception('Error de conexión: $e');
     }
   }
 
-  // Método para registrarse
+  // REGISTRO REAL (Directo a comandas_db)
   Future<bool> registrarse({
     required String nombre,
     required String email,
@@ -35,31 +34,64 @@ class AuthProvider with ChangeNotifier {
     required String telefono,
     required String direccion,
   }) async {
-    // Simular delay de red
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      final response = await ApiService.registrarUsuario(
+        nombre: nombre,
+        correo: email,
+        contrasena: contrasena,
+        telefono: telefono,
+        direccion: direccion,
+      );
 
-    // Verificar si el email ya existe
-    final emailExiste = MockData.usuarios.any((u) => u.email == email);
-    if (emailExiste) {
-      throw Exception('El email ya está registrado');
+      _usuarioActual = Usuario(
+        id: response['id'] ?? '',
+        nombre: nombre,
+        email: email,
+        contrasena: contrasena,
+        telefono: telefono,
+        direccion: direccion,
+        rol: RolUsuario.cliente,
+      );
+
+      notifyListeners();
+      return true;
+    } catch (e) {
+      rethrow;
     }
+  }
 
-    // Crear nuevo usuario
-    final nuevoUsuario = Usuario(
-      id: 'u_${MockData.usuarios.length + 1}',
+  // Método para actualizar perfil
+  Future<void> actualizarPerfil({
+    required String nombre,
+    required String email,
+    required String telefono,
+    required String direccion,
+  }) async {
+    if (_usuarioActual == null) return;
+
+    await ApiService.actualizarPerfil(
+      userId: _usuarioActual!.id,
       nombre: nombre,
       email: email,
-      contrasena: contrasena,
       telefono: telefono,
       direccion: direccion,
     );
 
-    // Agregar a mock data (en una app real, esto iría a una API)
-    MockData.usuarios.add(nuevoUsuario);
-
-    _usuarioActual = nuevoUsuario;
+    _usuarioActual = _usuarioActual!.copyWith(
+      nombre: nombre,
+      email: email,
+      telefono: telefono,
+      direccion: direccion,
+    );
     notifyListeners();
-    return true;
+  }
+
+  // Método para eliminar cuenta
+  Future<void> eliminarCuenta() async {
+    if (_usuarioActual == null) return;
+    await ApiService.eliminarCuenta(userId: _usuarioActual!.id);
+    _usuarioActual = null;
+    notifyListeners();
   }
 
   // Método para cerrar sesión

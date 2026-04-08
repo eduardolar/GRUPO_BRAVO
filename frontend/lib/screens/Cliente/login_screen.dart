@@ -5,11 +5,19 @@ import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/screens/Cliente/forgotten_password.dart';
 import 'package:frontend/screens/Cliente/menu_screen.dart';
 import 'package:frontend/screens/Cliente/register_screen.dart';
+import 'package:frontend/screens/Cliente/reservar_mesa_screen.dart';
+import 'package:frontend/screens/home_screen_trabajador.dart';
+import 'package:frontend/screens/admin/home_screen_admin.dart';
 import 'package:frontend/components/Cliente/entrada_texto.dart';
 import 'package:frontend/providers/auth_provider.dart';
+import 'package:frontend/models/usuario_model.dart';
+
+enum DestinoLogin { menu, reservar }
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final DestinoLogin destino;
+
+  const LoginScreen({super.key, this.destino = DestinoLogin.menu});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -123,14 +131,15 @@ class _LoginScreenState extends State<LoginScreen> {
             children: [
               const Text(
                 "¿Aún no tienes cuenta?",
-                style: TextStyle(color: Colors.white70),
+                style: TextStyle(color: AppColors.textSecondary),
               ),
               TextButton(
                 onPressed: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const RegisterScreen(),
+                      builder: (context) =>
+                          RegisterScreen(destino: widget.destino),
                     ),
                   );
                 },
@@ -192,7 +201,7 @@ class _LoginScreenState extends State<LoginScreen> {
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.button,
-          foregroundColor: AppColors.background,
+          foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(15),
           ),
@@ -239,9 +248,27 @@ class _LoginScreenState extends State<LoginScreen> {
       final success = await authProvider.iniciarSesion(email, password);
 
       if (success && mounted) {
-        Navigator.pushReplacement(
+        final usuario = authProvider.usuarioActual!;
+        Widget pantallaDestino;
+
+        switch (usuario.rol) {
+          case RolUsuario.trabajador:
+            pantallaDestino = const HomeTrabajador();
+            break;
+          case RolUsuario.administrador:
+            pantallaDestino = const HomeScreenAdmin();
+            break;
+          case RolUsuario.cliente:
+            pantallaDestino = widget.destino == DestinoLogin.reservar
+                ? const ReservarMesaScreen()
+                : const MenuScreen();
+            break;
+        }
+
+        Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(builder: (context) => const MenuScreen()),
+          MaterialPageRoute(builder: (context) => pantallaDestino),
+          (route) => false,
         );
       }
     } catch (e) {

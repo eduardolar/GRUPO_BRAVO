@@ -6,9 +6,12 @@ import '../../components/Cliente/crear_cuenta_button.dart';
 import '../../providers/auth_provider.dart';
 import 'login_screen.dart';
 import 'menu_screen.dart';
+import 'reservar_mesa_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+  final DestinoLogin destino;
+
+  const RegisterScreen({super.key, this.destino = DestinoLogin.menu});
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -133,7 +136,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     Navigator.pushReplacement(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const LoginScreen(),
+                        builder: (context) =>
+                            LoginScreen(destino: widget.destino),
                       ),
                     );
                   },
@@ -168,16 +172,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
 
       if (mounted) {
+        final pantallaDestino = widget.destino == DestinoLogin.reservar
+            ? const ReservarMesaScreen()
+            : const MenuScreen();
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const MenuScreen()),
+          MaterialPageRoute(builder: (context) => pantallaDestino),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
       }
     } finally {
       if (mounted) {

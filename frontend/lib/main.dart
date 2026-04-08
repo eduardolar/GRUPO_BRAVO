@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/screens/Cliente/confirmar_pedido_screen.dart';
+import 'package:frontend/screens/Cliente/menu_screen.dart';
+import 'package:frontend/screens/home_screen_trabajador.dart';
+import 'package:frontend/screens/trabajador/login_trabajador.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'screens/Cliente/home_screen.dart';
@@ -23,8 +27,9 @@ class MainApp extends StatelessWidget {
         theme: ThemeData(
           textTheme: GoogleFonts.frederickaTheGreatTextTheme(),
         ),
-        home: const HomeScreen(),
+        home: const HomeTrabajador(),
       ),
     );
   }
 }
+
