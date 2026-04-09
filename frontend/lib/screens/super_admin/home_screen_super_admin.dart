@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/screens/super_admin/gestion_administradores_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/providers/auth_provider.dart';
@@ -116,39 +117,41 @@ class HomeScreenSuperAdmin extends StatelessWidget {
             const SizedBox(height: 26),
 
             _buildSeccionTitulo('Gestión'),
-const SizedBox(height: 10),
+            const SizedBox(height: 10),
 
-// BOTÓN TRABAJADORES
-_buildOpcion(
-  icon: Icons.manage_accounts,
-  titulo: 'Gestionar trabajadores',
-  subtitulo: 'Administrar cocineros y camareros',
-  onTap: () {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const GestionUsuariosScreen(rolAFiltrar: 'trabajador'),
-      ),
-    );
-  },
-),
+            // BOTÓN TRABAJADORES
+            _buildOpcion(
+              icon: Icons.manage_accounts,
+              titulo: 'Gestionar trabajadores',
+              subtitulo: 'Administrar cocineros y camareros',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        const GestionUsuariosScreen(rolAFiltrar: 'trabajador'),
+                  ),
+                );
+              },
+            ),
 
-const SizedBox(height: 10),
+            const SizedBox(height: 10),
 
-// NUEVO BOTÓN CLIENTES
-_buildOpcion(
-  icon: Icons.people_alt,
-  titulo: 'Gestionar clientes',
-  subtitulo: 'Ver base de datos de clientes',
-  onTap: () {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const GestionUsuariosScreen(rolAFiltrar: 'cliente'),
-      ),
-    );
-  },
-),
+            // NUEVO BOTÓN CLIENTES
+            _buildOpcion(
+              icon: Icons.people_alt,
+              titulo: 'Gestionar clientes',
+              subtitulo: 'Ver base de datos de clientes',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        const GestionUsuariosScreen(rolAFiltrar: 'cliente'),
+                  ),
+                );
+              },
+            ),
 
             const SizedBox(height: 10),
 
@@ -157,13 +160,11 @@ _buildOpcion(
               titulo: 'Gestionar administradores',
               subtitulo: 'Controlar privilegios y accesos',
               onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'Pantalla de administradores en construcción',
-                    ),
-                    backgroundColor: AppColors.button,
-                    behavior: SnackBarBehavior.floating,
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        const GestionAdministradorScreen(rolAFiltrar: 'admin'),
                   ),
                 );
               },
