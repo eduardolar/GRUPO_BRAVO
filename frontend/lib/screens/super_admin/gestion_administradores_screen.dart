@@ -8,7 +8,8 @@ class GestionAdministradorScreen extends StatefulWidget {
   const GestionAdministradorScreen({super.key, required this.rolAFiltrar});
 
   @override
-  State<GestionAdministradorScreen> createState() => _GestionAdministradorScreen();
+  State<GestionAdministradorScreen> createState() =>
+      _GestionAdministradorScreen();
 }
 
 class _GestionAdministradorScreen extends State<GestionAdministradorScreen> {
@@ -39,14 +40,20 @@ class _GestionAdministradorScreen extends State<GestionAdministradorScreen> {
 
           if (snapshot.hasData) {
             final listaFiltrada = snapshot.data!.where((u) {
-              final rolDelUsuario = u.rol.toString().split('.').last.toLowerCase();
+              final rolDelUsuario = u.rol
+                  .toString()
+                  .split('.')
+                  .last
+                  .toLowerCase();
               final filtroDePantalla = widget.rolAFiltrar.toLowerCase();
               return rolDelUsuario == filtroDePantalla;
             }).toList();
 
             if (listaFiltrada.isEmpty) {
               return Center(
-                child: Text('No hay ${_pluralizar(widget.rolAFiltrar)} registrados'),
+                child: Text(
+                  'No hay ${_pluralizar(widget.rolAFiltrar)} registrados',
+                ),
               );
             }
 
@@ -55,7 +62,10 @@ class _GestionAdministradorScreen extends State<GestionAdministradorScreen> {
               itemBuilder: (context, index) {
                 final user = listaFiltrada[index];
                 return Card(
-                  margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 15,
+                    vertical: 8,
+                  ),
                   child: ListTile(
                     leading: const CircleAvatar(child: Icon(Icons.person)),
                     title: Text(user.nombre),
@@ -100,7 +110,10 @@ class _GestionAdministradorScreen extends State<GestionAdministradorScreen> {
                 );
               }
             },
-            child: const Text('Eliminar', style: TextStyle(color: Colors.white)),
+            child: const Text(
+              'Eliminar',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
