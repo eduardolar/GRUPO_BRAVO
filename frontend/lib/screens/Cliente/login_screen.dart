@@ -10,6 +10,7 @@ import 'package:frontend/screens/admin/home_screen_admin.dart';
 import 'package:frontend/components/Cliente/entrada_texto.dart';
 import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/models/usuario_model.dart';
+import 'package:frontend/screens/super_admin/home_screen_super_admin.dart';
 
 enum DestinoLogin { menu, reservar }
 
@@ -237,6 +238,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 ? const ReservarMesaScreen()
                 : const MenuScreen();
             break;
+           case RolUsuario.superadministrador: //agregué este caso para el superadmin
+            pantallaDestino = const HomeScreenSuperAdmin();
+  break; 
         }
 
         Navigator.pushAndRemoveUntil(
