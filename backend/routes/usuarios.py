@@ -5,6 +5,20 @@ from models import UsuarioActualizar
 
 router = APIRouter(prefix="/usuarios", tags=["Usuarios"])
 
+@router.get("") # Ruta para listar todos los usuarios
+def listar_usuarios():
+    usuarios = coleccion_usuarios.find()
+    resultado = []
+    for u in usuarios:
+        resultado.append({
+            "id": str(u["_id"]),
+            "nombre": u.get("nombre", "Sin nombre"),
+            "correo": u.get("correo", ""),
+            "rol": u.get("rol", "cliente"),
+            "telefono": u.get("telefono", ""),
+        })
+    return resultado
+
 @router.get("/{user_id}")
 def ver_perfil(user_id: str):
     usuario = coleccion_usuarios.find_one({"_id": ObjectId(user_id)})

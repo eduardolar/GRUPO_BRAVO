@@ -1,4 +1,4 @@
-enum RolUsuario { cliente, trabajador, administrador }
+enum RolUsuario { cliente, trabajador, administrador, superadministrador }
 
 class Usuario {
   final String id;
@@ -32,18 +32,27 @@ class Usuario {
     );
   }
 
-  static RolUsuario _parseRol(dynamic rol) {
-    if (rol == null) return RolUsuario.cliente;
-    switch (rol.toString().toLowerCase()) {
-      case 'trabajador':
-        return RolUsuario.trabajador;
-      case 'administrador':
-      case 'admin':
-        return RolUsuario.administrador;
-      default:
-        return RolUsuario.cliente;
-    }
+static RolUsuario _parseRol(dynamic rol) {
+  if (rol == null) return RolUsuario.cliente;
+  
+  final String rolStr = rol.toString().toLowerCase().trim();
+  
+  switch (rolStr) {
+    case 'superadministrador':
+    case 'superadmin':
+      return RolUsuario.superadministrador;
+    case 'cocinero':      // añadimos casos comunes para trabajadores
+    case 'camarero':
+    case 'mesero':
+    case 'trabajador':
+      return RolUsuario.trabajador;
+    case 'administrador':
+    case 'admin':
+      return RolUsuario.administrador;
+    default:
+      return RolUsuario.cliente;
   }
+}
 
   // Copia con campos modificados
   Usuario copyWith({

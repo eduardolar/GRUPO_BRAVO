@@ -4,6 +4,7 @@ import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/screens/Cliente/home_screen.dart';
 import 'package:frontend/screens/Cliente/perfil_screen.dart';
+import 'package:frontend/screens/super_admin/gestion_usuarios_screen.dart';
 
 class HomeScreenSuperAdmin extends StatelessWidget {
   const HomeScreenSuperAdmin({super.key});
@@ -115,22 +116,39 @@ class HomeScreenSuperAdmin extends StatelessWidget {
             const SizedBox(height: 26),
 
             _buildSeccionTitulo('Gestión'),
-            const SizedBox(height: 10),
+const SizedBox(height: 10),
 
-            _buildOpcion(
-              icon: Icons.manage_accounts,
-              titulo: 'Gestionar trabajadores',
-              subtitulo: 'Administrar accesos y permisos',
-              onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Pantalla de trabajadores en construcción'),
-                    backgroundColor: AppColors.button,
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              },
-            ),
+// BOTÓN TRABAJADORES
+_buildOpcion(
+  icon: Icons.manage_accounts,
+  titulo: 'Gestionar trabajadores',
+  subtitulo: 'Administrar cocineros y camareros',
+  onTap: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const GestionUsuariosScreen(rolAFiltrar: 'trabajador'),
+      ),
+    );
+  },
+),
+
+const SizedBox(height: 10),
+
+// NUEVO BOTÓN CLIENTES
+_buildOpcion(
+  icon: Icons.people_alt,
+  titulo: 'Gestionar clientes',
+  subtitulo: 'Ver base de datos de clientes',
+  onTap: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const GestionUsuariosScreen(rolAFiltrar: 'cliente'),
+      ),
+    );
+  },
+),
 
             const SizedBox(height: 10),
 
