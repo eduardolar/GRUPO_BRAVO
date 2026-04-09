@@ -72,3 +72,22 @@ def ver_perfil(user_id: str):
         "direccion": usuario.get("direccion", ""),
         "rol": usuario.get("rol", "admin"),
     }
+
+@router.get("/")
+def listar_usuarios(rol: str | None = None):
+    filtro = {}
+    if rol:
+        filtro["rol"] = rol
+
+    usuarios = list(coleccion_usuarios.find(filtro))
+    return [
+        {
+            "id": str(u["_id"]),
+            "nombre": u["nombre"],
+            "correo": u["correo"],
+            "telefono": u.get("telefono", ""),
+            "direccion": u.get("direccion", ""),
+            "rol": u.get("rol", ""),
+        }
+        for u in usuarios
+    ]
