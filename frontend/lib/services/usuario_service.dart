@@ -13,7 +13,9 @@ class UsuarioService {
 
     if (response.statusCode == 200) {
       List<dynamic> body = jsonDecode(response.body);
-      return body.map((item) => Usuario.fromJson(item as Map<String, dynamic>)).toList();
+      return body
+          .map((item) => Usuario.fromJson(item as Map<String, dynamic>))
+          .toList();
     } else {
       throw Exception('Error al traer usuarios');
     }
@@ -25,6 +27,51 @@ class UsuarioService {
       Uri.parse('$baseUrl/usuarios/$id'),
       headers: {'Content-Type': 'application/json'},
     );
+    return response.statusCode == 200;
+  }
+
+  // 3. Obtener solo administradores
+  Future<List<Usuario>> obtenerAdmins() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/usuarios?rol=admin'),
+      headers: {'Content-Type': 'application/json'},
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> body = jsonDecode(response.body);
+      return body
+          .map((item) => Usuario.fromJson(item as Map<String, dynamic>))
+          .toList();
+    } else {
+      throw Exception('Error al traer administradores');
+    }
+  }
+
+  // 4. Obtener usuario administrador por id
+  Future<Usuario> obtenerAdminPorId(String id) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/usuarios/$id?rol=admin'),
+      headers: {'Content-Type': 'application/json'},
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return Usuario.fromJson(data as Map<String, dynamic>);
+    } else if (response.statusCode == 404) {
+      throw Exception('Administrador no encontrado');
+    } else {
+      throw Exception('Error al obtener administrador');
+    }
+  }
+
+  // 5. Cambiar el rol de un usuario (para gestionar el rol admin)
+  Future<bool> cambiarRol(String id, String nuevoRol) async {
+    final response = await http.put(
+      Uri.parse('$baseUrl/usuarios/$id/rol'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'rol': nuevoRol}),
+    );
+
     return response.statusCode == 200;
   }
 }

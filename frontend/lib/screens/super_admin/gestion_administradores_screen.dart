@@ -3,22 +3,28 @@ import '../../models/usuario_model.dart';
 import '../../services/usuario_service.dart';
 import '../../core/colors_style.dart';
 
-class GestionUsuariosScreen extends StatefulWidget {
-  final String rolAFiltrar; // 'trabajador' o 'cliente'
-  const GestionUsuariosScreen({super.key, required this.rolAFiltrar});
+class GestionAdministradorScreen extends StatefulWidget {
+  final String rolAFiltrar; // 'trabajador', 'cliente' o 'administrador'
+  const GestionAdministradorScreen({super.key, required this.rolAFiltrar});
 
   @override
-  State<GestionUsuariosScreen> createState() => _GestionUsuariosScreenState();
+  State<GestionAdministradorScreen> createState() =>
+      _GestionAdministradorScreen();
 }
 
-class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
+class _GestionAdministradorScreen extends State<GestionAdministradorScreen> {
   final UsuarioService _usuarioService = UsuarioService();
+
+  String _pluralizar(String rol) {
+    if (rol.toLowerCase() == 'administrador') return 'administradores';
+    return '${rol}es';
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Gestionar ${widget.rolAFiltrar}es'),
+        title: Text('Gestionar ${_pluralizar(widget.rolAFiltrar)}'),
         backgroundColor: AppColors.backgroundButton,
       ),
       body: FutureBuilder<List<Usuario>>(
@@ -33,21 +39,21 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
           }
 
           if (snapshot.hasData) {
-            // Filtramos la lista antes de mostrarla
             final listaFiltrada = snapshot.data!.where((u) {
-              // Sacamos el nombre limpio del Enum: 'trabajador', 'cliente', etc.
               final rolDelUsuario = u.rol
                   .toString()
                   .split('.')
                   .last
                   .toLowerCase();
               final filtroDePantalla = widget.rolAFiltrar.toLowerCase();
-
               return rolDelUsuario == filtroDePantalla;
             }).toList();
+
             if (listaFiltrada.isEmpty) {
               return Center(
-                child: Text('No hay ${widget.rolAFiltrar}es registrados'),
+                child: Text(
+                  'No hay ${_pluralizar(widget.rolAFiltrar)} registrados',
+                ),
               );
             }
 
@@ -85,7 +91,7 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('¿Eliminar usuario?'),
-        content: Text('¿Estás segura de eliminar a ${user.nombre}?'),
+        content: Text('¿Confirmas la eliminación de ${user.nombre}?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -96,9 +102,9 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
             onPressed: () async {
               bool borrado = await _usuarioService.eliminarUsuario(user.id);
               if (borrado) {
-                if (!mounted) return; // Verificación de seguridad en Flutter
-                Navigator.pop(context); // Cierra el diálogo
-                setState(() {}); // Refresca la lista
+                if (!mounted) return;
+                Navigator.pop(context);
+                setState(() {});
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Usuario eliminado con éxito')),
                 );
