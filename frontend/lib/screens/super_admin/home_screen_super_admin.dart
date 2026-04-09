@@ -137,40 +137,10 @@ class HomeScreenSuperAdmin extends StatelessWidget {
                 );
               },
             ),
-            // BOTÓN TRABAJADORES
-            _buildOpcion(
-              icon: Icons.manage_accounts,
-              titulo: 'Gestionar trabajadores',
-              subtitulo: 'Administrar cocineros y camareros',
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        const GestionUsuariosScreen(rolAFiltrar: 'trabajador'),
-                  ),
-                );
-              },
-            ),
 
             const SizedBox(height: 10),
             const SizedBox(height: 10),
 
-            // NUEVO BOTÓN CLIENTES
-            _buildOpcion(
-              icon: Icons.people_alt,
-              titulo: 'Gestionar clientes',
-              subtitulo: 'Ver base de datos de clientes',
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        const GestionUsuariosScreen(rolAFiltrar: 'cliente'),
-                  ),
-                );
-              },
-            ),
             // NUEVO BOTÓN CLIENTES
             _buildOpcion(
               icon: Icons.people_alt,
