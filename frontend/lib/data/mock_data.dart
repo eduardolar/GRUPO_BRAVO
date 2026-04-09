@@ -1,7 +1,6 @@
 import '../models/mesa_model.dart';
 import 'package:frontend/data/mock_stock.dart';
 import 'package:frontend/models/stock_model.dart';
-
 import '../models/producto_model.dart';
 import '../models/reserva_model.dart';
 import '../models/usuario_model.dart';
@@ -21,9 +20,6 @@ class MockData {
   // Re-export de usuarios
   static final List<Usuario> usuarios = MockUsers.usuarios;
 
-    // Re-export de usuarios
-  static final List<Stock> stock = MockStock.stock;
-
   // Re-export de pedidos
   static final List<Map<String, dynamic>> pedidos = MockPedidos.pedidos;
 
@@ -32,4 +28,9 @@ class MockData {
 
   // Reservas en memoria (se llenan en runtime)
   static final List<Reserva> reservas = [];
+}
+
+
+    // Re-export de usuarios
+  static final List<Stock> stock = MockStock.stock;
 }

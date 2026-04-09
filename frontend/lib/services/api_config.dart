@@ -1,16 +1,18 @@
-import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'platform_helper.dart';
 
 /// ╔══════════════════════════════════════════════════════════════╗
 /// ║  CAMBIAR A [true] CUANDO EL BACKEND ESTÉ LISTO             ║
 /// ╚══════════════════════════════════════════════════════════════╝
 const bool usarApiReal = true;
 
-/// En Android emulator, `localhost` debe ser `10.0.2.2`
-final String baseUrl = usarApiReal ? _backendBaseUrl() : 'http://localhost:8000';
-
-String _backendBaseUrl() {
-  if (Platform.isAndroid) {
-    return 'http://10.0.2.2:8000';
-  }
-  return 'http://localhost:8000';
+/// URL base del backend.
+/// - Web → localhost
+/// - Android emulador → 10.0.2.2 (alias del host)
+/// - Resto → localhost
+String get baseUrl {
+  const port = 8000;
+  if (kIsWeb) return 'http://localhost:$port';
+  if (isAndroid) return 'http://10.0.2.2:$port';
+  return 'http://localhost:$port';
 }
