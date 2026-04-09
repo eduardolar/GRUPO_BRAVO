@@ -29,16 +29,20 @@ class _ForgottenPasswordState extends State<ForgottenPassword> {
           child: Column(
             children: [
               const Spacer(flex: 1),
-              
+
               // --- Cabecera Visual ---
-              Icon(Icons.lock_reset_rounded, size: 100, color: AppColors.button),
+              Icon(
+                Icons.lock_reset_rounded,
+                size: 100,
+                color: AppColors.button,
+              ),
               const SizedBox(height: 20),
               const Text(
                 "Restablecer Contraseña",
                 style: TextStyle(
-                  color: Colors.white, 
-                  fontSize: 26, 
-                  fontWeight: FontWeight.bold
+                  color: AppColors.textPrimary,
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
               const SizedBox(height: 12),
@@ -52,10 +56,10 @@ class _ForgottenPasswordState extends State<ForgottenPassword> {
 
               // --- Campo de Texto ---
               EntradaTexto(
-                etiqueta: "Correo electrónico", 
-                icono: Icons.email_outlined
+                etiqueta: "Correo electrónico",
+                icono: Icons.email_outlined,
               ),
-              
+
               const SizedBox(height: 25),
 
               // --- Botón de Acción Principal ---
@@ -68,7 +72,7 @@ class _ForgottenPasswordState extends State<ForgottenPassword> {
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.button,
-                    foregroundColor: AppColors.background,
+                    foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(15),
                     ),
@@ -77,9 +81,9 @@ class _ForgottenPasswordState extends State<ForgottenPassword> {
                   child: const Text(
                     "ENVIAR ENLACE",
                     style: TextStyle(
-                      fontWeight: FontWeight.bold, 
+                      fontWeight: FontWeight.bold,
                       fontSize: 16,
-                      letterSpacing: 1.2
+                      letterSpacing: 1.2,
                     ),
                   ),
                 ),

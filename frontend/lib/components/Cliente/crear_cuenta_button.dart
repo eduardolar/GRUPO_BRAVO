@@ -29,7 +29,7 @@ class CrearCuentaButton extends StatelessWidget {
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.button,
-          foregroundColor: AppColors.background,
+          foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(15),
           ),
@@ -38,10 +38,7 @@ class CrearCuentaButton extends StatelessWidget {
         onPressed: alPresionar,
         child: Text(
           texto,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
       ),
     );
