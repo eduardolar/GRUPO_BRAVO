@@ -54,3 +54,21 @@ def eliminar_usuario(user_id: str):
     if resultado.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
     return {"mensaje": "Usuario eliminado"}
+
+
+@router.get("/{user_id}")
+def ver_perfil(user_id: str):
+    usuario = coleccion_usuarios.find_one({
+        "_id": ObjectId(user_id),
+        "rol": "admin"
+    })
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado o no es administrador")
+    return {
+        "id": str(usuario["_id"]),
+        "nombre": usuario["nombre"],
+        "correo": usuario["correo"],
+        "telefono": usuario.get("telefono", ""),
+        "direccion": usuario.get("direccion", ""),
+        "rol": usuario.get("rol", "admin"),
+    }
