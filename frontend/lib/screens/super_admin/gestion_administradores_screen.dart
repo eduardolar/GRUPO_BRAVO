@@ -16,7 +16,9 @@ class _GestionAdministradorScreen extends State<GestionAdministradorScreen> {
   final UsuarioService _usuarioService = UsuarioService();
 
   String _pluralizar(String rol) {
-    if (rol.toLowerCase() == 'administrador') return 'administradores';
+    if (rol.toLowerCase() == 'administrador' || rol.toLowerCase() == 'admin') {
+      return 'administradores';
+    }
     return '${rol}es';
   }
 
@@ -35,17 +37,25 @@ class _GestionAdministradorScreen extends State<GestionAdministradorScreen> {
           }
 
           if (snapshot.hasError) {
-            return const Center(child: Text('Error al cargar datos'));
+            return Center(child: Text('Error al cargar datos: ${snapshot.error}'));
           }
 
           if (snapshot.hasData) {
             final listaFiltrada = snapshot.data!.where((u) {
-              final rolDelUsuario = u.rol
-                  .toString()
-                  .split('.')
-                  .last
-                  .toLowerCase();
-              final filtroDePantalla = widget.rolAFiltrar.toLowerCase();
+              // Esto nos dará 'administrador', 'trabajador', 'cliente', etc. (basado en tu Enum)
+              final rolDelUsuario = u.rol.toString().split('.').last.toLowerCase();
+              
+              // Leemos lo que nos pide la pantalla
+              String filtroDePantalla = widget.rolAFiltrar.toLowerCase();
+              
+              // Si la pantalla nos pide 'admin', buscamos 'administrador'
+              // para que coincida exactamente con el nombre de tu Enum
+              if (filtroDePantalla == 'admin') {
+                filtroDePantalla = 'administrador';
+              } else if (filtroDePantalla == 'superadmin') {
+                filtroDePantalla = 'superadministrador';
+              }
+
               return rolDelUsuario == filtroDePantalla;
             }).toList();
 
@@ -69,7 +79,8 @@ class _GestionAdministradorScreen extends State<GestionAdministradorScreen> {
                   child: ListTile(
                     leading: const CircleAvatar(child: Icon(Icons.person)),
                     title: Text(user.nombre),
-                    subtitle: Text('${user.email} - Rol: ${user.rol}'),
+                    // Como tu modelo usa "email" (no "correo"), esto ya no fallará
+                    subtitle: Text('${user.email} - Rol: ${user.rol.name}'), 
                     trailing: IconButton(
                       icon: const Icon(Icons.delete, color: Colors.red),
                       onPressed: () => _confirmarBorrado(context, user),

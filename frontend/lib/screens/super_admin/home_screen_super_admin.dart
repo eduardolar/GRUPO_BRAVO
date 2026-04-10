@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:frontend/screens/super_admin/gestion_administradores_screen.dart';
-import 'package:frontend/screens/super_admin/gestion_administradores_screen.dart';
-import 'package:frontend/screens/super_admin/gestion_rol_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/screens/Cliente/home_screen.dart';
 import 'package:frontend/screens/Cliente/perfil_screen.dart';
-import 'package:frontend/screens/super_admin/gestion_usuarios_screen.dart';
+import 'package:frontend/screens/super_admin/gestion_administradores_screen.dart';
+import 'package:frontend/screens/super_admin/gestion_rol_screen.dart';
 
 class HomeScreenSuperAdmin extends StatelessWidget {
   const HomeScreenSuperAdmin({super.key});
@@ -120,9 +118,8 @@ class HomeScreenSuperAdmin extends StatelessWidget {
 
             _buildSeccionTitulo('Gestión'),
             const SizedBox(height: 10),
-            const SizedBox(height: 10),
 
-            // BOTÓN TRABAJADORES
+            // BOTÓN TRABAJADORES (Corregido para que ahora sí llame a la pantalla de trabajadores)
             _buildOpcion(
               icon: Icons.manage_accounts,
               titulo: 'Gestionar trabajadores',
@@ -131,17 +128,15 @@ class HomeScreenSuperAdmin extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) =>
-                        const GestionUsuariosScreen(rolAFiltrar: 'trabajador'),
+                    builder: (context) => const GestionRolesScreen(rolAFiltrar: 'trabajador'),
                   ),
                 );
               },
             ),
 
             const SizedBox(height: 10),
-            const SizedBox(height: 10),
 
-            // NUEVO BOTÓN CLIENTES
+            // BOTÓN CLIENTES (Corregido para que también se pueda editar sus roles)
             _buildOpcion(
               icon: Icons.people_alt,
               titulo: 'Gestionar clientes',
@@ -150,8 +145,7 @@ class HomeScreenSuperAdmin extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) =>
-                        const GestionUsuariosScreen(rolAFiltrar: 'cliente'),
+                    builder: (context) => const GestionRolesScreen(rolAFiltrar: 'cliente'),
                   ),
                 );
               },
@@ -159,6 +153,7 @@ class HomeScreenSuperAdmin extends StatelessWidget {
 
             const SizedBox(height: 10),
 
+            // BOTÓN ADMINISTRADORES
             _buildOpcion(
               icon: Icons.admin_panel_settings,
               titulo: 'Gestionar administradores',
@@ -167,8 +162,7 @@ class HomeScreenSuperAdmin extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) =>
-                        const GestionAdministradorScreen(rolAFiltrar: 'admin'),
+                    builder: (context) => const GestionAdministradorScreen(rolAFiltrar: 'admin'),
                   ),
                 );
               },
@@ -176,16 +170,16 @@ class HomeScreenSuperAdmin extends StatelessWidget {
 
             const SizedBox(height: 10),
 
+            // BOTÓN GESTIONAR TODOS LOS ROLES
             _buildOpcion(
               icon: Icons.supervisor_account,
-              titulo: 'Gestionar roles',
-              subtitulo: 'Quitar o actualizar roles',
+              titulo: 'Todos los usuarios',
+              subtitulo: 'Ver todos para quitar o actualizar roles',
               onTap: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) =>
-                        const GestionRolesScreen(rolAFiltrar: ''),
+                    builder: (context) => const GestionRolesScreen(rolAFiltrar: 'todos'),
                   ),
                 );
               },
