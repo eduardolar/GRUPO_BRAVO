@@ -122,7 +122,7 @@ class HomeScreenSuperAdmin extends StatelessWidget {
             // BOTÓN TRABAJADORES (Corregido para que ahora sí llame a la pantalla de trabajadores)
             _buildOpcion(
               icon: Icons.manage_accounts,
-              titulo: 'Gestionar trabajadores',
+              titulo: 'Gestionar Trabajadores',
               subtitulo: 'Administrar cocineros y camareros',
               onTap: () {
                 Navigator.push(
@@ -139,7 +139,7 @@ class HomeScreenSuperAdmin extends StatelessWidget {
             // BOTÓN CLIENTES (Corregido para que también se pueda editar sus roles)
             _buildOpcion(
               icon: Icons.people_alt,
-              titulo: 'Gestionar clientes',
+              titulo: 'Gestionar Clientes',
               subtitulo: 'Ver base de datos de clientes',
               onTap: () {
                 Navigator.push(
@@ -156,7 +156,7 @@ class HomeScreenSuperAdmin extends StatelessWidget {
             // BOTÓN ADMINISTRADORES
             _buildOpcion(
               icon: Icons.admin_panel_settings,
-              titulo: 'Gestionar administradores',
+              titulo: 'Gestionar Administradores',
               subtitulo: 'Controlar privilegios y accesos',
               onTap: () {
                 Navigator.push(
@@ -173,7 +173,7 @@ class HomeScreenSuperAdmin extends StatelessWidget {
             // BOTÓN GESTIONAR TODOS LOS ROLES
             _buildOpcion(
               icon: Icons.supervisor_account,
-              titulo: 'Todos los usuarios',
+              titulo: 'Gestión De Roles',
               subtitulo: 'Ver todos para quitar o actualizar roles',
               onTap: () {
                 Navigator.push(
