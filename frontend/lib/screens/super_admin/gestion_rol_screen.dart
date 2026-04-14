@@ -111,9 +111,8 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
   }
 
   void _mostrarDialogoCambiarRol(BuildContext context, Usuario user) {
-    String rolSeleccionado = 'cliente'; // Resguardo de seguridad
+    String rolSeleccionado = 'trabajador'; 
     if (user.rol.name == 'administrador') rolSeleccionado = 'admin';
-    else if (user.rol.name == 'trabajador') rolSeleccionado = 'trabajador';
 
     showDialog(
       context: context,
@@ -130,9 +129,11 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
                   DropdownButton<String>(
                     value: rolSeleccionado,
                     isExpanded: true,
-                    // Quitamos la opción de 'super_admin' para que nadie lo cree desde la app
+                    // Nuevas opciones de la lista
                     items: const [
-                      DropdownMenuItem(value: 'cliente', child: Text('Cliente')),
+                      DropdownMenuItem(value: 'cocinero', child: Text('Cocinero')),
+                      DropdownMenuItem(value: 'camarero', child: Text('Camarero')),
+                      DropdownMenuItem(value: 'mesero', child: Text('Mesero')),
                       DropdownMenuItem(value: 'trabajador', child: Text('Trabajador')),
                       DropdownMenuItem(value: 'admin', child: Text('Administrador')),
                     ],
