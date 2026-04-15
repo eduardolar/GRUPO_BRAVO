@@ -27,12 +27,9 @@ class MainApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => CartProvider()),
       ],
       child: MaterialApp(
-        theme: ThemeData(
-          textTheme: GoogleFonts.frederickaTheGreatTextTheme(),
-        ),
-        home: const HomeTrabajador(),
+        theme: ThemeData(textTheme: GoogleFonts.frederickaTheGreatTextTheme()),
+        home: const HomeScreen(),
       ),
     );
   }
 }
-
