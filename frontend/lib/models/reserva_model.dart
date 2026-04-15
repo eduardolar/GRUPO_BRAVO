@@ -1,11 +1,13 @@
+import 'package:intl/intl.dart';
+
 class Reserva {
   final String id;
   final String usuarioId;
-  final String fecha;
+  final DateTime fecha; // <-- AHORA ES DATETIME
   final String hora;
   final int comensales;
-  final String turno; // 'comida', 'cena'
-  final String estado; // 'Confirmada', 'Cancelada', 'Completada'
+  final String turno;
+  final String estado;
   final String? mesaId;
   final int? numeroMesa;
   final String? notas;
@@ -23,11 +25,26 @@ class Reserva {
     this.notas,
   });
 
+  /// Detecta automáticamente el formato de fecha
+  static DateTime _parseFecha(String fechaStr) {
+    try {
+      if (fechaStr.contains('/')) {
+        // Formato mock: dd/MM/yyyy
+        return DateFormat('dd/MM/yyyy').parse(fechaStr);
+      } else {
+        // Formato API real: yyyy-MM-dd
+        return DateTime.parse(fechaStr);
+      }
+    } catch (_) {
+      return DateTime.now();
+    }
+  }
+
   factory Reserva.fromMap(Map<String, dynamic> mapa) {
     return Reserva(
       id: mapa['id'] ?? '',
       usuarioId: mapa['usuario_id'] ?? '',
-      fecha: mapa['fecha'] ?? '',
+      fecha: _parseFecha(mapa['fecha'] ?? ''),
       hora: mapa['hora'] ?? '',
       comensales: mapa['comensales'] ?? 1,
       turno: mapa['turno'] ?? 'comida',
@@ -42,7 +59,7 @@ class Reserva {
     return {
       'id': id,
       'usuario_id': usuarioId,
-      'fecha': fecha,
+      'fecha': DateFormat('yyyy-MM-dd').format(fecha),
       'hora': hora,
       'comensales': comensales,
       'turno': turno,

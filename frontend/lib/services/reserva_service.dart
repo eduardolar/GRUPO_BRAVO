@@ -41,7 +41,7 @@ class ReservaService {
       final reserva = Reserva(
         id: 'r_${DateTime.now().millisecondsSinceEpoch}',
         usuarioId: userId,
-        fecha: fechaStr,
+        fecha: fecha,
         hora: hora,
         comensales: comensales,
         turno: turno,
@@ -110,21 +110,35 @@ class ReservaService {
 
   /// Obtener reservas de un usuario
   static Future<List<Reserva>> obtenerReservas({required String userId}) async {
+    print('=== OBTENIENDO RESERVAS ===');
+    print('UserID: $userId');
+    print('Usando API real: $usarApiReal');
+    
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 400));
-      return MockData.reservas.where((r) => r.usuarioId == userId).toList();
+      print('Reservas disponibles en MockData: ${MockData.reservas.length}');
+      MockData.reservas.forEach((r) => print('  - Reserva: ID=$r.id, usuarioId=$r.usuarioId'));
+      
+      final resultado = MockData.reservas.where((r) => r.usuarioId == userId).toList();
+      print('Reservas filtradas para usuario: ${resultado.length}');
+      return resultado;
     }
 
-    final response = await http.get(
-      Uri.parse('$baseUrl/reservas?usuario_id=$userId'),
-    );
+    final url = '$baseUrl/reservas?usuario_id=$userId';
+    print('URL de API: $url');
+    
+    final response = await http.get(Uri.parse(url));
+    print('Status Code: ${response.statusCode}');
+    print('Response Body: ${response.body}');
+    
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
+      print('Reservas obtenidas de API: ${data.length}');
       return data
           .map((m) => Reserva.fromMap(m as Map<String, dynamic>))
           .toList();
     } else {
-      throw Exception('Error al obtener reservas');
+      throw Exception('Error al obtener reservas - Status: ${response.statusCode}');
     }
   }
 
