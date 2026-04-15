@@ -12,13 +12,12 @@ from models import UsuarioRegistro, UsuarioLogin
 
 router = APIRouter()
 
-# --- 1. CONFIGURACIÓN DE CORREO (SMTP GMAIL) ---
-# RECUERDA: La contraseña de 16 letras se genera en: 
-# Mi Cuenta Google -> Seguridad -> Contraseñas de Aplicación
+# --- 1. CONFIGURACIÓN DE CORREO (GMAIL REAL) ---
+
 conf = ConnectionConfig(
-    MAIL_USERNAME = "tu_correo@gmail.com",
-    MAIL_PASSWORD = "xxxx xxxx xxxx xxxx",  # <--- COLOCA AQUÍ TUS 16 LETRAS
-    MAIL_FROM = "tu_correo@gmail.com",
+    MAIL_USERNAME = "proyectorestaurantebravo@gmail.com",       
+    MAIL_PASSWORD = "sfgl yrgp pkub bhvj",  
+    MAIL_FROM = "proyectorestaurantebravo@gmail.com",      
     MAIL_PORT = 587,
     MAIL_SERVER = "smtp.gmail.com",
     MAIL_STARTTLS = True,
@@ -35,19 +34,19 @@ class VerificacionCodigo(BaseModel):
 # --- 2. FUNCIÓN PARA ENVIAR EL EMAIL ---
 async def enviar_correo_verificacion(email_destino: str, codigo: str):
     html = f"""
-    <div style="font-family: 'Arial', sans-serif; background-color: #FBF9F6; padding: 30px; border: 1px solid #E0DBD3; text-align: center;">
-        <h2 style="color: #800020;">Restaurante Bravo</h2>
-        <p style="color: #2D2D2D; font-size: 16px;">Gracias por unirte. Tu código de verificación es:</p>
-        <div style="background-color: #800020; color: white; padding: 15px; font-size: 28px; font-weight: bold; letter-spacing: 8px; margin: 20px 0; display: inline-block; min-width: 200px;">
+    <div style="font-family: 'Arial', sans-serif; background-color: #FBF9F6; padding: 30px; border: 1px solid #E0DBD3; text-align: center; border-radius: 10px;">
+        <h2 style="color: #800020; margin-bottom: 20px;">Restaurante Bravo</h2>
+        <p style="color: #2D2D2D; font-size: 16px;">¡Bienvenido! Para activar tu cuenta, usa el siguiente código de seguridad:</p>
+        <div style="background-color: #800020; color: white; padding: 15px; font-size: 32px; font-weight: bold; letter-spacing: 8px; margin: 25px 0; display: inline-block; min-width: 200px; border-radius: 5px;">
             {codigo}
         </div>
-        <p style="color: #6B6B6B; font-size: 12px;">Si no has solicitado este registro, ignora este mensaje.</p>
+        <p style="color: #6B6B6B; font-size: 12px; margin-top: 20px;">Este código es privado. Si no intentaste registrarte en Bravo, puedes ignorar este correo.</p>
     </div>
     """
     
     mensaje = MessageSchema(
-        subject="Verifica tu cuenta - Bravo",
-        recipients=[email_destino],
+        subject="Código de Verificación - Restaurante Bravo",
+        recipients=[email_destino], # Aquí llegará al correo personal que el usuario ponga
         body=html,
         subtype=MessageType.html
     )
@@ -86,13 +85,13 @@ async def registrar_usuario(usuario: UsuarioRegistro):
         # Guardar en base de datos
         coleccion_usuarios.insert_one(usuario_dict)
         
-        # Enviar correo real
+        # Enviar correo real a la bandeja del usuario
         await enviar_correo_verificacion(usuario.correo, codigo_otp)
 
-        return {"mensaje": "Registro exitoso. Verifica tu correo.", "correo": usuario.correo}
+        return {"mensaje": "Registro exitoso. Revisa tu bandeja de entrada.", "correo": usuario.correo}
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Error al registrar: {str(e)}")
 
 # --- 4. ENDPOINT: VERIFICAR CÓDIGO ---
 @router.post("/verificar-codigo")
@@ -103,12 +102,11 @@ async def verificar_codigo(datos: VerificacionCodigo):
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
     if usuario_db.get("verification_code") == datos.codigo:
-        # Actualizar a verificado y limpiar el código
         coleccion_usuarios.update_one(
             {"correo": datos.correo},
             {"$set": {"is_verified": True, "verification_code": None}}
         )
-        return {"mensaje": "Cuenta verificada correctamente"}
+        return {"mensaje": "¡Cuenta verificada con éxito!"}
     
     raise HTTPException(status_code=400, detail="Código de verificación incorrecto")
 
@@ -133,8 +131,6 @@ def iniciar_sesion(credenciales: UsuarioLogin):
                 "id": str(usuario_db["_id"]),
                 "nombre": usuario_db["nombre"],
                 "correo": usuario_db["correo"],
-                "telefono": usuario_db.get("telefono", ""),
-                "direccion": usuario_db.get("direccion", ""),
                 "rol": usuario_db.get("rol", "cliente"),
                 "restaurante_id": usuario_db.get("restaurante_id", "")
             }
