@@ -64,7 +64,7 @@ def actualizar_rol(user_id: str, datos: UsuarioActualizarRol):
     rol_limpio = datos.rol.strip().lower()
     
     # Aquí aceptamos los trabajos, pero también el rol de "admin" y "super_admin" para futuras necesidades de administración.
-    roles_permitidos = ["cliente", "cocinero", "camarero", "mesero", "admin", "super_admin"]
+    roles_permitidos = ["cliente", "cocinero", "camarero", "mesero", "trabajador", "admin", "administrador", "super_admin", "superadministrador"]
     
     if rol_limpio not in roles_permitidos:
         raise HTTPException(status_code=400, detail=f"Rol '{rol_limpio}' no válido")
