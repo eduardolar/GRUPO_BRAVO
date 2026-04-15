@@ -109,7 +109,7 @@ class _HistorialReservasState extends State<HistorialReservas> {
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text('Nombre: ${reserva.usuarioId}'),
+                                      Text('Nombre: ${reserva.nombreCompleto}'),
                                       Text(
                                         'Fecha: ${DateFormat('dd/MM/yyyy').format(reserva.fecha)}',
                                         style: const TextStyle(fontWeight: FontWeight.bold),
