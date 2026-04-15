@@ -75,8 +75,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   alPresionarIcono: () =>
                       setState(() => _ocultarPass = !_ocultarPass),
                   controlador: _passwordController,
-                  validador: (v) =>
-                      v!.length < 6 ? "Mínimo 6 caracteres" : null,
+                  validador: _validarContrasena,
                 ),
 
                 EntradaTexto(
@@ -191,5 +190,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  String? _validarContrasena(String? v) {
+    if (v == null || v.isEmpty) {
+      return "Campo requerido";
+    }
+    if (v.length < 8) {
+      return "Mínimo 8 caracteres";
+    }
+    if (!RegExp(r'[A-Z]').hasMatch(v)) {
+      return "Debe tener al menos una mayúscula";
+    }
+    if (!RegExp(r'[0-9]').hasMatch(v)) {
+      return "Debe tener al menos un número";
+    }
+    if (!RegExp(r'[!@#$%^&*(),.?\":{}|<>_\-\\[\]/+=;]').hasMatch(v)) {
+      return "Debe tener un carácter especial";
+    }
+    return null;
   }
 }
