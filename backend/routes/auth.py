@@ -31,6 +31,11 @@ class VerificacionCodigo(BaseModel):
     correo: EmailStr
     codigo: str
 
+class ResetPassword(BaseModel):
+    correo: EmailStr
+    codigo: str
+    nueva_password: str
+
 # --- 2. FUNCIÓN PARA ENVIAR EL EMAIL ---
 async def enviar_correo_verificacion(email_destino: str, codigo: str):
     html = f"""
@@ -96,20 +101,39 @@ async def registrar_usuario(usuario: UsuarioRegistro):
 # --- 4. ENDPOINT: VERIFICAR CÓDIGO ---
 @router.post("/verificar-codigo")
 async def verificar_codigo(datos: VerificacionCodigo):
+    # 1. Buscamos al usuario por correo
     usuario_db = coleccion_usuarios.find_one({"correo": datos.correo})
 
     if not usuario_db:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
-    if usuario_db.get("verification_code") == datos.codigo:
-        coleccion_usuarios.update_one(
-            {"correo": datos.correo},
-            {"$set": {"is_verified": True, "verification_code": None}}
-        )
-        return {"mensaje": "¡Cuenta verificada con éxito!"}
-    
-    raise HTTPException(status_code=400, detail="Código de verificación incorrecto")
+    # 2. Comparamos el código (importante que ambos sean Strings)
+    codigo_recibido = str(datos.codigo).strip()
+    codigo_guardado = str(usuario_db.get("verification_code")).strip()
 
+    if codigo_recibido == codigo_guardado:
+        # 3. ACTUALIZACIÓN: Aquí es donde cambiamos a True y limpiamos el código
+        resultado = coleccion_usuarios.update_one(
+            {"correo": datos.correo},
+            {
+                "$set": {
+                    "is_verified": True, 
+                    "verification_code": None  # Limpiamos el código usado
+                }
+            }
+        )
+        
+        # Verificamos si MongoDB realmente hizo el cambio
+        if resultado.modified_count > 0:
+            return {"mensaje": "¡Cuenta verificada con éxito! Ya puedes hacer login."}
+        else:
+            return {"mensaje": "La cuenta ya estaba verificada o no hubo cambios."}
+    
+    # Si los códigos no coinciden
+    raise HTTPException(
+        status_code=400, 
+        detail=f"Código incorrecto. Recibido: {codigo_recibido}, Esperado: {codigo_guardado}"
+    )
 # --- 5. ENDPOINT: LOGIN ---
 @router.post("/login")
 def iniciar_sesion(credenciales: UsuarioLogin):
@@ -134,5 +158,93 @@ def iniciar_sesion(credenciales: UsuarioLogin):
                 "rol": usuario_db.get("rol", "cliente"),
                 "restaurante_id": usuario_db.get("restaurante_id", "")
             }
-
+   
     raise HTTPException(status_code=401, detail="Credenciales incorrectas")
+
+# ---6. ENDPOINT: SOLICITAR RECUPERACIÓN ---
+@router.post("/recuperar-password")
+async def recuperar_password(datos: dict):
+    correo = datos.get("correo")
+    usuario_db = coleccion_usuarios.find_one({"correo": correo})
+
+    if not usuario_db:
+        # Por seguridad, a veces se dice que se envió igualmente para no dar pistas
+        raise HTTPException(status_code=404, detail="No existe un usuario con ese correo")
+
+    # Generamos un código nuevo de 6 dígitos
+    codigo_recuperacion = ''.join(random.choices(string.digits, k=6))
+
+    # Guardamos el código en el usuario temporalmente para validarlo luego
+    coleccion_usuarios.update_one(
+        {"correo": correo},
+        {"$set": {"reset_code": codigo_recuperacion}}
+    )
+
+    # Enviamos el correo real con tu config de Gmail
+    html = f"""
+    <div style="font-family: Arial; border: 1px solid #eee; padding: 20px; text-align: center;">
+        <h2 style="color: #800020;">Recuperación de Contraseña</h2>
+        <p>Has solicitado restablecer tu contraseña en Bravo. Tu código es:</p>
+        <div style="font-size: 32px; font-weight: bold; color: #800020; margin: 20px 0;">
+            {codigo_recuperacion}
+        </div>
+        <p>Si no fuiste tú, ignora este mensaje.</p>
+    </div>
+    """
+    
+    mensaje = MessageSchema(
+        subject="Restablecer Contraseña - Bravo",
+        recipients=[correo],
+        body=html,
+        subtype=MessageType.html
+    )
+    
+    fm = FastMail(conf)
+    await fm.send_message(mensaje)
+
+    return {"mensaje": "Código de recuperación enviado"}
+
+# --- 7. ENDPOINT: REENVIAR CÓDIGO DE VERIFICACIÓN ---
+@router.post("/reenviar-codigo")
+async def reenviar_codigo(datos: dict):
+    correo = datos.get("correo")
+    usuario_db = coleccion_usuarios.find_one({"correo": correo})
+
+    if not usuario_db:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    if usuario_db.get("is_verified", False):
+        raise HTTPException(status_code=400, detail="La cuenta ya está verificada")
+
+    codigo_otp = ''.join(random.choices(string.digits, k=6))
+
+    coleccion_usuarios.update_one(
+        {"correo": correo},
+        {"$set": {"verification_code": codigo_otp}}
+    )
+
+    await enviar_correo_verificacion(correo, codigo_otp)
+
+    return {"mensaje": "Código reenviado correctamente"}
+
+# --- 8. ENDPOINT: RESTABLECER CONTRASEÑA ---
+@router.post("/reset-password")
+async def reset_password(datos: ResetPassword):
+    usuario_db = coleccion_usuarios.find_one({"correo": datos.correo})
+
+    if not usuario_db:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    codigo_guardado = str(usuario_db.get("reset_code", "")).strip()
+    if not codigo_guardado or datos.codigo.strip() != codigo_guardado:
+        raise HTTPException(status_code=400, detail="Código inválido o expirado")
+
+    password_bytes = datos.nueva_password.encode('utf-8')
+    hashed_password = bcrypt.hashpw(password_bytes, bcrypt.gensalt())
+
+    coleccion_usuarios.update_one(
+        {"correo": datos.correo},
+        {"$set": {"password_hash": hashed_password.decode('utf-8'), "reset_code": None}}
+    )
+
+    return {"mensaje": "Contraseña actualizada correctamente"}
