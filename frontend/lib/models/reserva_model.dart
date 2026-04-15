@@ -46,7 +46,7 @@ class Reserva {
     return Reserva(
       id: mapa['id'] ?? '',
       usuarioId: mapa['usuario_id'] ?? '',
-      nombreCompleto: mapa['nombre_completo'] ?? '', 
+      nombreCompleto: mapa['nombre_completo'] ?? mapa['nombreCompleto'] ?? '',
       fecha: _parseFecha(mapa['fecha'] ?? ''),
       hora: mapa['hora'] ?? '',
       comensales: mapa['comensales'] ?? 1,
