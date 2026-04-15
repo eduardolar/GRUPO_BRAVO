@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/screens/Administrador/admin_home_screen.dart';
+import 'package:frontend/screens/Administrador/admin_menu_screen.dart';
 import 'package:provider/provider.dart';
 
 // Estilos y Providers
@@ -137,7 +138,6 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildForm() {
     return Column(
       children: [
-        // Nota: Asegúrate de que el componente 'EntradaTexto' tenga colores claros para los labels
         EntradaTexto(
           etiqueta: "Correo electrónico",
           icono: Icons.mail_outline,
@@ -249,7 +249,7 @@ class _LoginScreenState extends State<LoginScreen> {
     Widget pantallaDestino;
     switch (usuario.rol) {
       case RolUsuario.trabajador: pantallaDestino = const HomeTrabajador(); break;
-      case RolUsuario.administrador: pantallaDestino = const HomeScreenAdmin(); break;
+      case RolUsuario.administrador: pantallaDestino = const AdminMenuScreen(); break;
       case RolUsuario.superadministrador: pantallaDestino = const HomeScreenSuperAdmin(); break;
       case RolUsuario.cliente:
       default:
