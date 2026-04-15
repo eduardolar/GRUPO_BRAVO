@@ -4,6 +4,8 @@ import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/screens/Cliente/home_screen.dart';
 import 'package:frontend/screens/Cliente/perfil_screen.dart';
+import 'package:frontend/screens/super_admin/gestion_administradores_screen.dart';
+import 'package:frontend/screens/super_admin/gestion_rol_screen.dart';
 
 class HomeScreenSuperAdmin extends StatelessWidget {
   const HomeScreenSuperAdmin({super.key});
@@ -117,16 +119,16 @@ class HomeScreenSuperAdmin extends StatelessWidget {
             _buildSeccionTitulo('Gestión'),
             const SizedBox(height: 10),
 
+            // BOTÓN TRABAJADORES (Corregido para que ahora sí llame a la pantalla de trabajadores)
             _buildOpcion(
               icon: Icons.manage_accounts,
-              titulo: 'Gestionar trabajadores',
-              subtitulo: 'Administrar accesos y permisos',
+              titulo: 'Gestionar Trabajadores',
+              subtitulo: 'Administrar cocineros y camareros',
               onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Pantalla de trabajadores en construcción'),
-                    backgroundColor: AppColors.button,
-                    behavior: SnackBarBehavior.floating,
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const GestionRolesScreen(rolAFiltrar: 'trabajador'),
                   ),
                 );
               },
@@ -134,18 +136,33 @@ class HomeScreenSuperAdmin extends StatelessWidget {
 
             const SizedBox(height: 10),
 
+            // BOTÓN CLIENTES (Corregido para que también se pueda editar sus roles)
+            _buildOpcion(
+              icon: Icons.people_alt,
+              titulo: 'Gestionar Clientes',
+              subtitulo: 'Ver base de datos de clientes',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const GestionRolesScreen(rolAFiltrar: 'cliente'),
+                  ),
+                );
+              },
+            ),
+
+            const SizedBox(height: 10),
+
+            // BOTÓN ADMINISTRADORES
             _buildOpcion(
               icon: Icons.admin_panel_settings,
-              titulo: 'Gestionar administradores',
+              titulo: 'Gestionar Administradores',
               subtitulo: 'Controlar privilegios y accesos',
               onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'Pantalla de administradores en construcción',
-                    ),
-                    backgroundColor: AppColors.button,
-                    behavior: SnackBarBehavior.floating,
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const GestionAdministradorScreen(rolAFiltrar: 'admin'),
                   ),
                 );
               },
@@ -153,16 +170,16 @@ class HomeScreenSuperAdmin extends StatelessWidget {
 
             const SizedBox(height: 10),
 
+            // BOTÓN GESTIONAR TODOS LOS ROLES
             _buildOpcion(
               icon: Icons.supervisor_account,
-              titulo: 'Gestionar roles',
-              subtitulo: 'Quitar o actualizar roles',
+              titulo: 'Gestión De Roles',
+              subtitulo: 'Ver todos para quitar o actualizar roles',
               onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Pantalla de roles en construcción'),
-                    backgroundColor: AppColors.button,
-                    behavior: SnackBarBehavior.floating,
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const GestionRolesScreen(rolAFiltrar: 'todos'),
                   ),
                 );
               },

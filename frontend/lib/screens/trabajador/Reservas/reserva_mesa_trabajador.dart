@@ -1,23 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/screens/Cliente/perfil_screen.dart';
+import 'package:frontend/screens/trabajador/Reservas/gestion_reservas.dart';
 import 'package:provider/provider.dart';
-import '../../core/colors_style.dart';
-import '../../models/reserva_model.dart';
-import '../../services/api_service.dart';
-import '../../providers/auth_provider.dart';
-import 'perfil_screen.dart';
+import '../../../core/colors_style.dart';
+import '../../../models/reserva_model.dart';
+import '../../../services/api_service.dart';
+import '../../../providers/auth_provider.dart';
 
-class ReservarMesaScreen extends StatefulWidget {
-  const ReservarMesaScreen({super.key});
+class ReservaMesaTrabajador extends StatefulWidget {
+  const ReservaMesaTrabajador({super.key});
 
   @override
-  State<ReservarMesaScreen> createState() => _ReservarMesaScreenState();
+  State<ReservaMesaTrabajador> createState() => _ReservaMesaTrabajadorState();
 }
 
-class _ReservarMesaScreenState extends State<ReservarMesaScreen>
+class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
-  // ── Estado del formulario ──
   DateTime _fechaSeleccionada = DateTime.now().add(const Duration(days: 1));
   TimeOfDay _horaSeleccionada = const TimeOfDay(hour: 14, minute: 0);
   int _numComensales = 2;
@@ -26,10 +26,8 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
   final TextEditingController _notasController = TextEditingController();
   bool _isLoading = false;
 
-  // ── Disponibilidad por hora (caché local) ──
   Map<String, bool> _disponibilidadHoras = {};
 
-  // ── Turno ──
   String _turnoSeleccionado = 'comida';
 
   final Map<String, List<TimeOfDay>> _horasPorTurno = {
@@ -49,7 +47,6 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
     ],
   };
 
-  // ── Mis reservas ──
   List<Reserva> _misReservas = [];
   bool _cargandoReservas = false;
 
@@ -119,8 +116,6 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
     }
   }
 
-  /// Si la hora seleccionada ya no tiene disponibilidad,
-  /// selecciona automáticamente la primera hora libre del turno.
   void _autoSeleccionarHoraDisponible() {
     final horaActualStr = _formatearHora(_horaSeleccionada);
     final disponible = _disponibilidadHoras[horaActualStr] ?? true;
@@ -135,7 +130,6 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
     }
   }
 
-  /// Carga la disponibilidad de todas las horas del turno actual.
   Future<void> _cargarDisponibilidad() async {
     final horas = _horasPorTurno[_turnoSeleccionado] ?? [];
     final Map<String, bool> resultado = {};
@@ -185,7 +179,6 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
     return '${hora.hour.toString().padLeft(2, '0')}:${hora.minute.toString().padLeft(2, '0')}';
   }
 
-  // ── Crear reserva ──
   void _confirmarReserva() async {
     setState(() => _isLoading = true);
 
@@ -271,8 +264,12 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
               child: ElevatedButton(
                 onPressed: () {
                   Navigator.of(ctx).pop();
-                  _tabController.animateTo(1);
-                  _cargarReservas();
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const GestionReservas(),
+                    ),
+                  );
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.button,
@@ -283,7 +280,7 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
                   padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
                 child: const Text(
-                  'VER MIS RESERVAS',
+                  'IR A GESTIÓN DE RESERVAS',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
@@ -303,7 +300,6 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
     }
   }
 
-  // ── Cargar reservas del usuario ──
   Future<void> _cargarReservas() async {
     setState(() => _cargandoReservas = true);
     try {
@@ -328,7 +324,6 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
     }
   }
 
-  // ── Eliminar reserva ──
   Future<void> _eliminarReserva(String reservaId) async {
     final confirmar = await showDialog<bool>(
       context: context,
@@ -406,10 +401,6 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
     );
   }
 
-  // ═══════════════════════════════════════════════════════════════
-  //  BUILD
-  // ═══════════════════════════════════════════════════════════════
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -444,16 +435,6 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
             ),
           ),
         ],
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: AppColors.button,
-          labelColor: AppColors.button,
-          unselectedLabelColor: AppColors.textSecondary,
-          tabs: const [
-            Tab(text: 'NUEVA RESERVA'),
-            Tab(text: 'MIS RESERVAS'),
-          ],
-        ),
       ),
       body: TabBarView(
         controller: _tabController,
@@ -462,14 +443,12 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
     );
   }
 
-  // ── TAB 1: Formulario de nueva reserva ──
   Widget _buildFormularioReserva() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // --- Turno ---
           const Text(
             'Selecciona el turno',
             style: TextStyle(
@@ -488,7 +467,6 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
               ),
             ],
           ),
-
           const SizedBox(height: 24),
           const Text(
             'Nombre completo',
@@ -525,10 +503,7 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
               ),
             ),
           ),
-
           const SizedBox(height: 24),
-
-          // --- Fecha ---
           const Text(
             'Selecciona la fecha',
             style: TextStyle(
@@ -568,10 +543,7 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
               ),
             ),
           ),
-
           const SizedBox(height: 24),
-
-          // --- Hora ---
           const Text(
             'Selecciona la hora',
             style: TextStyle(
@@ -635,10 +607,7 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
               );
             }).toList(),
           ),
-
           const SizedBox(height: 24),
-
-          // --- Comensales ---
           const Text(
             'Número de comensales',
             style: TextStyle(
@@ -709,10 +678,7 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
               ],
             ),
           ),
-
           const SizedBox(height: 24),
-
-          // --- Notas ---
           const Text(
             'Notas especiales (opcional)',
             style: TextStyle(
@@ -747,10 +713,7 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
               ),
             ),
           ),
-
           const SizedBox(height: 32),
-
-          // --- Botón confirmar ---
           SizedBox(
             width: double.infinity,
             height: 55,
@@ -782,7 +745,6 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
     );
   }
 
-  // ── Widget botón de turno ──
   Widget _botonTurno(String turno, String label, IconData icono) {
     final seleccionado = _turnoSeleccionado == turno;
     return GestureDetector(
@@ -834,7 +796,6 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
     );
   }
 
-  // ── TAB 2: Mis reservas ──
   Widget _buildMisReservas() {
     if (_cargandoReservas) {
       return const Center(
@@ -900,7 +861,6 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Cabecera: turno + estado + eliminar
             Row(
               children: [
                 Container(
@@ -959,27 +919,85 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
                   icon: const Icon(
                     Icons.delete_outline,
                     color: AppColors.error,
-                    size: 22,
                   ),
-                  tooltip: 'Cancelar reserva',
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
                 ),
               ],
             ),
             const SizedBox(height: 12),
-            // Detalles
-            _filaDetalle(Icons.calendar_today, _formatearFecha(reserva.fecha)),
-
+            Row(
+              children: [
+                const Icon(Icons.calendar_today,
+                    size: 18, color: AppColors.gold),
+                const SizedBox(width: 8),
+                Text(
+                  _formatearFecha(reserva.fecha as DateTime),
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 6),
-            _filaDetalle(Icons.access_time, reserva.hora),
+            Row(
+              children: [
+                const Icon(Icons.access_time,
+                    size: 18, color: AppColors.gold),
+                const SizedBox(width: 8),
+                Text(
+                  reserva.hora,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 6),
-            _filaDetalle(Icons.people, '${reserva.comensales} comensales'),
+            Row(
+              children: [
+                const Icon(Icons.people, size: 18, color: AppColors.gold),
+                const SizedBox(width: 8),
+                Text(
+                  '${reserva.comensales} comensales',
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 6),
-            _filaDetalle(Icons.table_bar, 'Mesa ${reserva.numeroMesa ?? "-"}'),
-            if (reserva.notas != null && reserva.notas!.isNotEmpty) ...[
+            if (reserva.numeroMesa != null) ...[
+              Row(
+                children: [
+                  const Icon(Icons.table_bar,
+                      size: 18, color: AppColors.gold),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Mesa ${reserva.numeroMesa}',
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 6),
-              _filaDetalle(Icons.note, reserva.notas!),
+            ],
+            if (reserva.notas != null && reserva.notas!.isNotEmpty) ...[
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.note, size: 18, color: AppColors.gold),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      reserva.notas!,
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ],
           ],
         ),

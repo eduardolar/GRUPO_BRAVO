@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:frontend/screens/trabajador/gestion_pedidos.dart';
-import 'package:frontend/screens/trabajador/gestion_reservas.dart';
-import 'package:frontend/screens/trabajador/gestion_stock.dart';
+import 'package:frontend/screens/trabajador/Reservas/gestion_reservas.dart';
+import 'package:frontend/screens/trabajador/Stock/gestion_stock.dart';
 import 'package:frontend/screens/trabajador/servicio.dart';
 
 class HomeTrabajador extends StatefulWidget {

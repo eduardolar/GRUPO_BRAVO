@@ -110,6 +110,7 @@ def obtener_reservas(usuario_id: str = Query(...)):
         item = {
             "id": str(r["_id"]),
             "usuario_id": r.get("usuario_id", ""),
+            "nombre_completo": r.get("nombre_completo", ""),
             "fecha": r.get("fecha", ""),
             "hora": r.get("hora", ""),
             "comensales": r.get("comensales", 0),

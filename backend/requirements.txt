@@ -4,3 +4,5 @@ pymongo
 dnspython
 bcrypt
 pydantic
+fastapi-mail
+pydantic[email]

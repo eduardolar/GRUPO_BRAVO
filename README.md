@@ -1,63 +1,16 @@
-# GRUPO_BRAVO
-BACKEND
-Lenguaje
+Para inicializar el programa
 
-Python 3.11+
+Abrir carpeta backend con VS Code
+En terminal usar comandos:
+Para instalar paquetes necesarios para que funcione
+pip install -r requeriments.txt
+Para arrancar el backend
+py -m uvicorn main:app --reload
 
-Framework
 
-FastAPI
-
-Librerías principales
-
-fastapi
-
-uvicorn
-
-sqlalchemy
-
-pymysql
-
-python-jose (JWT)
-
-passlib
-
-Instalación base
-
-pip install fastapi uvicorn sqlalchemy pymysql python-jose passlib
-
-FRONTEND
-Framework
-
-Flutter (última versión estable)
-
-Lenguaje
-
-Dart
-
-Librerías recomendadas
-
-http / dio
-
-provider o riverpod
-
-flutter_secure_storage
-
-BASE DE DATOS
-Sistema
-
-MariaDB
-
-Cliente recomendado
-
-DBeaver (muy recomendado)
-o
-
-HeidiSQL
-
-DOCKER
-Herramientas
-
-Docker Desktop
-
-Docker Compose
+Abrir carpeta frontend en otro VS Code
+En terminal usar comandos:
+Para instalar paquetes necesarios:
+flutter pub get
+Para arrancar el frontend con Chrome:
+flutter run -d chrome  
