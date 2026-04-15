@@ -28,7 +28,7 @@ class MockData {
 
   // Reservas en memoria (se llenan en runtime)
   static final List<Reserva> reservas = [];
-}
+
 
 
     // Re-export de usuarios
