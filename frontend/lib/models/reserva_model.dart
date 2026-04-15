@@ -3,7 +3,8 @@ import 'package:intl/intl.dart';
 class Reserva {
   final String id;
   final String usuarioId;
-  final DateTime fecha; // <-- AHORA ES DATETIME
+  final String nombreCompleto; 
+  final DateTime fecha;
   final String hora;
   final int comensales;
   final String turno;
@@ -15,6 +16,7 @@ class Reserva {
   Reserva({
     required this.id,
     required this.usuarioId,
+    required this.nombreCompleto, 
     required this.fecha,
     required this.hora,
     required this.comensales,
@@ -44,6 +46,7 @@ class Reserva {
     return Reserva(
       id: mapa['id'] ?? '',
       usuarioId: mapa['usuario_id'] ?? '',
+      nombreCompleto: mapa['nombre_completo'] ?? '', 
       fecha: _parseFecha(mapa['fecha'] ?? ''),
       hora: mapa['hora'] ?? '',
       comensales: mapa['comensales'] ?? 1,
@@ -59,6 +62,7 @@ class Reserva {
     return {
       'id': id,
       'usuario_id': usuarioId,
+      'nombre_completo': nombreCompleto, 
       'fecha': DateFormat('yyyy-MM-dd').format(fecha),
       'hora': hora,
       'comensales': comensales,
@@ -74,6 +78,7 @@ class Reserva {
     return Reserva(
       id: id,
       usuarioId: usuarioId,
+      nombreCompleto: nombreCompleto,
       fecha: fecha,
       hora: hora,
       comensales: comensales,

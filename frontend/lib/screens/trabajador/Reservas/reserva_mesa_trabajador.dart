@@ -22,6 +22,7 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
   TimeOfDay _horaSeleccionada = const TimeOfDay(hour: 14, minute: 0);
   int _numComensales = 2;
   int _maxComensales = 12;
+  final TextEditingController _nombreCompletoController = TextEditingController();
   final TextEditingController _notasController = TextEditingController();
   bool _isLoading = false;
 
@@ -63,6 +64,7 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
   @override
   void dispose() {
     _tabController.dispose();
+    _nombreCompletoController.dispose();
     _notasController.dispose();
     super.dispose();
   }
@@ -182,8 +184,12 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
 
     try {
       final auth = Provider.of<AuthProvider>(context, listen: false);
+      final nombreCompleto = _nombreCompletoController.text.trim().isNotEmpty
+          ? _nombreCompletoController.text.trim()
+          : auth.usuarioActual?.nombre ?? '';
       final resultado = await ApiService.crearReserva(
         userId: auth.usuarioActual?.id ?? '',
+        nombreCompleto: nombreCompleto,
         fecha: _fechaSeleccionada,
         hora: _formatearHora(_horaSeleccionada),
         comensales: _numComensales,
@@ -460,6 +466,42 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
                 child: _botonTurno('cena', 'Cena', Icons.nightlight_round),
               ),
             ],
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            'Nombre completo',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _nombreCompletoController,
+            textCapitalization: TextCapitalization.words,
+            textInputAction: TextInputAction.next,
+            style: const TextStyle(color: AppColors.textPrimary),
+            decoration: InputDecoration(
+              hintText: 'Ingresa tu nombre completo',
+              hintStyle: TextStyle(
+                color: AppColors.textSecondary.withOpacity(0.5),
+              ),
+              filled: true,
+              fillColor: AppColors.panel,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.line),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.line),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.button),
+              ),
+            ),
           ),
           const SizedBox(height: 24),
           const Text(

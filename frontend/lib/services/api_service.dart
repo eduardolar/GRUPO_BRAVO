@@ -104,6 +104,7 @@ class ApiService {
 
   static Future<Reserva> crearReserva({
     required String userId,
+    required String nombreCompleto,
     required DateTime fecha,
     required String hora,
     required int comensales,
@@ -111,6 +112,7 @@ class ApiService {
     String? notas,
   }) => ReservaService.crearReserva(
     userId: userId,
+    nombreCompleto: nombreCompleto, 
     fecha: fecha,
     hora: hora,
     comensales: comensales,
