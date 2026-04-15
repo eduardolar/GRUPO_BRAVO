@@ -1,14 +1,17 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from typing import Optional
 
 
 class UsuarioRegistro(BaseModel):
     nombre: str
     password_hash: str
-    correo: str
+    correo: EmailStr
     telefono: str
     direccion: str
     rol: str = "cliente"
+    restaurante_id: Optional[str] = None # 
+    is_verified: bool = False
+    verification_code: Optional[str] = None
 
 class UsuarioLogin(BaseModel):
     correo: str
