@@ -37,27 +37,49 @@ class ResetPassword(BaseModel):
     nueva_password: str
 
 # --- 2. FUNCIÓN PARA ENVIAR EL EMAIL ---
+from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
+from pydantic import EmailStr
+import logging
+
+# Configuración de logging para rastrear errores
+logger = logging.getLogger("uvicorn")
+
 async def enviar_correo_verificacion(email_destino: str, codigo: str):
     html = f"""
-    <div style="font-family: 'Arial', sans-serif; background-color: #FBF9F6; padding: 30px; border: 1px solid #E0DBD3; text-align: center; border-radius: 10px;">
-        <h2 style="color: #800020; margin-bottom: 20px;">Restaurante Bravo</h2>
-        <p style="color: #2D2D2D; font-size: 16px;">¡Bienvenido! Para activar tu cuenta, usa el siguiente código de seguridad:</p>
-        <div style="background-color: #800020; color: white; padding: 15px; font-size: 32px; font-weight: bold; letter-spacing: 8px; margin: 25px 0; display: inline-block; min-width: 200px; border-radius: 5px;">
-            {codigo}
+    <div style="font-family: Arial, sans-serif; background-color: #FBF9F6; padding: 40px 20px; text-align: center;">
+        <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; padding: 30px; border: 1px solid #E0DBD3; border-radius: 10px;">
+            <h2 style="color: #800020; margin-top: 0;">Restaurante Bravo</h2>
+            <hr style="border: 0; border-top: 1px solid #E0DBD3; margin: 20px 0;">
+            <p style="color: #2D2D2D; font-size: 16px; line-height: 1.5;">
+                ¡Bienvenido! Para activar tu cuenta y empezar tu experiencia gastronómica, usa el siguiente código de seguridad:
+            </p>
+            <div style="background-color: #800020; color: #ffffff; padding: 15px 25px; font-size: 32px; font-weight: bold; letter-spacing: 8px; margin: 25px 0; display: inline-block; border-radius: 5px;">
+                {codigo}
+            </div>
+            <p style="color: #6B6B6B; font-size: 12px; margin-top: 25px; border-top: 1px solid #EEE; padding-top: 15px;">
+                Este código es privado. Si no intentaste registrarte en <strong>Bravo</strong>, puedes ignorar este correo con seguridad.
+            </p>
         </div>
-        <p style="color: #6B6B6B; font-size: 12px; margin-top: 20px;">Este código es privado. Si no intentaste registrarte en Bravo, puedes ignorar este correo.</p>
     </div>
     """
     
     mensaje = MessageSchema(
         subject="Código de Verificación - Restaurante Bravo",
-        recipients=[email_destino], # Aquí llegará al correo personal que el usuario ponga
+        recipients=[email_destino],
         body=html,
         subtype=MessageType.html
     )
 
-    fm = FastMail(conf)
-    await fm.send_message(mensaje)
+    fm = FastMail(conf) # Asegúrate de que 'conf' esté importado/disponible
+    
+    try:
+        await fm.send_message(mensaje)
+    except Exception as e:
+        # Esto evita que la API devuelva un error 500 si el correo falla
+        logger.error(f"Error enviando correo a {email_destino}: {str(e)}")
+        return False
+    
+    return True
 
 # --- 3. ENDPOINT: REGISTRO ---
 @router.post("/registro")
@@ -168,39 +190,52 @@ async def recuperar_password(datos: dict):
     usuario_db = coleccion_usuarios.find_one({"correo": correo})
 
     if not usuario_db:
-        # Por seguridad, a veces se dice que se envió igualmente para no dar pistas
+        # Nota: En apps de alta seguridad se devuelve 200 aunque no exista, 
+        # pero si prefieres el 404 para desarrollo, está perfecto.
         raise HTTPException(status_code=404, detail="No existe un usuario con ese correo")
 
-    # Generamos un código nuevo de 6 dígitos
     codigo_recuperacion = ''.join(random.choices(string.digits, k=6))
 
-    # Guardamos el código en el usuario temporalmente para validarlo luego
     coleccion_usuarios.update_one(
         {"correo": correo},
         {"$set": {"reset_code": codigo_recuperacion}}
     )
 
-    # Enviamos el correo real con tu config de Gmail
+    # Diseño unificado con el correo de bienvenida
     html = f"""
-    <div style="font-family: Arial; border: 1px solid #eee; padding: 20px; text-align: center;">
-        <h2 style="color: #800020;">Recuperación de Contraseña</h2>
-        <p>Has solicitado restablecer tu contraseña en Bravo. Tu código es:</p>
-        <div style="font-size: 32px; font-weight: bold; color: #800020; margin: 20px 0;">
-            {codigo_recuperacion}
+    <div style="font-family: Arial, sans-serif; background-color: #FBF9F6; padding: 40px 20px; text-align: center;">
+        <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; padding: 30px; border: 1px solid #E0DBD3; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+            <h2 style="color: #800020; margin-top: 0;">Restaurante Bravo</h2>
+            <div style="height: 1px; background-color: #E0DBD3; margin: 20px 0;"></div>
+            
+            <h3 style="color: #2D2D2D; font-size: 18px;">Restablecer Contraseña</h3>
+            <p style="color: #2D2D2D; font-size: 15px; line-height: 1.5;">
+                Recibimos una solicitud para acceder a tu cuenta. Utiliza el siguiente código para completar el proceso de recuperación:
+            </p>
+            
+            <div style="background-color: #800020; color: #ffffff; padding: 15px 25px; font-size: 32px; font-weight: bold; letter-spacing: 8px; margin: 25px 0; display: inline-block; border-radius: 5px;">
+                {codigo_recuperacion}
+            </div>
+            
+            <p style="color: #6B6B6B; font-size: 12px; margin-top: 25px; border-top: 1px solid #EEE; padding-top: 15px;">
+                Si tú no solicitaste este cambio, puedes ignorar este correo de forma segura. Tu contraseña actual no se verá afectada.
+            </p>
         </div>
-        <p>Si no fuiste tú, ignora este mensaje.</p>
     </div>
     """
     
     mensaje = MessageSchema(
-        subject="Restablecer Contraseña - Bravo",
+        subject="Restablecer Contraseña - Restaurante Bravo",
         recipients=[correo],
         body=html,
         subtype=MessageType.html
     )
     
-    fm = FastMail(conf)
-    await fm.send_message(mensaje)
+    try:
+        fm = FastMail(conf)
+        await fm.send_message(mensaje)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Error al enviar el correo")
 
     return {"mensaje": "Código de recuperación enviado"}
 
