@@ -36,6 +36,7 @@ class PedidoCrear(BaseModel):
 
 class ReservaCrear(BaseModel):
     usuario_id: str
+    nombre_completo: str
     fecha: str
     hora: str
     comensales: int

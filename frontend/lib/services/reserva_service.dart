@@ -12,6 +12,7 @@ class ReservaService {
   /// Crear una reserva de mesa
   static Future<Reserva> crearReserva({
     required String userId,
+    required String nombreCompleto, // <-- 1. Añadido en la firma
     required DateTime fecha,
     required String hora,
     required int comensales,
@@ -41,6 +42,7 @@ class ReservaService {
       final reserva = Reserva(
         id: 'r_${DateTime.now().millisecondsSinceEpoch}',
         usuarioId: userId,
+        nombreCompleto: nombreCompleto, // <-- 2. Añadido en el mock
         fecha: fecha,
         hora: hora,
         comensales: comensales,
@@ -60,6 +62,7 @@ class ReservaService {
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'usuario_id': userId,
+        'nombre_completo': nombreCompleto, // <-- 3. Añadido en el body HTTP
         'fecha': fecha.toIso8601String().split('T').first,
         'hora': hora,
         'comensales': comensales,
@@ -113,12 +116,12 @@ class ReservaService {
     print('=== OBTENIENDO RESERVAS ===');
     print('UserID: $userId');
     print('Usando API real: $usarApiReal');
-    
+
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 400));
       print('Reservas disponibles en MockData: ${MockData.reservas.length}');
       MockData.reservas.forEach((r) => print('  - Reserva: ID=$r.id, usuarioId=$r.usuarioId'));
-      
+
       final resultado = MockData.reservas.where((r) => r.usuarioId == userId).toList();
       print('Reservas filtradas para usuario: ${resultado.length}');
       return resultado;
@@ -126,11 +129,11 @@ class ReservaService {
 
     final url = '$baseUrl/reservas?usuario_id=$userId';
     print('URL de API: $url');
-    
+
     final response = await http.get(Uri.parse(url));
     print('Status Code: ${response.statusCode}');
     print('Response Body: ${response.body}');
-    
+
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
       print('Reservas obtenidas de API: ${data.length}');
