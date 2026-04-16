@@ -1,33 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/core/colors_style.dart';
+import 'package:frontend/screens/trabajador/Stock/avisar_falta.dart';
+import 'package:frontend/screens/trabajador/Stock/bloquear_producto.dart';
 
-// ─── Paleta 60-30-10 ───────────────────────────────────────────────
-// 60% → negro cálido profundo:  AppColors.background
-// 30% → marrón oscuro cálido:   AppColors.backgroundButton
-// 10% → dorado:                 AppColors.gold
-// ───────────────────────────────────────────────────────────────────
 
-class GestionReservas extends StatefulWidget {
-  const GestionReservas({super.key});
+
+class GestionStock extends StatefulWidget {
+  const GestionStock({super.key});
 
   @override
-  State<GestionReservas> createState() => _GestionReservasState();
+  State<GestionStock> createState() => _GestionStockState();
 }
 
-class _GestionReservasState extends State<GestionReservas> {
+class _GestionStockState extends State<GestionStock> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // 60% — fondo dominante, negro cálido
       backgroundColor: AppColors.background,
 
       body: SafeArea(
         child: Column(
           children: [
-            // ── HEADER — superficie 30% ──────────────────────────
             _buildHeader(),
 
-            // ── CUERPO — fondo 60% ───────────────────────────────
             const Spacer(),
 
             Padding(
@@ -35,36 +30,29 @@ class _GestionReservasState extends State<GestionReservas> {
               child: Column(
                 children: [
                   _menuButton(
-                    icon: Icons.add_circle_outlined,
-                    text: "Crear reserva",
-                    subtitle: "Crear una nueva reserva",
-                    onTap: () {},
+                    icon: Icons.block_outlined,
+                    text: "Bloquear producto",
+                    subtitle: "Marcar como no disponible",
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const BloquearProducto()),
+                    );
+                    },
                   ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 40),
 
                   _menuButton(
-                    icon: Icons.edit_outlined,
-                    text: "Modificar reserva",
-                    subtitle: "Editar fecha, hora o personas",
-                    onTap: () {},
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  _menuButton(
-                    icon: Icons.delete_outline,
-                    text: "Eliminar reserva",
-                    subtitle: "Cancelar una reserva existente",
-                    onTap: () {},
-                  ),
-                  const SizedBox(height: 16),
-
-                  _menuButton(
-                    icon: Icons.list_alt_outlined,
-                    text: "Lista de reservas",
-                    subtitle: "Agenda y disponibilidad",
-                    onTap: () {},
+                    icon: Icons.warning_amber_outlined,
+                    text: "Avisar de falta de producto",
+                    subtitle: "Notificar stock bajo",
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const AvisarFaltaScreen()),
+                        );
+                    },
                   ),
                 ],
               ),
@@ -77,16 +65,14 @@ class _GestionReservasState extends State<GestionReservas> {
     );
   }
 
-  // ── Header con superficie 30% y acento dorado 10% ─────────────────
   Widget _buildHeader() {
     return Container(
       width: double.infinity,
-      // 30% — superficie cálida para el encabezado
       color: AppColors.backgroundButton,
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
       child: Column(
         children: [
-          // Círculo con icono — acento dorado 10%
+          
           Container(
             width: 52,
             height: 52,
@@ -95,8 +81,8 @@ class _GestionReservasState extends State<GestionReservas> {
               border: Border.all(color: Colors.white, width: 1.5),
             ),
             child: const Icon(
-              Icons.calendar_month_outlined,
-              color: Colors.white, // acento claro
+              Icons.inventory_2_outlined,
+              color: AppColors.background, 
               size: 24,
             ),
           ),
@@ -105,10 +91,10 @@ class _GestionReservasState extends State<GestionReservas> {
 
           // Título principal
           const Text(
-            "Gestión de reservas",
+            "Gestión de Stock",
             style: TextStyle(
-              fontFamily: 'Playfair Display', // elegante y distintivo
-              color: Colors.white, // blanco cálido
+              fontFamily: 'Playfair Display',
+              color: Colors.white, 
               fontSize: 24,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.5,
@@ -117,11 +103,11 @@ class _GestionReservasState extends State<GestionReservas> {
 
           const SizedBox(height: 6),
 
-          // Subtítulo en dorado — acento 10%
+          
           Text(
             "SELECCIONA UNA OPCIÓN",
             style: TextStyle(
-              color: Colors.white70, // 10% dorado
+              color: Colors.white70, 
               fontSize: 10,
               letterSpacing: 3,
               fontWeight: FontWeight.w400,
@@ -130,18 +116,17 @@ class _GestionReservasState extends State<GestionReservas> {
 
           const SizedBox(height: 16),
 
-          // Separador con degradado dorado — acento 10%
           Row(
             children: [
               const Expanded(child: Divider(color: Color(0xFFE0DBD3))),
               Container(
                 width: 60,
                 height: 1.5,
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
                       Colors.transparent,
-                      Colors.white, // acento claro
+                      Colors.white, 
                       Colors.transparent,
                     ],
                   ),
@@ -155,7 +140,7 @@ class _GestionReservasState extends State<GestionReservas> {
     );
   }
 
-  // ── Botón de menú con diseño 60-30-10 ────────────────────────────
+ 
   Widget _menuButton({
     required IconData icon,
     required String text,
@@ -174,18 +159,17 @@ class _GestionReservasState extends State<GestionReservas> {
         ),
         child: Row(
           children: [
-            // Icono en su contenedor — 30% con acento 10%
             Container(
               width: 42,
               height: 42,
               decoration: BoxDecoration(
-                color: const Color(0xFF660019), // 30% más oscuro
+                color: const Color(0xFF660019), 
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: const Color(0xFFA6405A)),
               ),
               child: Icon(
                 icon,
-                color: Colors.white, // acento claro
+                color: AppColors.background, 
                 size: 20,
               ),
             ),
@@ -200,7 +184,7 @@ class _GestionReservasState extends State<GestionReservas> {
                   Text(
                     text,
                     style: const TextStyle(
-                      color: Colors.white, // blanco cálido
+                      color: AppColors.background, 
                       fontSize: 17,
                       fontWeight: FontWeight.w600,
                       letterSpacing: 0.2,
@@ -210,7 +194,7 @@ class _GestionReservasState extends State<GestionReservas> {
                   Text(
                     subtitle,
                     style: const TextStyle(
-                      color: Colors.white70, // gris dorado apagado
+                      color: Colors.white70,
                       fontSize: 11,
                       fontWeight: FontWeight.w300,
                       letterSpacing: 0.4,
@@ -220,10 +204,9 @@ class _GestionReservasState extends State<GestionReservas> {
               ),
             ),
 
-            // Flecha — acento dorado 10%
             Icon(
               Icons.chevron_right,
-              color: Colors.white54, // 10% dorado
+              color: Colors.white54, 
               size: 20,
             ),
           ],

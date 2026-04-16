@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../core/colors_style.dart';
-import '../../services/api_service.dart';
-import '../../models/ingrediente_model.dart';
+import '../../../core/colors_style.dart';
+import '../../../services/api_service.dart';
+import '../../../models/ingrediente_model.dart';
 
 class AvisarFaltaScreen extends StatefulWidget {
   const AvisarFaltaScreen({super.key});

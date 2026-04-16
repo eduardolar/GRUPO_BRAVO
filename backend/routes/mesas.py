@@ -1,6 +1,7 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter,Response, HTTPException
 from database import coleccion_mesas
 from models import ValidarQR
+from services.qr_generator import generate_table_qr
 
 router = APIRouter(prefix="/mesas", tags=["Mesas"])
 
@@ -34,3 +35,4 @@ def validar_qr_mesa(datos: ValidarQR):
         "numero_mesa": mesa.get("numero", 0),
         "estado": "disponible" if mesa.get("estado", "libre") == "libre" else "ocupada",
     }
+    return Response(content=image_bytes, media_type="image/png")
