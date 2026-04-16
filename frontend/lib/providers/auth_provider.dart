@@ -114,6 +114,18 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> cambiarContrasena({
+    required String passwordActual,
+    required String nuevaPassword,
+  }) async {
+    if (_usuarioActual == null) throw Exception('No hay usuario autenticado');
+    await AuthService.cambiarContrasena(
+      userId: _usuarioActual!.id,
+      passwordActual: passwordActual,
+      nuevaPassword: nuevaPassword,
+    );
+  }
+
   Future<void> eliminarCuenta() async {
     if (_usuarioActual == null) throw Exception('No hay usuario autenticado');
     final success = await AuthService.eliminarCuenta(

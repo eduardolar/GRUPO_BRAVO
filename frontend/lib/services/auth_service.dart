@@ -239,6 +239,32 @@ class AuthService {
     return response.statusCode == 200;
   }
 
+  /// Cambiar contraseña
+  static Future<void> cambiarContrasena({
+    required String userId,
+    required String passwordActual,
+    required String nuevaPassword,
+  }) async {
+    if (!usarApiReal) {
+      await Future.delayed(const Duration(milliseconds: 400));
+      return;
+    }
+
+    final response = await http.put(
+      Uri.parse('$baseUrl/usuarios/$userId/cambiar-password'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'password_actual': passwordActual,
+        'nueva_password': nuevaPassword,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      final error = jsonDecode(response.body);
+      throw Exception(error['detail'] ?? 'Error al cambiar la contraseña');
+    }
+  }
+
   /// Eliminar cuenta de usuario
   static Future<bool> eliminarCuenta({required String userId}) async {
     if (!usarApiReal) {

@@ -165,49 +165,55 @@ class _CodigoRecuperacionScreenState extends State<CodigoRecuperacionScreen> {
   }
 
   Widget _buildOtpFields() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: List.generate(6, (index) {
-        return SizedBox(
-          width: 45,
-          child: TextField(
-            controller: _controllers[index],
-            focusNode: _focusNodes[index],
-            keyboardType: TextInputType.number,
-            textAlign: TextAlign.center,
-            maxLength: 1,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
-            decoration: InputDecoration(
-              counterText: "",
-              filled: true,
-              fillColor: AppColors.panel,
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: AppColors.line),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const gaps = 5 * 8.0;
+        final fieldWidth = ((constraints.maxWidth - gaps) / 6).clamp(36.0, 52.0);
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: List.generate(6, (index) {
+            return SizedBox(
+              width: fieldWidth,
+              child: TextField(
+                controller: _controllers[index],
+                focusNode: _focusNodes[index],
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.center,
+                maxLength: 1,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: (fieldWidth * 0.48).clamp(18.0, 24.0),
+                  fontWeight: FontWeight.bold,
+                ),
+                decoration: InputDecoration(
+                  counterText: "",
+                  filled: true,
+                  fillColor: AppColors.panel,
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: AppColors.line),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: AppColors.button, width: 2),
+                  ),
+                ),
+                onChanged: (value) {
+                  if (value.isNotEmpty && index < 5) {
+                    _focusNodes[index + 1].requestFocus();
+                  }
+                  if (value.isEmpty && index > 0) {
+                    _focusNodes[index - 1].requestFocus();
+                  }
+                  if (index == 5 && value.isNotEmpty) {
+                    _continuar();
+                  }
+                },
               ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: AppColors.button, width: 2),
-              ),
-            ),
-            onChanged: (value) {
-              if (value.isNotEmpty && index < 5) {
-                _focusNodes[index + 1].requestFocus();
-              }
-              if (value.isEmpty && index > 0) {
-                _focusNodes[index - 1].requestFocus();
-              }
-              if (index == 5 && value.isNotEmpty) {
-                _continuar();
-              }
-            },
-          ),
+            );
+          }),
         );
-      }),
+      },
     );
   }
 
