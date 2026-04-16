@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/providers/auth_provider.dart';
-import 'package:frontend/screens/Cliente/home_screen.dart';
+import 'package:frontend/screens/cliente/home_screen.dart';
 
 class HomeScreenAdmin extends StatelessWidget {
   const HomeScreenAdmin({super.key});

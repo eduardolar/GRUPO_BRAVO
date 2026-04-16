@@ -32,7 +32,7 @@ class UsuarioRegistro(BaseModel):
         return value
 class UsuarioLogin(BaseModel):
     correo: str
-    password_hash: str = Field(..., min_length=8)
+    password_hash: str = Field(..., min_length=6)
 
 class UsuarioActualizar(BaseModel):
     nombre: str
