@@ -1,3 +1,6 @@
+import 'dart:convert'; // Import necesario para jsonEncode
+import 'package:http/http.dart'
+    as http; // Import para peticiones directas si fuera necesario
 import '../models/producto_model.dart';
 import '../models/pedido_model.dart';
 import '../models/mesa_model.dart';
@@ -68,7 +71,14 @@ class ApiService {
 
   static Future<List<Ingrediente>> obtenerIngredientes({String? categoria}) =>
       IngredienteService.obtenerIngredientes(categoria: categoria);
+
   // ─── PEDIDOS ─────────────────────────────────────────────────
+
+  /// Nuevo método para enviar pedidos vía QR (Delegado a PedidoService)
+  static Future<bool> enviarPedidoPorQR({
+    required String mesaId,
+    required List<dynamic> items,
+  }) => PedidoService.enviarPedidoPorQR(mesaId: mesaId, items: items);
 
   static Future<Map<String, dynamic>> crearPedido({
     required String userId,
@@ -112,7 +122,7 @@ class ApiService {
     String? notas,
   }) => ReservaService.crearReserva(
     userId: userId,
-    nombreCompleto: nombreCompleto, 
+    nombreCompleto: nombreCompleto,
     fecha: fecha,
     hora: hora,
     comensales: comensales,
@@ -136,7 +146,10 @@ class ApiService {
   static Future<bool> actualizarComensales({
     required String reservaId,
     required int comensales,
-  }) => ReservaService.actualizarComensales(reservaId: reservaId, comensales: comensales);
+  }) => ReservaService.actualizarComensales(
+    reservaId: reservaId,
+    comensales: comensales,
+  );
 
   static Future<bool> eliminarReserva({required String reservaId}) =>
       ReservaService.eliminarReserva(reservaId: reservaId);
