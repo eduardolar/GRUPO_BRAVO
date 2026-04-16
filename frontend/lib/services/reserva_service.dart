@@ -145,6 +145,29 @@ class ReservaService {
     }
   }
 
+  /// Actualizar el número de comensales de una reserva
+  static Future<bool> actualizarComensales({
+    required String reservaId,
+    required int comensales,
+  }) async {
+    if (!usarApiReal) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      final index = MockData.reservas.indexWhere((r) => r.id == reservaId);
+      if (index >= 0) {
+        MockData.reservas[index] =
+            MockData.reservas[index].copyWith(comensales: comensales);
+      }
+      return true;
+    }
+
+    final response = await http.patch(
+      Uri.parse('$baseUrl/reservas/$reservaId'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'comensales': comensales}),
+    );
+    return response.statusCode == 200;
+  }
+
   /// Eliminar una reserva
   static Future<bool> eliminarReserva({required String reservaId}) async {
     if (!usarApiReal) {

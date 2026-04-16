@@ -1,3 +1,4 @@
+import bcrypt
 from fastapi import APIRouter, HTTPException
 from bson import ObjectId
 from database import coleccion_usuarios
@@ -7,6 +8,10 @@ from pydantic import BaseModel # Necesario para que la API entienda el rol que e
 # Modelo pequeñito para recibir solo el texto del nuevo rol
 class UsuarioActualizarRol(BaseModel):
     rol: str
+
+class CambiarPassword(BaseModel):
+    password_actual: str
+    nueva_password: str
 
 router = APIRouter(prefix="/usuarios", tags=["Usuarios"])
 
@@ -57,6 +62,23 @@ def actualizar_perfil(user_id: str, datos: UsuarioActualizar):
     if resultado.matched_count == 0:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
     return {"mensaje": "Perfil actualizado"}
+
+@router.put("/{user_id}/cambiar-password")
+def cambiar_password(user_id: str, datos: CambiarPassword):
+    usuario = coleccion_usuarios.find_one({"_id": ObjectId(user_id)})
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    hash_almacenado = usuario.get("password_hash", "").encode("utf-8")
+    if not bcrypt.checkpw(datos.password_actual.encode("utf-8"), hash_almacenado):
+        raise HTTPException(status_code=400, detail="La contraseña actual es incorrecta")
+
+    nueva_hash = bcrypt.hashpw(datos.nueva_password.encode("utf-8"), bcrypt.gensalt())
+    coleccion_usuarios.update_one(
+        {"_id": ObjectId(user_id)},
+        {"$set": {"password_hash": nueva_hash.decode("utf-8")}}
+    )
+    return {"mensaje": "Contraseña actualizada correctamente"}
 
 # Ruta obligatoria para que funcione el botón de Flutter de "Cambiar Rol"
 @router.put("/{user_id}/rol")

@@ -61,7 +61,7 @@ class _LoginScreenState extends State<LoginScreen> {
           // 2. FILTRO OSCURO (Capa de legibilidad)
           Positioned.fill(
             child: Container(
-              color: Colors.black.withOpacity(0.75), // Ajusta la opacidad según necesites
+              color: Colors.black.withValues(alpha: 0.75),
             ),
           ),
 
@@ -170,7 +170,7 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Text(
           "¿Olvidaste tu contraseña?",
           style: TextStyle(
-            color: Colors.white.withOpacity(0.8),
+            color: Colors.white.withValues(alpha: 0.8),
             fontWeight: FontWeight.w400,
             fontSize: 13,
           ),

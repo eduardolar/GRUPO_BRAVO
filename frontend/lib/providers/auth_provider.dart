@@ -1,32 +1,44 @@
 import 'package:flutter/material.dart';
 import '../models/usuario_model.dart';
-import '../services/api_service.dart';
+import '../services/auth_service.dart'; // Asegúrate de que el path sea correcto
 
 class AuthProvider with ChangeNotifier {
   Usuario? _usuarioActual;
 
-
   Usuario? get usuarioActual => _usuarioActual;
   bool get estaAutenticado => _usuarioActual != null;
 
-  // LOGIN REAL
-  Future<bool> iniciarSesion(String email, String contrasena) async {
+  // Lógica para verificar el código
+  Future<bool> verificarCodigo(String email, String codigo) async {
     try {
-      final response = await ApiService.iniciarSesion(
+      // Llamamos al método estático de AuthService
+      await AuthService.verificarCodigo(
         correo: email,
-        contrasena: contrasena,
+        codigo: codigo,
       );
 
-      _usuarioActual = Usuario.fromJson(response);
-
-      notifyListeners();
+      // AuthService ya lanza excepción en caso de error; si llegamos aquí el código es válido
+      if (_usuarioActual != null && _usuarioActual!.email == email) {
+        notifyListeners();
+      }
       return true;
     } catch (e) {
-      throw Exception('Error de conexión: $e');
+      debugPrint("Error en verificarCodigo Provider: $e");
+      rethrow; // Reenviamos el error para que la UI lo muestre
     }
   }
 
-  // REGISTRO REAL (Directo a comandas_db)
+  Future<bool> iniciarSesion(String email, String contrasena) async {
+    try {
+      final response = await AuthService.iniciarSesion(correo: email, contrasena: contrasena);
+      _usuarioActual = Usuario.fromJson(response);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   Future<bool> registrarse({
     required String nombre,
     required String email,
@@ -35,14 +47,14 @@ class AuthProvider with ChangeNotifier {
     required String direccion,
   }) async {
     try {
-      final response = await ApiService.registrarUsuario(
+      final response = await AuthService.registrarUsuario(
         nombre: nombre,
         correo: email,
         contrasena: contrasena,
         telefono: telefono,
         direccion: direccion,
       );
-
+      // Tras el registro, el usuario aún no está verificado en la DB
       _usuarioActual = Usuario(
         id: response['id'] ?? '',
         nombre: nombre,
@@ -50,9 +62,7 @@ class AuthProvider with ChangeNotifier {
         contrasena: contrasena,
         telefono: telefono,
         direccion: direccion,
-        rol: RolUsuario.cliente,
       );
-
       notifyListeners();
       return true;
     } catch (e) {
@@ -60,23 +70,41 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // Método para actualizar perfil
+  Future<void> recuperarPassword(String email) async {
+    await AuthService.recuperarPassword(correo: email);
+  }
+
+  Future<void> resetPassword({
+    required String email,
+    required String codigo,
+    required String nuevaPassword,
+  }) async {
+    await AuthService.resetPassword(
+      correo: email,
+      codigo: codigo,
+      nuevaPassword: nuevaPassword,
+    );
+  }
+
+  Future<void> reenviarCodigo(String email) async {
+    await AuthService.reenviarCodigo(correo: email);
+  }
+
   Future<void> actualizarPerfil({
     required String nombre,
     required String email,
     required String telefono,
     required String direccion,
   }) async {
-    if (_usuarioActual == null) return;
-
-    await ApiService.actualizarPerfil(
+    if (_usuarioActual == null) throw Exception('No hay usuario autenticado');
+    final success = await AuthService.actualizarPerfil(
       userId: _usuarioActual!.id,
       nombre: nombre,
       email: email,
       telefono: telefono,
       direccion: direccion,
     );
-
+    if (!success) throw Exception('Error al actualizar el perfil');
     _usuarioActual = _usuarioActual!.copyWith(
       nombre: nombre,
       email: email,
@@ -86,15 +114,28 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Método para eliminar cuenta
+  Future<void> cambiarContrasena({
+    required String passwordActual,
+    required String nuevaPassword,
+  }) async {
+    if (_usuarioActual == null) throw Exception('No hay usuario autenticado');
+    await AuthService.cambiarContrasena(
+      userId: _usuarioActual!.id,
+      passwordActual: passwordActual,
+      nuevaPassword: nuevaPassword,
+    );
+  }
+
   Future<void> eliminarCuenta() async {
-    if (_usuarioActual == null) return;
-    await ApiService.eliminarCuenta(userId: _usuarioActual!.id);
+    if (_usuarioActual == null) throw Exception('No hay usuario autenticado');
+    final success = await AuthService.eliminarCuenta(
+      userId: _usuarioActual!.id,
+    );
+    if (!success) throw Exception('Error al eliminar la cuenta');
     _usuarioActual = null;
     notifyListeners();
   }
 
-  // Método para cerrar sesión
   void cerrarSesion() {
     _usuarioActual = null;
     notifyListeners();

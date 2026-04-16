@@ -77,6 +77,102 @@ class AuthService {
     }
   }
 
+  /// Verificar código de verificación
+  static Future<Map<String, dynamic>> verificarCodigo({
+    required String correo,
+    required String codigo,
+  }) async {
+    // 1. Manejo de Mock (Para que no falle si usas datos de prueba)
+    if (!usarApiReal) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      return {'success': true, 'message': 'Código verificado en Mock'};
+    }
+
+    try {
+      // 2. Enviar como JSON 
+      final response = await http.post(
+        Uri.parse('$baseUrl/verificar-codigo'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'correo': correo, 'codigo': codigo}),
+      );
+
+      // 3. Validar respuesta del servidor
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['detail'] ?? 'Código inválido o expirado');
+      }
+    } catch (e) {
+      throw Exception('Error en el servidor: $e');
+    }
+  }
+
+  /// Solicitar recuperación de contraseña
+  static Future<void> recuperarPassword({required String correo}) async {
+    if (!usarApiReal) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      return;
+    }
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/recuperar-password'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'correo': correo}),
+    );
+
+    if (response.statusCode != 200) {
+      final error = jsonDecode(response.body);
+      throw Exception(error['detail'] ?? 'Error al enviar el código');
+    }
+  }
+
+  /// Restablecer contraseña con código
+  static Future<void> resetPassword({
+    required String correo,
+    required String codigo,
+    required String nuevaPassword,
+  }) async {
+    if (!usarApiReal) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      return;
+    }
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/reset-password'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'correo': correo,
+        'codigo': codigo,
+        'nueva_password': nuevaPassword,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      final error = jsonDecode(response.body);
+      throw Exception(error['detail'] ?? 'Error al restablecer la contraseña');
+    }
+  }
+
+  /// Reenviar código de verificación
+  static Future<void> reenviarCodigo({required String correo}) async {
+    if (!usarApiReal) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      return;
+    }
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/reenviar-codigo'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'correo': correo}),
+    );
+
+    if (response.statusCode != 200) {
+      final error = jsonDecode(response.body);
+      throw Exception(error['detail'] ?? 'Error al reenviar el código');
+    }
+  }
+
   /// Actualizar perfil
   static Future<bool> actualizarPerfil({
     required String userId,
@@ -141,6 +237,32 @@ class AuthService {
       headers: {'Content-Type': 'application/json'},
     );
     return response.statusCode == 200;
+  }
+
+  /// Cambiar contraseña
+  static Future<void> cambiarContrasena({
+    required String userId,
+    required String passwordActual,
+    required String nuevaPassword,
+  }) async {
+    if (!usarApiReal) {
+      await Future.delayed(const Duration(milliseconds: 400));
+      return;
+    }
+
+    final response = await http.put(
+      Uri.parse('$baseUrl/usuarios/$userId/cambiar-password'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'password_actual': passwordActual,
+        'nueva_password': nuevaPassword,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      final error = jsonDecode(response.body);
+      throw Exception(error['detail'] ?? 'Error al cambiar la contraseña');
+    }
   }
 
   /// Eliminar cuenta de usuario

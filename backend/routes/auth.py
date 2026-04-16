@@ -12,13 +12,12 @@ from models import UsuarioRegistro, UsuarioLogin
 
 router = APIRouter()
 
-# --- 1. CONFIGURACIÓN DE CORREO (SMTP GMAIL) ---
-# RECUERDA: La contraseña de 16 letras se genera en: 
-# Mi Cuenta Google -> Seguridad -> Contraseñas de Aplicación
+# --- 1. CONFIGURACIÓN DE CORREO (GMAIL REAL) ---
+
 conf = ConnectionConfig(
-    MAIL_USERNAME = "tu_correo@gmail.com",
-    MAIL_PASSWORD = "xxxx xxxx xxxx xxxx",  # <--- COLOCA AQUÍ TUS 16 LETRAS
-    MAIL_FROM = "tu_correo@gmail.com",
+    MAIL_USERNAME = "proyectorestaurantebravo@gmail.com",       
+    MAIL_PASSWORD = "sfgl yrgp pkub bhvj",  
+    MAIL_FROM = "proyectorestaurantebravo@gmail.com",      
     MAIL_PORT = 587,
     MAIL_SERVER = "smtp.gmail.com",
     MAIL_STARTTLS = True,
@@ -32,28 +31,55 @@ class VerificacionCodigo(BaseModel):
     correo: EmailStr
     codigo: str
 
+class ResetPassword(BaseModel):
+    correo: EmailStr
+    codigo: str
+    nueva_password: str
+
 # --- 2. FUNCIÓN PARA ENVIAR EL EMAIL ---
+from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
+from pydantic import EmailStr
+import logging
+
+# Configuración de logging para rastrear errores
+logger = logging.getLogger("uvicorn")
+
 async def enviar_correo_verificacion(email_destino: str, codigo: str):
     html = f"""
-    <div style="font-family: 'Arial', sans-serif; background-color: #FBF9F6; padding: 30px; border: 1px solid #E0DBD3; text-align: center;">
-        <h2 style="color: #800020;">Restaurante Bravo</h2>
-        <p style="color: #2D2D2D; font-size: 16px;">Gracias por unirte. Tu código de verificación es:</p>
-        <div style="background-color: #800020; color: white; padding: 15px; font-size: 28px; font-weight: bold; letter-spacing: 8px; margin: 20px 0; display: inline-block; min-width: 200px;">
-            {codigo}
+    <div style="font-family: Arial, sans-serif; background-color: #FBF9F6; padding: 40px 20px; text-align: center;">
+        <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; padding: 30px; border: 1px solid #E0DBD3; border-radius: 10px;">
+            <h2 style="color: #800020; margin-top: 0;">Restaurante Bravo</h2>
+            <hr style="border: 0; border-top: 1px solid #E0DBD3; margin: 20px 0;">
+            <p style="color: #2D2D2D; font-size: 16px; line-height: 1.5;">
+                ¡Bienvenido! Para activar tu cuenta y empezar tu experiencia gastronómica, usa el siguiente código de seguridad:
+            </p>
+            <div style="background-color: #800020; color: #ffffff; padding: 15px 25px; font-size: 32px; font-weight: bold; letter-spacing: 8px; margin: 25px 0; display: inline-block; border-radius: 5px;">
+                {codigo}
+            </div>
+            <p style="color: #6B6B6B; font-size: 12px; margin-top: 25px; border-top: 1px solid #EEE; padding-top: 15px;">
+                Este código es privado. Si no intentaste registrarte en <strong>Bravo</strong>, puedes ignorar este correo con seguridad.
+            </p>
         </div>
-        <p style="color: #6B6B6B; font-size: 12px;">Si no has solicitado este registro, ignora este mensaje.</p>
     </div>
     """
     
     mensaje = MessageSchema(
-        subject="Verifica tu cuenta - Bravo",
+        subject="Código de Verificación - Restaurante Bravo",
         recipients=[email_destino],
         body=html,
         subtype=MessageType.html
     )
 
-    fm = FastMail(conf)
-    await fm.send_message(mensaje)
+    fm = FastMail(conf) # Asegúrate de que 'conf' esté importado/disponible
+    
+    try:
+        await fm.send_message(mensaje)
+    except Exception as e:
+        # Esto evita que la API devuelva un error 500 si el correo falla
+        logger.error(f"Error enviando correo a {email_destino}: {str(e)}")
+        return False
+    
+    return True
 
 # --- 3. ENDPOINT: REGISTRO ---
 @router.post("/registro")
@@ -86,32 +112,50 @@ async def registrar_usuario(usuario: UsuarioRegistro):
         # Guardar en base de datos
         coleccion_usuarios.insert_one(usuario_dict)
         
-        # Enviar correo real
+        # Enviar correo real a la bandeja del usuario
         await enviar_correo_verificacion(usuario.correo, codigo_otp)
 
-        return {"mensaje": "Registro exitoso. Verifica tu correo.", "correo": usuario.correo}
+        return {"mensaje": "Registro exitoso. Revisa tu bandeja de entrada.", "correo": usuario.correo}
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Error al registrar: {str(e)}")
 
 # --- 4. ENDPOINT: VERIFICAR CÓDIGO ---
 @router.post("/verificar-codigo")
 async def verificar_codigo(datos: VerificacionCodigo):
+    # 1. Buscamos al usuario por correo
     usuario_db = coleccion_usuarios.find_one({"correo": datos.correo})
 
     if not usuario_db:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
-    if usuario_db.get("verification_code") == datos.codigo:
-        # Actualizar a verificado y limpiar el código
-        coleccion_usuarios.update_one(
-            {"correo": datos.correo},
-            {"$set": {"is_verified": True, "verification_code": None}}
-        )
-        return {"mensaje": "Cuenta verificada correctamente"}
-    
-    raise HTTPException(status_code=400, detail="Código de verificación incorrecto")
+    # 2. Comparamos el código (importante que ambos sean Strings)
+    codigo_recibido = str(datos.codigo).strip()
+    codigo_guardado = str(usuario_db.get("verification_code")).strip()
 
+    if codigo_recibido == codigo_guardado:
+        # 3. ACTUALIZACIÓN: Aquí es donde cambiamos a True y limpiamos el código
+        resultado = coleccion_usuarios.update_one(
+            {"correo": datos.correo},
+            {
+                "$set": {
+                    "is_verified": True, 
+                    "verification_code": None  # Limpiamos el código usado
+                }
+            }
+        )
+        
+        # Verificamos si MongoDB realmente hizo el cambio
+        if resultado.modified_count > 0:
+            return {"mensaje": "¡Cuenta verificada con éxito! Ya puedes hacer login."}
+        else:
+            return {"mensaje": "La cuenta ya estaba verificada o no hubo cambios."}
+    
+    # Si los códigos no coinciden
+    raise HTTPException(
+        status_code=400, 
+        detail=f"Código incorrecto. Recibido: {codigo_recibido}, Esperado: {codigo_guardado}"
+    )
 # --- 5. ENDPOINT: LOGIN ---
 @router.post("/login")
 def iniciar_sesion(credenciales: UsuarioLogin):
@@ -133,10 +177,109 @@ def iniciar_sesion(credenciales: UsuarioLogin):
                 "id": str(usuario_db["_id"]),
                 "nombre": usuario_db["nombre"],
                 "correo": usuario_db["correo"],
-                "telefono": usuario_db.get("telefono", ""),
-                "direccion": usuario_db.get("direccion", ""),
                 "rol": usuario_db.get("rol", "cliente"),
                 "restaurante_id": usuario_db.get("restaurante_id", "")
             }
-
+   
     raise HTTPException(status_code=401, detail="Credenciales incorrectas")
+
+# ---6. ENDPOINT: SOLICITAR RECUPERACIÓN ---
+@router.post("/recuperar-password")
+async def recuperar_password(datos: dict):
+    correo = datos.get("correo")
+    usuario_db = coleccion_usuarios.find_one({"correo": correo})
+
+    if not usuario_db:
+        # Nota: En apps de alta seguridad se devuelve 200 aunque no exista, 
+        # pero si prefieres el 404 para desarrollo, está perfecto.
+        raise HTTPException(status_code=404, detail="No existe un usuario con ese correo")
+
+    codigo_recuperacion = ''.join(random.choices(string.digits, k=6))
+
+    coleccion_usuarios.update_one(
+        {"correo": correo},
+        {"$set": {"reset_code": codigo_recuperacion}}
+    )
+
+    # Diseño unificado con el correo de bienvenida
+    html = f"""
+    <div style="font-family: Arial, sans-serif; background-color: #FBF9F6; padding: 40px 20px; text-align: center;">
+        <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; padding: 30px; border: 1px solid #E0DBD3; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+            <h2 style="color: #800020; margin-top: 0;">Restaurante Bravo</h2>
+            <div style="height: 1px; background-color: #E0DBD3; margin: 20px 0;"></div>
+            
+            <h3 style="color: #2D2D2D; font-size: 18px;">Restablecer Contraseña</h3>
+            <p style="color: #2D2D2D; font-size: 15px; line-height: 1.5;">
+                Recibimos una solicitud para acceder a tu cuenta. Utiliza el siguiente código para completar el proceso de recuperación:
+            </p>
+            
+            <div style="background-color: #800020; color: #ffffff; padding: 15px 25px; font-size: 32px; font-weight: bold; letter-spacing: 8px; margin: 25px 0; display: inline-block; border-radius: 5px;">
+                {codigo_recuperacion}
+            </div>
+            
+            <p style="color: #6B6B6B; font-size: 12px; margin-top: 25px; border-top: 1px solid #EEE; padding-top: 15px;">
+                Si tú no solicitaste este cambio, puedes ignorar este correo de forma segura. Tu contraseña actual no se verá afectada.
+            </p>
+        </div>
+    </div>
+    """
+    
+    mensaje = MessageSchema(
+        subject="Restablecer Contraseña - Restaurante Bravo",
+        recipients=[correo],
+        body=html,
+        subtype=MessageType.html
+    )
+    
+    try:
+        fm = FastMail(conf)
+        await fm.send_message(mensaje)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Error al enviar el correo")
+
+    return {"mensaje": "Código de recuperación enviado"}
+
+# --- 7. ENDPOINT: REENVIAR CÓDIGO DE VERIFICACIÓN ---
+@router.post("/reenviar-codigo")
+async def reenviar_codigo(datos: dict):
+    correo = datos.get("correo")
+    usuario_db = coleccion_usuarios.find_one({"correo": correo})
+
+    if not usuario_db:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    if usuario_db.get("is_verified", False):
+        raise HTTPException(status_code=400, detail="La cuenta ya está verificada")
+
+    codigo_otp = ''.join(random.choices(string.digits, k=6))
+
+    coleccion_usuarios.update_one(
+        {"correo": correo},
+        {"$set": {"verification_code": codigo_otp}}
+    )
+
+    await enviar_correo_verificacion(correo, codigo_otp)
+
+    return {"mensaje": "Código reenviado correctamente"}
+
+# --- 8. ENDPOINT: RESTABLECER CONTRASEÑA ---
+@router.post("/reset-password")
+async def reset_password(datos: ResetPassword):
+    usuario_db = coleccion_usuarios.find_one({"correo": datos.correo})
+
+    if not usuario_db:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    codigo_guardado = str(usuario_db.get("reset_code", "")).strip()
+    if not codigo_guardado or datos.codigo.strip() != codigo_guardado:
+        raise HTTPException(status_code=400, detail="Código inválido o expirado")
+
+    password_bytes = datos.nueva_password.encode('utf-8')
+    hashed_password = bcrypt.hashpw(password_bytes, bcrypt.gensalt())
+
+    coleccion_usuarios.update_one(
+        {"correo": datos.correo},
+        {"$set": {"password_hash": hashed_password.decode('utf-8'), "reset_code": None}}
+    )
+
+    return {"mensaje": "Contraseña actualizada correctamente"}

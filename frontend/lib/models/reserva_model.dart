@@ -74,14 +74,14 @@ class Reserva {
     };
   }
 
-  Reserva copyWith({String? estado}) {
+  Reserva copyWith({String? estado, int? comensales}) {
     return Reserva(
       id: id,
       usuarioId: usuarioId,
       nombreCompleto: nombreCompleto,
       fecha: fecha,
       hora: hora,
-      comensales: comensales,
+      comensales: comensales ?? this.comensales,
       turno: turno,
       estado: estado ?? this.estado,
       mesaId: mesaId,
