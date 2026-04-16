@@ -5,7 +5,7 @@ class TarjetaOpcionPago extends StatelessWidget {
   final String titulo;
   final String subtitulo;
   final IconData icono;
-  final bool seleccionada;
+  final bool seleccionada; // <-- Termina en 'a'
   final VoidCallback alPulsar;
 
   const TarjetaOpcionPago({
@@ -19,6 +19,13 @@ class TarjetaOpcionPago extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Lógica visual para diferenciar marcas
+    Color colorIcono = AppColors.button; // Color por defecto 
+    if (seleccionada) { 
+      if (titulo.contains('PayPal')) colorIcono = Colors.blue.shade800;
+      if (titulo.contains('Google')) colorIcono = Colors.green.shade700;
+    } 
+
     return GestureDetector(
       onTap: alPulsar,
       child: Container(
@@ -37,13 +44,14 @@ class TarjetaOpcionPago extends StatelessWidget {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: seleccionada
-                    ? AppColors.button.withValues(alpha: 0.1)
+                    ? colorIcono.withValues(alpha: 0.1) // Fondo suave del color de la marca
                     : AppColors.line.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(
                 icono,
-                color: seleccionada ? AppColors.button : AppColors.iconPrimary,
+                // Aplicamos el color especial para Google/PayPal
+                color: seleccionada ? colorIcono : AppColors.iconPrimary, 
                 size: 24,
               ),
             ),
