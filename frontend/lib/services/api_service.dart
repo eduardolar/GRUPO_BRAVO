@@ -133,6 +133,11 @@ class ApiService {
   static Future<List<Reserva>> obtenerReservas({required String userId}) =>
       ReservaService.obtenerReservas(userId: userId);
 
+  static Future<bool> actualizarComensales({
+    required String reservaId,
+    required int comensales,
+  }) => ReservaService.actualizarComensales(reservaId: reservaId, comensales: comensales);
+
   static Future<bool> eliminarReserva({required String reservaId}) =>
       ReservaService.eliminarReserva(reservaId: reservaId);
 

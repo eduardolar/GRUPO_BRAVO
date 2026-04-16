@@ -81,20 +81,23 @@ class _VerificationScreenState extends State<VerificationScreen> {
       body: Stack(
         children: [
           Positioned.fill(child: Image.asset('assets/images/Bravo restaurante.jpg', fit: BoxFit.cover)),
-          Positioned.fill(child: Container(color: AppColors.shadow.withOpacity(0.85))),
+          Positioned.fill(child: Container(color: AppColors.shadow.withValues(alpha: 0.85))),
           SafeArea(
             child: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 30),
-                child: Column(
-                  children: [
-                    _buildHeader(),
-                    const SizedBox(height: 40),
-                    _buildOtpFields(),
-                    const SizedBox(height: 40),
-                    _buildVerifyButton(),
-                    _buildResendSection(),
-                  ],
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 500),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 30),
+                  child: Column(
+                    children: [
+                      _buildHeader(),
+                      const SizedBox(height: 40),
+                      _buildOtpFields(),
+                      const SizedBox(height: 40),
+                      _buildVerifyButton(),
+                      _buildResendSection(),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -112,28 +115,52 @@ class _VerificationScreenState extends State<VerificationScreen> {
     return Column(children: [
       const Text("Verificación", style: TextStyle(fontFamily: 'Playfair Display', color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold)),
       const SizedBox(height: 15),
-      Text("Hemos enviado un código a:", style: TextStyle(color: Colors.white.withOpacity(0.7))),
+      Text("Hemos enviado un código a:", style: TextStyle(color: Colors.white.withValues(alpha: 0.7))),
       Text(widget.email, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
     ]);
   }
 
   Widget _buildOtpFields() {
-    return Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: List.generate(6, (index) {
-      return SizedBox(width: 45, child: TextField(
-        controller: _controllers[index],
-        focusNode: _focusNodes[index],
-        keyboardType: TextInputType.number,
-        textAlign: TextAlign.center,
-        maxLength: 1,
-        style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
-        decoration: InputDecoration(counterText: "", enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.white38)), focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: AppColors.button, width: 2))),
-        onChanged: (value) {
-          if (value.isNotEmpty && index < 5) _focusNodes[index + 1].requestFocus();
-          if (value.isEmpty && index > 0) _focusNodes[index - 1].requestFocus();
-          if (index == 5 && value.isNotEmpty) _verifyCode();
-        },
-      ));
-    }));
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const gaps = 5 * 8.0;
+        final fieldWidth = ((constraints.maxWidth - gaps) / 6).clamp(36.0, 52.0);
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: List.generate(6, (index) {
+            return SizedBox(
+              width: fieldWidth,
+              child: TextField(
+                controller: _controllers[index],
+                focusNode: _focusNodes[index],
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.center,
+                maxLength: 1,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: (fieldWidth * 0.48).clamp(18.0, 24.0),
+                  fontWeight: FontWeight.bold,
+                ),
+                decoration: const InputDecoration(
+                  counterText: "",
+                  enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: Colors.white38),
+                  ),
+                  focusedBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: AppColors.button, width: 2),
+                  ),
+                ),
+                onChanged: (value) {
+                  if (value.isNotEmpty && index < 5) _focusNodes[index + 1].requestFocus();
+                  if (value.isEmpty && index > 0) _focusNodes[index - 1].requestFocus();
+                  if (index == 5 && value.isNotEmpty) _verifyCode();
+                },
+              ),
+            );
+          }),
+        );
+      },
+    );
   }
 
   Widget _buildVerifyButton() {
