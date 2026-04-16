@@ -8,6 +8,7 @@ class Usuario {
   final String telefono;
   final String direccion;
   final RolUsuario rol;
+  final String? restauranteId; // Para trabajadores, el restaurante al que pertenecen
 
   Usuario({
     required this.id,
@@ -17,6 +18,8 @@ class Usuario {
     required this.telefono,
     required this.direccion,
     this.rol = RolUsuario.cliente,
+    this.restauranteId,
+
   });
 
   // Factory para crear desde JSON (útil para API real)
@@ -29,6 +32,7 @@ class Usuario {
       telefono: json['telefono'] ?? '',
       direccion: json['direccion'] ?? '',
       rol: _parseRol(json['rol']),
+      restauranteId: json['restaurante_id'] ?.toString(),
     );
   }
 

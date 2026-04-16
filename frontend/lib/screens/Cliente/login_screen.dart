@@ -20,6 +20,7 @@ import 'package:frontend/screens/super_admin/home_screen_super_admin.dart';
 // Componentes
 import 'package:frontend/components/Cliente/entrada_texto.dart';
 
+import 'package:frontend/screens/super_admin/seleccionar_restaurante_screen.dart';
 enum DestinoLogin { menu, reservar }
 
 class LoginScreen extends StatefulWidget {
@@ -237,6 +238,30 @@ class _LoginScreenState extends State<LoginScreen> {
       if (success && mounted) {
         final usuario = authProvider.usuarioActual!;
         _navigateToRoleHome(usuario);
+        Widget pantallaDestino;
+
+        switch (usuario.rol) {
+          case RolUsuario.trabajador:
+            pantallaDestino = const HomeTrabajador();
+            break;
+          case RolUsuario.administrador:
+            pantallaDestino = const HomeScreenAdmin();
+            break;
+          case RolUsuario.cliente:
+            pantallaDestino = widget.destino == DestinoLogin.reservar
+                ? const ReservarMesaScreen()
+                : const MenuScreen();
+            break;
+           case RolUsuario.superadministrador: //agregué este caso para el superadmin
+            pantallaDestino = const SeleccionarRestauranteScreen();
+  break; 
+        }
+
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => pantallaDestino),
+          (route) => false,
+        );
       }
     } catch (e) {
       if (mounted) _showSnackBar('Error: ${e.toString()}');
