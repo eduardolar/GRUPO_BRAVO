@@ -10,12 +10,17 @@ def listar_usuarios():
     usuarios = coleccion_usuarios.find()
     resultado = []
     for u in usuarios:
+        # Extraemos el restaurante_id de forma segura
+        res_id = u.get("restaurante_id")
+        
         resultado.append({
             "id": str(u["_id"]),
             "nombre": u.get("nombre", "Sin nombre"),
             "correo": u.get("correo", ""),
             "rol": u.get("rol", "cliente"),
             "telefono": u.get("telefono", ""),
+            # Lo convertimos a str() por si en Mongo es un ObjectId
+            "restaurante_id": str(res_id) if res_id else None
         })
     return resultado
 
