@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart'; // IMPORTANTE: añade provider
 import 'package:frontend/core/colors_style.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:frontend/providers/pedido_provider.dart'; // Tu provider de estado
 
 class QRScanner extends StatefulWidget {
   const QRScanner({super.key});
@@ -10,8 +12,29 @@ class QRScanner extends StatefulWidget {
 }
 
 class _QRScannerState extends State<QRScanner> {
-  String? qrText;
   bool _yaDetectado = false;
+
+  // --- LÓGICA CENTRALIZADA PARA PROCESAR EL CÓDIGO ---
+  void _vincularMesa(String code) {
+    if (_yaDetectado) return;
+    setState(() => _yaDetectado = true);
+
+    // Guardamos el ID en el Provider para que toda la app lo sepa
+    final pedidoProv = Provider.of<PedidoProvider>(context, listen: false);
+    pedidoProv.setMesa(code);
+
+    // Feedback visual para el usuario
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Mesa $code vinculada con éxito'),
+        backgroundColor: Colors.green,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+
+    // Regresamos a la pantalla anterior (Home o Menú)
+    Navigator.pop(context);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +45,7 @@ class _QRScannerState extends State<QRScanner> {
         elevation: 0,
         iconTheme: const IconThemeData(color: AppColors.iconPrimary),
         title: const Text(
-          'ESCANEAR QR',
+          'VINCULAR MESA',
           style: TextStyle(
             color: AppColors.textPrimary,
             fontWeight: FontWeight.bold,
@@ -39,13 +62,11 @@ class _QRScannerState extends State<QRScanner> {
               children: [
                 MobileScanner(
                   onDetect: (capture) {
-                    if (_yaDetectado) return;
                     final barcode = capture.barcodes.first;
                     final String? code = barcode.rawValue;
-
                     if (code != null) {
-                      _yaDetectado = true;
-                      Navigator.pop(context, code);
+                      // Usamos nuestra nueva función
+                      _vincularMesa(code);
                     }
                   },
                 ),
@@ -68,7 +89,10 @@ class _QRScannerState extends State<QRScanner> {
               children: [
                 Text(
                   'Apunta al código QR de la mesa',
-                  style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 TextButton.icon(
@@ -91,20 +115,16 @@ class _QRScannerState extends State<QRScanner> {
     final controller = TextEditingController();
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         title: const Text('Código de mesa'),
         content: TextField(
           controller: controller,
           autofocus: true,
+          keyboardType: TextInputType.text,
           decoration: const InputDecoration(
-            hintText: 'Introduce el código de la mesa',
+            hintText: 'Introduce el código (ej: Mesa 1)',
           ),
-          onSubmitted: (value) {
-            if (value.trim().isNotEmpty) {
-              Navigator.pop(ctx);
-              Navigator.pop(context, value.trim());
-            }
-          },
         ),
         actions: [
           TextButton(
@@ -115,8 +135,8 @@ class _QRScannerState extends State<QRScanner> {
             onPressed: () {
               final value = controller.text.trim();
               if (value.isNotEmpty) {
-                Navigator.pop(ctx);
-                Navigator.pop(context, value);
+                Navigator.pop(ctx); // Cierra el diálogo
+                _vincularMesa(value); // Vincula la mesa
               }
             },
             child: const Text('Aceptar'),

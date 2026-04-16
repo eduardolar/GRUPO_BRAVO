@@ -110,6 +110,7 @@ def obtener_reservas(usuario_id: str = Query(...)):
         item = {
             "id": str(r["_id"]),
             "usuario_id": r.get("usuario_id", ""),
+            "nombre_completo": r.get("nombre_completo", ""),
             "fecha": r.get("fecha", ""),
             "hora": r.get("hora", ""),
             "comensales": r.get("comensales", 0),
@@ -128,6 +129,19 @@ def obtener_reservas(usuario_id: str = Query(...)):
                 item["numero_mesa"] = None
         resultado.append(item)
     return resultado
+
+@router.patch("/{reserva_id}")
+def actualizar_reserva(reserva_id: str, datos: dict):
+    campos = {k: v for k, v in datos.items() if k in ("comensales",) and v is not None}
+    if not campos:
+        raise HTTPException(status_code=400, detail="No hay campos válidos para actualizar")
+    resultado = coleccion_reservas.update_one(
+        {"_id": ObjectId(reserva_id)},
+        {"$set": campos},
+    )
+    if resultado.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Reserva no encontrada")
+    return {"mensaje": "Reserva actualizada"}
 
 @router.delete("/{reserva_id}")
 def eliminar_reserva(reserva_id: str):

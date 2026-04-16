@@ -66,11 +66,16 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
       ),
     );
   }
+
+  void _mostrarDialogoCambiarRol(BuildContext context, Usuario user) {
+    String rolSeleccionado = 'camarero'; // Valor por defecto
    void _mostrarDialogoCambiarRol(BuildContext context, Usuario user) {
 
     String rolSeleccionado = 'cliente'; // Resguardo de seguridad
 
     if (user.rol.name == 'administrador') rolSeleccionado = 'admin';
+
+    showDialog(
 
     else if (user.rol.name == 'trabajador') rolSeleccionado = 'trabajador';
   
@@ -103,16 +108,21 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
                     value: rolSeleccionado,
 
                     isExpanded: true,
+                    // Nuevas opciones de la lista
 
                     // Quitamos la opción de 'super_admin' para que nadie lo cree desde la app
 
                     items: const [
+                      DropdownMenuItem(value: 'cocinero', child: Text('Cocinero')),
+                      DropdownMenuItem(value: 'camarero', child: Text('Camarero')),
+                      DropdownMenuItem(value: 'mesero', child: Text('Mesero')),
 
                       DropdownMenuItem(value: 'cliente', child: Text('Cliente')),
 
                       DropdownMenuItem(value: 'trabajador', child: Text('Trabajador')),
 
                       DropdownMenuItem(value: 'admin', child: Text('Administrador')),
+                    ], //Trabajador ya no es un rol, ahora se divide en camarero, cocinero y mesero.
 
                     ],
 

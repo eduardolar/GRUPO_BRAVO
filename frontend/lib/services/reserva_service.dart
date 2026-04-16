@@ -12,6 +12,7 @@ class ReservaService {
   /// Crear una reserva de mesa
   static Future<Reserva> crearReserva({
     required String userId,
+    required String nombreCompleto, // <-- 1. Añadido en la firma
     required DateTime fecha,
     required String hora,
     required int comensales,
@@ -41,7 +42,8 @@ class ReservaService {
       final reserva = Reserva(
         id: 'r_${DateTime.now().millisecondsSinceEpoch}',
         usuarioId: userId,
-        fecha: fechaStr,
+        nombreCompleto: nombreCompleto, // <-- 2. Añadido en el mock
+        fecha: fecha,
         hora: hora,
         comensales: comensales,
         turno: turno,
@@ -60,6 +62,7 @@ class ReservaService {
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'usuario_id': userId,
+        'nombre_completo': nombreCompleto, // <-- 3. Añadido en el body HTTP
         'fecha': fecha.toIso8601String().split('T').first,
         'hora': hora,
         'comensales': comensales,
@@ -110,22 +113,59 @@ class ReservaService {
 
   /// Obtener reservas de un usuario
   static Future<List<Reserva>> obtenerReservas({required String userId}) async {
+    print('=== OBTENIENDO RESERVAS ===');
+    print('UserID: $userId');
+    print('Usando API real: $usarApiReal');
+
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 400));
-      return MockData.reservas.where((r) => r.usuarioId == userId).toList();
+      print('Reservas disponibles en MockData: ${MockData.reservas.length}');
+      MockData.reservas.forEach((r) => print('  - Reserva: ID=$r.id, usuarioId=$r.usuarioId'));
+
+      final resultado = MockData.reservas.where((r) => r.usuarioId == userId).toList();
+      print('Reservas filtradas para usuario: ${resultado.length}');
+      return resultado;
     }
 
-    final response = await http.get(
-      Uri.parse('$baseUrl/reservas?usuario_id=$userId'),
-    );
+    final url = '$baseUrl/reservas?usuario_id=$userId';
+    print('URL de API: $url');
+
+    final response = await http.get(Uri.parse(url));
+    print('Status Code: ${response.statusCode}');
+    print('Response Body: ${response.body}');
+
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
+      print('Reservas obtenidas de API: ${data.length}');
       return data
           .map((m) => Reserva.fromMap(m as Map<String, dynamic>))
           .toList();
     } else {
-      throw Exception('Error al obtener reservas');
+      throw Exception('Error al obtener reservas - Status: ${response.statusCode}');
     }
+  }
+
+  /// Actualizar el número de comensales de una reserva
+  static Future<bool> actualizarComensales({
+    required String reservaId,
+    required int comensales,
+  }) async {
+    if (!usarApiReal) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      final index = MockData.reservas.indexWhere((r) => r.id == reservaId);
+      if (index >= 0) {
+        MockData.reservas[index] =
+            MockData.reservas[index].copyWith(comensales: comensales);
+      }
+      return true;
+    }
+
+    final response = await http.patch(
+      Uri.parse('$baseUrl/reservas/$reservaId'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'comensales': comensales}),
+    );
+    return response.statusCode == 200;
   }
 
   /// Eliminar una reserva

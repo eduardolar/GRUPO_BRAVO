@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "additionalDirectories": [
+      "c:\\Users\\Usuario\\Desktop\\Grupo Bravo\\GRUPO_BRAVO\\backend\\routes"
+    ],
+    "allow": [
+      "Read(//c/Users/Usuario/Desktop/Grupo Bravo/GRUPO_BRAVO/backend/**)"
+    ]
+  }
+}

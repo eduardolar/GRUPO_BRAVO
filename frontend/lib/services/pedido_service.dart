@@ -80,4 +80,25 @@ class PedidoService {
       throw Exception('Error al obtener historial');
     }
   }
+
+  static Future<bool> enviarPedidoPorQR({
+    required String mesaId,
+    required List<dynamic> items,
+  }) async {
+    final String baseUrl = "http://TU_IP_PYTHON:8000";
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/pedidos'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'id_mesa': mesaId,
+          'productos': items,
+          'fecha': DateTime.now().toIso8601String(),
+        }),
+      );
+      return response.statusCode == 201;
+    } catch (e) {
+      return false;
+    }
+  }
 }
