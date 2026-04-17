@@ -8,6 +8,7 @@ import 'mock_categories.dart';
 import 'mock_mesas.dart';
 import 'mock_pedidos.dart';
 import 'mock_products.dart';
+import 'mock_reservas.dart';
 import 'mock_users.dart';
 
 class MockData {
@@ -27,7 +28,7 @@ class MockData {
   static final List<Mesa> mesas = MockMesas.mesas;
 
   // Reservas en memoria (se llenan en runtime)
-  static final List<Reserva> reservas = [];
+  static final List<Reserva> reservas = MockReservas.reservas;
 
 
 

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/core/colors_style.dart';
+import 'package:frontend/screens/trabajador/Reservas/borrar_reservas.dart';
 import 'package:frontend/screens/trabajador/Reservas/historial_reservas.dart';
+import 'package:frontend/screens/trabajador/Reservas/modificar_reservas.dart';
 import 'package:frontend/screens/trabajador/Reservas/reserva_mesa_trabajador.dart';
 
 // ─── Paleta 60-30-10 ───────────────────────────────────────────────
@@ -56,7 +58,14 @@ class _GestionReservasState extends State<GestionReservas> {
                     icon: Icons.edit_outlined,
                     text: "Modificar reserva",
                     subtitle: "Editar fecha, hora o personas",
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ModificarReservas(),
+                      ),
+                    );
+                    },
                   ),
 
                   const SizedBox(height: 16),
@@ -65,7 +74,14 @@ class _GestionReservasState extends State<GestionReservas> {
                     icon: Icons.delete_outline,
                     text: "Eliminar reserva",
                     subtitle: "Cancelar una reserva existente",
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const BorrarReservas(),
+                      ),
+                    );
+                    },
                   ),
                   const SizedBox(height: 16),
 
