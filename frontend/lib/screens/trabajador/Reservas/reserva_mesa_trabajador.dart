@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:frontend/screens/Cliente/perfil_screen.dart';
+import 'package:frontend/screens/cliente/perfil_screen.dart';
 import 'package:frontend/screens/trabajador/Reservas/gestion_reservas.dart';
 import 'package:provider/provider.dart';
 import '../../../core/colors_style.dart';
@@ -800,34 +800,6 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
     if (_cargandoReservas) {
       return const Center(
         child: CircularProgressIndicator(color: AppColors.button),
-      );
-    }
-
-    if (_misReservas.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.event_busy,
-              color: AppColors.textSecondary.withOpacity(0.4),
-              size: 80,
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'No tienes reservas',
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 18),
-            ),
-            const SizedBox(height: 8),
-            TextButton(
-              onPressed: () => _tabController.animateTo(0),
-              child: const Text(
-                'Hacer una reserva',
-                style: TextStyle(color: AppColors.button, fontSize: 16),
-              ),
-            ),
-          ],
-        ),
       );
     }
 

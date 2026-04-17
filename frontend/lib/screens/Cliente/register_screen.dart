@@ -9,8 +9,8 @@ import '../../providers/auth_provider.dart';
 import '../../components/Cliente/entrada_texto.dart';
 
 // Pantallas
-import 'package:frontend/screens/Cliente/login_screen.dart';
-import 'package:frontend/screens/Cliente/verificacion_screen.dart';
+import 'package:frontend/screens/cliente/login_screen.dart';
+import 'package:frontend/screens/cliente/verificacion_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   final DestinoLogin destino;

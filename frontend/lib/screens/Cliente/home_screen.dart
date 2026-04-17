@@ -5,9 +5,9 @@ import 'package:provider/provider.dart';
 import 'package:frontend/providers/cart_provider.dart';
 import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/services/api_service.dart';
-import 'package:frontend/screens/Cliente/scanner_qr.dart';
-import 'package:frontend/screens/Cliente/login_screen.dart';
-import 'package:frontend/screens/Cliente/menu_screen.dart';
+import 'package:frontend/screens/cliente/scanner_qr.dart';
+import 'package:frontend/screens/cliente/login_screen.dart';
+import 'package:frontend/screens/cliente/menu_screen.dart';
 import 'package:frontend/core/colors_style.dart';
 
 class HomeScreen extends StatefulWidget {

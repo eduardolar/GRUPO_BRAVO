@@ -6,13 +6,11 @@ import '../data/mock_data.dart';
 import 'api_config.dart';
 
 class ReservaService {
-  /// Duración estimada de una comida (90 minutos)
   static const int _duracionReservaMinutos = 90;
 
-  /// Crear una reserva de mesa
   static Future<Reserva> crearReserva({
     required String userId,
-    required String nombreCompleto, // <-- 1. Añadido en la firma
+    required String nombreCompleto,
     required DateTime fecha,
     required String hora,
     required int comensales,
@@ -25,7 +23,6 @@ class ReservaService {
       final fechaStr =
           '${fecha.day.toString().padLeft(2, '0')}/${fecha.month.toString().padLeft(2, '0')}/${fecha.year}';
 
-      // Buscar una mesa libre que quepa, sin conflicto de horario
       final mesaAsignada = _buscarMesaDisponible(
         fecha: fechaStr,
         hora: hora,
@@ -42,7 +39,7 @@ class ReservaService {
       final reserva = Reserva(
         id: 'r_${DateTime.now().millisecondsSinceEpoch}',
         usuarioId: userId,
-        nombreCompleto: nombreCompleto, // <-- 2. Añadido en el mock
+        nombreCompleto: nombreCompleto,
         fecha: fecha,
         hora: hora,
         comensales: comensales,
@@ -62,7 +59,7 @@ class ReservaService {
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'usuario_id': userId,
-        'nombre_completo': nombreCompleto, // <-- 3. Añadido en el body HTTP
+        'nombre_completo': nombreCompleto,
         'fecha': fecha.toIso8601String().split('T').first,
         'hora': hora,
         'comensales': comensales,
@@ -79,7 +76,6 @@ class ReservaService {
     }
   }
 
-  /// Comprueba si hay mesa disponible para una fecha, hora y nº de comensales.
   static Future<bool> hayDisponibilidad({
     required DateTime fecha,
     required String hora,
@@ -97,7 +93,6 @@ class ReservaService {
     }
 
     final fechaStr = fecha.toIso8601String().split('T').first;
-
     final response = await http.get(
       Uri.parse(
         '$baseUrl/reservas/mesas-disponibles?fecha=$fechaStr&hora=$hora&comensales=$comensales',
@@ -111,32 +106,18 @@ class ReservaService {
     return false;
   }
 
-  /// Obtener reservas de un usuario
   static Future<List<Reserva>> obtenerReservas({required String userId}) async {
-    print('=== OBTENIENDO RESERVAS ===');
-    print('UserID: $userId');
-    print('Usando API real: $usarApiReal');
-
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 400));
-      print('Reservas disponibles en MockData: ${MockData.reservas.length}');
-      MockData.reservas.forEach((r) => print('  - Reserva: ID=$r.id, usuarioId=$r.usuarioId'));
-
-      final resultado = MockData.reservas.where((r) => r.usuarioId == userId).toList();
-      print('Reservas filtradas para usuario: ${resultado.length}');
-      return resultado;
+      return MockData.reservas.where((r) => r.usuarioId == userId).toList();
     }
 
-    final url = '$baseUrl/reservas?usuario_id=$userId';
-    print('URL de API: $url');
-
-    final response = await http.get(Uri.parse(url));
-    print('Status Code: ${response.statusCode}');
-    print('Response Body: ${response.body}');
+    final response = await http.get(
+      Uri.parse('$baseUrl/reservas?usuario_id=$userId'),
+    );
 
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
-      print('Reservas obtenidas de API: ${data.length}');
       return data
           .map((m) => Reserva.fromMap(m as Map<String, dynamic>))
           .toList();
@@ -145,7 +126,6 @@ class ReservaService {
     }
   }
 
-  /// Actualizar el número de comensales de una reserva
   static Future<bool> actualizarComensales({
     required String reservaId,
     required int comensales,
@@ -168,7 +148,6 @@ class ReservaService {
     return response.statusCode == 200;
   }
 
-  /// Eliminar una reserva
   static Future<bool> eliminarReserva({required String reservaId}) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 300));
@@ -182,15 +161,61 @@ class ReservaService {
     return response.statusCode == 200;
   }
 
+  /// Obtener todas las reservas futuras (para trabajadores)
+  static Future<List<Reserva>> obtenerReservasFuturas() async {
+    if (!usarApiReal) {
+      await Future.delayed(const Duration(milliseconds: 400));
+      final ahora = DateTime.now();
+      final hoy = DateTime(ahora.year, ahora.month, ahora.day);
+      return MockData.reservas.where((r) => !r.fecha.isBefore(hoy)).toList();
+    }
+
+    final response = await http.get(Uri.parse('$baseUrl/reservas/futuras'));
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.map((m) => Reserva.fromMap(m as Map<String, dynamic>)).toList();
+    } else {
+      throw Exception('Error al obtener reservas futuras - Status: ${response.statusCode}');
+    }
+  }
+
+  /// Actualizar reserva completa (fecha, hora, comensales, turno, notas)
+  static Future<bool> actualizarReserva(Reserva reserva) async {
+    if (!usarApiReal) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      final index = MockData.reservas.indexWhere((r) => r.id == reserva.id);
+      if (index >= 0) {
+        MockData.reservas[index] = reserva;
+      }
+      return true;
+    }
+
+    final response = await http.put(
+      Uri.parse('$baseUrl/reservas/${reserva.id}'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'fecha': reserva.fecha.toIso8601String().split('T').first,
+        'hora': reserva.hora,
+        'comensales': reserva.comensales,
+        'turno': reserva.turno,
+        'notas': reserva.notas,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      return true;
+    } else {
+      throw Exception('Error al actualizar reserva - Status: ${response.statusCode}');
+    }
+  }
+
   // ─── Helpers privados ────────────────────────────────────────
 
-  /// Convierte "HH:mm" a minutos desde medianoche
   static int _horaAMinutos(String hora) {
     final partes = hora.split(':');
     return int.parse(partes[0]) * 60 + int.parse(partes[1]);
   }
 
-  /// Comprueba si dos franjas horarias se solapan (cada una dura 90 min)
   static bool _hayConflictoHorario(String horaA, String horaB) {
     final inicioA = _horaAMinutos(horaA);
     final finA = inicioA + _duracionReservaMinutos;
@@ -199,8 +224,6 @@ class ReservaService {
     return inicioA < finB && inicioB < finA;
   }
 
-  /// Busca la primera mesa con capacidad suficiente que no tenga
-  /// reserva en conflicto horario para esa fecha.
   static Mesa? _buscarMesaDisponible({
     required String fecha,
     required String hora,

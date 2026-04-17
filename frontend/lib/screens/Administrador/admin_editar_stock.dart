@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/core/colors_style.dart';
 
-class EditarStock extends StatefulWidget {
-  const EditarStock({super.key});
+class EditarIngredienteStock extends StatefulWidget {
+  const EditarIngredienteStock({super.key});
 
   @override
-  State<EditarStock> createState() => _EditarStockState();
+  State<EditarIngredienteStock> createState() => _EditarIngredienteStockState();
 }
 
-class _EditarStockState extends State<EditarStock> {
+class _EditarIngredienteStockState extends State<EditarIngredienteStock> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
