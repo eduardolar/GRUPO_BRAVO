@@ -24,7 +24,7 @@ class CamposTarjeta extends StatelessWidget {
       labelText: etiqueta,
       labelStyle: const TextStyle(color: AppColors.textSecondary),
       hintText: pista,
-      hintStyle: TextStyle(color: AppColors.textSecondary.withOpacity(0.5)),
+      hintStyle: TextStyle(color: AppColors.textSecondary.withValues(alpha: 0.5)),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: AppColors.line),

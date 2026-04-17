@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/screens/cliente/login_screen.dart';
+import 'package:frontend/models/destino_login.dart';
 
 class ReservarMesa extends StatefulWidget {
   const ReservarMesa({super.key});
