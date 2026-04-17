@@ -97,7 +97,7 @@ async def registrar_usuario(usuario: UsuarioRegistro):
             )
 
         # Generar OTP de 6 dígitos
-        codigo_otp = ''.join(random.choices(string.digits, min_lenght=8))
+        codigo_otp = ''.join(random.choices(string.digits, k=6))
 
         # Hashear contraseña
         password_bytes = usuario.password_hash.encode('utf-8')
