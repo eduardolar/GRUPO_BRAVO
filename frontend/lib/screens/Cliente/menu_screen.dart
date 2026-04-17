@@ -306,7 +306,7 @@ class _MenuScreenState extends State<MenuScreen> {
 
 // ─── Barra de categorías (sobre imagen, modo oscuro) ─────────────────────────
 
-class _CategoryBar extends StatelessWidget {
+class _CategoryBar extends StatefulWidget {
   final List<String> categorias;
   final int selectedIndex;
   final ValueChanged<int> onSelected;
@@ -318,52 +318,115 @@ class _CategoryBar extends StatelessWidget {
   });
 
   @override
+  State<_CategoryBar> createState() => _CategoryBarState();
+}
+
+class _CategoryBarState extends State<_CategoryBar> {
+  final ScrollController _scroll = ScrollController();
+
+  // Ancho estimado por chip para calcular el offset de scroll
+  static const double _chipWidth = 110.0;
+  static const double _chipSpacing = 8.0;
+
+  @override
+  void didUpdateWidget(_CategoryBar old) {
+    super.didUpdateWidget(old);
+    if (old.selectedIndex != widget.selectedIndex) {
+      _scrollToSelected();
+    }
+  }
+
+  void _scrollToSelected() {
+    if (!_scroll.hasClients) return;
+    final offset =
+        (widget.selectedIndex * (_chipWidth + _chipSpacing)) - 16.0;
+    _scroll.animateTo(
+      offset.clamp(0.0, _scroll.position.maxScrollExtent),
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return SizedBox(
       height: 38,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: categorias.length,
-        itemBuilder: (context, index) {
-          final isSelected = selectedIndex == index;
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: GestureDetector(
-              onTap: () => onSelected(index),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16),
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? AppColors.button
-                      : Colors.black45,
-                  border: Border.all(
-                    color: isSelected
-                        ? AppColors.button
-                        : Colors.white24,
-                    width: 1,
+      child: Stack(
+        children: [
+          ListView.builder(
+            controller: _scroll,
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: widget.categorias.length,
+            itemBuilder: (context, index) {
+              final isSelected = widget.selectedIndex == index;
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: GestureDetector(
+                  onTap: () => widget.onSelected(index),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? AppColors.button
+                          : Colors.black45,
+                      border: Border.all(
+                        color: isSelected
+                            ? AppColors.button
+                            : Colors.white24,
+                        width: 1,
+                      ),
+                    ),
+                    child: Text(
+                      widget.categorias[index].toUpperCase(),
+                      style: TextStyle(
+                        color: isSelected
+                            ? Colors.white
+                            : Colors.white70,
+                        fontSize: 11,
+                        fontWeight: isSelected
+                            ? FontWeight.w700
+                            : FontWeight.w500,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
                   ),
                 ),
-                child: Text(
-                  categorias[index].toUpperCase(),
-                  style: TextStyle(
-                    color: isSelected
-                        ? Colors.white
-                        : Colors.white70,
-                    fontSize: 11,
-                    fontWeight: isSelected
-                        ? FontWeight.w700
-                        : FontWeight.w500,
-                    letterSpacing: 1.0,
+              );
+            },
+          ),
+
+          // Degradado derecho — indica que hay más categorías
+          Positioned(
+            right: 0,
+            top: 0,
+            bottom: 0,
+            width: 40,
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.55),
+                    ],
                   ),
                 ),
               ),
             ),
-          );
-        },
+          ),
+        ],
       ),
     );
   }
