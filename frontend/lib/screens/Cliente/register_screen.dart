@@ -9,8 +9,8 @@ import '../../providers/auth_provider.dart';
 import '../../components/Cliente/entrada_texto.dart';
 
 // Pantallas
-import 'login_screen.dart';// La nueva pantalla de 6 dígitos
-import 'package:frontend/screens/Cliente/verificacion_screen.dart';
+import 'package:frontend/screens/cliente/login_screen.dart';
+import 'package:frontend/screens/cliente/verificacion_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   final DestinoLogin destino;
@@ -60,7 +60,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           // 2. Overlay de Contraste (AppColors.shadow)
           Positioned.fill(
             child: Container(
-              color: AppColors.shadow.withOpacity(0.85),
+              color: AppColors.shadow.withValues(alpha: 0.85),
             ),
           ),
 
@@ -122,7 +122,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         Text(
           "Completa tus datos para empezar",
           textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 15),
+          style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 15),
         ),
       ],
     );

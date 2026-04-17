@@ -4,8 +4,9 @@ import '../../services/usuario_service.dart';
 import '../../core/colors_style.dart';
 
 class GestionRolesScreen extends StatefulWidget {
-  final String rolAFiltrar;
-  const GestionRolesScreen({super.key, required this.rolAFiltrar});
+  final String restauranteId;
+
+  const GestionRolesScreen({super.key, required this.restauranteId});
 
   @override
   State<GestionRolesScreen> createState() => _GestionRolesScreenState();
@@ -14,21 +15,11 @@ class GestionRolesScreen extends StatefulWidget {
 class _GestionRolesScreenState extends State<GestionRolesScreen> {
   final UsuarioService _usuarioService = UsuarioService();
 
-  String _pluralizar(String rol) {
-    final r = rol.toLowerCase();
-    if (r == 'admin' || r == 'administrador') return 'administradores';
-    if (r == 'superadmin' || r == 'superadministrador') return 'superadministradores';
-    if (r == 'trabajador') return 'trabajadores';
-    if (r == 'cliente') return 'clientes';
-    if (r == 'todos') return 'todos los usuarios';
-    return '${rol}s';
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Gestionar ${_pluralizar(widget.rolAFiltrar)}'),
+        title: const Text('Cambiar Roles en la Sucursal'),
         backgroundColor: AppColors.backgroundButton,
       ),
       body: FutureBuilder<List<Usuario>>(
@@ -38,81 +29,48 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          if (snapshot.hasError) {
-            return Center(child: Text('Error al cargar datos: ${snapshot.error}'));
-          }
-
           if (snapshot.hasData) {
             final listaFiltrada = snapshot.data!.where((u) {
-              final rolEnum = u.rol.name.toLowerCase(); 
-              final filtro = widget.rolAFiltrar.toLowerCase().trim();
-              
-              if (filtro == 'todos' || filtro.isEmpty) return true;
-              if (filtro.contains('super')) return rolEnum == 'superadministrador';
-              if (filtro.contains('admin')) return rolEnum == 'administrador';
-              if (filtro.contains('trabajador') || filtro.contains('cocinero')) return rolEnum == 'trabajador';
-              if (filtro.contains('cliente')) return rolEnum == 'cliente';
-
-              return rolEnum == filtro;
+              final idUsuario = (u.restauranteId ?? '').toString().trim().toLowerCase();
+              final idFiltro = widget.restauranteId.trim().toLowerCase();
+              return idUsuario == idFiltro;
             }).toList();
 
             if (listaFiltrada.isEmpty) {
-              return Center(
-                child: Text(
-                  'No hay ${_pluralizar(widget.rolAFiltrar)} registrados',
-                ),
-              );
+              return const Center(child: Text('No hay usuarios en esta sucursal'));
             }
 
             return ListView.builder(
               itemCount: listaFiltrada.length,
               itemBuilder: (context, index) {
                 final user = listaFiltrada[index];
-                
-                // LÓGICA DE SEGURIDAD PARA BOTONES
-                // Comprobamos qué rol tiene el usuario para decidir qué botones mostrar
-                final bool esCliente = user.rol.name.toLowerCase() == 'cliente';
-                final bool esSuperAdmin = user.rol.name.toLowerCase().contains('super');
-                // ---------------------------------
-
                 return Card(
                   margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
                   child: ListTile(
                     leading: const CircleAvatar(child: Icon(Icons.person)),
                     title: Text(user.nombre),
-                    subtitle: Text('${user.email} - Rol: ${user.rol.name}'),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // El if solo dibuja el lapiz si NO es cliente y NO es superadmin
-                        if (!esCliente && !esSuperAdmin)
-                          IconButton(
-                            icon: const Icon(Icons.edit, color: Colors.blue),
-                            onPressed: () => _mostrarDialogoCambiarRol(context, user),
-                          ),
-                        
-                        // Botón de BORRAR USUARIO
-                        IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red),
-                          onPressed: () => _confirmarBorrado(context, user),
-                        ),
-                      ],
+                    subtitle: Text('Rol actual: ${user.rol.name}'),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.edit, color: Colors.blue),
+                      onPressed: () => _mostrarDialogoCambiarRol(context, user),
                     ),
                   ),
                 );
               },
             );
           }
-
-          return const Center(child: Text('No se encontraron datos'));
+          return const Center(child: Text('Error al cargar datos'));
         },
       ),
     );
   }
 
   void _mostrarDialogoCambiarRol(BuildContext context, Usuario user) {
-    String rolSeleccionado = 'trabajador'; 
-    if (user.rol.name == 'administrador') rolSeleccionado = 'admin';
+    String rolSeleccionado = user.rol.name == 'administrador'
+        ? 'admin'
+        : user.rol.name == 'trabajador'
+            ? 'trabajador'
+            : 'cliente';
 
     showDialog(
       context: context,
@@ -129,11 +87,11 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
                   DropdownButton<String>(
                     value: rolSeleccionado,
                     isExpanded: true,
-                    // Nuevas opciones de la lista
                     items: const [
                       DropdownMenuItem(value: 'cocinero', child: Text('Cocinero')),
                       DropdownMenuItem(value: 'camarero', child: Text('Camarero')),
                       DropdownMenuItem(value: 'mesero', child: Text('Mesero')),
+                      DropdownMenuItem(value: 'cliente', child: Text('Cliente')),
                       DropdownMenuItem(value: 'trabajador', child: Text('Trabajador')),
                       DropdownMenuItem(value: 'admin', child: Text('Administrador')),
                     ],
@@ -156,7 +114,7 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
                   onPressed: () async {
                     try {
-                      bool actualizado = await _usuarioService.cambiarRol(user.id, rolSeleccionado);
+                      final actualizado = await _usuarioService.cambiarRol(user.id, rolSeleccionado);
                       if (actualizado) {
                         if (!mounted) return;
                         Navigator.pop(context);
@@ -175,7 +133,7 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
                 ),
               ],
             );
-          }
+          },
         );
       },
     );
@@ -195,7 +153,7 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () async {
-              bool borrado = await _usuarioService.eliminarUsuario(user.id);
+              final borrado = await _usuarioService.eliminarUsuario(user.id);
               if (borrado) {
                 if (!mounted) return;
                 Navigator.pop(context);

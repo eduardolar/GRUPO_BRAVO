@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/screens/Administrador/admin_home_screen.dart';
+import 'package:frontend/screens/Administrador/admin_menu_screen.dart';
+import 'package:frontend/screens/super_admin/home_screen_super_admin.dart';
 import 'package:provider/provider.dart';
 
 // Estilos y Providers
@@ -8,18 +10,17 @@ import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/models/usuario_model.dart';
 
 // Pantallas
-import 'package:frontend/screens/Cliente/forgotten_password.dart';
-import 'package:frontend/screens/Cliente/menu_screen.dart';
-import 'package:frontend/screens/Cliente/register_screen.dart';
-import 'package:frontend/screens/Cliente/reservar_mesa_screen.dart';
+import 'package:frontend/screens/cliente/forgotten_password.dart';
+import 'package:frontend/screens/cliente/menu_screen.dart';
+import 'package:frontend/screens/cliente/register_screen.dart';
+import 'package:frontend/screens/cliente/reservar_mesa_screen.dart';
 import 'package:frontend/screens/home_screen_trabajador.dart';
-import 'package:frontend/screens/admin/home_screen_admin.dart';
-import 'package:frontend/screens/super_admin/home_screen_super_admin.dart';
-
 // Componentes
 import 'package:frontend/components/Cliente/entrada_texto.dart';
 
-enum DestinoLogin { menu, reservar }
+import 'package:frontend/models/destino_login.dart';
+import 'package:frontend/screens/super_admin/seleccionar_restaurante_screen.dart';
+export 'package:frontend/models/destino_login.dart';
 
 class LoginScreen extends StatefulWidget {
   final DestinoLogin destino;
@@ -60,7 +61,7 @@ class _LoginScreenState extends State<LoginScreen> {
           // 2. FILTRO OSCURO (Capa de legibilidad)
           Positioned.fill(
             child: Container(
-              color: Colors.black.withOpacity(0.75), // Ajusta la opacidad según necesites
+              color: Colors.black.withValues(alpha: 0.75),
             ),
           ),
 
@@ -137,7 +138,6 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildForm() {
     return Column(
       children: [
-        // Nota: Asegúrate de que el componente 'EntradaTexto' tenga colores claros para los labels
         EntradaTexto(
           etiqueta: "Correo electrónico",
           icono: Icons.mail_outline,
@@ -170,7 +170,7 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Text(
           "¿Olvidaste tu contraseña?",
           style: TextStyle(
-            color: Colors.white.withOpacity(0.8),
+            color: Colors.white.withValues(alpha: 0.8),
             fontWeight: FontWeight.w400,
             fontSize: 13,
           ),
@@ -263,8 +263,8 @@ class _LoginScreenState extends State<LoginScreen> {
     Widget pantallaDestino;
     switch (usuario.rol) {
       case RolUsuario.trabajador: pantallaDestino = const HomeTrabajador(); break;
-      case RolUsuario.administrador: pantallaDestino = const HomeScreenAdmin(); break;
-      case RolUsuario.superadministrador: pantallaDestino = const HomeScreenSuperAdmin(); break;
+      case RolUsuario.administrador: pantallaDestino = const AdminMenuScreen(); break;
+      case RolUsuario.superadministrador: pantallaDestino = const HomeScreenSuperAdmin(restauranteId: '', restauranteNombre: '',); break;
       case RolUsuario.cliente:
       default:
         pantallaDestino = widget.destino == DestinoLogin.reservar ? const ReservarMesaScreen() : const MenuScreen();

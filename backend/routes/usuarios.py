@@ -1,3 +1,4 @@
+import bcrypt
 from fastapi import APIRouter, HTTPException
 from bson import ObjectId
 from database import coleccion_usuarios
@@ -7,6 +8,10 @@ from pydantic import BaseModel # Necesario para que la API entienda el rol que e
 # Modelo pequeñito para recibir solo el texto del nuevo rol
 class UsuarioActualizarRol(BaseModel):
     rol: str
+
+class CambiarPassword(BaseModel):
+    password_actual: str
+    nueva_password: str
 
 router = APIRouter(prefix="/usuarios", tags=["Usuarios"])
 
@@ -19,6 +24,9 @@ def listar_usuarios(rol: str | None = None):
     usuarios = list(coleccion_usuarios.find(filtro))
     resultado = []
     for u in usuarios:
+        # Extraemos el restaurante_id de forma segura
+        res_id = u.get("restaurante_id")
+        
         resultado.append({
             "id": str(u["_id"]),
             "nombre": u.get("nombre", "Sin nombre"),
@@ -26,6 +34,8 @@ def listar_usuarios(rol: str | None = None):
             "telefono": u.get("telefono", ""),
             "direccion": u.get("direccion", ""),
             "rol": u.get("rol", "cliente"),
+            # Lo convertimos a str() por si en Mongo es un ObjectId
+            "restaurante_id": str(res_id) if res_id else None
         })
     return resultado
 
@@ -58,13 +68,30 @@ def actualizar_perfil(user_id: str, datos: UsuarioActualizar):
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
     return {"mensaje": "Perfil actualizado"}
 
+@router.put("/{user_id}/cambiar-password")
+def cambiar_password(user_id: str, datos: CambiarPassword):
+    usuario = coleccion_usuarios.find_one({"_id": ObjectId(user_id)})
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    hash_almacenado = usuario.get("password_hash", "").encode("utf-8")
+    if not bcrypt.checkpw(datos.password_actual.encode("utf-8"), hash_almacenado):
+        raise HTTPException(status_code=400, detail="La contraseña actual es incorrecta")
+
+    nueva_hash = bcrypt.hashpw(datos.nueva_password.encode("utf-8"), bcrypt.gensalt())
+    coleccion_usuarios.update_one(
+        {"_id": ObjectId(user_id)},
+        {"$set": {"password_hash": nueva_hash.decode("utf-8")}}
+    )
+    return {"mensaje": "Contraseña actualizada correctamente"}
+
 # Ruta obligatoria para que funcione el botón de Flutter de "Cambiar Rol"
 @router.put("/{user_id}/rol")
 def actualizar_rol(user_id: str, datos: UsuarioActualizarRol):
     rol_limpio = datos.rol.strip().lower()
     
     # Aquí aceptamos los trabajos, pero también el rol de "admin" y "super_admin" para futuras necesidades de administración.
-    roles_permitidos = ["cliente", "cocinero", "camarero", "mesero", "admin", "super_admin"]
+    roles_permitidos = ["cliente", "cocinero", "camarero", "mesero", "trabajador", "admin", "administrador", "super_admin", "superadministrador"]
     
     if rol_limpio not in roles_permitidos:
         raise HTTPException(status_code=400, detail=f"Rol '{rol_limpio}' no válido")

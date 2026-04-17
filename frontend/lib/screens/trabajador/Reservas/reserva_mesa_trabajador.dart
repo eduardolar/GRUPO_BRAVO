@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:frontend/screens/Cliente/perfil_screen.dart';
+import 'package:frontend/screens/cliente/perfil_screen.dart';
 import 'package:frontend/screens/trabajador/Reservas/gestion_reservas.dart';
 import 'package:provider/provider.dart';
 import '../../../core/colors_style.dart';

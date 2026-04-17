@@ -6,3 +6,4 @@ bcrypt
 pydantic
 fastapi-mail
 pydantic[email]
+qrcode[pil]

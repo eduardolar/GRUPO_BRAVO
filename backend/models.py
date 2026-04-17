@@ -1,21 +1,38 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Optional
-
 
 class UsuarioRegistro(BaseModel):
     nombre: str
-    password_hash: str
+    password_hash: str = Field(..., min_length=8)
     correo: EmailStr
     telefono: str
     direccion: str
     rol: str = "cliente"
-    restaurante_id: Optional[str] = None # 
+    restaurante_id: Optional[str] = None
     is_verified: bool = False
     verification_code: Optional[str] = None
 
+    @field_validator("password_hash")
+    @classmethod
+    def validar_password_registro(cls, value: str) -> str:
+        errores = []
+        print(" la contraseña debe tener al menos 8 caracteres, al menos una mayúscula,al menos un número y al menos un carácter especial")
+        if len(value) < 8:
+            errores.append("al menos 8 caracteres, al menos una mayúscula,al menos un número y al menos un carácter especial")
+        if not re.search(r"[aA-zZ]", value):
+            errores.append("al menos una mayúscula") 
+        if not re.search(r"\d", value):
+            errores.append("al menos un número")
+        if not re.search(r"[^\w\s]", value):
+            errores.append("al menos un carácter especial")
+
+        if errores:
+            raise ValueError("La contraseña debe tener " + ", ".join(errores))
+
+        return value
 class UsuarioLogin(BaseModel):
     correo: str
-    password_hash: str
+    password_hash: str = Field(..., min_length=6)
 
 class UsuarioActualizar(BaseModel):
     nombre: str
