@@ -22,10 +22,7 @@ import 'package:frontend/screens/super_admin/home_screen_super_admin.dart';
 import 'package:frontend/components/Cliente/entrada_texto.dart';
 
 import 'package:frontend/screens/super_admin/seleccionar_restaurante_screen.dart';
-enum DestinoLogin { menu, reservar }
 import 'package:frontend/models/destino_login.dart';
-import 'package:frontend/screens/super_admin/seleccionar_restaurante_screen.dart';
-export 'package:frontend/models/destino_login.dart';
 
 class LoginScreen extends StatefulWidget {
   final DestinoLogin destino;
