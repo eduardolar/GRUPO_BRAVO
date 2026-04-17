@@ -6,7 +6,7 @@ import '../../services/api_service.dart';
 import '../../components/Cliente/producto_card.dart';
 import '../../models/producto_model.dart';
 import '../../providers/cart_provider.dart';
-import 'confirmar_pedido_screen.dart';
+import 'delivery_options_screen.dart';
 import 'perfil_screen.dart';
 
 class MenuScreen extends StatefulWidget {
@@ -297,7 +297,7 @@ class _MenuScreenState extends State<MenuScreen> {
         onTap: () => Navigator.push(
           context,
           MaterialPageRoute(
-              builder: (_) => const ConfirmarPedidoScreen()),
+              builder: (_) => const PantallaOpcionesEntrega()),
         ),
       ),
     );
