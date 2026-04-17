@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:frontend/screens/cliente/confirmar_pedido_screen.dart';
 import 'package:frontend/screens/cliente/menu_screen.dart';
 import 'package:frontend/screens/admin/home_screen_admin.dart';
 import 'package:frontend/screens/home_screen_trabajador.dart';
