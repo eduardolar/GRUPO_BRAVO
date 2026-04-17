@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:frontend/screens/cliente/scanner_qr.dart';
 import 'package:frontend/screens/cliente/login_screen.dart';
+import 'package:frontend/models/destino_login.dart';
 import 'package:frontend/screens/cliente/menu_screen.dart';
 import 'package:frontend/providers/cart_provider.dart';
 import 'package:frontend/providers/auth_provider.dart';

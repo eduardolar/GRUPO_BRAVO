@@ -15,12 +15,14 @@ import 'package:frontend/screens/cliente/menu_screen.dart';
 import 'package:frontend/screens/cliente/register_screen.dart';
 import 'package:frontend/screens/cliente/reservar_mesa_screen.dart';
 import 'package:frontend/screens/home_screen_trabajador.dart';
+import 'package:frontend/screens/admin/home_screen_admin.dart';
+import 'package:frontend/screens/super_admin/home_screen_super_admin.dart';
+
 // Componentes
 import 'package:frontend/components/Cliente/entrada_texto.dart';
 
-import 'package:frontend/models/destino_login.dart';
 import 'package:frontend/screens/super_admin/seleccionar_restaurante_screen.dart';
-export 'package:frontend/models/destino_login.dart';
+import 'package:frontend/models/destino_login.dart';
 
 class LoginScreen extends StatefulWidget {
   final DestinoLogin destino;
@@ -251,6 +253,31 @@ class _LoginScreenState extends State<LoginScreen> {
       if (success && mounted) {
         final usuario = authProvider.usuarioActual!;
         _navigateToRoleHome(usuario);
+        _navigateToRoleHome(usuario);
+        Widget pantallaDestino;
+
+        switch (usuario.rol) {
+          case RolUsuario.trabajador:
+            pantallaDestino = const HomeTrabajador();
+            break;
+          case RolUsuario.administrador:
+            pantallaDestino = const HomeScreenAdmin();
+            break;
+          case RolUsuario.cliente:
+            pantallaDestino = widget.destino == DestinoLogin.reservar
+                ? const ReservarMesaScreen()
+                : const MenuScreen();
+            break;
+           case RolUsuario.superadministrador: //agregué este caso para el superadmin
+            pantallaDestino = const SeleccionarRestauranteScreen();
+  break; 
+        }
+
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => pantallaDestino),
+          (route) => false,
+        );
       }
     } catch (e) {
       if (mounted) _showSnackBar('Error: ${e.toString()}');

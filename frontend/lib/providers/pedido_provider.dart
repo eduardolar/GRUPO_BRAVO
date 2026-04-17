@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 
 import 'auth_provider.dart';
 import 'cart_provider.dart';
-import 'package:frontend/services/api_service.dart';
 
 class PedidoProvider extends ChangeNotifier {
   String _mesaId = ''; // Aquí guardamos el ID escaneado
