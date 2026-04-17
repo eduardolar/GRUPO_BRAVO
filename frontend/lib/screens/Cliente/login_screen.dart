@@ -218,6 +218,20 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ],
         ),
+        ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.transparent,
+              foregroundColor: Colors.transparent,
+              elevation: 5,
+              shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+            ),
+            onPressed: (){
+              Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => MenuAdministrador()));
+       }, child: null, 
+          
+          ),
       ],
     );
   }

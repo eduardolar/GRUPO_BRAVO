@@ -4,7 +4,8 @@ import 'platform_helper.dart';
 /// ╔══════════════════════════════════════════════════════════════╗
 /// ║  CAMBIAR A [true] CUANDO EL BACKEND ESTÉ LISTO             ║
 /// ╚══════════════════════════════════════════════════════════════╝
-const bool usarApiReal = true;
+const bool 
+usarApiReal = true;
 
 /// URL base del backend.
 /// - Web → localhost

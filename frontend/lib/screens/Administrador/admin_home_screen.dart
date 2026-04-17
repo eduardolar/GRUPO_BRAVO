@@ -19,7 +19,7 @@ class _MenuAdministradorState extends State<MenuAdministrador> {
   Widget build(BuildContext context) {
     return  Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(),
+      appBar: AppBar(centerTitle: true, title: Text("MENU ADMINISTRADOR"), backgroundColor: AppColors.background,),
       body: bodyMenuAdministrador(),
     );
   }
