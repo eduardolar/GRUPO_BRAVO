@@ -1,70 +1,149 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
 import os
-import requests
+import uuid
+from typing import List, Optional, Dict, Any
+
+import httpx
 import stripe
-from google.oauth2 import service_account
-from google.auth.transport.requests import Request
+from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
 
-app = FastAPI()
+load_dotenv()
 
-# ---------- CONFIG ----------
-STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
-stripe.api_key = STRIPE_SECRET_KEY
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
 
 PAYPAL_CLIENT_ID = os.getenv("PAYPAL_CLIENT_ID", "")
 PAYPAL_CLIENT_SECRET = os.getenv("PAYPAL_CLIENT_SECRET", "")
 PAYPAL_BASE_URL = os.getenv("PAYPAL_BASE_URL", "https://api-m.sandbox.paypal.com")
+ALLOWED_ORIGIN = os.getenv("ALLOWED_ORIGIN", "*")
 
-GOOGLE_SERVICE_ACCOUNT_FILE = os.getenv("GOOGLE_SERVICE_ACCOUNT_FILE", "service-account.json")
-GOOGLE_PACKAGE_NAME = os.getenv("GOOGLE_PACKAGE_NAME", "com.tu.paquete.app")
+app = FastAPI(title="Grupo Bravo API", version="1.0.0")
 
-# ---------- MODELOS ----------
-class CardPaymentIntentIn(BaseModel):
-    amount: float
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[ALLOWED_ORIGIN] if ALLOWED_ORIGIN != "*" else ["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+PEDIDOS_DB: List[Dict[str, Any]] = []
+
+
+class PedidoItem(BaseModel):
+    producto_id: str
+    nombre: str
+    cantidad: int = Field(gt=0)
+    precio: float = Field(ge=0)
+    sin: Optional[List[str]] = None
+
+
+class PedidoCreate(BaseModel):
+    userId: str
+    items: List[PedidoItem]
+    tipoEntrega: str
+    metodoPago: str
+    total: float = Field(ge=0)
+    direccionEntrega: Optional[str] = None
+    mesaId: Optional[str] = None
+    numeroMesa: Optional[str] = None
+    notas: Optional[str] = ""
+    referenciaPago: Optional[str] = None
+    estadoPago: Optional[str] = "pendiente"
+
+
+class PaymentIntentCreate(BaseModel):
+    amount: float = Field(gt=0)
     currency: str = "eur"
 
-class PayPalCreateOrderIn(BaseModel):
-    total: float
+
+class CardConfirmRequest(BaseModel):
+    clientSecret: str
+    numeroTarjeta: str
+    fechaExpiracion: str
+    cvv: str
+    nombreTitular: str
+
+
+class GooglePayInitRequest(BaseModel):
+    total: float = Field(gt=0)
+
+
+class GooglePayVerifyRequest(BaseModel):
+    token: Optional[Dict[str, Any]] = None
+    packageName: Optional[str] = None
+    productId: Optional[str] = None
+    purchaseToken: Optional[str] = None
+
+
+class PayPalOrderCreate(BaseModel):
+    total: float = Field(gt=0)
     currency: str = "EUR"
 
-class PayPalCaptureOrderIn(BaseModel):
-    order_id: str
 
-class GooglePlayVerifyIn(BaseModel):
-    product_id: str
-    purchase_token: str
-    package_name: str | None = None
+class PayPalCaptureRequest(BaseModel):
+    orderId: str
 
-# ---------- HELPERS ----------
-def paypal_access_token() -> str:
-    url = f"{PAYPAL_BASE_URL}/v1/oauth2/token"
-    response = requests.post(
-        url,
-        auth=(PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET),
-        data={"grant_type": "client_credentials"},
-        headers={"Accept": "application/json"},
-        timeout=30,
-    )
-    if response.status_code >= 400:
-        raise HTTPException(status_code=502, detail=f"PayPal auth error: {response.text}")
-    return response.json()["access_token"]
 
-def google_access_token() -> str:
-    creds = service_account.Credentials.from_service_account_file(
-        GOOGLE_SERVICE_ACCOUNT_FILE,
-        scopes=["https://www.googleapis.com/auth/androidpublisher"],
-    )
-    creds.refresh(Request())
-    return creds.token
+class PedidoResponse(BaseModel):
+    id: str
+    userId: str
+    tipoEntrega: str
+    metodoPago: str
+    total: float
+    estadoPago: str
 
-# ---------- TARJETA / STRIPE ----------
-@app.post("/payments/card/create-intent")
-def create_card_payment_intent(payload: CardPaymentIntentIn):
+
+@app.get("/health")
+def health():
+    return {"ok": True}
+
+
+@app.post("/pedidos", response_model=PedidoResponse)
+def crear_pedido(payload: PedidoCreate):
+    pedido_id = str(uuid.uuid4())
+
+    pedido = {
+        "id": pedido_id,
+        "userId": payload.userId,
+        "items": [item.model_dump() for item in payload.items],
+        "tipoEntrega": payload.tipoEntrega,
+        "metodoPago": payload.metodoPago,
+        "total": payload.total,
+        "direccionEntrega": payload.direccionEntrega,
+        "mesaId": payload.mesaId,
+        "numeroMesa": payload.numeroMesa,
+        "notas": payload.notas,
+        "referenciaPago": payload.referenciaPago,
+        "estadoPago": payload.estadoPago or "pendiente",
+    }
+
+    PEDIDOS_DB.append(pedido)
+
+    return {
+        "id": pedido_id,
+        "userId": payload.userId,
+        "tipoEntrega": payload.tipoEntrega,
+        "metodoPago": payload.metodoPago,
+        "total": payload.total,
+        "estadoPago": pedido["estadoPago"],
+    }
+
+
+@app.get("/pedidos")
+def listar_pedidos():
+    return PEDIDOS_DB
+
+
+@app.post("/payments/stripe/create-intent")
+def crear_payment_intent(payload: PaymentIntentCreate):
+    if not stripe.api_key:
+        raise HTTPException(status_code=500, detail="Falta STRIPE_SECRET_KEY")
+
     try:
-        amount_cents = int(round(payload.amount * 100))
         intent = stripe.PaymentIntent.create(
-            amount=amount_cents,
+            amount=int(round(payload.amount * 100)),
             currency=payload.currency.lower(),
             automatic_payment_methods={"enabled": True},
         )
@@ -74,109 +153,165 @@ def create_card_payment_intent(payload: CardPaymentIntentIn):
             "status": intent["status"],
         }
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Stripe error: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
 
-@app.get("/payments/card/verify/{payment_intent_id}")
-def verify_card_payment(payment_intent_id: str):
+
+@app.post("/payments/stripe/confirm")
+def confirmar_payment_intent(payload: CardConfirmRequest):
+    if not payload.clientSecret:
+        raise HTTPException(status_code=400, detail="clientSecret requerido")
+
+    if not payload.numeroTarjeta.strip():
+        raise HTTPException(status_code=400, detail="Número de tarjeta requerido")
+
+    if not payload.fechaExpiracion.strip():
+        raise HTTPException(status_code=400, detail="Fecha de expiración requerida")
+
+    if not payload.cvv.strip():
+        raise HTTPException(status_code=400, detail="CVV requerido")
+
+    if not payload.nombreTitular.strip():
+        raise HTTPException(status_code=400, detail="Nombre del titular requerido")
+
+    return {
+        "success": True,
+        "message": "Confirmación simulada en backend de desarrollo",
+    }
+
+
+@app.get("/payments/stripe/verify/{payment_intent_id}")
+def verificar_payment_intent(payment_intent_id: str):
+    if not stripe.api_key:
+        raise HTTPException(status_code=500, detail="Falta STRIPE_SECRET_KEY")
+
     try:
         intent = stripe.PaymentIntent.retrieve(payment_intent_id)
         return {
             "id": intent["id"],
             "status": intent["status"],
-            "amount": intent["amount"],
-            "currency": intent["currency"],
             "paid": intent["status"] == "succeeded",
         }
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Stripe verify error: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
 
-# ---------- PAYPAL ----------
+
+@app.post("/payments/google-pay/init")
+def iniciar_google_pay(payload: GooglePayInitRequest):
+    return {
+        "success": True,
+        "productId": "pedido_bravo",
+        "purchaseToken": f"gpay_{uuid.uuid4().hex}",
+        "amount": payload.total,
+        "currency": "EUR",
+        "message": "Inicio simulado de Google Pay para desarrollo",
+    }
+
+
+@app.post("/payments/google-pay/verify")
+def verificar_google_pay(payload: GooglePayVerifyRequest):
+    if payload.token:
+        signed_message = payload.token.get("signedMessage")
+        protocol_version = payload.token.get("protocolVersion")
+        valid = bool(signed_message and protocol_version)
+
+        return {
+            "valid": valid,
+            "verified": valid,
+            "success": valid,
+            "status": "SUCCESS" if valid else "ERROR",
+            "message": "Validación básica de token Google Pay recibida",
+            "orderId": f"gpay_order_{uuid.uuid4().hex[:12]}",
+        }
+
+    if payload.productId and payload.purchaseToken:
+        return {
+            "valid": True,
+            "verified": True,
+            "success": True,
+            "status": "SUCCESS",
+            "productId": payload.productId,
+            "purchaseToken": payload.purchaseToken,
+            "packageName": payload.packageName,
+            "orderId": f"gplay_order_{uuid.uuid4().hex[:12]}",
+            "message": "Verificación simulada de Google Play/Google Pay en desarrollo",
+        }
+
+    raise HTTPException(
+        status_code=400,
+        detail="Debes enviar token o productId + purchaseToken",
+    )
+
+
+async def _paypal_access_token() -> str:
+    if not PAYPAL_CLIENT_ID or not PAYPAL_CLIENT_SECRET:
+        raise HTTPException(status_code=500, detail="Faltan credenciales de PayPal")
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.post(
+            f"{PAYPAL_BASE_URL}/v1/oauth2/token",
+            auth=(PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET),
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            data={"grant_type": "client_credentials"},
+        )
+
+    if response.status_code >= 400:
+        raise HTTPException(status_code=400, detail=f"Error OAuth PayPal: {response.text}")
+
+    data = response.json()
+    return data["access_token"]
+
+
 @app.post("/payments/paypal/create-order")
-def create_paypal_order(payload: PayPalCreateOrderIn):
-    token = paypal_access_token()
-    url = f"{PAYPAL_BASE_URL}/v2/checkout/orders"
+async def crear_orden_paypal(payload: PayPalOrderCreate):
+    token = await _paypal_access_token()
+
     body = {
         "intent": "CAPTURE",
         "purchase_units": [
             {
                 "amount": {
                     "currency_code": payload.currency,
-                    "value": f"{payload.total:.2f}"
+                    "value": f"{payload.total:.2f}",
                 }
             }
         ]
     }
-    response = requests.post(
-        url,
-        json=body,
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {token}",
-        },
-        timeout=30,
-    )
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.post(
+            f"{PAYPAL_BASE_URL}/v2/checkout/orders",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+            },
+            json=body,
+        )
+
     if response.status_code >= 400:
-        raise HTTPException(status_code=502, detail=f"PayPal create order error: {response.text}")
-    data = response.json()
-    return {
-        "id": data.get("id"),
-        "status": data.get("status"),
-        "links": data.get("links", []),
-    }
+        raise HTTPException(status_code=400, detail=response.text)
+
+    return response.json()
+
 
 @app.post("/payments/paypal/capture-order")
-def capture_paypal_order(payload: PayPalCaptureOrderIn):
-    token = paypal_access_token()
-    url = f"{PAYPAL_BASE_URL}/v2/checkout/orders/{payload.order_id}/capture"
-    response = requests.post(
-        url,
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {token}",
-        },
-        timeout=30,
-    )
+async def capturar_orden_paypal(payload: PayPalCaptureRequest):
+    token = await _paypal_access_token()
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.post(
+            f"{PAYPAL_BASE_URL}/v2/checkout/orders/{payload.orderId}/capture",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+            },
+        )
+
     if response.status_code >= 400:
-        raise HTTPException(status_code=502, detail=f"PayPal capture error: {response.text}")
-    data = response.json()
-    return {
-        "id": data.get("id"),
-        "status": data.get("status"),
-        "purchase_units": data.get("purchase_units", []),
-    }
+        raise HTTPException(status_code=400, detail=response.text)
 
-# ---------- GOOGLE PLAY ----------
-@app.post("/payments/google-play/verify")
-def verify_google_play_purchase(payload: GooglePlayVerifyIn):
-    token = google_access_token()
-    package_name = payload.package_name or GOOGLE_PACKAGE_NAME
-    url = (
-        "https://androidpublisher.googleapis.com/androidpublisher/v3/"
-        f"applications/{package_name}/purchases/products/"
-        f"{payload.product_id}/tokens/{payload.purchase_token}"
-    )
+    return response.json()
 
-    response = requests.get(
-        url,
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Accept": "application/json",
-        },
-        timeout=30,
-    )
-    if response.status_code >= 400:
-        raise HTTPException(status_code=502, detail=f"Google Play verify error: {response.text}")
 
-    data = response.json()
-    purchase_state = data.get("purchaseState")
-    acknowledgement_state = data.get("acknowledgementState")
-
-    return {
-        "valid": purchase_state == 0,
-        "orderId": data.get("orderId"),
-        "productId": data.get("productId"),
-        "purchaseToken": data.get("purchaseToken"),
-        "purchaseState": purchase_state,
-        "acknowledgementState": acknowledgement_state,
-        "raw": data,
-    }
+@app.post("/payments/paypal/capture")
+async def capturar_orden_paypal_alias(payload: PayPalCaptureRequest):
+    return await capturar_orden_paypal(payload)
