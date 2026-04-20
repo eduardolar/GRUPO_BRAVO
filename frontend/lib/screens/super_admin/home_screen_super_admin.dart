@@ -4,6 +4,7 @@ import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/providers/auth_provider.dart';
 import 'gestion_usuarios_screen.dart';
 import 'gestion_rol_screen.dart'; 
+import 'crear_usuario_screen.dart'; 
 
 class HomeScreenSuperAdmin extends StatelessWidget {
   final String restauranteId;
@@ -73,7 +74,23 @@ class HomeScreenSuperAdmin extends StatelessWidget {
           ),
         ],
       ),
-    );
+       
+  // Boton flotante para crear un nuevo usuario (administrador o trabajador)
+  floatingActionButton: FloatingActionButton.extended(
+    onPressed: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => CrearUsuarioScreen(restauranteId: restauranteId),
+        ),
+      );
+    },
+    label: const Text('Nuevo Usuario', style: TextStyle(color: Colors.white)),
+    icon: const Icon(Icons.add, color: Colors.white),
+    backgroundColor: AppColors.backgroundButton,
+  ),
+
+     );
   }
 
   Widget _buildOpcion({
