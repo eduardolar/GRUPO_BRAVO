@@ -21,11 +21,14 @@ class PantallaOpcionesEntrega extends StatefulWidget {
 }
 
 class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
-  int _paso = 0; // 0=entrega  1=pago  2=confirmar
+  int _paso = 0; // 0=confirmar  1=entrega  2=pago
   late OpcionEntrega _entregaSeleccionada;
   MetodoPago _pagoSeleccionado = MetodoPago.efectivo;
   OpcionDireccion _direccionSeleccionada = OpcionDireccion.registrada;
   bool _estaCargando = false;
+
+  bool _googlePayAutorizado = false;
+  bool _paypalAutorizado = false;
 
   final _controladorDireccion = TextEditingController();
   final _controladorNotas = TextEditingController();
@@ -34,12 +37,15 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
   final _controladorCvv = TextEditingController();
   final _controladorNombreTitular = TextEditingController();
 
+  static const _titulos = ['CONFIRMAR', 'ENTREGA', 'PAGO'];
+
   @override
   void initState() {
     super.initState();
     final cart = Provider.of<CartProvider>(context, listen: false);
-    _entregaSeleccionada =
-        cart.tienemesa ? OpcionEntrega.enMesa : OpcionEntrega.domicilio;
+    _entregaSeleccionada = cart.tienemesa
+        ? OpcionEntrega.enMesa
+        : OpcionEntrega.domicilio;
   }
 
   @override
@@ -52,9 +58,6 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
     _controladorNombreTitular.dispose();
     super.dispose();
   }
-
-  // ── Títulos de paso ─────────────────────────────────────────────────────────
-  static const _titulos = ['CONFIRMAR', 'ENTREGA', 'PAGO'];
 
   @override
   Widget build(BuildContext context) {
@@ -82,7 +85,6 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
               ),
             ),
           ),
-
           SafeArea(
             child: Column(
               children: [
@@ -92,11 +94,16 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
                   child: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 250),
                     transitionBuilder: (child, animation) => SlideTransition(
-                      position: Tween<Offset>(
-                        begin: const Offset(0.06, 0),
-                        end: Offset.zero,
-                      ).animate(CurvedAnimation(
-                          parent: animation, curve: Curves.easeOut)),
+                      position:
+                          Tween<Offset>(
+                            begin: const Offset(0.06, 0),
+                            end: Offset.zero,
+                          ).animate(
+                            CurvedAnimation(
+                              parent: animation,
+                              curve: Curves.easeOut,
+                            ),
+                          ),
                       child: FadeTransition(opacity: animation, child: child),
                     ),
                     child: _buildPasoActual(),
@@ -111,19 +118,17 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
                     1 => _irAPago,
                     _ => _confirmarPedido,
                   },
-                  onAtras: _paso > 0
-                      ? () => setState(() => _paso -= 1)
-                      : null,
+                  onAtras: _paso > 0 ? () => setState(() => _paso -= 1) : null,
                 ),
               ],
             ),
           ),
-
           if (_estaCargando)
             Container(
               color: Colors.black.withValues(alpha: 0.55),
               child: const Center(
-                  child: CircularProgressIndicator(color: Colors.white)),
+                child: CircularProgressIndicator(color: Colors.white),
+              ),
             ),
         ],
       ),
@@ -161,140 +166,6 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
     };
   }
 
-  // ── Paso 1: entrega ─────────────────────────────────────────────────────────
-
-  Widget _buildPasoEntrega() {
-    return LayoutBuilder(
-      key: const ValueKey('entrega'),
-      builder: (context, constraints) {
-        final hPad = _hPad(constraints);
-        return SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: EdgeInsets.symmetric(horizontal: hPad, vertical: 28),
-          child: Consumer<CartProvider>(
-            builder: (context, cart, _) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _subtituloPaso('¿Cómo quieres recibir tu pedido?'),
-                  const SizedBox(height: 20),
-                  if (cart.tienemesa) ...[
-                    _EntregaCard(
-                      icono: Icons.restaurant,
-                      titulo: 'Mesa ${cart.numeroMesa}',
-                      subtitulo: 'Te lo servimos directamente',
-                      coste: 'Gratis',
-                      seleccionada:
-                          _entregaSeleccionada == OpcionEntrega.enMesa,
-                      onTap: () => setState(
-                          () => _entregaSeleccionada = OpcionEntrega.enMesa),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  _EntregaCard(
-                    icono: Icons.delivery_dining,
-                    titulo: 'A domicilio',
-                    subtitulo: 'En la puerta de tu casa',
-                    coste: '+3,99 €',
-                    seleccionada:
-                        _entregaSeleccionada == OpcionEntrega.domicilio,
-                    onTap: () => setState(() =>
-                        _entregaSeleccionada = OpcionEntrega.domicilio),
-                  ),
-                  if (_entregaSeleccionada == OpcionEntrega.domicilio) ...[
-                    const SizedBox(height: 16),
-                    _seccionDireccion(),
-                  ],
-                  const SizedBox(height: 12),
-                  _EntregaCard(
-                    icono: Icons.store_outlined,
-                    titulo: 'Recoger en local',
-                    subtitulo: 'Listo cuando llegues',
-                    coste: 'Gratis',
-                    seleccionada:
-                        _entregaSeleccionada == OpcionEntrega.recoger,
-                    onTap: () => setState(
-                        () => _entregaSeleccionada = OpcionEntrega.recoger),
-                  ),
-                ],
-              );
-            },
-          ),
-        );
-      },
-    );
-  }
-
-  // ── Paso 2: pago ────────────────────────────────────────────────────────────
-
-  Widget _buildPasoPago() {
-    return LayoutBuilder(
-      key: const ValueKey('pago'),
-      builder: (context, constraints) {
-        final hPad = _hPad(constraints);
-        return SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: EdgeInsets.symmetric(horizontal: hPad, vertical: 28),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _subtituloPaso('Elige cómo quieres pagar'),
-              const SizedBox(height: 20),
-              _PagoCard(
-                icono: Icons.payments_outlined,
-                titulo: 'Efectivo',
-                subtitulo: 'Pagas al recibir el pedido',
-                seleccionada: _pagoSeleccionado == MetodoPago.efectivo,
-                onTap: () =>
-                    setState(() => _pagoSeleccionado = MetodoPago.efectivo),
-              ),
-              const SizedBox(height: 10),
-              _PagoCard(
-                icono: Icons.credit_card,
-                titulo: 'Tarjeta',
-                subtitulo: 'Crédito o débito',
-                seleccionada: _pagoSeleccionado == MetodoPago.tarjeta,
-                onTap: () =>
-                    setState(() => _pagoSeleccionado = MetodoPago.tarjeta),
-              ),
-              if (_pagoSeleccionado == MetodoPago.tarjeta) ...[
-                const SizedBox(height: 2),
-                _FormPanel(
-                  child: CamposTarjeta(
-                    controladorNumero: _controladorNumeroTarjeta,
-                    controladorFechaExpiracion: _controladorFechaExpiracion,
-                    controladorCvv: _controladorCvv,
-                    controladorNombreTitular: _controladorNombreTitular,
-                  ),
-                ),
-              ],
-              const SizedBox(height: 10),
-              _PagoCard(
-                icono: Icons.android,
-                titulo: 'Google Pay',
-                subtitulo: 'Pago rápido con Google',
-                seleccionada: _pagoSeleccionado == MetodoPago.googlePay,
-                onTap: () =>
-                    setState(() => _pagoSeleccionado = MetodoPago.googlePay),
-              ),
-              const SizedBox(height: 10),
-              _PagoCard(
-                icono: Icons.account_balance_wallet_outlined,
-                titulo: 'PayPal',
-                subtitulo: 'Paga con tu cuenta de PayPal',
-                seleccionada: _pagoSeleccionado == MetodoPago.paypal,
-                onTap: () =>
-                    setState(() => _pagoSeleccionado = MetodoPago.paypal),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  // ── Paso 0: confirmar (revisión del carrito) ─────────────────────────────────
-
   Widget _buildPasoConfirmar() {
     return LayoutBuilder(
       key: const ValueKey('confirmar'),
@@ -313,8 +184,11 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
                       decoration: BoxDecoration(
                         border: Border.all(color: Colors.white24),
                       ),
-                      child: const Icon(Icons.shopping_bag_outlined,
-                          size: 32, color: Colors.white38),
+                      child: const Icon(
+                        Icons.shopping_bag_outlined,
+                        size: 32,
+                        color: Colors.white38,
+                      ),
                     ),
                     const SizedBox(height: 20),
                     const Text(
@@ -354,7 +228,163 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
     );
   }
 
-  // ── Sección dirección ────────────────────────────────────────────────────────
+  Widget _buildPasoEntrega() {
+    return LayoutBuilder(
+      key: const ValueKey('entrega'),
+      builder: (context, constraints) {
+        final hPad = _hPad(constraints);
+        return SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: EdgeInsets.symmetric(horizontal: hPad, vertical: 28),
+          child: Consumer<CartProvider>(
+            builder: (context, cart, _) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _subtituloPaso('¿Cómo quieres recibir tu pedido?'),
+                  const SizedBox(height: 20),
+                  if (cart.tienemesa) ...[
+                    _EntregaCard(
+                      icono: Icons.restaurant,
+                      titulo: 'Mesa ${cart.numeroMesa}',
+                      subtitulo: 'Te lo servimos directamente',
+                      coste: 'Gratis',
+                      seleccionada:
+                          _entregaSeleccionada == OpcionEntrega.enMesa,
+                      onTap: () => setState(
+                        () => _entregaSeleccionada = OpcionEntrega.enMesa,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  _EntregaCard(
+                    icono: Icons.delivery_dining,
+                    titulo: 'A domicilio',
+                    subtitulo: 'En la puerta de tu casa',
+                    coste: '+3,99 €',
+                    seleccionada:
+                        _entregaSeleccionada == OpcionEntrega.domicilio,
+                    onTap: () => setState(
+                      () => _entregaSeleccionada = OpcionEntrega.domicilio,
+                    ),
+                  ),
+                  if (_entregaSeleccionada == OpcionEntrega.domicilio) ...[
+                    const SizedBox(height: 16),
+                    _seccionDireccion(),
+                  ],
+                  const SizedBox(height: 12),
+                  _EntregaCard(
+                    icono: Icons.store_outlined,
+                    titulo: 'Recoger en local',
+                    subtitulo: 'Listo cuando llegues',
+                    coste: 'Gratis',
+                    seleccionada: _entregaSeleccionada == OpcionEntrega.recoger,
+                    onTap: () => setState(
+                      () => _entregaSeleccionada = OpcionEntrega.recoger,
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPasoPago() {
+    return LayoutBuilder(
+      key: const ValueKey('pago'),
+      builder: (context, constraints) {
+        final hPad = _hPad(constraints);
+        return SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: EdgeInsets.symmetric(horizontal: hPad, vertical: 28),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _subtituloPaso('Elige cómo quieres pagar'),
+              const SizedBox(height: 20),
+              _PagoCard(
+                icono: Icons.payments_outlined,
+                titulo: 'Efectivo',
+                subtitulo: 'Pagas al recibir el pedido',
+                seleccionada: _pagoSeleccionado == MetodoPago.efectivo,
+                onTap: () {
+                  setState(() {
+                    _pagoSeleccionado = MetodoPago.efectivo;
+                    _googlePayAutorizado = false;
+                    _paypalAutorizado = false;
+                  });
+                },
+              ),
+              const SizedBox(height: 10),
+              _PagoCard(
+                icono: Icons.credit_card,
+                titulo: 'Tarjeta',
+                subtitulo: 'Crédito o débito',
+                seleccionada: _pagoSeleccionado == MetodoPago.tarjeta,
+                onTap: () {
+                  setState(() {
+                    _pagoSeleccionado = MetodoPago.tarjeta;
+                    _googlePayAutorizado = false;
+                    _paypalAutorizado = false;
+                  });
+                },
+              ),
+              if (_pagoSeleccionado == MetodoPago.tarjeta) ...[
+                const SizedBox(height: 2),
+                _FormPanel(
+                  child: CamposTarjeta(
+                    controladorNumero: _controladorNumeroTarjeta,
+                    controladorFechaExpiracion: _controladorFechaExpiracion,
+                    controladorCvv: _controladorCvv,
+                    controladorNombreTitular: _controladorNombreTitular,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 10),
+              _PagoCard(
+                icono: Icons.android,
+                titulo: 'Google Pay',
+                subtitulo: 'Pago rápido con Google',
+                seleccionada: _pagoSeleccionado == MetodoPago.googlePay,
+                onTap: () {
+                  setState(() {
+                    _pagoSeleccionado = MetodoPago.googlePay;
+                    _googlePayAutorizado = false;
+                    _paypalAutorizado = false;
+                  });
+                },
+              ),
+              if (_pagoSeleccionado == MetodoPago.googlePay) ...[
+                const SizedBox(height: 8),
+                _buildGooglePayButton(),
+              ],
+              const SizedBox(height: 10),
+              _PagoCard(
+                icono: Icons.account_balance_wallet_outlined,
+                titulo: 'PayPal',
+                subtitulo: 'Paga con tu cuenta de PayPal',
+                seleccionada: _pagoSeleccionado == MetodoPago.paypal,
+                onTap: () {
+                  setState(() {
+                    _pagoSeleccionado = MetodoPago.paypal;
+                    _googlePayAutorizado = false;
+                    _paypalAutorizado = false;
+                  });
+                },
+              ),
+              if (_pagoSeleccionado == MetodoPago.paypal) ...[
+                const SizedBox(height: 8),
+                _buildPaypalButton(),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   Widget _seccionDireccion() {
     return Consumer<AuthProvider>(
@@ -365,12 +395,12 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
             _DireccionOption(
               icono: Icons.home_outlined,
               titulo: 'Dirección registrada',
-              subtitulo:
-                  dir.isNotEmpty ? dir : 'No tienes dirección guardada',
+              subtitulo: dir.isNotEmpty ? dir : 'No tienes dirección guardada',
               seleccionada:
                   _direccionSeleccionada == OpcionDireccion.registrada,
-              onTap: () => setState(() =>
-                  _direccionSeleccionada = OpcionDireccion.registrada),
+              onTap: () => setState(
+                () => _direccionSeleccionada = OpcionDireccion.registrada,
+              ),
             ),
             const SizedBox(height: 8),
             _DireccionOption(
@@ -379,8 +409,9 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
               subtitulo: 'Especifica una diferente',
               seleccionada:
                   _direccionSeleccionada == OpcionDireccion.alternativa,
-              onTap: () => setState(() =>
-                  _direccionSeleccionada = OpcionDireccion.alternativa),
+              onTap: () => setState(
+                () => _direccionSeleccionada = OpcionDireccion.alternativa,
+              ),
             ),
             const SizedBox(height: 12),
             _FormPanel(
@@ -397,8 +428,6 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
     );
   }
 
-  // ── Navegación ───────────────────────────────────────────────────────────────
-
   void _irAPago() {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     if (_entregaSeleccionada == OpcionEntrega.domicilio) {
@@ -411,6 +440,84 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       }
     }
     setState(() => _paso = 2);
+  }
+
+  Future<void> _procesarGooglePay() async {
+    setState(() => _estaCargando = true);
+
+    try {
+      await Future.delayed(const Duration(seconds: 2));
+      const exitoPago = true;
+
+      if (!mounted) return;
+
+      if (exitoPago) {
+        setState(() {
+          _googlePayAutorizado = true;
+          _paypalAutorizado = false;
+          _estaCargando = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Google Pay autorizado correctamente'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else {
+        setState(() {
+          _googlePayAutorizado = false;
+          _estaCargando = false;
+        });
+        _mostrarError('Pago con Google Pay cancelado o fallido');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _googlePayAutorizado = false;
+        _estaCargando = false;
+      });
+      _mostrarError('Error técnico al procesar Google Pay: $e');
+    }
+  }
+
+  Future<void> _procesarPaypal() async {
+    setState(() => _estaCargando = true);
+
+    try {
+      await Future.delayed(const Duration(seconds: 2));
+      const exitoPago = true;
+
+      if (!mounted) return;
+
+      if (exitoPago) {
+        setState(() {
+          _paypalAutorizado = true;
+          _googlePayAutorizado = false;
+          _estaCargando = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('PayPal autorizado correctamente'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else {
+        setState(() {
+          _paypalAutorizado = false;
+          _estaCargando = false;
+        });
+        _mostrarError('Pago con PayPal cancelado o fallido');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _paypalAutorizado = false;
+        _estaCargando = false;
+      });
+      _mostrarError('Error técnico al procesar PayPal: $e');
+    }
   }
 
   void _confirmarPedido() async {
@@ -430,11 +537,22 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
         _mostrarError('Número de tarjeta inválido');
         return;
       }
-      if (!RegExp(r'^\d{2}/\d{2}$')
-          .hasMatch(_controladorFechaExpiracion.text)) {
+      if (!RegExp(
+        r'^\d{2}/\d{2}$',
+      ).hasMatch(_controladorFechaExpiracion.text)) {
         _mostrarError('Formato de fecha inválido (MM/AA)');
         return;
       }
+    }
+
+    if (_pagoSeleccionado == MetodoPago.googlePay && !_googlePayAutorizado) {
+      _mostrarError('Primero debes autorizar el pago con Google Pay');
+      return;
+    }
+
+    if (_pagoSeleccionado == MetodoPago.paypal && !_paypalAutorizado) {
+      _mostrarError('Primero debes autorizar el pago con PayPal');
+      return;
     }
 
     setState(() => _estaCargando = true);
@@ -453,27 +571,29 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       OpcionEntrega.enMesa => 'Comer en el local',
     };
 
-    final costeEnvio =
-        _entregaSeleccionada == OpcionEntrega.domicilio ? 3.99 : 0.0;
+    final costeEnvio = _entregaSeleccionada == OpcionEntrega.domicilio
+        ? 3.99
+        : 0.0;
     final total = cart.totalPrice + costeEnvio;
 
-    final direccionEntrega =
-        _entregaSeleccionada == OpcionEntrega.domicilio
-            ? (_direccionSeleccionada == OpcionDireccion.registrada
-                  ? (auth.usuarioActual?.direccion ?? '')
-                  : _controladorDireccion.text.trim())
-            : null;
+    final direccionEntrega = _entregaSeleccionada == OpcionEntrega.domicilio
+        ? (_direccionSeleccionada == OpcionDireccion.registrada
+              ? (auth.usuarioActual?.direccion ?? '')
+              : _controladorDireccion.text.trim())
+        : null;
 
     try {
       final items = cart.items.values
-          .map((item) => {
-                'producto_id': item.producto.id,
-                'nombre': item.producto.nombre,
-                'cantidad': item.cantidad,
-                'precio': item.producto.precio,
-                if (item.ingredientesExcluidos.isNotEmpty)
-                  'sin': item.ingredientesExcluidos,
-              })
+          .map(
+            (item) => {
+              'producto_id': item.producto.id,
+              'nombre': item.producto.nombre,
+              'cantidad': item.cantidad,
+              'precio': item.producto.precio,
+              if (item.ingredientesExcluidos.isNotEmpty)
+                'sin': item.ingredientesExcluidos,
+            },
+          )
           .toList();
 
       if (_entregaSeleccionada != OpcionEntrega.enMesa) {
@@ -499,7 +619,12 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       cart.clearCart();
 
       if (mounted) {
-        setState(() => _estaCargando = false);
+        setState(() {
+          _estaCargando = false;
+          _googlePayAutorizado = false;
+          _paypalAutorizado = false;
+        });
+
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -519,6 +644,66 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
     }
   }
 
+  Widget _buildGooglePayButton() {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      child: OutlinedButton(
+        style: OutlinedButton.styleFrom(
+          backgroundColor: Colors.white,
+          side: BorderSide.none,
+          padding: const EdgeInsets.symmetric(vertical: 15),
+          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+        ),
+        onPressed: _estaCargando ? null : _procesarGooglePay,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.android, color: Colors.green.shade700),
+            const SizedBox(width: 8),
+            const Text(
+              'Pagar con Google Pay',
+              style: TextStyle(
+                color: Colors.black87,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPaypalButton() {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      child: OutlinedButton(
+        style: OutlinedButton.styleFrom(
+          backgroundColor: const Color(0xFF0070BA),
+          side: BorderSide.none,
+          padding: const EdgeInsets.symmetric(vertical: 15),
+          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+        ),
+        onPressed: _estaCargando ? null : _procesarPaypal,
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.account_balance_wallet, color: Colors.white),
+            SizedBox(width: 8),
+            Text(
+              'Pagar con PayPal',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _mostrarError(String mensaje) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -530,8 +715,6 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       ),
     );
   }
-
-  // ── Helpers ──────────────────────────────────────────────────────────────────
 
   double _hPad(BoxConstraints c) {
     const maxW = 560.0;
@@ -548,10 +731,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       ),
     );
   }
-
 }
-
-// ── Step indicator ─────────────────────────────────────────────────────────────
 
 class _StepIndicator extends StatelessWidget {
   final int paso;
@@ -563,8 +743,7 @@ class _StepIndicator extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.35),
         border: Border(
-          bottom:
-              BorderSide(color: Colors.white.withValues(alpha: 0.10)),
+          bottom: BorderSide(color: Colors.white.withValues(alpha: 0.10)),
         ),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
@@ -592,9 +771,7 @@ class _Linea extends StatelessWidget {
         duration: const Duration(milliseconds: 350),
         height: 1,
         margin: const EdgeInsets.symmetric(horizontal: 10),
-        color: activa
-            ? AppColors.button
-            : Colors.white.withValues(alpha: 0.20),
+        color: activa ? AppColors.button : Colors.white.withValues(alpha: 0.20),
       ),
     );
   }
@@ -604,8 +781,12 @@ class _StepDot extends StatelessWidget {
   final String label;
   final bool activo;
   final bool hecho;
-  const _StepDot(
-      {required this.label, required this.activo, required this.hecho});
+
+  const _StepDot({
+    required this.label,
+    required this.activo,
+    required this.hecho,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -642,9 +823,7 @@ class _StepDot extends StatelessWidget {
         Text(
           label.toUpperCase(),
           style: TextStyle(
-            color: filled
-                ? Colors.white
-                : Colors.white.withValues(alpha: 0.35),
+            color: filled ? Colors.white : Colors.white.withValues(alpha: 0.35),
             fontSize: 8,
             letterSpacing: 1.2,
             fontWeight: filled ? FontWeight.w700 : FontWeight.w400,
@@ -654,8 +833,6 @@ class _StepDot extends StatelessWidget {
     );
   }
 }
-
-// ── Barra inferior ─────────────────────────────────────────────────────────────
 
 class _BottomBar extends StatelessWidget {
   final int paso;
@@ -676,7 +853,9 @@ class _BottomBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<CartProvider>(
       builder: (context, cart, _) {
-        final envio = paso == 0 ? 0.0 : (entrega == OpcionEntrega.domicilio ? 3.99 : 0.0);
+        final envio = paso == 0
+            ? 0.0
+            : (entrega == OpcionEntrega.domicilio ? 3.99 : 0.0);
         final total = cart.totalPrice + envio;
         final bottom = MediaQuery.of(context).padding.bottom;
 
@@ -684,8 +863,8 @@ class _BottomBar extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.black.withValues(alpha: 0.80),
             border: Border(
-                top: BorderSide(
-                    color: Colors.white.withValues(alpha: 0.12))),
+              top: BorderSide(color: Colors.white.withValues(alpha: 0.12)),
+            ),
           ),
           padding: EdgeInsets.fromLTRB(20, 16, 20, bottom + 16),
           child: Row(
@@ -716,8 +895,9 @@ class _BottomBar extends StatelessWidget {
                     Text(
                       'incl. 3,99 € envío',
                       style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.40),
-                          fontSize: 10),
+                        color: Colors.white.withValues(alpha: 0.40),
+                        fontSize: 10,
+                      ),
                     ),
                 ],
               ),
@@ -730,11 +910,14 @@ class _BottomBar extends StatelessWidget {
                     height: 50,
                     decoration: BoxDecoration(
                       border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.20)),
+                        color: Colors.white.withValues(alpha: 0.20),
+                      ),
                     ),
-                    child: Icon(Icons.arrow_back,
-                        color: Colors.white.withValues(alpha: 0.70),
-                        size: 20),
+                    child: Icon(
+                      Icons.arrow_back,
+                      color: Colors.white.withValues(alpha: 0.70),
+                      size: 20,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -751,7 +934,9 @@ class _BottomBar extends StatelessWidget {
                               width: 20,
                               height: 20,
                               child: CircularProgressIndicator(
-                                  color: Colors.white, strokeWidth: 2),
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
                             )
                           : Text(
                               paso < 2 ? 'CONTINUAR' : 'CONFIRMAR PEDIDO',
@@ -773,8 +958,6 @@ class _BottomBar extends StatelessWidget {
     );
   }
 }
-
-// ── Tarjeta de entrega ─────────────────────────────────────────────────────────
 
 class _EntregaCard extends StatelessWidget {
   final IconData icono;
@@ -847,8 +1030,9 @@ class _EntregaCard extends StatelessWidget {
                   Text(
                     subtitulo,
                     style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.55),
-                        fontSize: 12),
+                      color: Colors.white.withValues(alpha: 0.55),
+                      fontSize: 12,
+                    ),
                   ),
                 ],
               ),
@@ -856,8 +1040,7 @@ class _EntregaCard extends StatelessWidget {
             const SizedBox(width: 12),
             AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               color: seleccionada
                   ? AppColors.button
                   : Colors.white.withValues(alpha: 0.10),
@@ -879,8 +1062,6 @@ class _EntregaCard extends StatelessWidget {
     );
   }
 }
-
-// ── Tarjeta de pago ────────────────────────────────────────────────────────────
 
 class _PagoCard extends StatelessWidget {
   final IconData icono;
@@ -942,8 +1123,9 @@ class _PagoCard extends StatelessWidget {
                   Text(
                     subtitulo,
                     style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.50),
-                        fontSize: 11),
+                      color: Colors.white.withValues(alpha: 0.50),
+                      fontSize: 11,
+                    ),
                   ),
                 ],
               ),
@@ -971,8 +1153,6 @@ class _PagoCard extends StatelessWidget {
     );
   }
 }
-
-// ── Opción dirección ───────────────────────────────────────────────────────────
 
 class _DireccionOption extends StatelessWidget {
   final IconData icono;
@@ -1009,11 +1189,13 @@ class _DireccionOption extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(icono,
-                size: 18,
-                color: seleccionada
-                    ? AppColors.button
-                    : Colors.white.withValues(alpha: 0.50)),
+            Icon(
+              icono,
+              size: 18,
+              color: seleccionada
+                  ? AppColors.button
+                  : Colors.white.withValues(alpha: 0.50),
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -1032,8 +1214,9 @@ class _DireccionOption extends StatelessWidget {
                   Text(
                     subtitulo,
                     style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.50),
-                        fontSize: 11),
+                      color: Colors.white.withValues(alpha: 0.50),
+                      fontSize: 11,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -1041,8 +1224,7 @@ class _DireccionOption extends StatelessWidget {
               ),
             ),
             if (seleccionada)
-              const Icon(Icons.check_circle,
-                  size: 16, color: AppColors.button),
+              const Icon(Icons.check_circle, size: 16, color: AppColors.button),
           ],
         ),
       ),
@@ -1050,16 +1232,16 @@ class _DireccionOption extends StatelessWidget {
   }
 }
 
-// ── Tarjeta de artículo con imagen de fondo ───────────────────────────────────
-
 class _ArticuloCard extends StatelessWidget {
   final CartItem item;
   final CartProvider cart;
+
   const _ArticuloCard({required this.item, required this.cart});
 
   @override
   Widget build(BuildContext context) {
     final imageUrl = item.producto.imagenUrl;
+
     return Container(
       height: 130,
       clipBehavior: Clip.hardEdge,
@@ -1068,8 +1250,11 @@ class _ArticuloCard extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           imageUrl != null && imageUrl.isNotEmpty
-              ? Image.network(imageUrl, fit: BoxFit.cover,
-                  errorBuilder: (_, err, stack) => _imgFallback())
+              ? Image.network(
+                  imageUrl,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => _imgFallback(),
+                )
               : _imgFallback(),
           DecoratedBox(
             decoration: BoxDecoration(
@@ -1102,7 +1287,11 @@ class _ArticuloCard extends StatelessWidget {
                         color: Colors.black.withValues(alpha: 0.40),
                         border: Border.all(color: Colors.white24),
                       ),
-                      child: const Icon(Icons.close, size: 13, color: Colors.white),
+                      child: const Icon(
+                        Icons.close,
+                        size: 13,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ),
@@ -1116,7 +1305,9 @@ class _ArticuloCard extends StatelessWidget {
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                     height: 1.2,
-                    shadows: const [Shadow(color: Colors.black54, blurRadius: 6)],
+                    shadows: const [
+                      Shadow(color: Colors.black54, blurRadius: 6),
+                    ],
                   ),
                 ),
                 if (item.ingredientesExcluidos.isNotEmpty) ...[
@@ -1139,7 +1330,9 @@ class _ArticuloCard extends StatelessWidget {
                     Text(
                       '${item.producto.precio.toStringAsFixed(2).replaceAll('.', ',')} € / ud',
                       style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.60), fontSize: 11),
+                        color: Colors.white.withValues(alpha: 0.60),
+                        fontSize: 11,
+                      ),
                     ),
                     const Spacer(),
                     _StepperCard(item: item, cart: cart),
@@ -1164,15 +1357,19 @@ class _ArticuloCard extends StatelessWidget {
   }
 
   Widget _imgFallback() => Container(
-        color: Colors.white.withValues(alpha: 0.10),
-        child: Icon(Icons.restaurant,
-            color: Colors.white.withValues(alpha: 0.20), size: 28),
-      );
+    color: Colors.white.withValues(alpha: 0.10),
+    child: Icon(
+      Icons.restaurant,
+      color: Colors.white.withValues(alpha: 0.20),
+      size: 28,
+    ),
+  );
 }
 
 class _StepperCard extends StatelessWidget {
   final CartItem item;
   final CartProvider cart;
+
   const _StepperCard({required this.item, required this.cart});
 
   @override
@@ -1218,10 +1415,9 @@ class _StepperCard extends StatelessWidget {
   }
 }
 
-// ── Contenedor formulario ──────────────────────────────────────────────────────
-
 class _FormPanel extends StatelessWidget {
   final Widget child;
+
   const _FormPanel({required this.child});
 
   @override
@@ -1229,8 +1425,7 @@ class _FormPanel extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.45),
-        border:
-            Border.all(color: Colors.white.withValues(alpha: 0.10)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
       ),
       padding: const EdgeInsets.all(16),
       child: child,
