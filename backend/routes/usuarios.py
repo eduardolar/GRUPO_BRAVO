@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException
 from bson import ObjectId
 from database import coleccion_usuarios
 from models import UsuarioActualizar
-from pydantic import BaseModel # Necesario para que la API entienda el rol que envía Flutter
+from pydantic import BaseModel, EmailStr  # Necesario para que la API entienda el rol que envía Flutter
 
 # Modelo pequeñito para recibir solo el texto del nuevo rol
 class UsuarioActualizarRol(BaseModel):
@@ -12,6 +12,14 @@ class UsuarioActualizarRol(BaseModel):
 class CambiarPassword(BaseModel):
     password_actual: str
     nueva_password: str
+
+# NUEVO: Modelo para crear usuarios desde el panel de Admin
+class UsuarioCrear(BaseModel):
+    nombre: str
+    correo: EmailStr # Valida que el formato sea de email
+    password: str
+    rol: str
+    restaurante_id: str    
 
 router = APIRouter(prefix="/usuarios", tags=["Usuarios"])
 
@@ -112,3 +120,42 @@ def eliminar_usuario(user_id: str):
     if resultado.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
     return {"mensaje": "Usuario eliminado"}
+
+# --- NUEVA RUTA PARA QUE EL ADMIN CREE USUARIOS ---
+@router.post("/")
+def crear_usuario(datos: UsuarioCrear):
+    # 1. Normalizar el correo (todo a minúsculas)
+    correo_limpio = datos.correo.lower().strip()
+
+    # 2. Verificar si el correo ya existe
+    if coleccion_usuarios.find_one({"correo": correo_limpio}):
+        raise HTTPException(status_code=400, detail="Este correo ya está registrado")
+
+    # 3. Encriptar la contraseña usando bcrypt 
+    password_bytes = datos.password.encode("utf-8")
+    salt = bcrypt.gensalt()
+    hash_password = bcrypt.hashpw(password_bytes, salt).decode("utf-8")
+
+    # 4. Preparar el documento para la base de datos
+    nuevo_usuario = {
+        "nombre": datos.nombre,
+        "correo": correo_limpio,
+        "password_hash": hash_password,
+        "rol": datos.rol.lower().strip(),
+        "restaurante_id": datos.restaurante_id,
+        "is_verified": True, # Se crea verificado por defecto
+        "telefono": "",
+        "direccion": "",
+        "verification_code": None
+    }
+
+    # 5. Guardar en MongoDB
+    resultado = coleccion_usuarios.insert_one(nuevo_usuario)
+    
+    if resultado.inserted_id:
+        return {
+            "mensaje": "Usuario creado exitosamente",
+            "id": str(resultado.inserted_id)
+        }
+    
+    raise HTTPException(status_code=500, detail="No se pudo crear el usuario")
