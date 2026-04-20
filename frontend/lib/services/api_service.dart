@@ -1,6 +1,8 @@
-import 'dart:convert'; // Import necesario para jsonEncode
-import 'package:http/http.dart'
-    as http; // Import para peticiones directas si fuera necesario
+import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
+
 import '../models/producto_model.dart';
 import '../models/pedido_model.dart';
 import '../models/mesa_model.dart';
@@ -17,6 +19,16 @@ import 'mesa_service.dart';
 /// Fachada que delega en los sub-servicios.
 /// Mantiene la misma API pública para no romper imports existentes.
 class ApiService {
+  static String get baseUrl {
+    if (kIsWeb) {
+      return 'http://localhost:8000';
+    }
+    if (Platform.isAndroid) {
+      return 'http://10.0.2.2:8000';
+    }
+    return 'http://127.0.0.1:8000';
+  }
+
   // ─── AUTH ────────────────────────────────────────────────────
 
   static Future<Map<String, dynamic>> iniciarSesion({
@@ -74,7 +86,6 @@ class ApiService {
 
   // ─── PEDIDOS ─────────────────────────────────────────────────
 
-  /// Nuevo método para enviar pedidos vía QR (Delegado a PedidoService)
   static Future<bool> enviarPedidoPorQR({
     required String mesaId,
     required List<dynamic> items,
@@ -90,6 +101,8 @@ class ApiService {
     String? mesaId,
     int? numeroMesa,
     String? notas,
+    String? referenciaPago,
+    required String estadoPago,
   }) => PedidoService.crearPedido(
     userId: userId,
     items: items,
@@ -105,6 +118,173 @@ class ApiService {
   static Future<List<Pedido>> obtenerHistorialPedidos({
     required String userId,
   }) => PedidoService.obtenerHistorialPedidos(userId: userId);
+
+  // ─── PAGOS TARJETA / STRIPE ──────────────────────────────────
+
+  static Future<Map<String, dynamic>> crearIntentoTarjeta({
+    required double amount,
+    String currency = 'eur',
+  }) async {
+    final url = Uri.parse('$baseUrl/payments/stripe/create-intent');
+
+    final response = await http.post(
+      url,
+      headers: _jsonHeaders(),
+      body: jsonEncode({'amount': amount, 'currency': currency}),
+    );
+
+    final data = _decodeBody(response);
+
+    if (response.statusCode >= 400) {
+      throw Exception(data['detail'] ?? 'Error al crear intento de tarjeta');
+    }
+
+    return Map<String, dynamic>.from(data);
+  }
+
+  static Future<bool> confirmarPagoTarjeta({
+    required String clientSecret,
+    required String numeroTarjeta,
+    required String fechaExpiracion,
+    required String cvv,
+    required String nombreTitular,
+  }) async {
+    final url = Uri.parse('$baseUrl/payments/stripe/confirm');
+
+    final response = await http.post(
+      url,
+      headers: _jsonHeaders(),
+      body: jsonEncode({
+        'client_secret': clientSecret,
+        'numero_tarjeta': numeroTarjeta,
+        'fecha_expiracion': fechaExpiracion,
+        'cvv': cvv,
+        'nombre_titular': nombreTitular,
+      }),
+    );
+
+    final data = _decodeBody(response);
+
+    if (response.statusCode >= 400) {
+      throw Exception(data['detail'] ?? 'Error al confirmar pago con tarjeta');
+    }
+
+    return data['success'] == true || data['status'] == 'succeeded';
+  }
+
+  static Future<bool> verificarPagoTarjeta({
+    required String paymentIntentId,
+  }) async {
+    final url = Uri.parse('$baseUrl/payments/stripe/verify/$paymentIntentId');
+
+    final response = await http.get(url, headers: _jsonHeaders());
+
+    final data = _decodeBody(response);
+
+    if (response.statusCode >= 400) {
+      throw Exception(data['detail'] ?? 'Error al verificar pago con tarjeta');
+    }
+
+    return data['paid'] == true || data['status'] == 'succeeded';
+  }
+
+  // ─── PAYPAL ──────────────────────────────────────────────────
+
+  static Future<Map<String, dynamic>> crearOrdenPaypal({
+    required double total,
+    String currency = 'EUR',
+  }) async {
+    final url = Uri.parse('$baseUrl/payments/paypal/create-order');
+
+    final response = await http.post(
+      url,
+      headers: _jsonHeaders(),
+      body: jsonEncode({'total': total, 'currency': currency}),
+    );
+
+    final data = _decodeBody(response);
+
+    if (response.statusCode >= 400) {
+      throw Exception(data['detail'] ?? 'Error al crear orden de PayPal');
+    }
+
+    return Map<String, dynamic>.from(data);
+  }
+
+  static Future<Map<String, dynamic>> capturarOrdenPaypal({
+    required String orderId,
+  }) async {
+    final url = Uri.parse('$baseUrl/payments/paypal/capture-order');
+
+    final response = await http.post(
+      url,
+      headers: _jsonHeaders(),
+      body: jsonEncode({'orderId': orderId}),
+    );
+
+    final data = _decodeBody(response);
+
+    if (response.statusCode >= 400) {
+      throw Exception(data['detail'] ?? 'Error al capturar orden PayPal');
+    }
+
+    return Map<String, dynamic>.from(data);
+  }
+  // ─── GOOGLE PAY / GOOGLE PLAY ───────────────────────────────
+
+  static Future<Map<String, dynamic>> iniciarGooglePay({
+    required double total,
+    String currencyCode = 'EUR',
+    String countryCode = 'ES',
+  }) async {
+    final url = Uri.parse('$baseUrl/payments/google-pay/init');
+
+    final response = await http.post(
+      url,
+      headers: _jsonHeaders(),
+      body: jsonEncode({
+        'total': total,
+        'currencyCode': currencyCode,
+        'countryCode': countryCode,
+      }),
+    );
+
+    final data = _decodeBody(response);
+
+    if (response.statusCode >= 400) {
+      throw Exception(data['detail'] ?? 'Error al iniciar Google Pay');
+    }
+
+    return Map<String, dynamic>.from(data);
+  }
+
+  static Future<Map<String, dynamic>> verificarCompraGooglePlay({
+    required String packageName,
+    required String productId,
+    required String purchaseToken,
+  }) async {
+    final url = Uri.parse('$baseUrl/payments/google-play/verify');
+
+    final response = await http.post(
+      url,
+      headers: _jsonHeaders(),
+      body: jsonEncode({
+        'packageName': packageName,
+        'productId': productId,
+        'purchaseToken': purchaseToken,
+      }),
+    );
+
+    final data = _decodeBody(response);
+
+    if (response.statusCode >= 400) {
+      throw Exception(
+        data['detail'] ?? 'Error al verificar compra en Google Play',
+      );
+    }
+
+    return Map<String, dynamic>.from(data);
+  }
 
   // ─── MESAS ───────────────────────────────────────────────────
 
@@ -159,4 +339,24 @@ class ApiService {
   static Future<Map<String, dynamic>> validarQrMesa({
     required String codigoQr,
   }) => MesaService.validarQrMesa(codigoQr: codigoQr);
+
+  // ─── HELPERS ────────────────────────────────────────────────
+
+  static Map<String, String> _jsonHeaders() {
+    return {'Content-Type': 'application/json', 'Accept': 'application/json'};
+  }
+
+  static Map<String, dynamic> _decodeBody(http.Response response) {
+    if (response.body.isEmpty) {
+      return <String, dynamic>{};
+    }
+
+    final decoded = jsonDecode(response.body);
+
+    if (decoded is Map<String, dynamic>) {
+      return decoded;
+    }
+
+    return {'data': decoded};
+  }
 }

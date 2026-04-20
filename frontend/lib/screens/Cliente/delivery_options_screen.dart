@@ -442,121 +442,186 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
     setState(() => _paso = 2);
   }
 
-  Future<void> _procesarGooglePay() async {
-    setState(() => _estaCargando = true);
+  Future<void> _confirmarPedido() async {
+    if (_estaCargando) return;
 
-    try {
-      await Future.delayed(const Duration(seconds: 2));
-      const exitoPago = true;
-
-      if (!mounted) return;
-
-      if (exitoPago) {
-        setState(() {
-          _googlePayAutorizado = true;
-          _paypalAutorizado = false;
-          _estaCargando = false;
-        });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Google Pay autorizado correctamente'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      } else {
-        setState(() {
-          _googlePayAutorizado = false;
-          _estaCargando = false;
-        });
-        _mostrarError('Pago con Google Pay cancelado o fallido');
-      }
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _googlePayAutorizado = false;
-        _estaCargando = false;
-      });
-      _mostrarError('Error técnico al procesar Google Pay: $e');
+    switch (_pagoSeleccionado) {
+      case MetodoPago.efectivo:
+        await _procesarEfectivoYCrearPedido();
+        break;
+      case MetodoPago.tarjeta:
+        await _procesarTarjetaYCrearPedido();
+        break;
+      case MetodoPago.googlePay:
+        await _procesarGooglePayYCrearPedido();
+        break;
+      case MetodoPago.paypal:
+        await _procesarPaypalYCrearPedido();
+        break;
     }
   }
 
-  Future<void> _procesarPaypal() async {
+  Future<void> _procesarEfectivoYCrearPedido() async {
+    setState(() => _estaCargando = true);
+    await _crearPedidoFinal(referenciaPago: null, estadoPago: 'pendiente');
+  }
+
+  Future<void> _procesarTarjetaYCrearPedido() async {
+    if (!_validarTarjeta()) return;
+
     setState(() => _estaCargando = true);
 
     try {
-      await Future.delayed(const Duration(seconds: 2));
-      const exitoPago = true;
+      final cart = Provider.of<CartProvider>(context, listen: false);
+      final total = _calcularTotal(cart);
 
-      if (!mounted) return;
+      final intent = await ApiService.crearIntentoTarjeta(
+        amount: total,
+        currency: 'eur',
+      );
 
-      if (exitoPago) {
-        setState(() {
-          _paypalAutorizado = true;
-          _googlePayAutorizado = false;
-          _estaCargando = false;
-        });
+      final paymentIntentId = intent['payment_intent_id']?.toString();
+      final clientSecret = intent['client_secret']?.toString();
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('PayPal autorizado correctamente'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      } else {
-        setState(() {
-          _paypalAutorizado = false;
-          _estaCargando = false;
-        });
-        _mostrarError('Pago con PayPal cancelado o fallido');
+      if (paymentIntentId == null || clientSecret == null) {
+        throw Exception('No se pudo iniciar el pago con tarjeta');
       }
+
+      final confirmado = await ApiService.confirmarPagoTarjeta(
+        clientSecret: clientSecret,
+        numeroTarjeta: _controladorNumeroTarjeta.text.trim(),
+        fechaExpiracion: _controladorFechaExpiracion.text.trim(),
+        cvv: _controladorCvv.text.trim(),
+        nombreTitular: _controladorNombreTitular.text.trim(),
+      );
+
+      if (confirmado != true) {
+        throw Exception('El pago con tarjeta fue rechazado');
+      }
+
+      final verificado = await ApiService.verificarPagoTarjeta(
+        paymentIntentId: paymentIntentId,
+      );
+
+      if (verificado != true) {
+        throw Exception('No se pudo verificar el pago con tarjeta');
+      }
+
+      await _crearPedidoFinal(
+        referenciaPago: paymentIntentId,
+        estadoPago: 'pagado',
+      );
     } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _paypalAutorizado = false;
-        _estaCargando = false;
-      });
-      _mostrarError('Error técnico al procesar PayPal: $e');
+      if (mounted) {
+        setState(() => _estaCargando = false);
+        _mostrarError('Error en el pago con tarjeta: $e');
+      }
     }
   }
 
-  void _confirmarPedido() async {
+  Future<void> _procesarGooglePayYCrearPedido() async {
+    if (!_googlePayAutorizado) {
+      _mostrarError('Primero autoriza Google Pay');
+      return;
+    }
+
+    setState(() => _estaCargando = true);
+
+    try {
+      final cart = Provider.of<CartProvider>(context, listen: false);
+      final total = _calcularTotal(cart);
+
+      final compra = await ApiService.iniciarGooglePay(total: total);
+
+      final productId = (compra['productId'] ?? 'pedido_bravo').toString();
+      final purchaseToken = (compra['purchaseToken'] ?? compra['token'] ?? '')
+          .toString();
+
+      if (purchaseToken.isEmpty) {
+        throw Exception('No se recibió purchaseToken de Google Pay');
+      }
+
+      final verificacion = await ApiService.verificarCompraGooglePlay(
+        packageName: 'com.tuempresa.grupo_bravo',
+        productId: productId,
+        purchaseToken: purchaseToken,
+      );
+
+      final verificado =
+          verificacion['success'] == true ||
+          verificacion['verified'] == true ||
+          verificacion['valid'] == true ||
+          verificacion['status'] == 'OK' ||
+          verificacion['status'] == 'SUCCESS';
+
+      if (!verificado) {
+        throw Exception('La compra no fue validada por Google');
+      }
+
+      await _crearPedidoFinal(
+        referenciaPago: (verificacion['orderId'] ?? purchaseToken).toString(),
+        estadoPago: 'pagado',
+      );
+    } catch (e) {
+      if (mounted) {
+        setState(() => _estaCargando = false);
+        _mostrarError('Error en Google Pay: $e');
+      }
+    }
+  }
+
+  Future<void> _procesarPaypalYCrearPedido() async {
+    if (!_paypalAutorizado) {
+      _mostrarError('Primero autoriza PayPal');
+      return;
+    }
+
+    setState(() => _estaCargando = true);
+
+    try {
+      final cart = Provider.of<CartProvider>(context, listen: false);
+      final total = _calcularTotal(cart);
+
+      final orden = await ApiService.crearOrdenPaypal(
+        total: total,
+        currency: 'EUR',
+      );
+
+      final orderId = orden['id']?.toString();
+      if (orderId == null || orderId.isEmpty) {
+        throw Exception('No se pudo crear la orden de PayPal');
+      }
+
+      final captura = await ApiService.capturarOrdenPaypal(orderId: orderId);
+      final status = (captura['status'] ?? '').toString().toUpperCase();
+
+      final completado =
+          status == 'COMPLETED' ||
+          captura['success'] == true ||
+          captura['approved'] == true;
+
+      if (!completado) {
+        throw Exception('PayPal no devolvió un pago completado');
+      }
+
+      await _crearPedidoFinal(
+        referenciaPago: (captura['id'] ?? orderId).toString(),
+        estadoPago: 'pagado',
+      );
+    } catch (e) {
+      if (mounted) {
+        setState(() => _estaCargando = false);
+        _mostrarError('Error en PayPal: $e');
+      }
+    }
+  }
+
+  Future<void> _crearPedidoFinal({
+    String? referenciaPago,
+    String? estadoPago,
+  }) async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final cart = Provider.of<CartProvider>(context, listen: false);
-
-    if (_pagoSeleccionado == MetodoPago.tarjeta) {
-      if (_controladorNumeroTarjeta.text.trim().isEmpty ||
-          _controladorFechaExpiracion.text.trim().isEmpty ||
-          _controladorCvv.text.trim().isEmpty ||
-          _controladorNombreTitular.text.trim().isEmpty) {
-        _mostrarError('Completa todos los datos de la tarjeta');
-        return;
-      }
-      final numero = _controladorNumeroTarjeta.text.replaceAll(' ', '');
-      if (numero.length < 13 || numero.length > 19) {
-        _mostrarError('Número de tarjeta inválido');
-        return;
-      }
-      if (!RegExp(
-        r'^\d{2}/\d{2}$',
-      ).hasMatch(_controladorFechaExpiracion.text)) {
-        _mostrarError('Formato de fecha inválido (MM/AA)');
-        return;
-      }
-    }
-
-    if (_pagoSeleccionado == MetodoPago.googlePay && !_googlePayAutorizado) {
-      _mostrarError('Primero debes autorizar el pago con Google Pay');
-      return;
-    }
-
-    if (_pagoSeleccionado == MetodoPago.paypal && !_paypalAutorizado) {
-      _mostrarError('Primero debes autorizar el pago con PayPal');
-      return;
-    }
-
-    setState(() => _estaCargando = true);
-    await Future.delayed(const Duration(seconds: 2));
 
     final tipoPagoStr = switch (_pagoSeleccionado) {
       MetodoPago.efectivo => 'Efectivo',
@@ -571,10 +636,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       OpcionEntrega.enMesa => 'Comer en el local',
     };
 
-    final costeEnvio = _entregaSeleccionada == OpcionEntrega.domicilio
-        ? 3.99
-        : 0.0;
-    final total = cart.totalPrice + costeEnvio;
+    final total = _calcularTotal(cart);
 
     final direccionEntrega = _entregaSeleccionada == OpcionEntrega.domicilio
         ? (_direccionSeleccionada == OpcionDireccion.registrada
@@ -614,17 +676,16 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
             ? cart.numeroMesa
             : null,
         notas: _controladorNotas.text.trim(),
+        referenciaPago: referenciaPago,
+        estadoPago:
+            estadoPago ??
+            (_pagoSeleccionado == MetodoPago.efectivo ? 'pendiente' : 'pagado'),
       );
 
       cart.clearCart();
 
       if (mounted) {
-        setState(() {
-          _estaCargando = false;
-          _googlePayAutorizado = false;
-          _paypalAutorizado = false;
-        });
-
+        setState(() => _estaCargando = false);
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -644,64 +705,164 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
     }
   }
 
+  bool _validarTarjeta() {
+    if (_controladorNumeroTarjeta.text.trim().isEmpty ||
+        _controladorFechaExpiracion.text.trim().isEmpty ||
+        _controladorCvv.text.trim().isEmpty ||
+        _controladorNombreTitular.text.trim().isEmpty) {
+      _mostrarError('Completa todos los datos de la tarjeta');
+      return false;
+    }
+
+    final numero = _controladorNumeroTarjeta.text.replaceAll(' ', '');
+    if (numero.length < 13 || numero.length > 19) {
+      _mostrarError('Número de tarjeta inválido');
+      return false;
+    }
+
+    if (!RegExp(
+      r'^\d{2}/\d{2}$',
+    ).hasMatch(_controladorFechaExpiracion.text.trim())) {
+      _mostrarError('Formato de fecha inválido (MM/AA)');
+      return false;
+    }
+
+    return true;
+  }
+
+  double _calcularTotal(CartProvider cart) {
+    final costeEnvio = _entregaSeleccionada == OpcionEntrega.domicilio
+        ? 3.99
+        : 0.0;
+    return cart.totalPrice + costeEnvio;
+  }
+
   Widget _buildGooglePayButton() {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      child: OutlinedButton(
-        style: OutlinedButton.styleFrom(
-          backgroundColor: Colors.white,
-          side: BorderSide.none,
-          padding: const EdgeInsets.symmetric(vertical: 15),
-          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-        ),
-        onPressed: _estaCargando ? null : _procesarGooglePay,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.android, color: Colors.green.shade700),
-            const SizedBox(width: 8),
-            const Text(
-              'Pagar con Google Pay',
-              style: TextStyle(
-                color: Colors.black87,
-                fontWeight: FontWeight.w700,
+    return Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              backgroundColor: Colors.white,
+              side: BorderSide.none,
+              padding: const EdgeInsets.symmetric(vertical: 15),
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.zero,
               ),
             ),
-          ],
+            onPressed: _autorizarGooglePayFrontend,
+            child: const Text(
+              'AUTORIZAR GOOGLE PAY',
+              style: TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1,
+              ),
+            ),
+          ),
         ),
-      ),
+        if (_googlePayAutorizado)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Row(
+              children: const [
+                Icon(Icons.check_circle, color: Colors.greenAccent, size: 18),
+                SizedBox(width: 8),
+                Text(
+                  'Google Pay autorizado',
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 
   Widget _buildPaypalButton() {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      child: OutlinedButton(
-        style: OutlinedButton.styleFrom(
-          backgroundColor: const Color(0xFF0070BA),
-          side: BorderSide.none,
-          padding: const EdgeInsets.symmetric(vertical: 15),
-          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-        ),
-        onPressed: _estaCargando ? null : _procesarPaypal,
-        child: const Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.account_balance_wallet, color: Colors.white),
-            SizedBox(width: 8),
-            Text(
-              'Pagar con PayPal',
+    return Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              backgroundColor: const Color(0xFF0070BA),
+              side: BorderSide.none,
+              padding: const EdgeInsets.symmetric(vertical: 15),
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.zero,
+              ),
+            ),
+            onPressed: _autorizarPaypalFrontend,
+            child: const Text(
+              'AUTORIZAR PAYPAL',
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w700,
+                letterSpacing: 1,
               ),
             ),
-          ],
+          ),
         ),
-      ),
+        if (_paypalAutorizado)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Row(
+              children: const [
+                Icon(Icons.check_circle, color: Colors.greenAccent, size: 18),
+                SizedBox(width: 8),
+                Text(
+                  'PayPal autorizado',
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+      ],
     );
+  }
+
+  Future<void> _autorizarGooglePayFrontend() async {
+    if (_estaCargando) return;
+
+    setState(() => _estaCargando = true);
+    try {
+      await Future.delayed(const Duration(seconds: 1));
+      if (mounted) {
+        setState(() {
+          _googlePayAutorizado = true;
+          _paypalAutorizado = false;
+          _estaCargando = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _estaCargando = false);
+        _mostrarError('No se pudo autorizar Google Pay');
+      }
+    }
+  }
+
+  Future<void> _autorizarPaypalFrontend() async {
+    if (_estaCargando) return;
+
+    setState(() => _estaCargando = true);
+    try {
+      await Future.delayed(const Duration(seconds: 1));
+      if (mounted) {
+        setState(() {
+          _paypalAutorizado = true;
+          _googlePayAutorizado = false;
+          _estaCargando = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _estaCargando = false);
+        _mostrarError('No se pudo autorizar PayPal');
+      }
+    }
   }
 
   void _mostrarError(String mensaje) {
@@ -1241,7 +1402,6 @@ class _ArticuloCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final imageUrl = item.producto.imagenUrl;
-
     return Container(
       height: 130,
       clipBehavior: Clip.hardEdge,
@@ -1417,7 +1577,6 @@ class _StepperCard extends StatelessWidget {
 
 class _FormPanel extends StatelessWidget {
   final Widget child;
-
   const _FormPanel({required this.child});
 
   @override
