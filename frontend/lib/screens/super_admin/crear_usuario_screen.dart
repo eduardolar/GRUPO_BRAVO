@@ -6,7 +6,8 @@ import '../../components/Cliente/entrada_texto.dart';
 
 class CrearUsuarioScreen extends StatefulWidget {
   final String restauranteId;
-  const CrearUsuarioScreen({super.key, required this.restauranteId});
+  final String? rolFijo; // Si se pasa, el rol queda fijo y no se muestra el dropdown
+  const CrearUsuarioScreen({super.key, required this.restauranteId, this.rolFijo});
 
   @override
   State<CrearUsuarioScreen> createState() => _CrearUsuarioScreenState();
@@ -19,8 +20,14 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
   final _nombreCtrl = TextEditingController();
   final _correoCtrl = TextEditingController();
 
-  String _rolSeleccionado = 'trabajador';
+  late String _rolSeleccionado;
   bool _cargando = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _rolSeleccionado = widget.rolFijo ?? 'trabajador';
+  }
 
   @override
   void dispose() {
@@ -56,7 +63,10 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
             children: [
               const Icon(Icons.mark_email_read_outlined, color: AppColors.button),
               const SizedBox(width: 10),
-              Text('¡Cuenta creada!', style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+              Text(
+                widget.rolFijo == 'administrador' ? '¡Administrador creado!' : '¡Personal registrado!',
+                style: GoogleFonts.manrope(fontWeight: FontWeight.w700),
+              ),
             ],
           ),
           content: Column(
@@ -64,7 +74,9 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Se ha enviado un correo de activación a:',
+                widget.rolFijo == 'administrador'
+                    ? 'Se ha enviado un correo de activación al nuevo administrador:'
+                    : 'Se ha enviado un correo de activación al nuevo empleado:',
                 style: GoogleFonts.manrope(color: AppColors.textSecondary, fontSize: 13),
               ),
               const SizedBox(height: 8),
@@ -79,7 +91,9 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
               ),
               const SizedBox(height: 12),
               Text(
-                'El empleado debe abrir la app, ir a "Activar mi cuenta" e ingresar el código que recibió para establecer su contraseña definitiva.',
+                widget.rolFijo == 'administrador'
+                    ? 'El administrador debe abrir la app, ir a "Activar mi cuenta" e ingresar el código recibido para establecer su contraseña.'
+                    : 'El empleado debe abrir la app, ir a "Activar mi cuenta" e ingresar el código que recibió para establecer su contraseña definitiva.',
                 style: GoogleFonts.manrope(color: AppColors.textSecondary, fontSize: 12, height: 1.5),
               ),
             ],
@@ -176,10 +190,10 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
     return Column(
       children: [
         const SizedBox(height: 40),
-        const Text(
-          'Nuevo Personal',
+        Text(
+          widget.rolFijo == 'administrador' ? 'Nuevo Administrador' : 'Nuevo Personal',
           textAlign: TextAlign.center,
-          style: TextStyle(
+          style: const TextStyle(
             fontFamily: 'Playfair Display',
             color: Colors.white,
             fontSize: 36,
@@ -190,7 +204,9 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
         Container(height: 2, width: 40, color: AppColors.button),
         const SizedBox(height: 15),
         Text(
-          'Registra al personal de esta sucursal',
+          widget.rolFijo == 'administrador'
+              ? 'Registra un administrador para esta sucursal'
+              : 'Registra al personal de esta sucursal',
           textAlign: TextAlign.center,
           style: TextStyle(
             color: Colors.white.withValues(alpha: 0.7),
@@ -217,37 +233,38 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
           controlador: _correoCtrl,
           validador: (v) => v == null || v.isEmpty ? 'Este campo es obligatorio' : null,
         ),
-        Padding(
-          padding: const EdgeInsets.only(bottom: 20),
-          child: DropdownButtonFormField<String>(
-            initialValue: _rolSeleccionado,
-            style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
-            decoration: InputDecoration(
-              labelText: 'Asignar Rol',
-              labelStyle: const TextStyle(color: AppColors.textSecondary),
-              prefixIcon: const Icon(Icons.settings_accessibility_outlined, color: AppColors.gold),
-              filled: true,
-              fillColor: AppColors.panel,
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(15),
-                borderSide: const BorderSide(color: AppColors.line),
+        if (widget.rolFijo == null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 20),
+            child: DropdownButtonFormField<String>(
+              initialValue: _rolSeleccionado,
+              style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+              decoration: InputDecoration(
+                labelText: 'Asignar Rol',
+                labelStyle: const TextStyle(color: AppColors.textSecondary),
+                prefixIcon: const Icon(Icons.settings_accessibility_outlined, color: AppColors.gold),
+                filled: true,
+                fillColor: AppColors.panel,
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(15),
+                  borderSide: const BorderSide(color: AppColors.line),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(15),
+                  borderSide: const BorderSide(color: AppColors.button, width: 2),
+                ),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
               ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(15),
-                borderSide: const BorderSide(color: AppColors.button, width: 2),
-              ),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+              items: const [
+                DropdownMenuItem(value: 'cocinero', child: Text('Cocinero')),
+                DropdownMenuItem(value: 'camarero', child: Text('Camarero')),
+                DropdownMenuItem(value: 'mesero', child: Text('Mesero')),
+                DropdownMenuItem(value: 'trabajador', child: Text('Trabajador (general)')),
+                DropdownMenuItem(value: 'administrador', child: Text('Administrador')),
+              ],
+              onChanged: (val) => setState(() => _rolSeleccionado = val!),
             ),
-            items: const [
-              DropdownMenuItem(value: 'cocinero', child: Text('Cocinero')),
-              DropdownMenuItem(value: 'camarero', child: Text('Camarero')),
-              DropdownMenuItem(value: 'mesero', child: Text('Mesero')),
-              DropdownMenuItem(value: 'trabajador', child: Text('Trabajador (general)')),
-              DropdownMenuItem(value: 'administrador', child: Text('Administrador')),
-            ],
-            onChanged: (val) => setState(() => _rolSeleccionado = val!),
           ),
-        ),
       ],
     );
   }

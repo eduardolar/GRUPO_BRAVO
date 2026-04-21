@@ -13,14 +13,167 @@ class SeleccionarRestauranteScreen extends StatefulWidget {
 }
 
 class _SeleccionarRestauranteScreenState extends State<SeleccionarRestauranteScreen> {
-  final RestauranteService _restauranteService = RestauranteService();
-  late final Future<List<Restaurante>> _futureRestaurantes;
+  final RestauranteService _service = RestauranteService();
+  late Future<List<Restaurante>> _futureRestaurantes;
 
   @override
   void initState() {
     super.initState();
-    // Iniciamos el future una sola vez para evitar rebuilds en hot reload
-    _futureRestaurantes = _restauranteService.obtenerTodos();
+    _cargar();
+  }
+
+  void _cargar() {
+    setState(() {
+      _futureRestaurantes = _service.obtenerTodos();
+    });
+  }
+
+  // ── DIÁLOGO CREAR / EDITAR ────────────────────────────────────────
+  Future<void> _mostrarFormulario({Restaurante? restaurante}) async {
+    final nombreCtrl = TextEditingController(text: restaurante?.nombre ?? '');
+    final direccionCtrl = TextEditingController(text: restaurante?.direccion ?? '');
+    final formKey = GlobalKey<FormState>();
+    final esEdicion = restaurante != null;
+
+    final confirmado = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.background,
+        shape: const RoundedRectangleBorder(),
+        title: Text(
+          esEdicion ? 'Editar sucursal' : 'Nueva sucursal',
+          style: GoogleFonts.manrope(fontWeight: FontWeight.w700),
+        ),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: nombreCtrl,
+                style: GoogleFonts.manrope(color: AppColors.textPrimary),
+                decoration: InputDecoration(
+                  labelText: 'Nombre',
+                  labelStyle: GoogleFonts.manrope(fontSize: 13, color: AppColors.textSecondary),
+                  prefixIcon: const Icon(Icons.storefront_outlined, color: AppColors.button, size: 20),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: const OutlineInputBorder(borderRadius: BorderRadius.zero),
+                  enabledBorder: const OutlineInputBorder(
+                    borderRadius: BorderRadius.zero,
+                    borderSide: BorderSide(color: AppColors.line),
+                  ),
+                  focusedBorder: const OutlineInputBorder(
+                    borderRadius: BorderRadius.zero,
+                    borderSide: BorderSide(color: AppColors.button, width: 1.5),
+                  ),
+                ),
+                validator: (v) => v == null || v.trim().isEmpty ? 'Campo obligatorio' : null,
+              ),
+              const SizedBox(height: 14),
+              TextFormField(
+                controller: direccionCtrl,
+                style: GoogleFonts.manrope(color: AppColors.textPrimary),
+                decoration: InputDecoration(
+                  labelText: 'Dirección',
+                  labelStyle: GoogleFonts.manrope(fontSize: 13, color: AppColors.textSecondary),
+                  prefixIcon: const Icon(Icons.location_on_outlined, color: AppColors.button, size: 20),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: const OutlineInputBorder(borderRadius: BorderRadius.zero),
+                  enabledBorder: const OutlineInputBorder(
+                    borderRadius: BorderRadius.zero,
+                    borderSide: BorderSide(color: AppColors.line),
+                  ),
+                  focusedBorder: const OutlineInputBorder(
+                    borderRadius: BorderRadius.zero,
+                    borderSide: BorderSide(color: AppColors.button, width: 1.5),
+                  ),
+                ),
+                validator: (v) => v == null || v.trim().isEmpty ? 'Campo obligatorio' : null,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Cancelar', style: GoogleFonts.manrope(color: AppColors.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () {
+              if (formKey.currentState!.validate()) Navigator.pop(ctx, true);
+            },
+            child: Text(
+              esEdicion ? 'GUARDAR' : 'CREAR',
+              style: GoogleFonts.manrope(fontWeight: FontWeight.w700, color: AppColors.button),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmado != true || !mounted) return;
+
+    final nombre = nombreCtrl.text.trim();
+    final direccion = direccionCtrl.text.trim();
+
+    if (esEdicion) {
+      final ok = await _service.editarRestaurante(id: restaurante.id, nombre: nombre, direccion: direccion);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(ok ? 'Sucursal actualizada' : 'Error al actualizar', style: GoogleFonts.manrope()),
+          backgroundColor: ok ? AppColors.button : AppColors.error,
+        ));
+        if (ok) _cargar();
+      }
+    } else {
+      final nuevo = await _service.crearRestaurante(nombre: nombre, direccion: direccion);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(nuevo != null ? 'Sucursal creada' : 'Error al crear', style: GoogleFonts.manrope()),
+          backgroundColor: nuevo != null ? AppColors.button : AppColors.error,
+        ));
+        if (nuevo != null) _cargar();
+      }
+    }
+  }
+
+  // ── CONFIRMAR BORRADO ─────────────────────────────────────────────
+  Future<void> _confirmarBorrado(Restaurante restaurante) async {
+    final confirmado = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: AppColors.background,
+        shape: const RoundedRectangleBorder(),
+        title: Text('¿Eliminar sucursal?', style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+        content: Text(
+          'Se eliminará "${restaurante.nombre}" permanentemente. Esta acción no se puede deshacer.',
+          style: GoogleFonts.manrope(color: AppColors.textSecondary, fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancelar', style: GoogleFonts.manrope(color: AppColors.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('Eliminar', style: GoogleFonts.manrope(color: AppColors.error, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmado != true || !mounted) return;
+
+    final ok = await _service.eliminarRestaurante(restaurante.id);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(ok ? 'Sucursal eliminada' : 'Error al eliminar', style: GoogleFonts.manrope()),
+        backgroundColor: ok ? AppColors.button : AppColors.error,
+      ));
+      if (ok) _cargar();
+    }
   }
 
   @override
@@ -29,10 +182,20 @@ class _SeleccionarRestauranteScreenState extends State<SeleccionarRestauranteScr
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () { _mostrarFormulario(); },
+        backgroundColor: AppColors.button,
+        elevation: 4,
+        shape: const RoundedRectangleBorder(),
+        icon: const Icon(Icons.add_rounded, color: Colors.white),
+        label: Text(
+          'NUEVA SUCURSAL',
+          style: GoogleFonts.manrope(color: Colors.white, fontWeight: FontWeight.w700, letterSpacing: 1.5),
+        ),
+      ),
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          // ── HERO INMERSIVO ─────────────────────────────────────────
           SliverAppBar(
             expandedHeight: screenHeight * 0.48,
             pinned: true,
@@ -41,21 +204,14 @@ class _SeleccionarRestauranteScreenState extends State<SeleccionarRestauranteScr
             flexibleSpace: FlexibleSpaceBar(
               collapseMode: CollapseMode.parallax,
               background: _HeroHeader(),
-              // Título compacto cuando está colapsado
               title: Text(
                 'GRUPO BRAVO',
-                style: GoogleFonts.manrope(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 15,
-                  color: Colors.white,
-                  letterSpacing: 2,
-                ),
+                style: GoogleFonts.manrope(fontWeight: FontWeight.w800, fontSize: 15, color: Colors.white, letterSpacing: 2),
               ),
               centerTitle: true,
             ),
           ),
 
-          // ── SECCIÓN LISTA ──────────────────────────────────────────
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(24, 28, 24, 8),
@@ -65,19 +221,13 @@ class _SeleccionarRestauranteScreenState extends State<SeleccionarRestauranteScr
                   const SizedBox(width: 10),
                   Text(
                     'SUCURSALES',
-                    style: GoogleFonts.manrope(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textSecondary,
-                      letterSpacing: 2,
-                    ),
+                    style: GoogleFonts.manrope(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.textSecondary, letterSpacing: 2),
                   ),
                 ],
               ),
             ),
           ),
 
-          // ── ESTADOS: cargando / error / vacío / lista ──────────────
           FutureBuilder<List<Restaurante>>(
             future: _futureRestaurantes,
             builder: (context, snapshot) {
@@ -86,9 +236,7 @@ class _SeleccionarRestauranteScreenState extends State<SeleccionarRestauranteScr
                   hasScrollBody: false,
                   child: Padding(
                     padding: EdgeInsets.only(top: 48),
-                    child: Center(
-                      child: CircularProgressIndicator(color: AppColors.button),
-                    ),
+                    child: Center(child: CircularProgressIndicator(color: AppColors.button)),
                   ),
                 );
               }
@@ -115,12 +263,19 @@ class _SeleccionarRestauranteScreenState extends State<SeleccionarRestauranteScr
 
               final restaurantes = snapshot.data!;
               return SliverPadding(
-                padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
+                padding: const EdgeInsets.fromLTRB(24, 12, 24, 100),
                 sliver: SliverList(
                   delegate: SliverChildBuilderDelegate(
-                    (context, index) => _RestauranteCard(
-                      restaurante: restaurantes[index],
-                      numero: index + 1,
+                    (context, index) => Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 640),
+                        child: _RestauranteCard(
+                          restaurante: restaurantes[index],
+                          numero: index + 1,
+                          onEdit: () { _mostrarFormulario(restaurante: restaurantes[index]); },
+                          onDelete: () { _confirmarBorrado(restaurantes[index]); },
+                        ),
+                      ),
                     ),
                     childCount: restaurantes.length,
                   ),
@@ -140,15 +295,9 @@ class _HeroHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        // 1. Imagen de fondo
         Positioned.fill(
-          child: Image.asset(
-            'assets/images/Bravo restaurante.jpg',
-            fit: BoxFit.cover,
-          ),
+          child: Image.asset('assets/images/Bravo restaurante.jpg', fit: BoxFit.cover),
         ),
-
-        // 2. Overlay degradado para legibilidad
         Positioned.fill(
           child: DecoratedBox(
             decoration: BoxDecoration(
@@ -166,33 +315,21 @@ class _HeroHeader extends StatelessWidget {
             ),
           ),
         ),
-
-        // 3. Contenido centrado
         SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Badge "EST. 2024"
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.white60, width: 1.2),
-                  ),
+                  decoration: BoxDecoration(border: Border.all(color: Colors.white60, width: 1.2)),
                   child: Text(
                     'EST. 2024',
-                    style: GoogleFonts.manrope(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 4,
-                    ),
+                    style: GoogleFonts.manrope(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: 4),
                   ),
                 ),
                 const SizedBox(height: 20),
-
-                // Título principal con Playfair Display
                 const Text(
                   'GRUPO BRAVO',
                   textAlign: TextAlign.center,
@@ -206,20 +343,11 @@ class _HeroHeader extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 10),
-
-                // Subtítulo
                 Text(
                   'Panel de Administración',
-                  style: GoogleFonts.manrope(
-                    color: Colors.white70,
-                    fontSize: 13,
-                    letterSpacing: 1.5,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: GoogleFonts.manrope(color: Colors.white70, fontSize: 13, letterSpacing: 1.5, fontWeight: FontWeight.w500),
                 ),
                 const SizedBox(height: 28),
-
-                // Separador decorativo
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -243,114 +371,126 @@ class _HeroHeader extends StatelessWidget {
 class _RestauranteCard extends StatelessWidget {
   final Restaurante restaurante;
   final int numero;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
 
-  const _RestauranteCard({required this.restaurante, required this.numero});
+  const _RestauranteCard({
+    required this.restaurante,
+    required this.numero,
+    required this.onEdit,
+    required this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => HomeScreenSuperAdmin(
-            restauranteId: restaurante.id,
-            restauranteNombre: restaurante.nombre,
-          ),
-        ),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: AppColors.line),
+        boxShadow: [
+          BoxShadow(color: AppColors.shadow.withValues(alpha: 0.18), blurRadius: 14, offset: const Offset(0, 5)),
+        ],
       ),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: AppColors.line),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.shadow.withValues(alpha: 0.18),
-              blurRadius: 14,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
-        child: IntrinsicHeight(
-          child: Row(
+      child: IntrinsicHeight(
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Acento lateral con número de sucursal
-            Container(
-              width: 52,
-              color: AppColors.button,
-              alignment: Alignment.center,
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              child: Text(
-                numero.toString().padLeft(2, '0'),
-                style: GoogleFonts.manrope(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1,
+            // Número de sucursal
+            GestureDetector(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => HomeScreenSuperAdmin(
+                    restauranteId: restaurante.id,
+                    restauranteNombre: restaurante.nombre,
+                  ),
+                ),
+              ),
+              child: Container(
+                width: 52,
+                color: AppColors.button,
+                alignment: Alignment.center,
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                child: Text(
+                  numero.toString().padLeft(2, '0'),
+                  style: GoogleFonts.manrope(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: 1),
                 ),
               ),
             ),
-            const SizedBox(width: 16),
 
-            // Info de la sucursal
+            // Info
             Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      restaurante.nombre,
-                      style: GoogleFonts.manrope(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                      ),
+              child: GestureDetector(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => HomeScreenSuperAdmin(
+                      restauranteId: restaurante.id,
+                      restauranteNombre: restaurante.nombre,
                     ),
-                    const SizedBox(height: 5),
-                    Row(
-                      children: [
-                        const Icon(Icons.location_on_outlined, size: 13, color: AppColors.textSecondary),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            restaurante.direccion,
-                            style: GoogleFonts.manrope(
-                              fontSize: 12,
-                              color: AppColors.textSecondary,
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 8, 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        restaurante.nombre,
+                        style: GoogleFonts.manrope(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                      ),
+                      const SizedBox(height: 5),
+                      Row(
+                        children: [
+                          const Icon(Icons.location_on_outlined, size: 13, color: AppColors.textSecondary),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              restaurante.direccion,
+                              style: GoogleFonts.manrope(fontSize: 12, color: AppColors.textSecondary),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    // CTA inline
-                    Text(
-                      'GESTIONAR →',
-                      style: GoogleFonts.manrope(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.button,
-                        letterSpacing: 1.5,
+                        ],
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 10),
+                      Text(
+                        'GESTIONAR →',
+                        style: GoogleFonts.manrope(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.button, letterSpacing: 1.5),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-            const SizedBox(width: 16),
+
+            // Acciones editar / borrar
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined, size: 20, color: AppColors.button),
+                  onPressed: onEdit,
+                  tooltip: 'Editar',
+                ),
+                IconButton(
+                  icon: Icon(Icons.delete_outline, size: 20, color: AppColors.error.withValues(alpha: 0.8)),
+                  onPressed: onDelete,
+                  tooltip: 'Eliminar',
+                ),
+                const SizedBox(width: 4),
+              ],
+            ),
           ],
-        ),
         ),
       ),
     );
   }
 }
 
-// ── ESTADO VACÍO / ERROR ────────────────────────────────────────────
+// ── ESTADO VACÍO ────────────────────────────────────────────────────
 class _EmptyState extends StatelessWidget {
   final IconData icon;
   final String mensaje;
@@ -370,11 +510,7 @@ class _EmptyState extends StatelessWidget {
             Text(
               mensaje,
               textAlign: TextAlign.center,
-              style: GoogleFonts.manrope(
-                fontSize: 13,
-                color: AppColors.textSecondary,
-                height: 1.6,
-              ),
+              style: GoogleFonts.manrope(fontSize: 13, color: AppColors.textSecondary, height: 1.6),
             ),
           ],
         ),

@@ -10,7 +10,6 @@ class RestauranteService {
         Uri.parse('$baseUrl/restaurantes'),
         headers: {'Content-Type': 'application/json'},
       );
-
       if (response.statusCode == 200) {
         List<dynamic> body = jsonDecode(response.body);
         return body.map((item) => Restaurante.fromJson(item)).toList();
@@ -19,6 +18,47 @@ class RestauranteService {
       }
     } catch (e) {
       throw Exception('Error de conexión: $e');
+    }
+  }
+
+  Future<Restaurante?> crearRestaurante({required String nombre, required String direccion}) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/restaurantes'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'nombre': nombre, 'direccion': direccion}),
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return Restaurante.fromJson(jsonDecode(response.body));
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<bool> editarRestaurante({required String id, required String nombre, required String direccion}) async {
+    try {
+      final response = await http.put(
+        Uri.parse('$baseUrl/restaurantes/$id'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'nombre': nombre, 'direccion': direccion}),
+      );
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> eliminarRestaurante(String id) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('$baseUrl/restaurantes/$id'),
+        headers: {'Content-Type': 'application/json'},
+      );
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
     }
   }
 }
