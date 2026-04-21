@@ -61,7 +61,7 @@ class _LoginTrabajadorState extends State<LoginTrabajador> {
             "Iniciar Sesión",
             style: TextStyle(
               fontFamily: 'Playfair Display',
-              color: Color(0xFF2D2D2D),
+              color: AppColors.textPrimary,
               fontSize: 30,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.5,
@@ -84,7 +84,7 @@ class _LoginTrabajadorState extends State<LoginTrabajador> {
 
           Row(
             children: [
-              const Expanded(child: Divider(color: Color(0xFFE0DBD3))),
+              const Expanded(child: Divider(color: AppColors.line)),
               Container(
                 width: 60,
                 height: 1.5,
@@ -98,7 +98,7 @@ class _LoginTrabajadorState extends State<LoginTrabajador> {
                   ),
                 ),
               ),
-              const Expanded(child: Divider(color: Color(0xFFE0DBD3))),
+              const Expanded(child: Divider(color: AppColors.line)),
             ],
           ),
 

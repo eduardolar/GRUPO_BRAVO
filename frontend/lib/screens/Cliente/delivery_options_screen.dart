@@ -787,7 +787,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
           width: double.infinity,
           child: OutlinedButton(
             style: OutlinedButton.styleFrom(
-              backgroundColor: const Color(0xFF0070BA),
+              backgroundColor: AppColors.paypal,
               side: BorderSide.none,
               padding: const EdgeInsets.symmetric(vertical: 15),
               shape: const RoundedRectangleBorder(
@@ -1475,7 +1475,7 @@ class _ArticuloCard extends StatelessWidget {
                   Text(
                     'Sin: ${item.ingredientesExcluidos.join(', ')}',
                     style: const TextStyle(
-                      color: Color(0xFFFFB3B3),
+                      color: AppColors.excludedIngredient,
                       fontSize: 10,
                       fontStyle: FontStyle.italic,
                     ),
