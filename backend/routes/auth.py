@@ -123,39 +123,36 @@ async def registrar_usuario(usuario: UsuarioRegistro):
 # --- 4. ENDPOINT: VERIFICAR CÓDIGO ---
 @router.post("/verificar-codigo")
 async def verificar_codigo(datos: VerificacionCodigo):
-    # 1. Buscamos al usuario por correo
     usuario_db = coleccion_usuarios.find_one({"correo": datos.correo})
-
     if not usuario_db:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
-    # 2. Comparamos el código (importante que ambos sean Strings)
     codigo_recibido = str(datos.codigo).strip()
-    codigo_guardado = str(usuario_db.get("verification_code")).strip()
 
-    if codigo_recibido == codigo_guardado:
-        # 3. ACTUALIZACIÓN: Aquí es donde cambiamos a True y limpiamos el código
-        resultado = coleccion_usuarios.update_one(
-            {"correo": datos.correo},
-            {
-                "$set": {
-                    "is_verified": True, 
-                    "verification_code": None  # Limpiamos el código usado
-                }
-            }
-        )
-        
-        # Verificamos si MongoDB realmente hizo el cambio
-        if resultado.modified_count > 0:
-            return {"mensaje": "¡Cuenta verificada con éxito! Ya puedes hacer login."}
-        else:
-            return {"mensaje": "La cuenta ya estaba verificada o no hubo cambios."}
-    
-    # Si los códigos no coinciden
-    raise HTTPException(
-        status_code=400, 
-        detail=f"Código incorrecto. Recibido: {codigo_recibido}, Esperado: {codigo_guardado}"
+    # Clientes usan verification_code; empleados creados por admin usan reset_code
+    codigo_verificacion = str(usuario_db.get("verification_code") or "").strip()
+    codigo_reset = str(usuario_db.get("reset_code") or "").strip()
+
+    coincide_verificacion = codigo_recibido == codigo_verificacion and codigo_verificacion != ""
+    coincide_reset = codigo_recibido == codigo_reset and codigo_reset != ""
+
+    if not coincide_verificacion and not coincide_reset:
+        raise HTTPException(status_code=400, detail="Código incorrecto o expirado")
+
+    campos = {"is_verified": True}
+    if coincide_verificacion:
+        campos["verification_code"] = None
+    if coincide_reset:
+        campos["reset_code"] = None
+
+    resultado = coleccion_usuarios.update_one(
+        {"correo": datos.correo},
+        {"$set": campos}
     )
+
+    if resultado.modified_count > 0:
+        return {"mensaje": "¡Cuenta verificada con éxito! Ya puedes hacer login."}
+    return {"mensaje": "La cuenta ya estaba verificada."}
 # --- 5. ENDPOINT: LOGIN ---
 @router.post("/login")
 def iniciar_sesion(credenciales: UsuarioLogin):
@@ -270,7 +267,7 @@ async def reset_password(datos: ResetPassword):
     if not usuario_db:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
-    codigo_guardado = str(usuario_db.get("reset_code", "")).strip()
+    codigo_guardado = str(usuario_db.get("reset_code") or "").strip()
     if not codigo_guardado or datos.codigo.strip() != codigo_guardado:
         raise HTTPException(status_code=400, detail="Código inválido o expirado")
 
@@ -279,7 +276,11 @@ async def reset_password(datos: ResetPassword):
 
     coleccion_usuarios.update_one(
         {"correo": datos.correo},
-        {"$set": {"password_hash": hashed_password.decode('utf-8'), "reset_code": None}}
+        {"$set": {
+            "password_hash": hashed_password.decode('utf-8'),
+            "reset_code": None,
+            "is_verified": True,
+        }}
     )
 
     return {"mensaje": "Contraseña actualizada correctamente"}
