@@ -29,7 +29,7 @@ class MainApp extends StatelessWidget {
       ],
       child: MaterialApp(
         theme: ThemeData(textTheme: GoogleFonts.frederickaTheGreatTextTheme()),
-        home: const HomeScreen(),
+        home: const HomeTrabajador(),
       ),
     );
   }
