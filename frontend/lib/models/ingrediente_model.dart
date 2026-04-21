@@ -1,6 +1,7 @@
 class Ingrediente {
   final String id;
   final String nombre;
+  final String categoria; // Añadido para que funcionen los filtros
   final double cantidadActual;
   final String unidad;
   final double stockMinimo;
@@ -8,6 +9,7 @@ class Ingrediente {
   Ingrediente({
     required this.id,
     required this.nombre,
+    this.categoria = 'Otras',
     this.cantidadActual = 0,
     this.unidad = 'kg',
     this.stockMinimo = 0,
@@ -19,9 +21,10 @@ class Ingrediente {
     return Ingrediente(
       id: json['id'] ?? json['_id'] ?? '',
       nombre: json['nombre'] ?? json['ingrediente'] ?? '',
-      cantidadActual: (json['cantidad_actual'] ?? 0).toDouble(),
+      categoria: json['categoria'] ?? 'Otras',
+      cantidadActual: (json['cantidad_actual'] ?? json['cantidad'] ?? 0).toDouble(),
       unidad: json['unidad'] ?? 'kg',
-      stockMinimo: (json['stock_minimo'] ?? 0).toDouble(),
+      stockMinimo: (json['stock_minimo'] ?? json['stockMinimo'] ?? 0).toDouble(),
     );
   }
 
@@ -29,6 +32,7 @@ class Ingrediente {
     return {
       'id': id,
       'nombre': nombre,
+      'categoria': categoria,
       'cantidad_actual': cantidadActual,
       'unidad': unidad,
       'stock_minimo': stockMinimo,

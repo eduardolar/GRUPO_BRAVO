@@ -238,46 +238,25 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // Lógica de _iniciarSesion y navegación se mantiene igual que antes...
-  Future<void> _iniciarSesion() async {
+Future<void> _iniciarSesion() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
+    
     if (email.isEmpty || password.isEmpty) {
       _showSnackBar('Por favor, completa todos los campos');
       return;
     }
+    
     setState(() => _isLoading = true);
+    
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final success = await authProvider.iniciarSesion(email, password);
+      
       if (success && mounted) {
         final usuario = authProvider.usuarioActual!;
+        // ¡Usuario autenticado! Ahora decidimos a dónde va según su rol
         _navigateToRoleHome(usuario);
-        _navigateToRoleHome(usuario);
-        Widget pantallaDestino;
-
-        switch (usuario.rol) {
-          case RolUsuario.trabajador:
-            pantallaDestino = const HomeTrabajador();
-            break;
-          case RolUsuario.administrador:
-            pantallaDestino = const HomeScreenAdmin();
-            break;
-          case RolUsuario.cliente:
-            pantallaDestino = widget.destino == DestinoLogin.reservar
-                ? const ReservarMesaScreen()
-                : const MenuScreen();
-            break;
-           case RolUsuario.superadministrador: //agregué este caso para el superadmin
-            pantallaDestino = const SeleccionarRestauranteScreen();
-  break; 
-        }
-
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => pantallaDestino),
-          (route) => false,
-        );
       }
     } catch (e) {
       if (mounted) _showSnackBar('Error: ${e.toString()}');
@@ -288,19 +267,37 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _navigateToRoleHome(Usuario usuario) {
     Widget pantallaDestino;
+    
+    // Aquí decidimos a dónde va cada usuario
     switch (usuario.rol) {
-      case RolUsuario.trabajador: pantallaDestino = const HomeTrabajador(); break;
-      case RolUsuario.administrador: pantallaDestino = const AdminMenuScreen(); break;
-      case RolUsuario.superadministrador: pantallaDestino = const HomeScreenSuperAdmin(restauranteId: '', restauranteNombre: '',); break;
+      case RolUsuario.trabajador: 
+        pantallaDestino = const HomeTrabajador(); 
+        break;
+      case RolUsuario.administrador: 
+        pantallaDestino = MenuAdministrador();
+        break;
+      case RolUsuario.superadministrador: 
+        pantallaDestino = const SeleccionarRestauranteScreen(); 
+        break;
       case RolUsuario.cliente:
       default:
-        pantallaDestino = widget.destino == DestinoLogin.reservar ? const ReservarMesaScreen() : const MenuScreen();
+        pantallaDestino = widget.destino == DestinoLogin.reservar 
+            ? const ReservarMesaScreen() 
+            : const MenuScreen();
         break;
     }
-    Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => pantallaDestino), (route) => false);
+    
+    // Hacemos el cambio de pantalla limpiando el historial
+    Navigator.pushAndRemoveUntil(
+      context, 
+      MaterialPageRoute(builder: (_) => pantallaDestino), 
+      (route) => false
+    );
   }
 
   void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), backgroundColor: AppColors.error));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: AppColors.error)
+    );
   }
-}
+} 
