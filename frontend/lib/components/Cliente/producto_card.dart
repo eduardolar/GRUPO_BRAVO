@@ -6,13 +6,15 @@ class ProductoCard extends StatelessWidget {
   final Producto product;
   final VoidCallback onAdd;
   final VoidCallback? onPersonalizar;
+  bool iconoEditar;
   static DateTime _lastTap = DateTime(2000);
 
-  const ProductoCard({
+  ProductoCard({
     super.key,
     required this.product,
     required this.onAdd,
     this.onPersonalizar,
+    this.iconoEditar = false
   });
 
   @override
@@ -151,7 +153,7 @@ class ProductoCard extends StatelessWidget {
                               _lastTap = now;
                               onAdd();
                             },
-                            icon: const Icon(Icons.add, size: 20),
+                            icon: IconoBoton(),
                           ),
                         ),
                       ],
@@ -166,4 +168,13 @@ class ProductoCard extends StatelessWidget {
       ),
     );
   }
+
+  Icon IconoBoton(){
+    if(iconoEditar){
+      return Icon(Icons.edit);
+    } else{
+      return Icon(Icons.add);
+    }
+  }
+
 }

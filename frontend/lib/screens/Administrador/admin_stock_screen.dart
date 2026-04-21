@@ -70,7 +70,7 @@ class _AdminStockScreenState extends State<AdminStockScreen> {
                       padding: const EdgeInsets.all(15),
                       child: ElevatedButton(
                         onPressed: () {
-                          EditarIngrediente();
+                          EditarIngrediente(ingrediente: elemtoStock);
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor:
@@ -121,10 +121,10 @@ class _AdminStockScreenState extends State<AdminStockScreen> {
     );
   }
 
-  void EditarIngrediente() async {
+  void EditarIngrediente({required ingrediente}) async {
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => EditarIngredienteStock()),
+      MaterialPageRoute(builder: (context) => EditarIngredienteStock(ingredienteEdit: ingrediente)),
     );
 
     setState(() {});
