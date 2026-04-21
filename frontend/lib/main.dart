@@ -1,10 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:frontend/screens/cliente/menu_screen.dart';
-import 'package:frontend/screens/admin/home_screen_admin.dart';
-import 'package:frontend/screens/home_screen_trabajador.dart';
-import 'package:frontend/screens/super_admin/home_screen_super_admin.dart';
-import 'package:frontend/screens/trabajador/login_trabajador.dart';
-import 'package:frontend/screens/trabajador/Reservas/reserva_mesa_trabajador.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'screens/cliente/home_screen.dart';
@@ -28,6 +23,14 @@ class MainApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => PedidoProvider()),
       ],
       child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        locale: const Locale('es'),
+        supportedLocales: const [Locale('es')],
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
         theme: ThemeData(textTheme: GoogleFonts.frederickaTheGreatTextTheme()),
         home: const HomeScreen(),
       ),
