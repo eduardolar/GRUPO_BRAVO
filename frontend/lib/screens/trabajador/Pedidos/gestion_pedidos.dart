@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/core/colors_style.dart';
+import 'package:frontend/screens/trabajador/Pedidos/comanda_domicilio.dart';
+import 'package:frontend/screens/trabajador/Pedidos/crear_pedidos.dart';
 
 class GestionPedidos extends StatefulWidget {
   const GestionPedidos({super.key});
@@ -242,7 +244,12 @@ class _ActionButtonsPedidos extends StatelessWidget {
         _MainButton(
           icon: Icons.add_shopping_cart_outlined,
           label: "Crear un pedido",
-          onPressed: () {},
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const SeleccionPedido()),
+            );
+          },
         ),
         _MainButton(
           icon: Icons.edit_outlined,
