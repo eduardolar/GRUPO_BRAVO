@@ -103,7 +103,7 @@ class _CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
         "GESTIÓN DE STOCK",
         style: TextStyle(
           fontFamily: 'Playfair Display',
-          color: Color(0xFFFFF8E1),
+          color: AppColors.textAppBar,
           fontSize: 18,
           fontWeight: FontWeight.w700,
           letterSpacing: 2.0,

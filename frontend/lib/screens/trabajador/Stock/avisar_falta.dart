@@ -169,7 +169,7 @@ class _AvisarFaltaScreenState extends State<AvisarFaltaScreen> {
 
           Row(
             children: [
-              const Expanded(child: Divider(color: Color(0xFFE0DBD3))),
+              const Expanded(child: Divider(color: AppColors.line)),
               Container(
                 width: 60,
                 height: 1.5,
@@ -183,7 +183,7 @@ class _AvisarFaltaScreenState extends State<AvisarFaltaScreen> {
                   ),
                 ),
               ),
-              const Expanded(child: Divider(color: Color(0xFFE0DBD3))),
+              const Expanded(child: Divider(color: AppColors.line)),
             ],
           ),
         ],
