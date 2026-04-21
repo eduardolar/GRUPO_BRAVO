@@ -103,7 +103,6 @@ def health():
 @app.post("/pedidos", response_model=PedidoResponse)
 def crear_pedido(payload: PedidoCreate):
     pedido_id = str(uuid.uuid4())
-
     pedido = {
         "id": pedido_id,
         "userId": payload.userId,
@@ -137,6 +136,7 @@ def listar_pedidos():
 
 
 @app.post("/payments/stripe/create-intent")
+@app.post("/payments/card/create-intent")
 def crear_payment_intent(payload: PaymentIntentCreate):
     if not stripe.api_key:
         raise HTTPException(status_code=500, detail="Falta STRIPE_SECRET_KEY")
@@ -157,19 +157,16 @@ def crear_payment_intent(payload: PaymentIntentCreate):
 
 
 @app.post("/payments/stripe/confirm")
+@app.post("/payments/card/confirm")
 def confirmar_payment_intent(payload: CardConfirmRequest):
     if not payload.clientSecret:
         raise HTTPException(status_code=400, detail="clientSecret requerido")
-
     if not payload.numeroTarjeta.strip():
         raise HTTPException(status_code=400, detail="Número de tarjeta requerido")
-
     if not payload.fechaExpiracion.strip():
         raise HTTPException(status_code=400, detail="Fecha de expiración requerida")
-
     if not payload.cvv.strip():
         raise HTTPException(status_code=400, detail="CVV requerido")
-
     if not payload.nombreTitular.strip():
         raise HTTPException(status_code=400, detail="Nombre del titular requerido")
 
@@ -180,6 +177,7 @@ def confirmar_payment_intent(payload: CardConfirmRequest):
 
 
 @app.get("/payments/stripe/verify/{payment_intent_id}")
+@app.get("/payments/card/verify/{payment_intent_id}")
 def verificar_payment_intent(payment_intent_id: str):
     if not stripe.api_key:
         raise HTTPException(status_code=500, detail="Falta STRIPE_SECRET_KEY")
@@ -196,6 +194,7 @@ def verificar_payment_intent(payment_intent_id: str):
 
 
 @app.post("/payments/google-pay/init")
+@app.post("/payments/google-play/init")
 def iniciar_google_pay(payload: GooglePayInitRequest):
     return {
         "success": True,
@@ -208,12 +207,12 @@ def iniciar_google_pay(payload: GooglePayInitRequest):
 
 
 @app.post("/payments/google-pay/verify")
+@app.post("/payments/google-play/verify")
 def verificar_google_pay(payload: GooglePayVerifyRequest):
     if payload.token:
         signed_message = payload.token.get("signedMessage")
         protocol_version = payload.token.get("protocolVersion")
         valid = bool(signed_message and protocol_version)
-
         return {
             "valid": valid,
             "verified": valid,
@@ -257,12 +256,16 @@ async def _paypal_access_token() -> str:
     if response.status_code >= 400:
         raise HTTPException(status_code=400, detail=f"Error OAuth PayPal: {response.text}")
 
-    data = response.json()
-    return data["access_token"]
+    return response.json()["access_token"]
 
 
 @app.post("/payments/paypal/create-order")
-async def crear_orden_paypal(payload: PayPalOrderCreate):
+def crear_orden_paypal(payload: PayPalOrderCreate):
+    import anyio
+    return anyio.run(_crear_orden_paypal_async, payload)
+
+
+async def _crear_orden_paypal_async(payload: PayPalOrderCreate):
     token = await _paypal_access_token()
 
     body = {
@@ -294,7 +297,13 @@ async def crear_orden_paypal(payload: PayPalOrderCreate):
 
 
 @app.post("/payments/paypal/capture-order")
-async def capturar_orden_paypal(payload: PayPalCaptureRequest):
+@app.post("/payments/paypal/capture")
+def capturar_orden_paypal(payload: PayPalCaptureRequest):
+    import anyio
+    return anyio.run(_capturar_orden_paypal_async, payload)
+
+
+async def _capturar_orden_paypal_async(payload: PayPalCaptureRequest):
     token = await _paypal_access_token()
 
     async with httpx.AsyncClient(timeout=30.0) as client:
@@ -310,8 +319,3 @@ async def capturar_orden_paypal(payload: PayPalCaptureRequest):
         raise HTTPException(status_code=400, detail=response.text)
 
     return response.json()
-
-
-@app.post("/payments/paypal/capture")
-async def capturar_orden_paypal_alias(payload: PayPalCaptureRequest):
-    return await capturar_orden_paypal(payload)
