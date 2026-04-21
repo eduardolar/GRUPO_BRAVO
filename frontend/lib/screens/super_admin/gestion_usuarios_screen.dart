@@ -80,13 +80,17 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
   }
 
   Future<void> _irACrearUsuario() async {
+    final rolFijo = widget.rolAFiltrar.toLowerCase() == 'administrador' ? 'administrador' : null;
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => CrearUsuarioScreen(restauranteId: widget.restauranteId),
+        builder: (_) => CrearUsuarioScreen(
+          restauranteId: widget.restauranteId,
+          rolFijo: rolFijo,
+        ),
       ),
     );
-    setState(() {}); // Refresca al volver
+    setState(() {});
   }
 
   @override
@@ -137,17 +141,27 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
                       return ListView(
                         padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
                         children: [
-                          for (final rol in [..._rolesOrden, 'otros'])
-                            if (grupos.containsKey(rol)) ...[
-                              _buildSeccionHeader(rol, grupos[rol]!.length),
-                              ...grupos[rol]!.map(
-                                (u) => _UsuarioTile(
-                                  usuario: u,
-                                  onDelete: () => _confirmarBorrado(context, u),
-                                ),
+                          Center(
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 640),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  for (final rol in [..._rolesOrden, 'otros'])
+                                    if (grupos.containsKey(rol)) ...[
+                                      _buildSeccionHeader(rol, grupos[rol]!.length),
+                                      ...grupos[rol]!.map(
+                                        (u) => _UsuarioTile(
+                                          usuario: u,
+                                          onDelete: () => _confirmarBorrado(context, u),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 16),
+                                    ],
+                                ],
                               ),
-                              const SizedBox(height: 16),
-                            ],
+                            ),
+                          ),
                         ],
                       );
                     },

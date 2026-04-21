@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import 'package:frontend/core/colors_style.dart';
+import 'package:frontend/providers/auth_provider.dart';
+import 'package:frontend/screens/cliente/home_screen.dart';
 import 'gestion_usuarios_screen.dart';
 import 'gestion_rol_screen.dart';
 import 'crear_usuario_screen.dart';
@@ -47,10 +50,21 @@ class HomeScreenSuperAdmin extends StatelessWidget {
             expandedHeight: screenHeight * 0.42,
             pinned: true,
             backgroundColor: AppColors.button,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
-              onPressed: () => Navigator.pop(context),
-            ),
+            automaticallyImplyLeading: false,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.logout, color: Colors.white, size: 22),
+                tooltip: 'Cerrar sesión',
+                onPressed: () {
+                  context.read<AuthProvider>().cerrarSesion();
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (_) => const HomeScreen()),
+                    (route) => false,
+                  );
+                },
+              ),
+            ],
             flexibleSpace: FlexibleSpaceBar(
               collapseMode: CollapseMode.parallax,
               background: _HomeHero(nombre: restauranteNombre),
@@ -92,42 +106,49 @@ class HomeScreenSuperAdmin extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(24, 12, 24, 120),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-                _DashboardTile(
-                  icon: Icons.people_outline_rounded,
-                  titulo: 'Trabajadores',
-                  subtitulo: 'Cocineros, camareros y meseros',
-                  onTap: () => _navigateTo(context, GestionUsuariosScreen(
-                    rolAFiltrar: 'trabajador',
-                    restauranteId: restauranteId,
-                  )),
-                ),
-                const SizedBox(height: 12),
-                _DashboardTile(
-                  icon: Icons.admin_panel_settings_outlined,
-                  titulo: 'Administradores',
-                  subtitulo: 'Gestores de sucursal',
-                  onTap: () => _navigateTo(context, GestionUsuariosScreen(
-                    rolAFiltrar: 'administrador',
-                    restauranteId: restauranteId,
-                  )),
-                ),
-                const SizedBox(height: 12),
-                _DashboardTile(
-                  icon: Icons.security_outlined,
-                  titulo: 'Permisos y Roles',
-                  subtitulo: 'Configuración de accesos del personal',
-                  onTap: () => _navigateTo(context, GestionRolesScreen(restauranteId: restauranteId)),
-                ),
-                const SizedBox(height: 12),
-                _DashboardTile(
-                  icon: Icons.assignment_ind_outlined,
-                  titulo: 'Clientes',
-                  subtitulo: 'Base de datos y cuentas de clientes',
-                  onTap: () => _navigateTo(context, GestionUsuariosScreen(
-                    rolAFiltrar: 'cliente',
-                    restauranteId: restauranteId,
-                  )),
-                ),
+                Center(child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 640),
+                  child: Column(
+                    children: [
+                      _DashboardTile(
+                        icon: Icons.people_outline_rounded,
+                        titulo: 'Trabajadores',
+                        subtitulo: 'Cocineros, camareros y meseros',
+                        onTap: () => _navigateTo(context, GestionUsuariosScreen(
+                          rolAFiltrar: 'trabajador',
+                          restauranteId: restauranteId,
+                        )),
+                      ),
+                      const SizedBox(height: 12),
+                      _DashboardTile(
+                        icon: Icons.admin_panel_settings_outlined,
+                        titulo: 'Administradores',
+                        subtitulo: 'Gestores de sucursal',
+                        onTap: () => _navigateTo(context, GestionUsuariosScreen(
+                          rolAFiltrar: 'administrador',
+                          restauranteId: restauranteId,
+                        )),
+                      ),
+                      const SizedBox(height: 12),
+                      _DashboardTile(
+                        icon: Icons.security_outlined,
+                        titulo: 'Permisos y Roles',
+                        subtitulo: 'Configuración de accesos del personal',
+                        onTap: () => _navigateTo(context, GestionRolesScreen(restauranteId: restauranteId)),
+                      ),
+                      const SizedBox(height: 12),
+                      _DashboardTile(
+                        icon: Icons.assignment_ind_outlined,
+                        titulo: 'Clientes',
+                        subtitulo: 'Base de datos y cuentas de clientes',
+                        onTap: () => _navigateTo(context, GestionUsuariosScreen(
+                          rolAFiltrar: 'cliente',
+                          restauranteId: restauranteId,
+                        )),
+                      ),
+                    ],
+                  ),
+                )),
               ]),
             ),
           ),
