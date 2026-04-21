@@ -186,7 +186,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
                                     '${pedido.items} artículos · ${pedido.estado}',
                                     style: TextStyle(
                                       color: AppColors.textSecondary
-                                          .withOpacity(0.7),
+                                          .withValues(alpha: 0.7),
                                       fontSize: 13,
                                     ),
                                   ),
