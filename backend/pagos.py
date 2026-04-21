@@ -1,12 +1,11 @@
 import os
 import uuid
-from typing import List, Optional, Dict, Any
+from typing import Optional, Dict, Any
 
 import httpx
 import stripe
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 load_dotenv()
@@ -16,42 +15,11 @@ stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
 PAYPAL_CLIENT_ID = os.getenv("PAYPAL_CLIENT_ID", "")
 PAYPAL_CLIENT_SECRET = os.getenv("PAYPAL_CLIENT_SECRET", "")
 PAYPAL_BASE_URL = os.getenv("PAYPAL_BASE_URL", "https://api-m.sandbox.paypal.com")
-ALLOWED_ORIGIN = os.getenv("ALLOWED_ORIGIN", "*")
 
-app = FastAPI(title="Grupo Bravo API", version="1.0.0")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[ALLOWED_ORIGIN] if ALLOWED_ORIGIN != "*" else ["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-PEDIDOS_DB: List[Dict[str, Any]] = []
+router = APIRouter(prefix="/payments", tags=["Pagos"])
 
 
-class PedidoItem(BaseModel):
-    producto_id: str
-    nombre: str
-    cantidad: int = Field(gt=0)
-    precio: float = Field(ge=0)
-    sin: Optional[List[str]] = None
-
-
-class PedidoCreate(BaseModel):
-    userId: str
-    items: List[PedidoItem]
-    tipoEntrega: str
-    metodoPago: str
-    total: float = Field(ge=0)
-    direccionEntrega: Optional[str] = None
-    mesaId: Optional[str] = None
-    numeroMesa: Optional[str] = None
-    notas: Optional[str] = ""
-    referenciaPago: Optional[str] = None
-    estadoPago: Optional[str] = "pendiente"
-
+# ── Modelos ────────────────────────────────────────────────────────────────────
 
 class PaymentIntentCreate(BaseModel):
     amount: float = Field(gt=0)
@@ -86,61 +54,13 @@ class PayPalCaptureRequest(BaseModel):
     orderId: str
 
 
-class PedidoResponse(BaseModel):
-    id: str
-    userId: str
-    tipoEntrega: str
-    metodoPago: str
-    total: float
-    estadoPago: str
+# ── Stripe ─────────────────────────────────────────────────────────────────────
 
-
-@app.get("/health")
-def health():
-    return {"ok": True}
-
-
-@app.post("/pedidos", response_model=PedidoResponse)
-def crear_pedido(payload: PedidoCreate):
-    pedido_id = str(uuid.uuid4())
-    pedido = {
-        "id": pedido_id,
-        "userId": payload.userId,
-        "items": [item.model_dump() for item in payload.items],
-        "tipoEntrega": payload.tipoEntrega,
-        "metodoPago": payload.metodoPago,
-        "total": payload.total,
-        "direccionEntrega": payload.direccionEntrega,
-        "mesaId": payload.mesaId,
-        "numeroMesa": payload.numeroMesa,
-        "notas": payload.notas,
-        "referenciaPago": payload.referenciaPago,
-        "estadoPago": payload.estadoPago or "pendiente",
-    }
-
-    PEDIDOS_DB.append(pedido)
-
-    return {
-        "id": pedido_id,
-        "userId": payload.userId,
-        "tipoEntrega": payload.tipoEntrega,
-        "metodoPago": payload.metodoPago,
-        "total": payload.total,
-        "estadoPago": pedido["estadoPago"],
-    }
-
-
-@app.get("/pedidos")
-def listar_pedidos():
-    return PEDIDOS_DB
-
-
-@app.post("/payments/stripe/create-intent")
-@app.post("/payments/card/create-intent")
+@router.post("/stripe/create-intent")
+@router.post("/card/create-intent")
 def crear_payment_intent(payload: PaymentIntentCreate):
     if not stripe.api_key:
         raise HTTPException(status_code=500, detail="Falta STRIPE_SECRET_KEY")
-
     try:
         intent = stripe.PaymentIntent.create(
             amount=int(round(payload.amount * 100)),
@@ -156,10 +76,10 @@ def crear_payment_intent(payload: PaymentIntentCreate):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@app.post("/payments/stripe/confirm")
-@app.post("/payments/card/confirm")
+@router.post("/stripe/confirm")
+@router.post("/card/confirm")
 def confirmar_payment_intent(payload: CardConfirmRequest):
-    if not payload.clientSecret:
+    if not payload.clientSecret.strip():
         raise HTTPException(status_code=400, detail="clientSecret requerido")
     if not payload.numeroTarjeta.strip():
         raise HTTPException(status_code=400, detail="Número de tarjeta requerido")
@@ -170,18 +90,14 @@ def confirmar_payment_intent(payload: CardConfirmRequest):
     if not payload.nombreTitular.strip():
         raise HTTPException(status_code=400, detail="Nombre del titular requerido")
 
-    return {
-        "success": True,
-        "message": "Confirmación simulada en backend de desarrollo",
-    }
+    return {"success": True, "message": "Confirmación simulada en backend de desarrollo"}
 
 
-@app.get("/payments/stripe/verify/{payment_intent_id}")
-@app.get("/payments/card/verify/{payment_intent_id}")
+@router.get("/stripe/verify/{payment_intent_id}")
+@router.get("/card/verify/{payment_intent_id}")
 def verificar_payment_intent(payment_intent_id: str):
     if not stripe.api_key:
         raise HTTPException(status_code=500, detail="Falta STRIPE_SECRET_KEY")
-
     try:
         intent = stripe.PaymentIntent.retrieve(payment_intent_id)
         return {
@@ -193,8 +109,10 @@ def verificar_payment_intent(payment_intent_id: str):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@app.post("/payments/google-pay/init")
-@app.post("/payments/google-play/init")
+# ── Google Pay ─────────────────────────────────────────────────────────────────
+
+@router.post("/google-pay/init")
+@router.post("/google-play/init")
 def iniciar_google_pay(payload: GooglePayInitRequest):
     return {
         "success": True,
@@ -206,8 +124,8 @@ def iniciar_google_pay(payload: GooglePayInitRequest):
     }
 
 
-@app.post("/payments/google-pay/verify")
-@app.post("/payments/google-play/verify")
+@router.post("/google-pay/verify")
+@router.post("/google-play/verify")
 def verificar_google_pay(payload: GooglePayVerifyRequest):
     if payload.token:
         signed_message = payload.token.get("signedMessage")
@@ -241,6 +159,8 @@ def verificar_google_pay(payload: GooglePayVerifyRequest):
     )
 
 
+# ── PayPal ─────────────────────────────────────────────────────────────────────
+
 async def _paypal_access_token() -> str:
     if not PAYPAL_CLIENT_ID or not PAYPAL_CLIENT_SECRET:
         raise HTTPException(status_code=500, detail="Faltan credenciales de PayPal")
@@ -259,13 +179,23 @@ async def _paypal_access_token() -> str:
     return response.json()["access_token"]
 
 
-@app.post("/payments/paypal/create-order")
-def crear_orden_paypal(payload: PayPalOrderCreate):
-    import anyio
-    return anyio.run(_crear_orden_paypal_async, payload)
+_PAYPAL_SIMULADO = not (PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET)
 
 
-async def _crear_orden_paypal_async(payload: PayPalOrderCreate):
+@router.post("/paypal/create-order")
+async def crear_orden_paypal(payload: PayPalOrderCreate):
+    if _PAYPAL_SIMULADO:
+        order_id = f"SIMPP_{uuid.uuid4().hex[:16].upper()}"
+        return {
+            "id": order_id,
+            "status": "CREATED",
+            "simulated": True,
+            "links": [
+                {"rel": "approve", "href": f"https://sandbox.paypal.com/checkoutnow?token={order_id}", "method": "GET"},
+                {"rel": "capture", "href": f"/payments/paypal/capture-order", "method": "POST"},
+            ],
+        }
+
     token = await _paypal_access_token()
 
     body = {
@@ -277,7 +207,7 @@ async def _crear_orden_paypal_async(payload: PayPalOrderCreate):
                     "value": f"{payload.total:.2f}",
                 }
             }
-        ]
+        ],
     }
 
     async with httpx.AsyncClient(timeout=30.0) as client:
@@ -296,14 +226,28 @@ async def _crear_orden_paypal_async(payload: PayPalOrderCreate):
     return response.json()
 
 
-@app.post("/payments/paypal/capture-order")
-@app.post("/payments/paypal/capture")
-def capturar_orden_paypal(payload: PayPalCaptureRequest):
-    import anyio
-    return anyio.run(_capturar_orden_paypal_async, payload)
+@router.post("/paypal/capture-order")
+@router.post("/paypal/capture")
+async def capturar_orden_paypal(payload: PayPalCaptureRequest):
+    if _PAYPAL_SIMULADO:
+        return {
+            "id": payload.orderId,
+            "status": "COMPLETED",
+            "simulated": True,
+            "purchase_units": [
+                {
+                    "payments": {
+                        "captures": [
+                            {
+                                "id": f"CAP_{uuid.uuid4().hex[:12].upper()}",
+                                "status": "COMPLETED",
+                            }
+                        ]
+                    }
+                }
+            ],
+        }
 
-
-async def _capturar_orden_paypal_async(payload: PayPalCaptureRequest):
     token = await _paypal_access_token()
 
     async with httpx.AsyncClient(timeout=30.0) as client:

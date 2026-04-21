@@ -2,8 +2,9 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from routes import auth, usuarios, categorias, productos, pedidos, mesas, reservas, ingredientes
+from routes import restaurantes
+import pagos
 import traceback
-from routes import usuarios, restaurantes # archivo nuevo
 
 app = FastAPI(title="API Restaurante Bravo")
 
@@ -34,6 +35,7 @@ app.include_router(pedidos.router)
 app.include_router(mesas.router)
 app.include_router(reservas.router)
 app.include_router(ingredientes.router)
+app.include_router(pagos.router)
 
 @app.get("/")
 def inicio():
