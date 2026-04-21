@@ -22,12 +22,18 @@ import 'package:frontend/screens/super_admin/home_screen_super_admin.dart';
 import 'package:frontend/components/Cliente/entrada_texto.dart';
 
 import 'package:frontend/screens/super_admin/seleccionar_restaurante_screen.dart';
+import 'package:frontend/screens/super_admin/activar_cuenta_screen.dart';
 import 'package:frontend/models/destino_login.dart';
 
 class LoginScreen extends StatefulWidget {
   final DestinoLogin destino;
+  final bool mostrarActivarCuenta;
 
-  const LoginScreen({super.key, this.destino = DestinoLogin.menu});
+  const LoginScreen({
+    super.key,
+    this.destino = DestinoLogin.menu,
+    this.mostrarActivarCuenta = false,
+  });
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -231,9 +237,23 @@ class _LoginScreenState extends State<LoginScreen> {
               Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => MenuAdministrador()));
-       }, child: null, 
-          
+       }, child: null,
+
           ),
+        if (widget.mostrarActivarCuenta) ...[
+          const SizedBox(height: 16),
+          TextButton.icon(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ActivarCuentaScreen()),
+            ),
+            icon: const Icon(Icons.vpn_key_outlined, size: 16, color: Colors.white54),
+            label: const Text(
+              '¿Eres nuevo empleado? Activa tu cuenta',
+              style: TextStyle(color: Colors.white54, fontSize: 13),
+            ),
+          ),
+        ],
       ],
     );
   }
