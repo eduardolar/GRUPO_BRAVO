@@ -32,7 +32,7 @@ class MainApp extends StatelessWidget {
           GlobalCupertinoLocalizations.delegate,
         ],
         theme: ThemeData(textTheme: GoogleFonts.frederickaTheGreatTextTheme()),
-        home: const HomeTrabajador(),
+        home: const HomeScreen(),
       ),
     );
   }
