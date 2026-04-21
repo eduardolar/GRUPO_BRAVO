@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/screens/Administrador/admin_home_screen.dart';
-import 'package:frontend/screens/Administrador/admin_menu_screen.dart';
 import 'package:frontend/screens/super_admin/home_screen_super_admin.dart';
 import 'package:provider/provider.dart';
 
@@ -263,7 +262,7 @@ class _LoginScreenState extends State<LoginScreen> {
     Widget pantallaDestino;
     switch (usuario.rol) {
       case RolUsuario.trabajador: pantallaDestino = const HomeTrabajador(); break;
-      case RolUsuario.administrador: pantallaDestino = const AdminMenuScreen(); break;
+      case RolUsuario.administrador: pantallaDestino = const MenuAdministrador(); break;
       case RolUsuario.superadministrador: pantallaDestino = const HomeScreenSuperAdmin(restauranteId: '', restauranteNombre: '',); break;
       case RolUsuario.cliente:
       default:
