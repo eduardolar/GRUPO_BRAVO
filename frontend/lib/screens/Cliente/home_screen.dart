@@ -126,7 +126,7 @@ class _CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
               ),
             ),
             onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen(mostrarActivarCuenta: true)));
             },
           ),
         ),
