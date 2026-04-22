@@ -8,6 +8,7 @@ import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/services/api_service.dart';
 import 'package:frontend/screens/cliente/scanner_qr.dart';
 import 'package:frontend/screens/cliente/login_screen.dart';
+import 'package:frontend/screens/cliente/perfil_screen.dart';
 import 'package:frontend/models/destino_login.dart';
 import 'package:frontend/screens/cliente/menu_screen.dart';
 import 'package:frontend/screens/cliente/pedido_confirmado_screen.dart';
@@ -176,7 +177,11 @@ class _CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
               ),
             ),
             onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen(mostrarActivarCuenta: true)));
+              if (auth.estaAutenticado) {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const PerfilScreen()));
+              } else {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen(mostrarActivarCuenta: true)));
+              }
             },
           ),
         ),
