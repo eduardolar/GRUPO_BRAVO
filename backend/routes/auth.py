@@ -1,29 +1,29 @@
+import os
 import random
 import string
 import bcrypt
-from fastapi import APIRouter, HTTPException, status
+from dotenv import load_dotenv
+from fastapi import APIRouter, HTTPException
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
 from pydantic import BaseModel, EmailStr
-from typing import Optional
 
-# Importamos tus dependencias locales
 from database import coleccion_usuarios
 from models import UsuarioRegistro, UsuarioLogin
 
+load_dotenv()
+
 router = APIRouter()
 
-# --- 1. CONFIGURACIÓN DE CORREO (GMAIL REAL) ---
-
 conf = ConnectionConfig(
-    MAIL_USERNAME = "proyectorestaurantebravo@gmail.com",       
-    MAIL_PASSWORD = "sfgl yrgp pkub bhvj",  
-    MAIL_FROM = "proyectorestaurantebravo@gmail.com",      
-    MAIL_PORT = 587,
-    MAIL_SERVER = "smtp.gmail.com",
-    MAIL_STARTTLS = True,
-    MAIL_SSL_TLS = False,
-    USE_CREDENTIALS = True,
-    VALIDATE_CERTS = True
+    MAIL_USERNAME=os.getenv("MAIL_USERNAME"),
+    MAIL_PASSWORD=os.getenv("MAIL_PASSWORD"),
+    MAIL_FROM=os.getenv("MAIL_FROM"),
+    MAIL_PORT=int(os.getenv("MAIL_PORT", 587)),
+    MAIL_SERVER=os.getenv("MAIL_SERVER", "smtp.gmail.com"),
+    MAIL_STARTTLS=True,
+    MAIL_SSL_TLS=False,
+    USE_CREDENTIALS=True,
+    VALIDATE_CERTS=True,
 )
 
 # Modelo para recibir el código desde Flutter
