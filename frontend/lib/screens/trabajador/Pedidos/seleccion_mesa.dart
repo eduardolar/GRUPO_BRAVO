@@ -601,7 +601,7 @@ class _DialogConfirmacion extends StatelessWidget {
                 border: Border.all(color: AppColors.line),
               ),
               child: const Text(
-                'Esta mesa quedará marcada como ocupada y se iniciará la toma del pedido.',
+                'Esta mesa quedará como ocupada y se iniciará la toma del pedido.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: AppColors.textSecondary,
