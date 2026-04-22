@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -8,6 +9,8 @@ import '../../providers/cart_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
 import '../../components/Cliente/campos_direccion.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../components/Cliente/campos_tarjeta.dart';
@@ -32,6 +35,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
 
   bool _googlePayAutorizado = false;
   bool _paypalAutorizado = false;
+  CardFieldInputDetails? _cardDetails;
   CardFieldInputDetails? _cardDetails;
 
   final _controladorDireccion = TextEditingController();
@@ -333,6 +337,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
                 _FormPanel(
                   child: CamposTarjeta(
                     onCardChanged: (details) => setState(() => _cardDetails = details),
+                    onCardChanged: (details) => setState(() => _cardDetails = details),
                   ),
                 ),
               ],
@@ -469,6 +474,15 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       _mostrarError('Completa los datos de la tarjeta');
       return;
     }
+    if (kIsWeb) {
+      await _procesarStripeCheckoutWeb();
+      return;
+    }
+
+    if (_cardDetails == null || !(_cardDetails!.complete)) {
+      _mostrarError('Completa los datos de la tarjeta');
+      return;
+    }
 
     setState(() => _estaCargando = true);
 
@@ -488,6 +502,16 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
         throw Exception('No se pudo iniciar el pago con tarjeta');
       }
 
+      final paymentIntent = await Stripe.instance.confirmPayment(
+        paymentIntentClientSecret: clientSecret,
+        data: const PaymentMethodParams.card(
+          paymentMethodData: PaymentMethodData(),
+        ),
+      );
+
+      if (paymentIntent.status != PaymentIntentsStatus.Succeeded) {
+        throw Exception('El pago no fue completado');
+      }
       final paymentIntent = await Stripe.instance.confirmPayment(
         paymentIntentClientSecret: clientSecret,
         data: const PaymentMethodParams.card(
@@ -550,6 +574,136 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       await _crearPedidoFinal(
         referenciaPago: sessionId,
         estadoPago: 'pagado',
+      );
+    } catch (e) {
+      if (mounted) {
+        setState(() => _estaCargando = false);
+        _mostrarError('Error en el pago con Stripe: $e');
+      }
+    }
+  }
+
+  Future<void> _procesarStripeCheckoutWeb() async {
+    setState(() => _estaCargando = true);
+
+    try {
+      final cart = Provider.of<CartProvider>(context, listen: false);
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      final total = _calcularTotal(cart);
+      final origin = Uri.base.origin;
+
+      final tipoEntregaStr = switch (_entregaSeleccionada) {
+        OpcionEntrega.domicilio => 'Entrega a domicilio',
+        OpcionEntrega.recoger => 'Recoger en restaurante',
+        OpcionEntrega.enMesa => 'Comer en el local',
+      };
+
+      // Capturar datos del carrito ANTES de limpiarlo
+      final items = cart.items.values
+          .map((item) => {
+                'producto_id': item.producto.id,
+                'nombre': item.producto.nombre,
+                'cantidad': item.cantidad,
+                'precio': item.producto.precio,
+                if (item.ingredientesExcluidos.isNotEmpty)
+                  'sin': item.ingredientesExcluidos,
+              })
+          .toList();
+
+      final itemsResumen = cart.items.values
+          .map((item) => {
+                'nombre': item.producto.nombre,
+                'cantidad': item.cantidad,
+                'precio': item.producto.precio,
+                if (item.ingredientesExcluidos.isNotEmpty)
+                  'sin': item.ingredientesExcluidos,
+              })
+          .toList();
+
+      final direccionEntrega = _entregaSeleccionada == OpcionEntrega.domicilio
+          ? (_direccionSeleccionada == OpcionDireccion.registrada
+                ? (auth.usuarioActual?.direccion ?? '')
+                : _controladorDireccion.text.trim())
+          : null;
+
+      // 1. Crear sesión Stripe — la URL de éxito lleva entrega y total
+      final totalStr = total.toStringAsFixed(2);
+      final session = await ApiService.crearCheckoutSession(
+        total: total,
+        currency: 'eur',
+        successUrl:
+            '$origin/?stripe_session={CHECKOUT_SESSION_ID}'
+            '&entrega=${Uri.encodeComponent(tipoEntregaStr)}'
+            '&total=$totalStr',
+        cancelUrl: '$origin/?stripe_cancel=1',
+      );
+
+      final checkoutUrl = session['checkout_url']?.toString();
+      final sessionId = session['session_id']?.toString();
+
+      if (checkoutUrl == null || sessionId == null) {
+        throw Exception('No se pudo iniciar la sesión de pago');
+      }
+
+      // 2. Crear el pedido ANTES de abrir Stripe para que quede en BD
+      if (_entregaSeleccionada != OpcionEntrega.enMesa) {
+        cart.desasignarMesa();
+      }
+
+      final resultado = await ApiService.crearPedido(
+        userId: auth.usuarioActual?.id ?? '',
+        items: items,
+        tipoEntrega: tipoEntregaStr,
+        metodoPago: 'Tarjeta',
+        total: total,
+        direccionEntrega: direccionEntrega,
+        mesaId: _entregaSeleccionada == OpcionEntrega.enMesa
+            ? cart.mesaId
+            : null,
+        numeroMesa: _entregaSeleccionada == OpcionEntrega.enMesa
+            ? cart.numeroMesa
+            : null,
+        notas: _controladorNotas.text.trim(),
+        referenciaPago: sessionId,
+        estadoPago: 'pendiente_stripe',
+      );
+
+      final pedidoId =
+          resultado['id']?.toString() ?? resultado['pedido_id']?.toString();
+
+      cart.clearCart();
+      setState(() => _estaCargando = false);
+
+      // 3. Abrir Stripe (nueva pestaña si el navegador lo permite)
+      await launchUrl(Uri.parse(checkoutUrl), webOnlyWindowName: '_blank');
+
+      if (!mounted) return;
+
+      // 4. Diálogo para quien vuelve a esta misma pestaña
+      final confirmado = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => _StripeCheckoutDialog(sessionId: sessionId),
+      );
+
+      if (confirmado != true || !mounted) return;
+
+      // Marcar el pedido como pagado en la BD
+      try { await ApiService.actualizarEstadoPago(referenciaPago: sessionId); } catch (_) {}
+      if (!mounted) return;
+
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PedidoConfirmadoScreen(
+            tipoEntrega: tipoEntregaStr,
+            tipoPago: 'Tarjeta',
+            total: total,
+            pedidoId: pedidoId,
+            items: itemsResumen,
+          ),
+        ),
+        (route) => route.isFirst,
       );
     } catch (e) {
       if (mounted) {
@@ -702,7 +856,19 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
         cart.desasignarMesa();
       }
 
-      await ApiService.crearPedido(
+      final itemsResumen = cart.items.values
+          .map(
+            (item) => {
+              'nombre': item.producto.nombre,
+              'cantidad': item.cantidad,
+              'precio': item.producto.precio,
+              if (item.ingredientesExcluidos.isNotEmpty)
+                'sin': item.ingredientesExcluidos,
+            },
+          )
+          .toList();
+
+      final resultado = await ApiService.crearPedido(
         userId: auth.usuarioActual?.id ?? '',
         items: items,
         tipoEntrega: tipoEntrega,
@@ -722,19 +888,26 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
             (_pagoSeleccionado == MetodoPago.efectivo ? 'pendiente' : 'pagado'),
       );
 
+      final pedidoId =
+          resultado['id']?.toString() ??
+          resultado['pedido_id']?.toString();
+
       cart.clearCart();
 
       if (mounted) {
         setState(() => _estaCargando = false);
-        Navigator.pushReplacement(
+        Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(
             builder: (_) => PedidoConfirmadoScreen(
               tipoEntrega: tipoEntrega,
               tipoPago: tipoPagoStr,
               total: total,
+              pedidoId: pedidoId,
+              items: itemsResumen,
             ),
           ),
+          (route) => route.isFirst,
         );
       }
     } catch (e) {
@@ -1404,6 +1577,87 @@ class _DireccionOption extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ── Diálogo de confirmación Stripe Checkout ───────────────────────────────────
+
+class _StripeCheckoutDialog extends StatefulWidget {
+  final String sessionId;
+  const _StripeCheckoutDialog({required this.sessionId});
+
+  @override
+  State<_StripeCheckoutDialog> createState() => _StripeCheckoutDialogState();
+}
+
+class _StripeCheckoutDialogState extends State<_StripeCheckoutDialog> {
+  bool _verificando = false;
+  String? _error;
+
+  Future<void> _verificar() async {
+    setState(() { _verificando = true; _error = null; });
+    try {
+      final pagado = await ApiService.verificarCheckoutSession(
+        sessionId: widget.sessionId,
+      );
+      if (!mounted) return;
+      if (pagado) {
+        Navigator.of(context).pop(true);
+      } else {
+        setState(() {
+          _verificando = false;
+          _error = 'El pago aún no se ha completado. Completa el pago en la pestaña de Stripe y vuelve a intentarlo.';
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() { _verificando = false; _error = e.toString(); });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: AppColors.panel,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+      title: const Row(
+        children: [
+          Icon(Icons.open_in_new, color: AppColors.button, size: 20),
+          SizedBox(width: 10),
+          Text('Completa el pago', style: TextStyle(color: AppColors.textPrimary, fontSize: 16)),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Se ha abierto la página de pago de Stripe en una nueva pestaña. Completa el pago y pulsa el botón de abajo.',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 12),
+            Text(_error!, style: const TextStyle(color: AppColors.error, fontSize: 12)),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: _verificando ? null : () => Navigator.of(context).pop(false),
+          child: const Text('Cancelar', style: TextStyle(color: AppColors.textSecondary)),
+        ),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.button,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+          ),
+          onPressed: _verificando ? null : _verificar,
+          child: _verificando
+              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+              : const Text('Ya he pagado'),
+        ),
+      ],
     );
   }
 }

@@ -113,7 +113,7 @@ class ApiService {
       numeroMesa: numeroMesa,
       notas: notas,
       referenciaPago: referenciaPago,
-      estadoPago: '',
+      estadoPago: estadoPago,
     );
     return crearPedido;
   }
@@ -225,6 +225,22 @@ class ApiService {
       throw Exception(data['detail'] ?? 'Error al verificar sesión');
     }
     return data['paid'] == true;
+  }
+
+  static Future<void> actualizarEstadoPago({
+    required String referenciaPago,
+    String estadoPago = 'pagado',
+  }) async {
+    final url = Uri.parse('$baseUrl/pedidos/actualizar-estado-pago');
+    final response = await http.patch(
+      url,
+      headers: _jsonHeaders(),
+      body: jsonEncode({'referencia_pago': referenciaPago, 'estado_pago': estadoPago}),
+    );
+    if (response.statusCode >= 400) {
+      final data = _decodeBody(response);
+      throw Exception(data['detail'] ?? 'Error al actualizar estado de pago');
+    }
   }
 
   // ─── PAYPAL ──────────────────────────────────────────────────
