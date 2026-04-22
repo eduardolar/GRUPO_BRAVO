@@ -55,8 +55,9 @@ class HomeScreenSuperAdmin extends StatelessWidget {
               IconButton(
                 icon: const Icon(Icons.logout, color: Colors.white, size: 22),
                 tooltip: 'Cerrar sesión',
-                onPressed: () {
-                  context.read<AuthProvider>().cerrarSesion();
+                onPressed: () async {
+                  await context.read<AuthProvider>().cerrarSesion();
+                  if (!context.mounted) return;
                   Navigator.pushAndRemoveUntil(
                     context,
                     MaterialPageRoute(builder: (_) => const HomeScreen()),

@@ -66,6 +66,7 @@ static RolUsuario _parseRol(dynamic rol) {
     String? telefono,
     String? direccion,
     RolUsuario? rol,
+    String? restauranteId,
   }) {
     return Usuario(
       id: id,
@@ -75,6 +76,7 @@ static RolUsuario _parseRol(dynamic rol) {
       telefono: telefono ?? this.telefono,
       direccion: direccion ?? this.direccion,
       rol: rol ?? this.rol,
+      restauranteId: restauranteId ?? this.restauranteId,
     );
   }
 
@@ -88,6 +90,7 @@ static RolUsuario _parseRol(dynamic rol) {
       'telefono': telefono,
       'direccion': direccion,
       'rol': rol.name,
+      if (restauranteId != null) 'restaurante_id': restauranteId,
     };
   }
 }

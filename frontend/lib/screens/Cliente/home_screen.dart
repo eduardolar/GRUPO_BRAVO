@@ -11,6 +11,7 @@ import 'package:frontend/screens/cliente/login_screen.dart';
 import 'package:frontend/screens/cliente/perfil_screen.dart';
 import 'package:frontend/models/destino_login.dart';
 import 'package:frontend/screens/cliente/menu_screen.dart';
+import 'package:frontend/screens/cliente/reservar_mesa_screen.dart';
 import 'package:frontend/screens/cliente/pedido_confirmado_screen.dart';
 import 'package:frontend/core/colors_style.dart';
 
@@ -165,7 +166,7 @@ class _CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
       ),
       actions: [
         Padding(
-          padding: const EdgeInsets.only(right: 16.0),
+          padding: EdgeInsets.only(right: auth.estaAutenticado ? 0 : 16.0),
           child: IconButton(
             icon: CircleAvatar(
               backgroundColor: Colors.white24,
@@ -185,6 +186,17 @@ class _CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
             },
           ),
         ),
+        if (auth.estaAutenticado)
+          Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: IconButton(
+              icon: const Icon(Icons.logout, color: Colors.white, size: 22),
+              tooltip: 'Cerrar sesión',
+              onPressed: () async {
+                await context.read<AuthProvider>().cerrarSesion();
+              },
+            ),
+          ),
       ],
     );
   }
@@ -297,6 +309,7 @@ class _ActionButtonsGroup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cart = context.watch<CartProvider>();
+    final auth = context.watch<AuthProvider>();
 
     return Column(
       children: [
@@ -309,12 +322,26 @@ class _ActionButtonsGroup extends StatelessWidget {
         _MainButton(
           icon: Icons.motorcycle,
           label: "Pedido a domicilio",
-          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen())),
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => auth.estaAutenticado
+                  ? const MenuScreen()
+                  : const LoginScreen(),
+            ),
+          ),
         ),
         _MainButton(
           icon: Icons.calendar_month,
           label: "Reservar mesa",
-          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen(destino: DestinoLogin.reservar))),
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => auth.estaAutenticado
+                  ? const ReservarMesaScreen()
+                  : const LoginScreen(destino: DestinoLogin.reservar),
+            ),
+          ),
         ),
       ],
     );
