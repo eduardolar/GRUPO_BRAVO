@@ -191,6 +191,42 @@ class ApiService {
     return data['paid'] == true || data['status'] == 'succeeded';
   }
 
+  static Future<Map<String, dynamic>> crearCheckoutSession({
+    required double total,
+    String currency = 'eur',
+    required String successUrl,
+    required String cancelUrl,
+  }) async {
+    final url = Uri.parse('$baseUrl/payments/stripe/create-checkout-session');
+    final response = await http.post(
+      url,
+      headers: _jsonHeaders(),
+      body: jsonEncode({
+        'total': total,
+        'currency': currency,
+        'success_url': successUrl,
+        'cancel_url': cancelUrl,
+      }),
+    );
+    final data = _decodeBody(response);
+    if (response.statusCode >= 400) {
+      throw Exception(data['detail'] ?? 'Error al crear sesión de Checkout');
+    }
+    return Map<String, dynamic>.from(data);
+  }
+
+  static Future<bool> verificarCheckoutSession({
+    required String sessionId,
+  }) async {
+    final url = Uri.parse('$baseUrl/payments/stripe/verify-session/$sessionId');
+    final response = await http.get(url, headers: _jsonHeaders());
+    final data = _decodeBody(response);
+    if (response.statusCode >= 400) {
+      throw Exception(data['detail'] ?? 'Error al verificar sesión');
+    }
+    return data['paid'] == true;
+  }
+
   // ─── PAYPAL ──────────────────────────────────────────────────
 
   static Future<Map<String, dynamic>> crearOrdenPaypal({
