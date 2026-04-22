@@ -6,7 +6,14 @@ import '../../core/colors_style.dart';
 class CamposTarjeta extends StatelessWidget {
   final void Function(CardFieldInputDetails?) onCardChanged;
 
-  const CamposTarjeta({super.key, required this.onCardChanged});
+  const CamposTarjeta({
+    super.key,
+    required this.onCardChanged,
+    required TextEditingController controladorNombreTitular,
+    required TextEditingController controladorCvv,
+    required TextEditingController controladorFechaExpiracion,
+    required TextEditingController controladorNumero,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +44,10 @@ class CamposTarjeta extends StatelessWidget {
                   SizedBox(height: 4),
                   Text(
                     'Al confirmar serás redirigido a la página de pago de Stripe para completar la transacción.',
-                    style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                    ),
                   ),
                 ],
               ),
