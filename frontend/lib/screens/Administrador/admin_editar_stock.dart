@@ -19,13 +19,11 @@ class _AdminEditarStockScreenState extends State<AdminEditarStockScreen> {
   late TextEditingController _nombreCtrl;
   late TextEditingController _cantidadCtrl;
   late TextEditingController _minimoCtrl;
-  String _categoriaSeleccionada = 'Otras';
+  String _categoriaSeleccionada = 'Otros';
   String _unidadSeleccionada = 'kg';
 
-  final List<String> _categorias = [
-    'Carnes', 'Vegetales', 'Lácteos', 'Panadería', 'Salsas', 'Otras'
-  ];
-  final List<String> _unidades = ['kg', 'L', 'ud', 'unidades'];
+  final List<String> _categorias = IngredienteService.categorias;
+  final List<String> _unidades = IngredienteService.unidades;
 
   @override
   void initState() {
@@ -34,12 +32,12 @@ class _AdminEditarStockScreenState extends State<AdminEditarStockScreen> {
     _cantidadCtrl = TextEditingController(text: widget.ingrediente.cantidadActual.toString());
     _minimoCtrl = TextEditingController(text: widget.ingrediente.stockMinimo.toString());
     
-    _categoriaSeleccionada = _categorias.contains(widget.ingrediente.categoria) 
-        ? widget.ingrediente.categoria 
-        : 'Otras';
+    _categoriaSeleccionada = _categorias.contains(widget.ingrediente.categoria)
+        ? widget.ingrediente.categoria
+        : 'Otros';
     _unidadSeleccionada = _unidades.contains(widget.ingrediente.unidad)
         ? widget.ingrediente.unidad
-        : 'ud';
+        : 'kg';
   }
 
   @override

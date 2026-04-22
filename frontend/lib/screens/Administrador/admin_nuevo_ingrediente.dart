@@ -17,13 +17,11 @@ class _AdminNuevoIngredienteScreenState extends State<AdminNuevoIngredienteScree
   final _cantidadCtrl = TextEditingController();
   final _minimoCtrl = TextEditingController();
   
-  String _categoriaSeleccionada = 'Vegetales';
+  String _categoriaSeleccionada = 'Carnes';
   String _unidadSeleccionada = 'kg';
 
-  final List<String> _categorias = [
-    'Carnes', 'Vegetales', 'Lácteos', 'Panadería', 'Salsas', 'Otras'
-  ];
-  final List<String> _unidades = ['kg', 'L', 'ud', 'unidades'];
+  final List<String> _categorias = IngredienteService.categorias;
+  final List<String> _unidades = IngredienteService.unidades;
 
   @override
   void dispose() {
