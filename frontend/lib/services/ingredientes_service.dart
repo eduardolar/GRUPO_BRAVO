@@ -1,51 +1,73 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/ingrediente_model.dart';
-import '../data/mock_data.dart';
 import 'api_config.dart';
 
 class IngredienteService {
-  static final List<Ingrediente> _mockIngredientes = [
-    Ingrediente(id: '1', nombre: 'Tomate', cantidadActual: 50, unidad: 'kg', stockMinimo: 10, categoria: 'Vegetales'),
-    Ingrediente(id: '2', nombre: 'Queso', cantidadActual: 20, unidad: 'kg', stockMinimo: 5, categoria: 'Lácteos'),
-    Ingrediente(id: '3', nombre: 'Lechuga', cantidadActual: 15, unidad: 'kg', stockMinimo: 8, categoria: 'Vegetales'),
-    Ingrediente(id: '4', nombre: 'Carne', cantidadActual: 30, unidad: 'kg', stockMinimo: 12, categoria: 'Carnes'),
-    Ingrediente(id: '5', nombre: 'Pan', cantidadActual: 100, unidad: 'unidades', stockMinimo: 20, categoria: 'Panadería'),
+  static const List<String> categorias = [
+    'Carnes',
+    'Mariscos y Pescados',
+    'Verduras',
+    'Lácteos',
+    'Panadería',
+    'Salsas y Condimentos',
+    'Especias',
+    'Almidones y Cereales',
+    'Huevos',
+    'Frutas',
+    'Otros',
   ];
 
-  static Future<List<String>> obtenerCategorias() async {
-    if (!usarApiReal) {
-      await Future.delayed(const Duration(milliseconds: 200));
-      return List.from(MockData.categorias);
-    }
-    final response = await http.get(Uri.parse('$baseUrl/categorias'));
-    if (response.statusCode == 200) {
-      final List<dynamic> data = jsonDecode(response.body);
-      return data.cast<String>();
-    } else {
-      throw Exception('Error al obtener categorías');
-    }
-  }
+  static const List<String> unidades = ['kg', 'l', 'g', 'unidades'];
 
-  // OBTENER
-  static Future<List<Ingrediente>> obtenerIngredientes({String? categoria}) async {
+  static final List<Ingrediente> _mockIngredientes = [
+    Ingrediente(id: '1', nombre: 'Carne de Vacuno', cantidadActual: 30, unidad: 'kg', stockMinimo: 10, categoria: 'Carnes'),
+    Ingrediente(id: '2', nombre: 'Pechuga de Pollo', cantidadActual: 20, unidad: 'kg', stockMinimo: 8, categoria: 'Carnes'),
+    Ingrediente(id: '3', nombre: 'Tomate', cantidadActual: 50, unidad: 'kg', stockMinimo: 10, categoria: 'Verduras'),
+    Ingrediente(id: '4', nombre: 'Lechuga', cantidadActual: 20, unidad: 'kg', stockMinimo: 5, categoria: 'Verduras'),
+    Ingrediente(id: '5', nombre: 'Queso Cheddar', cantidadActual: 15, unidad: 'kg', stockMinimo: 4, categoria: 'Lácteos'),
+    Ingrediente(id: '6', nombre: 'Pan de Hamburguesa', cantidadActual: 100, unidad: 'unidades', stockMinimo: 20, categoria: 'Panadería'),
+    Ingrediente(id: '7', nombre: 'Ketchup', cantidadActual: 20, unidad: 'l', stockMinimo: 5, categoria: 'Salsas y Condimentos'),
+    Ingrediente(id: '8', nombre: 'Sal', cantidadActual: 10, unidad: 'kg', stockMinimo: 2, categoria: 'Especias'),
+    Ingrediente(id: '9', nombre: 'Gambas', cantidadActual: 3, unidad: 'kg', stockMinimo: 4, categoria: 'Mariscos y Pescados'),
+    Ingrediente(id: '10', nombre: 'Patatas', cantidadActual: 80, unidad: 'kg', stockMinimo: 20, categoria: 'Almidones y Cereales'),
+  ];
+
+  static Future<List<Ingrediente>> obtenerIngredientes() async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 300));
       return List.from(_mockIngredientes);
     }
-    final uri = categoria != null && categoria != 'Todas'
-        ? Uri.parse('$baseUrl/ingredientes?categoria=$categoria')
-        : Uri.parse('$baseUrl/ingredientes');
-    final response = await http.get(uri);
+    final response = await http.get(Uri.parse('$baseUrl/ingredientes'));
     if (response.statusCode == 200) {
-      final List<dynamic> data = jsonDecode(response.body);
+      final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
       return data.map((json) => Ingrediente.fromJson(json)).toList();
     } else {
       throw Exception('Error al obtener ingredientes');
     }
   }
 
-  // CREAR (NUEVO)
+  static Future<Map<String, List<Ingrediente>>> obtenerIngredientesPorCategoria() async {
+    if (!usarApiReal) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      final Map<String, List<Ingrediente>> agrupados = {};
+      for (final ing in _mockIngredientes) {
+        agrupados.putIfAbsent(ing.categoria, () => []).add(ing);
+      }
+      return agrupados;
+    }
+    final response = await http.get(Uri.parse('$baseUrl/ingredientes/por-categoria'));
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
+      return data.map((key, value) {
+        final lista = (value as List).map((json) => Ingrediente.fromJson(json)).toList();
+        return MapEntry(key, lista);
+      });
+    } else {
+      throw Exception('Error al obtener ingredientes por categoría');
+    }
+  }
+
   static Future<void> crearIngrediente(Map<String, dynamic> datos) async {
     final response = await http.post(
       Uri.parse('$baseUrl/ingredientes'),
@@ -57,7 +79,6 @@ class IngredienteService {
     }
   }
 
-  // ACTUALIZAR (NUEVO)
   static Future<void> actualizarIngrediente(String id, Map<String, dynamic> datos) async {
     final response = await http.put(
       Uri.parse('$baseUrl/ingredientes/$id'),
@@ -66,6 +87,13 @@ class IngredienteService {
     );
     if (response.statusCode != 200) {
       throw Exception('Error al actualizar ingrediente');
+    }
+  }
+
+  static Future<void> eliminarIngrediente(String id) async {
+    final response = await http.delete(Uri.parse('$baseUrl/ingredientes/$id'));
+    if (response.statusCode != 200) {
+      throw Exception('Error al eliminar ingrediente');
     }
   }
 }
