@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/screens/Administrador/admin_home_screen.dart';
 import 'package:frontend/screens/Administrador/admin_menu_screen.dart';
 import 'package:frontend/screens/super_admin/activar_cuenta_screen.dart';
 import 'package:provider/provider.dart';
@@ -204,7 +205,7 @@ class _LoginScreenState extends State<LoginScreen> {
         destino = const HomeTrabajador();
         break;
       case RolUsuario.administrador:
-        destino = const HomeScreenAdmin();
+        destino = const MenuAdministrador();
         break;
       case RolUsuario.superadministrador:
         destino = const SeleccionarRestauranteScreen();

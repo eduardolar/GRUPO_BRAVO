@@ -112,6 +112,8 @@ class _MyWidgetState extends State<loginScreen> {
                         // 3. El semáforo: redirige según el rol
                         switch (usuario.rol) {
                           case RolUsuario.administrador:
+                          pantallaDestino = const MenuAdministrador(); 
+                            break;
                           case RolUsuario.superadministrador:
                             pantallaDestino = const HomeScreenAdmin();
                             break;
