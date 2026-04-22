@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:frontend/screens/trabajador/gestion_pedidos.dart';
+import 'package:frontend/screens/trabajador/Pedidos/gestion_pedidos.dart';
 import 'package:frontend/screens/trabajador/Reservas/gestion_reservas.dart';
 import 'package:frontend/screens/trabajador/Stock/gestion_stock.dart';
 import 'package:frontend/screens/trabajador/servicio.dart';
@@ -99,7 +99,7 @@ class _CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
         "RESTAURANTE BRAVO",
         style: TextStyle(
           fontFamily: 'Playfair Display',
-          color: Color(0xFFFFF8E1),
+          color: AppColors.textAppBar,
           fontSize: 18,
           fontWeight: FontWeight.w700,
           letterSpacing: 2.0,

@@ -29,4 +29,19 @@ class AppColors {
   static const Color disp = Color.fromARGB(255, 40, 184, 11);
   static const Color noDisp = Color.fromARGB(255, 223, 78, 10);
 
+  // Fondos oscuros
+  static const Color backgroundDark = Color(0xFF1C1C1C);
+
+  // AppBar título crema
+  static const Color textAppBar = Color(0xFFFFF8E1);
+
+  // Fondo éxito (verde claro)
+  static const Color successBackground = Color(0xFFE8F5E9);
+
+  // PayPal
+  static const Color paypal = Color(0xFF0070BA);
+
+  // Ingredientes excluidos (rosa claro)
+  static const Color excludedIngredient = Color(0xFFFFB3B3);
+
 }

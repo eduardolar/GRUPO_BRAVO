@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/core/colors_style.dart';
+import 'package:frontend/screens/trabajador/Pedidos/comanda_domicilio.dart';
+import 'package:frontend/screens/trabajador/Pedidos/crear_pedidos.dart';
 
 class GestionPedidos extends StatefulWidget {
   const GestionPedidos({super.key});
@@ -101,7 +103,7 @@ class _CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
         "GESTIÓN DE PEDIDOS",
         style: TextStyle(
           fontFamily: 'Playfair Display',
-          color: Color(0xFFFFF8E1),
+          color: AppColors.textAppBar,
           fontSize: 18,
           fontWeight: FontWeight.w700,
           letterSpacing: 2.0,
@@ -242,7 +244,12 @@ class _ActionButtonsPedidos extends StatelessWidget {
         _MainButton(
           icon: Icons.add_shopping_cart_outlined,
           label: "Crear un pedido",
-          onPressed: () {},
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const SeleccionPedido()),
+            );
+          },
         ),
         _MainButton(
           icon: Icons.edit_outlined,

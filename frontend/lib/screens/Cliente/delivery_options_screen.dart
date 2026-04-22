@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -7,6 +8,8 @@ import '../../providers/cart_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
 import '../../components/Cliente/campos_direccion.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../components/Cliente/campos_tarjeta.dart';
 import 'pedido_confirmado_screen.dart';
 
@@ -29,13 +32,10 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
 
   bool _googlePayAutorizado = false;
   bool _paypalAutorizado = false;
+  CardFieldInputDetails? _cardDetails;
 
   final _controladorDireccion = TextEditingController();
   final _controladorNotas = TextEditingController();
-  final _controladorNumeroTarjeta = TextEditingController();
-  final _controladorFechaExpiracion = TextEditingController();
-  final _controladorCvv = TextEditingController();
-  final _controladorNombreTitular = TextEditingController();
 
   static const _titulos = ['CONFIRMAR', 'ENTREGA', 'PAGO'];
 
@@ -52,10 +52,6 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
   void dispose() {
     _controladorDireccion.dispose();
     _controladorNotas.dispose();
-    _controladorNumeroTarjeta.dispose();
-    _controladorFechaExpiracion.dispose();
-    _controladorCvv.dispose();
-    _controladorNombreTitular.dispose();
     super.dispose();
   }
 
@@ -336,10 +332,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
                 const SizedBox(height: 2),
                 _FormPanel(
                   child: CamposTarjeta(
-                    controladorNumero: _controladorNumeroTarjeta,
-                    controladorFechaExpiracion: _controladorFechaExpiracion,
-                    controladorCvv: _controladorCvv,
-                    controladorNombreTitular: _controladorNombreTitular,
+                    onCardChanged: (details) => setState(() => _cardDetails = details),
                   ),
                 ),
               ],
@@ -467,7 +460,15 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
   }
 
   Future<void> _procesarTarjetaYCrearPedido() async {
-    if (!_validarTarjeta()) return;
+    if (kIsWeb) {
+      await _procesarStripeCheckoutWeb();
+      return;
+    }
+
+    if (_cardDetails == null || !(_cardDetails!.complete)) {
+      _mostrarError('Completa los datos de la tarjeta');
+      return;
+    }
 
     setState(() => _estaCargando = true);
 
@@ -487,24 +488,15 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
         throw Exception('No se pudo iniciar el pago con tarjeta');
       }
 
-      final confirmado = await ApiService.confirmarPagoTarjeta(
-        clientSecret: clientSecret,
-        numeroTarjeta: _controladorNumeroTarjeta.text.trim(),
-        fechaExpiracion: _controladorFechaExpiracion.text.trim(),
-        cvv: _controladorCvv.text.trim(),
-        nombreTitular: _controladorNombreTitular.text.trim(),
+      final paymentIntent = await Stripe.instance.confirmPayment(
+        paymentIntentClientSecret: clientSecret,
+        data: const PaymentMethodParams.card(
+          paymentMethodData: PaymentMethodData(),
+        ),
       );
 
-      if (confirmado != true) {
-        throw Exception('El pago con tarjeta fue rechazado');
-      }
-
-      final verificado = await ApiService.verificarPagoTarjeta(
-        paymentIntentId: paymentIntentId,
-      );
-
-      if (verificado != true) {
-        throw Exception('No se pudo verificar el pago con tarjeta');
+      if (paymentIntent.status != PaymentIntentsStatus.Succeeded) {
+        throw Exception('El pago no fue completado');
       }
 
       await _crearPedidoFinal(
@@ -515,6 +507,54 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       if (mounted) {
         setState(() => _estaCargando = false);
         _mostrarError('Error en el pago con tarjeta: $e');
+      }
+    }
+  }
+
+  Future<void> _procesarStripeCheckoutWeb() async {
+    setState(() => _estaCargando = true);
+
+    try {
+      final cart = Provider.of<CartProvider>(context, listen: false);
+      final total = _calcularTotal(cart);
+      final origin = Uri.base.origin;
+
+      final session = await ApiService.crearCheckoutSession(
+        total: total,
+        currency: 'eur',
+        successUrl: '$origin/?stripe_session={CHECKOUT_SESSION_ID}',
+        cancelUrl: '$origin/?stripe_cancel=1',
+      );
+
+      final checkoutUrl = session['checkout_url']?.toString();
+      final sessionId = session['session_id']?.toString();
+
+      if (checkoutUrl == null || sessionId == null) {
+        throw Exception('No se pudo iniciar la sesión de pago');
+      }
+
+      setState(() => _estaCargando = false);
+
+      await launchUrl(Uri.parse(checkoutUrl), webOnlyWindowName: '_blank');
+
+      if (!mounted) return;
+
+      final confirmado = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => _StripeCheckoutDialog(sessionId: sessionId),
+      );
+
+      if (confirmado != true) return;
+
+      await _crearPedidoFinal(
+        referenciaPago: sessionId,
+        estadoPago: 'pagado',
+      );
+    } catch (e) {
+      if (mounted) {
+        setState(() => _estaCargando = false);
+        _mostrarError('Error en el pago con Stripe: $e');
       }
     }
   }
@@ -705,31 +745,6 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
     }
   }
 
-  bool _validarTarjeta() {
-    if (_controladorNumeroTarjeta.text.trim().isEmpty ||
-        _controladorFechaExpiracion.text.trim().isEmpty ||
-        _controladorCvv.text.trim().isEmpty ||
-        _controladorNombreTitular.text.trim().isEmpty) {
-      _mostrarError('Completa todos los datos de la tarjeta');
-      return false;
-    }
-
-    final numero = _controladorNumeroTarjeta.text.replaceAll(' ', '');
-    if (numero.length < 13 || numero.length > 19) {
-      _mostrarError('Número de tarjeta inválido');
-      return false;
-    }
-
-    if (!RegExp(
-      r'^\d{2}/\d{2}$',
-    ).hasMatch(_controladorFechaExpiracion.text.trim())) {
-      _mostrarError('Formato de fecha inválido (MM/AA)');
-      return false;
-    }
-
-    return true;
-  }
-
   double _calcularTotal(CartProvider cart) {
     final costeEnvio = _entregaSeleccionada == OpcionEntrega.domicilio
         ? 3.99
@@ -787,7 +802,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
           width: double.infinity,
           child: OutlinedButton(
             style: OutlinedButton.styleFrom(
-              backgroundColor: const Color(0xFF0070BA),
+              backgroundColor: AppColors.paypal,
               side: BorderSide.none,
               padding: const EdgeInsets.symmetric(vertical: 15),
               shape: const RoundedRectangleBorder(
@@ -1393,6 +1408,87 @@ class _DireccionOption extends StatelessWidget {
   }
 }
 
+// ── Diálogo de confirmación Stripe Checkout ───────────────────────────────────
+
+class _StripeCheckoutDialog extends StatefulWidget {
+  final String sessionId;
+  const _StripeCheckoutDialog({required this.sessionId});
+
+  @override
+  State<_StripeCheckoutDialog> createState() => _StripeCheckoutDialogState();
+}
+
+class _StripeCheckoutDialogState extends State<_StripeCheckoutDialog> {
+  bool _verificando = false;
+  String? _error;
+
+  Future<void> _verificar() async {
+    setState(() { _verificando = true; _error = null; });
+    try {
+      final pagado = await ApiService.verificarCheckoutSession(
+        sessionId: widget.sessionId,
+      );
+      if (!mounted) return;
+      if (pagado) {
+        Navigator.of(context).pop(true);
+      } else {
+        setState(() {
+          _verificando = false;
+          _error = 'El pago aún no se ha completado. Completa el pago en la pestaña de Stripe y vuelve a intentarlo.';
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() { _verificando = false; _error = e.toString(); });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: AppColors.panel,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+      title: const Row(
+        children: [
+          Icon(Icons.open_in_new, color: AppColors.button, size: 20),
+          SizedBox(width: 10),
+          Text('Completa el pago', style: TextStyle(color: AppColors.textPrimary, fontSize: 16)),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Se ha abierto la página de pago de Stripe en una nueva pestaña. Completa el pago y pulsa el botón de abajo.',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 12),
+            Text(_error!, style: const TextStyle(color: AppColors.error, fontSize: 12)),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: _verificando ? null : () => Navigator.of(context).pop(false),
+          child: const Text('Cancelar', style: TextStyle(color: AppColors.textSecondary)),
+        ),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.button,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+          ),
+          onPressed: _verificando ? null : _verificar,
+          child: _verificando
+              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+              : const Text('Ya he pagado'),
+        ),
+      ],
+    );
+  }
+}
+
 class _ArticuloCard extends StatelessWidget {
   final CartItem item;
   final CartProvider cart;
@@ -1475,7 +1571,7 @@ class _ArticuloCard extends StatelessWidget {
                   Text(
                     'Sin: ${item.ingredientesExcluidos.join(', ')}',
                     style: const TextStyle(
-                      color: Color(0xFFFFB3B3),
+                      color: AppColors.excludedIngredient,
                       fontSize: 10,
                       fontStyle: FontStyle.italic,
                     ),

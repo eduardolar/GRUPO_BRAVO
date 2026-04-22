@@ -16,8 +16,6 @@ import 'pedido_service.dart';
 import 'reserva_service.dart';
 import 'mesa_service.dart';
 
-/// Fachada que delega en los sub-servicios.
-/// Mantiene la misma API pública para no romper imports existentes.
 class ApiService {
   static String get baseUrl {
     if (kIsWeb) {
@@ -103,17 +101,22 @@ class ApiService {
     String? notas,
     String? referenciaPago,
     required String estadoPago,
-  }) => PedidoService.crearPedido(
-    userId: userId,
-    items: items,
-    tipoEntrega: tipoEntrega,
-    metodoPago: metodoPago,
-    total: total,
-    direccionEntrega: direccionEntrega,
-    mesaId: mesaId,
-    numeroMesa: numeroMesa,
-    notas: notas,
-  );
+  }) {
+    var crearPedido = PedidoService.crearPedido(
+      userId: userId,
+      items: items,
+      tipoEntrega: tipoEntrega,
+      metodoPago: metodoPago,
+      total: total,
+      direccionEntrega: direccionEntrega,
+      mesaId: mesaId,
+      numeroMesa: numeroMesa,
+      notas: notas,
+      referenciaPago: referenciaPago,
+      estadoPago: '',
+    );
+    return crearPedido;
+  }
 
   static Future<List<Pedido>> obtenerHistorialPedidos({
     required String userId,
@@ -155,11 +158,11 @@ class ApiService {
       url,
       headers: _jsonHeaders(),
       body: jsonEncode({
-        'client_secret': clientSecret,
-        'numero_tarjeta': numeroTarjeta,
-        'fecha_expiracion': fechaExpiracion,
+        'clientSecret': clientSecret,
+        'numeroTarjeta': numeroTarjeta,
+        'fechaExpiracion': fechaExpiracion,
         'cvv': cvv,
-        'nombre_titular': nombreTitular,
+        'nombreTitular': nombreTitular,
       }),
     );
 
@@ -186,6 +189,42 @@ class ApiService {
     }
 
     return data['paid'] == true || data['status'] == 'succeeded';
+  }
+
+  static Future<Map<String, dynamic>> crearCheckoutSession({
+    required double total,
+    String currency = 'eur',
+    required String successUrl,
+    required String cancelUrl,
+  }) async {
+    final url = Uri.parse('$baseUrl/payments/stripe/create-checkout-session');
+    final response = await http.post(
+      url,
+      headers: _jsonHeaders(),
+      body: jsonEncode({
+        'total': total,
+        'currency': currency,
+        'success_url': successUrl,
+        'cancel_url': cancelUrl,
+      }),
+    );
+    final data = _decodeBody(response);
+    if (response.statusCode >= 400) {
+      throw Exception(data['detail'] ?? 'Error al crear sesión de Checkout');
+    }
+    return Map<String, dynamic>.from(data);
+  }
+
+  static Future<bool> verificarCheckoutSession({
+    required String sessionId,
+  }) async {
+    final url = Uri.parse('$baseUrl/payments/stripe/verify-session/$sessionId');
+    final response = await http.get(url, headers: _jsonHeaders());
+    final data = _decodeBody(response);
+    if (response.statusCode >= 400) {
+      throw Exception(data['detail'] ?? 'Error al verificar sesión');
+    }
+    return data['paid'] == true;
   }
 
   // ─── PAYPAL ──────────────────────────────────────────────────
@@ -230,7 +269,8 @@ class ApiService {
 
     return Map<String, dynamic>.from(data);
   }
-  // ─── GOOGLE PAY / GOOGLE PLAY ───────────────────────────────
+
+  // ─── GOOGLE PAY / GOOGLE PLAY ────────────────────────────────
 
   static Future<Map<String, dynamic>> iniciarGooglePay({
     required double total,
@@ -259,20 +299,25 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>> verificarCompraGooglePlay({
-    required String packageName,
+    String? packageName,
     required String productId,
     required String purchaseToken,
   }) async {
     final url = Uri.parse('$baseUrl/payments/google-play/verify');
 
+    final body = <String, dynamic>{
+      'productId': productId,
+      'purchaseToken': purchaseToken,
+    };
+
+    if (packageName != null && packageName.isNotEmpty) {
+      body['packageName'] = packageName;
+    }
+
     final response = await http.post(
       url,
       headers: _jsonHeaders(),
-      body: jsonEncode({
-        'packageName': packageName,
-        'productId': productId,
-        'purchaseToken': purchaseToken,
-      }),
+      body: jsonEncode(body),
     );
 
     final data = _decodeBody(response);
@@ -334,13 +379,13 @@ class ApiService {
   static Future<bool> eliminarReserva({required String reservaId}) =>
       ReservaService.eliminarReserva(reservaId: reservaId);
 
-  // ─── QR / MESA ──────────────────────────────────────────────
+  // ─── QR / MESA ───────────────────────────────────────────────
 
   static Future<Map<String, dynamic>> validarQrMesa({
     required String codigoQr,
   }) => MesaService.validarQrMesa(codigoQr: codigoQr);
 
-  // ─── HELPERS ────────────────────────────────────────────────
+  // ─── HELPERS ─────────────────────────────────────────────────
 
   static Map<String, String> _jsonHeaders() {
     return {'Content-Type': 'application/json', 'Accept': 'application/json'};

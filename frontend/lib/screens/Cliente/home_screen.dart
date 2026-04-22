@@ -106,7 +106,7 @@ class _CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
         "RESTAURANTE BRAVO",
         style: TextStyle(
           fontFamily: 'Playfair Display',
-          color: Color(0xFFFFF8E1),
+          color: AppColors.textAppBar,
           fontSize: 18,
           fontWeight: FontWeight.w700,
           letterSpacing: 2.0,
@@ -126,7 +126,7 @@ class _CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
               ),
             ),
             onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen(mostrarActivarCuenta: true)));
             },
           ),
         ),
@@ -170,9 +170,9 @@ class _HeroSection extends StatelessWidget {
                 end: Alignment.bottomCenter,
                 stops: const [0.0, 0.3, 0.7, 1.0],
                 colors: [
-                  Colors.black.withOpacity(0.3),
+                  Colors.black.withValues(alpha: 0.3),
                   Colors.transparent,
-                  Colors.black.withOpacity(0.75),
+                  Colors.black.withValues(alpha: 0.75),
                   AppColors.background,
                 ],
               ),
@@ -305,7 +305,7 @@ class _MainButton extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Material(
-        color: isPrimary ? AppColors.button : Colors.black.withOpacity(0.55),
+        color: isPrimary ? AppColors.button : Colors.black.withValues(alpha: 0.55),
         child: InkWell(
           onTap: onPressed,
           child: Container(
@@ -358,7 +358,7 @@ class _FooterQuote extends StatelessWidget {
           ),
           child: Column(
             children: [
-              Icon(Icons.format_quote, color: AppColors.button.withOpacity(0.4), size: 30),
+              Icon(Icons.format_quote, color: AppColors.button.withValues(alpha: 0.4), size: 30),
               const SizedBox(height: 16),
               const Text(
                 "La mejor experiencia gastronómica de la ciudad.",

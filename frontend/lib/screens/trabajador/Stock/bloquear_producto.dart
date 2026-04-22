@@ -198,7 +198,7 @@ class _BloquearProductoState extends State<BloquearProducto> {
 
           Row(
             children: [
-              const Expanded(child: Divider(color: Color(0xFFE0DBD3))),
+              const Expanded(child: Divider(color: AppColors.line)),
               Container(
                 width: 60,
                 height: 1.5,
@@ -212,7 +212,7 @@ class _BloquearProductoState extends State<BloquearProducto> {
                   ),
                 ),
               ),
-              const Expanded(child: Divider(color: Color(0xFFE0DBD3))),
+              const Expanded(child: Divider(color: AppColors.line)),
             ],
           ),
         ],

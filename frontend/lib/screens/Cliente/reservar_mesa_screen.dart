@@ -1440,7 +1440,7 @@ class _ConfirmacionSheet extends StatelessWidget {
             width: 70, height: 70,
             decoration: const BoxDecoration(
               shape: BoxShape.circle,
-              color: Color(0xFFE8F5E9),
+              color: AppColors.successBackground,
             ),
             child: const Icon(Icons.check, color: Colors.green, size: 36),
           ),
