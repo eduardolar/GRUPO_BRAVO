@@ -154,7 +154,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           onPressed: () => Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const AdminMenuScreen()),
+            MaterialPageRoute(builder: (_) => const MenuAdministrador()),
           ),
           child: null,
         ),

@@ -10,6 +10,7 @@ class ProductoCard extends StatelessWidget {
   final int quantity;
 
   bool iconoEditar;
+
   static DateTime _lastTap = DateTime(2000);
 
   ProductoCard({
@@ -213,6 +214,15 @@ class ProductoCard extends StatelessWidget {
 
     return card;
   }
+
+    Icon IconoBoton(){
+    if(iconoEditar){
+      return Icon(Icons.edit);
+    } else{
+      return Icon(Icons.add);
+    }
+  }
+
 }
 
 // ─── Placeholder de imagen ────────────────────────────────────────────────────
@@ -234,13 +244,6 @@ class _ImagePlaceholder extends StatelessWidget {
     );
   }
 
-  Icon IconoBoton(){
-    if(iconoEditar){
-      return Icon(Icons.edit);
-    } else{
-      return Icon(Icons.add);
-    }
-  }
 
 }
 

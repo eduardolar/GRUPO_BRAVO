@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/components/Cliente/entrada_texto.dart';
 import '../../core/colors_style.dart';
 import '../../services/ingredientes_service.dart';
 
@@ -6,24 +7,23 @@ class AdminNuevoIngredienteScreen extends StatefulWidget {
   const AdminNuevoIngredienteScreen({super.key});
 
   @override
-  State<AdminNuevoIngredienteScreen> createState() => _AdminNuevoIngredienteScreenState();
+  State<AdminNuevoIngredienteScreen> createState() =>
+      _AdminNuevoIngredienteScreenState();
 }
 
-class _AdminNuevoIngredienteScreenState extends State<AdminNuevoIngredienteScreen> {
+class _AdminNuevoIngredienteScreenState
+    extends State<AdminNuevoIngredienteScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _estaGuardando = false;
 
   final _nombreCtrl = TextEditingController();
   final _cantidadCtrl = TextEditingController();
   final _minimoCtrl = TextEditingController();
-  
+
   String _categoriaSeleccionada = 'Vegetales';
   String _unidadSeleccionada = 'kg';
 
-  final List<String> _categorias = [
-    'Carnes', 'Vegetales', 'Lácteos', 'Panadería', 'Salsas', 'Otras'
-  ];
-  final List<String> _unidades = ['kg', 'L', 'ud', 'unidades'];
+  final List<String> _unidades = ['kg', 'L', 'ud'];
 
   @override
   void dispose() {
@@ -45,12 +45,16 @@ class _AdminNuevoIngredienteScreenState extends State<AdminNuevoIngredienteScree
           'stock_minimo': double.parse(_minimoCtrl.text),
         });
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Creado con éxito')));
-          Navigator.pop(context); 
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Creado con éxito')));
+          Navigator.pop(context);
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          );
         }
       } finally {
         if (mounted) setState(() => _estaGuardando = false);
@@ -62,7 +66,10 @@ class _AdminNuevoIngredienteScreenState extends State<AdminNuevoIngredienteScree
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('Nuevo Ingrediente'), backgroundColor: AppColors.backgroundButton),
+      appBar: AppBar(
+        title: const Text('Nuevo Ingrediente'),
+        backgroundColor: AppColors.backgroundButton,
+      ),
       body: _estaGuardando
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -71,28 +78,23 @@ class _AdminNuevoIngredienteScreenState extends State<AdminNuevoIngredienteScree
                 key: _formKey,
                 child: Column(
                   children: [
-                    TextFormField(
-                      controller: _nombreCtrl,
-                      decoration: const InputDecoration(labelText: 'Nombre del Ingrediente'),
-                      validator: (v) => v!.isEmpty ? 'Requerido' : null,
-                    ),
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<String>(
-                      value: _categoriaSeleccionada,
-                      decoration: const InputDecoration(labelText: 'Categoría'),
-                      items: _categorias.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
-                      onChanged: (val) => setState(() => _categoriaSeleccionada = val!),
+                    EntradaTexto(
+                      icono: Icons.abc,
+                      controlador: _nombreCtrl,
+                      etiqueta: 'Nombre del Ingrediente',
+                      validador: (v) => v!.isEmpty ? 'Requerido' : null,
                     ),
                     const SizedBox(height: 16),
                     Row(
                       children: [
                         Expanded(
                           flex: 2,
-                          child: TextFormField(
-                            controller: _cantidadCtrl,
-                            decoration: const InputDecoration(labelText: 'Cantidad Inicial'),
-                            keyboardType: TextInputType.number,
-                            validator: (v) => v!.isEmpty ? 'Requerido' : null,
+                          child: EntradaTexto(
+                            icono: Icons.numbers, 
+                            controlador: _cantidadCtrl,
+                            etiqueta:'Cantidad Inicial',
+                            tipoTeclado: TextInputType.number,
+                            validador: (v) => v!.isEmpty ? 'Requerido' : null,
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -100,27 +102,44 @@ class _AdminNuevoIngredienteScreenState extends State<AdminNuevoIngredienteScree
                           flex: 1,
                           child: DropdownButtonFormField<String>(
                             value: _unidadSeleccionada,
-                            decoration: const InputDecoration(labelText: 'Unidad'),
-                            items: _unidades.map((u) => DropdownMenuItem(value: u, child: Text(u))).toList(),
-                            onChanged: (val) => setState(() => _unidadSeleccionada = val!),
+                            decoration: const InputDecoration(
+                              labelText: 'Unidad',
+                            ),
+                            items: _unidades
+                                .map(
+                                  (u) => DropdownMenuItem(
+                                    value: u,
+                                    child: Text(u),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: (val) =>
+                                setState(() => _unidadSeleccionada = val!),
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _minimoCtrl,
-                      decoration: const InputDecoration(labelText: 'Stock Mínimo de Alerta'),
-                      keyboardType: TextInputType.number,
-                      validator: (v) => v!.isEmpty ? 'Requerido' : null,
+                    EntradaTexto(
+                      icono: Icons.warning,
+                      controlador: _minimoCtrl,
+                      etiqueta: 'Stock Mínimo de Alerta',
+                      tipoTeclado: TextInputType.number,
+                      validador: (v) => v!.isEmpty ? 'Requerido' : null,
                     ),
                     const SizedBox(height: 32),
                     SizedBox(
-                      width: double.infinity, height: 50,
+                      width: double.infinity,
+                      height: 50,
                       child: ElevatedButton(
                         onPressed: _crearIngrediente,
-                        style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                        child: const Text('CREAR INGREDIENTE', style: TextStyle(color: Colors.white)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                        ),
+                        child: const Text(
+                          'CREAR INGREDIENTE',
+                          style: TextStyle(color: Colors.white),
+                        ),
                       ),
                     ),
                   ],
@@ -130,12 +149,11 @@ class _AdminNuevoIngredienteScreenState extends State<AdminNuevoIngredienteScree
     );
   }
 
-
-   Widget botonGuardar(){
+  Widget botonGuardar() {
     return Container(
       width: double.infinity,
       height: 55,
-        decoration: BoxDecoration(
+      decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(15),
         boxShadow: const [
           BoxShadow(
@@ -146,7 +164,7 @@ class _AdminNuevoIngredienteScreenState extends State<AdminNuevoIngredienteScree
         ],
       ),
       child: ElevatedButton(
-        onPressed: (){
+        onPressed: () {
           if (_formKey.currentState!.validate()) {
             // Añadir lógica para enviar este nuevo ingrediente al servidor
             print("guardando nuevo plato...");
@@ -162,10 +180,9 @@ class _AdminNuevoIngredienteScreenState extends State<AdminNuevoIngredienteScree
             borderRadius: BorderRadius.circular(15),
           ),
           elevation: 0,
-        ), 
+        ),
         child: Text("CREAR INGREDIENTE"),
       ),
-
     );
   }
 }

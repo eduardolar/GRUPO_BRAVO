@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/components/Cliente/entrada_texto.dart';
 import '../../core/colors_style.dart';
 import '../../models/ingrediente_model.dart';
 import '../../services/ingredientes_service.dart';
@@ -14,16 +15,6 @@ class AdminStockScreen extends StatefulWidget {
 
 class _AdminStockScreenState extends State<AdminStockScreen> {
   String _busqueda = '';
-  String _filtroCategoria = 'Todas';
-  final List<String> _categorias = [
-    'Todas',
-    'Carnes',
-    'Vegetales',
-    'Lácteos',
-    'Panadería',
-    'Salsas',
-    'Otras'
-  ];
 
   void _recargarStock() {
     setState(() {}); 
@@ -56,25 +47,7 @@ class _AdminStockScreenState extends State<AdminStockScreen> {
                   ),
                 ),
                 const SizedBox(width: 16),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey.shade300),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _filtroCategoria,
-                      items: _categorias.map((String cat) {
-                        return DropdownMenuItem<String>(value: cat, child: Text(cat));
-                      }).toList(),
-                      onChanged: (val) {
-                        if (val != null) setState(() => _filtroCategoria = val);
-                      },
-                    ),
-                  ),
-                ),
+                
               ],
             ),
           ),
@@ -98,8 +71,7 @@ class _AdminStockScreenState extends State<AdminStockScreen> {
                 final List<Ingrediente> stockReal = snapshot.data!;
                 final stockFiltrado = stockReal.where((item) {
                   final coincideBusqueda = item.nombre.toLowerCase().contains(_busqueda);
-                  final coincideCategoria = _filtroCategoria == 'Todas' || item.categoria == _filtroCategoria;
-                  return coincideBusqueda && coincideCategoria;
+                  return coincideBusqueda;;
                 }).toList();
 
                 if (stockFiltrado.isEmpty) {

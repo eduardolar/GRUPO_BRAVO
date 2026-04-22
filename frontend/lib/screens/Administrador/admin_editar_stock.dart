@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/components/Cliente/entrada_texto.dart';
 import '../../core/colors_style.dart';
 import '../../models/ingrediente_model.dart';
 import '../../services/ingredientes_service.dart';
@@ -19,13 +20,10 @@ class _AdminEditarStockScreenState extends State<AdminEditarStockScreen> {
   late TextEditingController _nombreCtrl;
   late TextEditingController _cantidadCtrl;
   late TextEditingController _minimoCtrl;
-  String _categoriaSeleccionada = 'Otras';
   String _unidadSeleccionada = 'kg';
 
-  final List<String> _categorias = [
-    'Carnes', 'Vegetales', 'Lácteos', 'Panadería', 'Salsas', 'Otras'
-  ];
-  final List<String> _unidades = ['kg', 'L', 'ud', 'unidades'];
+
+  final List<String> _unidades = ['kg', 'L', 'ud'];
 
   @override
   void initState() {
@@ -34,9 +32,7 @@ class _AdminEditarStockScreenState extends State<AdminEditarStockScreen> {
     _cantidadCtrl = TextEditingController(text: widget.ingrediente.cantidadActual.toString());
     _minimoCtrl = TextEditingController(text: widget.ingrediente.stockMinimo.toString());
     
-    _categoriaSeleccionada = _categorias.contains(widget.ingrediente.categoria) 
-        ? widget.ingrediente.categoria 
-        : 'Otras';
+
     _unidadSeleccionada = _unidades.contains(widget.ingrediente.unidad)
         ? widget.ingrediente.unidad
         : 'ud';
@@ -58,7 +54,6 @@ class _AdminEditarStockScreenState extends State<AdminEditarStockScreen> {
           widget.ingrediente.id,
           {
             'nombre': _nombreCtrl.text.trim(),
-            'categoria': _categoriaSeleccionada,
             'cantidad_actual': double.parse(_cantidadCtrl.text),
             'unidad': _unidadSeleccionada,
             'stock_minimo': double.parse(_minimoCtrl.text),
@@ -91,28 +86,25 @@ class _AdminEditarStockScreenState extends State<AdminEditarStockScreen> {
                 key: _formKey,
                 child: Column(
                   children: [
-                    TextFormField(
-                      controller: _nombreCtrl,
-                      decoration: const InputDecoration(labelText: 'Nombre del Ingrediente'),
-                      validator: (v) => v!.isEmpty ? 'Requerido' : null,
+                    EntradaTexto(
+                      icono: Icons.abc,
+                      controlador: _nombreCtrl,
+                      etiqueta:'Nombre del Ingrediente',
+                      validador: (v) => v!.isEmpty ? 'Requerido' : null,
                     ),
                     const SizedBox(height: 16),
-                    DropdownButtonFormField<String>(
-                      value: _categoriaSeleccionada,
-                      decoration: const InputDecoration(labelText: 'Categoría'),
-                      items: _categorias.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
-                      onChanged: (val) => setState(() => _categoriaSeleccionada = val!),
-                    ),
-                    const SizedBox(height: 16),
+
+
                     Row(
                       children: [
                         Expanded(
                           flex: 2,
-                          child: TextFormField(
-                            controller: _cantidadCtrl,
-                            decoration: const InputDecoration(labelText: 'Cantidad Actual'),
-                            keyboardType: TextInputType.number,
-                            validator: (v) => v!.isEmpty ? 'Requerido' : null,
+                          child: EntradaTexto(
+                            icono: Icons.filter_9_plus,
+                            controlador: _cantidadCtrl,
+                            etiqueta:  'Cantidad Actual',
+                            tipoTeclado: TextInputType.number,
+                            validador: (v) => v!.isEmpty ? 'Requerido' : null,
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -128,21 +120,26 @@ class _AdminEditarStockScreenState extends State<AdminEditarStockScreen> {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _minimoCtrl,
-                      decoration: const InputDecoration(labelText: 'Stock Mínimo'),
-                      keyboardType: TextInputType.number,
-                      validator: (v) => v!.isEmpty ? 'Requerido' : null,
+                    EntradaTexto(
+                      icono: Icons.warning,
+                      controlador: _minimoCtrl,
+                      etiqueta:  'Stock Mínimo',
+                      tipoTeclado: TextInputType.number,
+                      validador: (v) => v!.isEmpty ? 'Requerido' : null,
                     ),
                     const SizedBox(height: 32),
-                    SizedBox(
+                    botonEliminar(),
+                    const SizedBox(height: 16),
+                    botonGuardar(),
+                    
+                    /*SizedBox(
                       width: double.infinity, height: 50,
                       child: ElevatedButton(
                         onPressed: _guardarCambios,
                         style: ElevatedButton.styleFrom(backgroundColor: AppColors.button),
                         child: const Text('GUARDAR CAMBIOS', style: TextStyle(color: Colors.white)),
                       ),
-                    ),
+                    ),*/
                   ],
                 ),
               ),
@@ -167,6 +164,7 @@ class _AdminEditarStockScreenState extends State<AdminEditarStockScreen> {
       child: ElevatedButton(
         onPressed: () {
           if (_formKey.currentState!.validate()) {
+            _guardarCambios();
             // Añadir lógica para enviar este nuevo ingrediente al servidor
             print("guardando nuevo plato...");
             Navigator.pop(context);
@@ -182,7 +180,7 @@ class _AdminEditarStockScreenState extends State<AdminEditarStockScreen> {
           ),
           elevation: 0,
         ),
-        child: Text("ACTUALIZAR INGREDIENTE"),
+        child: Text("GUARDAR CAMBIOS"),
       ),
     );
   }

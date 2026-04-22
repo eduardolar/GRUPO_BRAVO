@@ -3,7 +3,7 @@ import '../../core/colors_style.dart';
 
 class EntradaTexto extends StatelessWidget {
   final String etiqueta; // El texto que flota (Label)
-  final IconData icono; // El icono de la izquierda
+  final IconData? icono; // El icono de la izquierda
   final bool esContrasena; // Si debe ocultar el texto
   final bool? mostrarTexto; // Controla el ojo (obscureText)
   final VoidCallback? alPresionarIcono; // Acción al tocar el ojo
@@ -14,7 +14,7 @@ class EntradaTexto extends StatelessWidget {
   const EntradaTexto({
     super.key,
     required this.etiqueta,
-    required this.icono,
+    this.icono,
     this.esContrasena = false,
     this.mostrarTexto,
     this.alPresionarIcono,
