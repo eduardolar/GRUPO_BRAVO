@@ -273,7 +273,7 @@ class _MenuScreenState extends State<MenuScreen> {
                                 crossAxisCount: columns,
                                 crossAxisSpacing: 16,
                                 mainAxisSpacing: 16,
-                                mainAxisExtent: 330,
+                                mainAxisExtent: 342,
                               ),
                               itemCount: filtered.length,
                               itemBuilder: (context, index) {
@@ -281,6 +281,7 @@ class _MenuScreenState extends State<MenuScreen> {
                                 return ProductoCard(
                                   product: p,
                                   onAdd: () => _addToCart(context, p),
+                                  compactAdd: true,
                                 );
                               },
                             );
