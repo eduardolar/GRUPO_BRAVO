@@ -12,7 +12,7 @@ class ProductoCard extends StatelessWidget {
 
   static DateTime _lastTap = DateTime(2000);
 
-  const ProductoCard({
+  ProductoCard({
     super.key,
     required this.product,
     required this.onAdd,
@@ -262,6 +262,15 @@ class ProductoCard extends StatelessWidget {
 
     return card;
   }
+
+    Icon IconoBoton(){
+    if(iconoEditar){
+      return Icon(Icons.edit);
+    } else{
+      return Icon(Icons.add);
+    }
+  }
+
 }
 
 // ─── Placeholder de imagen ────────────────────────────────────────────────────
@@ -282,6 +291,8 @@ class _ImagePlaceholder extends StatelessWidget {
       ),
     );
   }
+
+
 }
 
 class _AddButton extends StatelessWidget {

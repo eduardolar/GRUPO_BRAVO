@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/components/Cliente/entrada_texto.dart';
 import '../../core/colors_style.dart';
 import '../../models/ingrediente_model.dart';
 import '../../services/ingredientes_service.dart';
@@ -56,7 +57,6 @@ class _AdminEditarStockScreenState extends State<AdminEditarStockScreen> {
           widget.ingrediente.id,
           {
             'nombre': _nombreCtrl.text.trim(),
-            'categoria': _categoriaSeleccionada,
             'cantidad_actual': double.parse(_cantidadCtrl.text),
             'unidad': _unidadSeleccionada,
             'stock_minimo': double.parse(_minimoCtrl.text),
@@ -89,28 +89,25 @@ class _AdminEditarStockScreenState extends State<AdminEditarStockScreen> {
                 key: _formKey,
                 child: Column(
                   children: [
-                    TextFormField(
-                      controller: _nombreCtrl,
-                      decoration: const InputDecoration(labelText: 'Nombre del Ingrediente'),
-                      validator: (v) => v!.isEmpty ? 'Requerido' : null,
+                    EntradaTexto(
+                      icono: Icons.abc,
+                      controlador: _nombreCtrl,
+                      etiqueta:'Nombre del Ingrediente',
+                      validador: (v) => v!.isEmpty ? 'Requerido' : null,
                     ),
                     const SizedBox(height: 16),
-                    DropdownButtonFormField<String>(
-                      value: _categoriaSeleccionada,
-                      decoration: const InputDecoration(labelText: 'Categoría'),
-                      items: _categorias.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
-                      onChanged: (val) => setState(() => _categoriaSeleccionada = val!),
-                    ),
-                    const SizedBox(height: 16),
+
+
                     Row(
                       children: [
                         Expanded(
                           flex: 2,
-                          child: TextFormField(
-                            controller: _cantidadCtrl,
-                            decoration: const InputDecoration(labelText: 'Cantidad Actual'),
-                            keyboardType: TextInputType.number,
-                            validator: (v) => v!.isEmpty ? 'Requerido' : null,
+                          child: EntradaTexto(
+                            icono: Icons.filter_9_plus,
+                            controlador: _cantidadCtrl,
+                            etiqueta:  'Cantidad Actual',
+                            tipoTeclado: TextInputType.number,
+                            validador: (v) => v!.isEmpty ? 'Requerido' : null,
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -126,25 +123,100 @@ class _AdminEditarStockScreenState extends State<AdminEditarStockScreen> {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _minimoCtrl,
-                      decoration: const InputDecoration(labelText: 'Stock Mínimo'),
-                      keyboardType: TextInputType.number,
-                      validator: (v) => v!.isEmpty ? 'Requerido' : null,
+                    EntradaTexto(
+                      icono: Icons.warning,
+                      controlador: _minimoCtrl,
+                      etiqueta:  'Stock Mínimo',
+                      tipoTeclado: TextInputType.number,
+                      validador: (v) => v!.isEmpty ? 'Requerido' : null,
                     ),
                     const SizedBox(height: 32),
-                    SizedBox(
+                    botonEliminar(),
+                    const SizedBox(height: 16),
+                    botonGuardar(),
+                    
+                    /*SizedBox(
                       width: double.infinity, height: 50,
                       child: ElevatedButton(
                         onPressed: _guardarCambios,
                         style: ElevatedButton.styleFrom(backgroundColor: AppColors.button),
                         child: const Text('GUARDAR CAMBIOS', style: TextStyle(color: Colors.white)),
                       ),
-                    ),
+                    ),*/
                   ],
                 ),
               ),
             ),
+    );
+  }
+  
+  Widget botonGuardar() {
+    return Container(
+      width: double.infinity,
+      height: 55,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: const [
+          BoxShadow(
+            color: AppColors.shadow,
+            blurRadius: 10,
+            offset: Offset(0, 5),
+          ),
+        ],
+      ),
+      child: ElevatedButton(
+        onPressed: () {
+          if (_formKey.currentState!.validate()) {
+            _guardarCambios();
+            // Añadir lógica para enviar este nuevo ingrediente al servidor
+            print("guardando nuevo plato...");
+            Navigator.pop(context);
+          } else {
+            print("Formulario no válido");
+          }
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.button,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+          elevation: 0,
+        ),
+        child: Text("GUARDAR CAMBIOS"),
+      ),
+    );
+  }
+
+  Widget botonEliminar() {
+    return Container(
+      width: double.infinity,
+      height: 55,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: const [
+          BoxShadow(
+            color: AppColors.shadow,
+            blurRadius: 10,
+            offset: Offset(0, 5),
+          ),
+        ],
+      ),
+      child: ElevatedButton(
+        onPressed: () {
+          // Añadir logica para borrar registro en el servidor
+          Navigator.pop(context);
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.backgroundButton,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadiusGeometry.circular(15),
+          ),
+          elevation: 0,
+        ),
+        child: Text("ELIMINAR INGREDIENTE"),
+      ),
     );
   }
 }
