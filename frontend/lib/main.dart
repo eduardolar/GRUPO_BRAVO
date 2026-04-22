@@ -12,23 +12,27 @@ import 'providers/pedido_provider.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  final authProvider = AuthProvider();
+  await authProvider.cargarSesion();
+
   // flutter_stripe solo funciona en Android/iOS, no en Web
   if (!kIsWeb) {
     Stripe.publishableKey = 'pk_test_51TOw8VAyHSG5POXsDtUQMKCwyJ5SUdFWc7eyNMsrIq4NsxbhX6kaZLSOZb3B1K0mncosU5pg3bWLqPP4XDFzuB4u00p4DnMegH';
     await Stripe.instance.applySettings();
   }
 
-  runApp(const MainApp());
+  runApp(MainApp(authProvider: authProvider));
 }
 
 class MainApp extends StatelessWidget {
-  const MainApp({super.key});
+  final AuthProvider authProvider;
+  const MainApp({super.key, required this.authProvider});
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider.value(value: authProvider),
         ChangeNotifierProvider(create: (_) => CartProvider()),
         ChangeNotifierProvider(create: (_) => PedidoProvider()),
       ],

@@ -478,8 +478,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
                           _buildAccion(
                             icono: Icons.logout,
                             label: 'Cerrar sesión',
-                            onTap: () {
-                              Provider.of<AuthProvider>(context, listen: false).cerrarSesion();
+                            onTap: () async {
+                              await Provider.of<AuthProvider>(context, listen: false).cerrarSesion();
+                              if (!context.mounted) return;
                               Navigator.of(context).pushAndRemoveUntil(
                                 MaterialPageRoute(builder: (_) => const HomeScreen()),
                                 (route) => false,
