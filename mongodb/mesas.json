@@ -1,0 +1,15 @@
+[
+  {
+    "numero": 1,
+    "capacidad": 4,
+    "estado": "libre",
+    "ubicacion": "terraza"
+  },
+  {
+    "numero": 2,
+    "capacidad": 2,
+    "estado": "ocupada",
+    "ubicacion": "salon",
+    "pedido_actual_id": "ID_DEL_PEDIDO_AQUÍ"
+  }
+]

@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+pymongo
+dnspython
+bcrypt
+pydantic
+fastapi-mail
+pydantic[email]
+qrcode[pil]
+httpx
