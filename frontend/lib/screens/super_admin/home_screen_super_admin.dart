@@ -203,7 +203,7 @@ class _HomeHero extends StatelessWidget {
                   child: Text(
                     'PANEL DE GESTIÓN',
                     style: GoogleFonts.manrope(
-                      color: Colors.white,
+                      color: AppColors.button,
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
                       letterSpacing: 4,

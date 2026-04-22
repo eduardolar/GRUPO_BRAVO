@@ -147,7 +147,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
                         color: estaExpandido
-                            ? AppColors.gold.withOpacity(0.5)
+                            ? AppColors.gold.withValues(alpha: 0.5)
                             : AppColors.line,
                       ),
                     ),
@@ -160,7 +160,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
                               width: 48,
                               height: 48,
                               decoration: BoxDecoration(
-                                color: colorEstado.withOpacity(0.15),
+                                color: colorEstado.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Icon(
@@ -186,7 +186,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
                                     '${pedido.items} artículos · ${pedido.estado}',
                                     style: TextStyle(
                                       color: AppColors.textSecondary
-                                          .withOpacity(0.7),
+                                          .withValues(alpha: 0.7),
                                       fontSize: 13,
                                     ),
                                   ),
@@ -211,7 +211,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
                                     vertical: 3,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: colorEstado.withOpacity(0.15),
+                                    color: colorEstado.withValues(alpha: 0.15),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
@@ -231,7 +231,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
                               duration: const Duration(milliseconds: 300),
                               child: Icon(
                                 Icons.expand_more,
-                                color: AppColors.textSecondary.withOpacity(0.5),
+                                color: AppColors.textSecondary.withValues(alpha: 0.5),
                                 size: 22,
                               ),
                             ),
@@ -262,7 +262,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Divider(color: AppColors.line.withOpacity(0.5), height: 1),
+          Divider(color: AppColors.line.withValues(alpha: 0.5), height: 1),
           const SizedBox(height: 12),
 
           // ── Productos ──
@@ -292,7 +292,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
                   Text(
                     '${p.subtotal.toStringAsFixed(2)} €',
                     style: TextStyle(
-                      color: AppColors.textSecondary.withOpacity(0.8),
+                      color: AppColors.textSecondary.withValues(alpha: 0.8),
                       fontSize: 13,
                     ),
                   ),
@@ -302,7 +302,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
           ),
 
           const SizedBox(height: 8),
-          Divider(color: AppColors.line.withOpacity(0.5), height: 1),
+          Divider(color: AppColors.line.withValues(alpha: 0.5), height: 1),
           const SizedBox(height: 10),
 
           // ── Info de entrega y pago ──
@@ -321,12 +321,12 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
   Widget _buildInfoRow(IconData icon, String text) {
     return Row(
       children: [
-        Icon(icon, size: 16, color: AppColors.textSecondary.withOpacity(0.6)),
+        Icon(icon, size: 16, color: AppColors.textSecondary.withValues(alpha: 0.6)),
         const SizedBox(width: 8),
         Text(
           text,
           style: TextStyle(
-            color: AppColors.textSecondary.withOpacity(0.8),
+            color: AppColors.textSecondary.withValues(alpha: 0.8),
             fontSize: 12,
           ),
         ),
