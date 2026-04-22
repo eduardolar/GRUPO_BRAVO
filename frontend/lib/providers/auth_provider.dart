@@ -1,12 +1,39 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/usuario_model.dart';
-import '../services/auth_service.dart'; // Asegúrate de que el path sea correcto
+import '../services/auth_service.dart';
 
 class AuthProvider with ChangeNotifier {
   Usuario? _usuarioActual;
+  static const _kSesionKey = 'usuario_sesion';
 
   Usuario? get usuarioActual => _usuarioActual;
   bool get estaAutenticado => _usuarioActual != null;
+
+  Future<void> cargarSesion() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final json = prefs.getString(_kSesionKey);
+      if (json != null) {
+        _usuarioActual = Usuario.fromJson(jsonDecode(json) as Map<String, dynamic>);
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('cargarSesion: no se pudo restaurar la sesión ($e)');
+    }
+  }
+
+  Future<void> _guardarSesion() async {
+    if (_usuarioActual == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kSesionKey, jsonEncode(_usuarioActual!.toJson()));
+  }
+
+  Future<void> _limpiarSesion() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_kSesionKey);
+  }
 
   // Lógica para verificar el código
   Future<bool> verificarCodigo(String email, String codigo) async {
@@ -33,6 +60,7 @@ class AuthProvider with ChangeNotifier {
       final response = await AuthService.iniciarSesion(correo: email, contrasena: contrasena);
       _usuarioActual = Usuario.fromJson(response);
       notifyListeners();
+      await _guardarSesion();
       return true;
     } catch (e) {
       rethrow;
@@ -112,6 +140,7 @@ class AuthProvider with ChangeNotifier {
       direccion: direccion,
     );
     notifyListeners();
+    await _guardarSesion();
   }
 
   Future<void> cambiarContrasena({
@@ -134,10 +163,12 @@ class AuthProvider with ChangeNotifier {
     if (!success) throw Exception('Error al eliminar la cuenta');
     _usuarioActual = null;
     notifyListeners();
+    await _limpiarSesion();
   }
 
-  void cerrarSesion() {
+  Future<void> cerrarSesion() async {
     _usuarioActual = null;
     notifyListeners();
+    await _limpiarSesion();
   }
 }

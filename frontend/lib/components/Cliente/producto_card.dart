@@ -8,6 +8,7 @@ class ProductoCard extends StatelessWidget {
   final VoidCallback onAdd;
   final VoidCallback? onRemove;
   final int quantity;
+  final bool compactAdd;
 
   static DateTime _lastTap = DateTime(2000);
 
@@ -17,6 +18,7 @@ class ProductoCard extends StatelessWidget {
     required this.onAdd,
     this.onRemove,
     this.quantity = 0,
+    this.compactAdd = false,
   });
 
   @override
@@ -64,73 +66,126 @@ class ProductoCard extends StatelessWidget {
           // Separador horizontal editorial
           Container(height: 1, color: AppColors.line),
 
-          // ── Contenido ────────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Nombre
-                Text(
-                  product.nombre,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.playfairDisplay(
-                    color: AppColors.textPrimary,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
-                    height: 1.25,
-                  ),
+          if (compactAdd) ...[
+            // ── Contenido (ocupa espacio sobrante) ───────────────────
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      product.nombre,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.playfairDisplay(
+                        color: AppColors.textPrimary,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        height: 1.25,
+                      ),
+                    ),
+                    const SizedBox(height: 7),
+                    Text(
+                      product.descripcion,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
                 ),
-
-                const SizedBox(height: 7),
-
-                // Descripción
-                Text(
-                  product.descripcion,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 12,
-                    height: 1.5,
-                  ),
-                ),
-
-                const SizedBox(height: 12),
-
-                // Precio
-                Text(
-                  '${product.precio.toStringAsFixed(2).replaceAll('.', ',')} €',
-                  style: const TextStyle(
-                    color: AppColors.button,
-                    fontSize: 19,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.3,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // ── Barra de controles (siempre visible) ─────────────────
-          Container(
-            height: 48,
-            decoration: BoxDecoration(
-              color: quantity > 0 && !noDisp
-                  ? AppColors.button.withValues(alpha: 0.12)
-                  : Colors.transparent,
-              border: Border(
-                top: BorderSide(color: AppColors.line),
               ),
             ),
-            child: noDisp
-                ? const SizedBox.shrink()
-                : Row(
-                    children: [
-                      if (quantity > 0) ...
-                        [
-                          // Botón quitar
+            // ── Precio + botón (anclados al fondo) ───────────────────
+            Padding(
+              padding: const EdgeInsets.only(left: 16, bottom: 12, right: 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    '${product.precio.toStringAsFixed(2).replaceAll('.', ',')} €',
+                    style: const TextStyle(
+                      color: AppColors.button,
+                      fontSize: 19,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                  const Spacer(),
+                  if (!noDisp)
+                    _AddButton(
+                      disabled: false,
+                      onTap: () {
+                        final now = DateTime.now();
+                        if (now.difference(_lastTap).inMilliseconds < 300) return;
+                        _lastTap = now;
+                        onAdd();
+                      },
+                    ),
+                ],
+              ),
+            ),
+          ] else ...[
+            // ── Contenido (modo trabajador) ───────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    product.nombre,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.playfairDisplay(
+                      color: AppColors.textPrimary,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      height: 1.25,
+                    ),
+                  ),
+                  const SizedBox(height: 7),
+                  Text(
+                    product.descripcion,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                      height: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    '${product.precio.toStringAsFixed(2).replaceAll('.', ',')} €',
+                    style: const TextStyle(
+                      color: AppColors.button,
+                      fontSize: 19,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // ── Barra de controles ────────────────────────────────────
+            Container(
+              height: 48,
+              decoration: BoxDecoration(
+                color: quantity > 0 && !noDisp
+                    ? AppColors.button.withValues(alpha: 0.12)
+                    : Colors.transparent,
+                border: Border(top: BorderSide(color: AppColors.line)),
+              ),
+              child: noDisp
+                  ? const SizedBox.shrink()
+                  : Row(
+                      children: [
+                        if (quantity > 0) ...[
                           Expanded(
                             child: GestureDetector(
                               onTap: onRemove,
@@ -147,11 +202,10 @@ class ProductoCard extends StatelessWidget {
                               ),
                             ),
                           ),
-                          // Contador
                           Container(
                             width: 44,
                             height: 48,
-                            color: AppColors.backgroundButton.withOpacity(0.8),
+                            color: AppColors.backgroundButton.withValues(alpha: 0.8),
                             alignment: Alignment.center,
                             child: Text(
                               '$quantity',
@@ -163,32 +217,29 @@ class ProductoCard extends StatelessWidget {
                             ),
                           ),
                         ],
-                      // Botón añadir
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () {
-                            final now = DateTime.now();
-                            if (now
-                                    .difference(_lastTap)
-                                    .inMilliseconds <
-                                300) return;
-                            _lastTap = now;
-                            onAdd();
-                          },
-                          child: Container(
-                            height: 48,
-                            color: AppColors.button,
-                            child: const Icon(
-                              Icons.add,
-                              color: AppColors.background,
-                              size: 22,
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              final now = DateTime.now();
+                              if (now.difference(_lastTap).inMilliseconds < 300) return;
+                              _lastTap = now;
+                              onAdd();
+                            },
+                            child: Container(
+                              height: 48,
+                              color: AppColors.button,
+                              child: const Icon(
+                                Icons.add,
+                                color: AppColors.background,
+                                size: 22,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-          ),
+                      ],
+                    ),
+            ),
+          ],
         ],
       ),
     );
@@ -228,6 +279,26 @@ class _ImagePlaceholder extends StatelessWidget {
           color: AppColors.line,
           size: 36,
         ),
+      ),
+    );
+  }
+}
+
+class _AddButton extends StatelessWidget {
+  final bool disabled;
+  final VoidCallback? onTap;
+  const _AddButton({required this.disabled, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        width: 44,
+        height: 44,
+        color: disabled ? AppColors.line : AppColors.button,
+        child: const Icon(Icons.add, color: Colors.white, size: 22),
       ),
     );
   }
