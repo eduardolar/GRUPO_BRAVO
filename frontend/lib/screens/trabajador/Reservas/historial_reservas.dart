@@ -38,39 +38,69 @@ class _HistorialReservasState extends State<HistorialReservas> {
   }
 
   Future<void> _seleccionarFecha() async {
-    final fecha = await showDatePicker(
-      context: context,
-      initialDate: _fechaSeleccionada,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-      builder: (context, child) {
-        return Theme(
-          data: ThemeData.dark().copyWith(
-            colorScheme: const ColorScheme.dark(
-              primary: AppColors.button,
-              onPrimary: Colors.white,
-              surface: AppColors.panel,
-              onSurface: Colors.white,
-            ),
-            dialogBackgroundColor: AppColors.background,
+  final fecha = await showDatePicker(
+    context: context,
+    initialDate: _fechaSeleccionada,
+    firstDate: DateTime(2020),
+    lastDate: DateTime.now().add(const Duration(days: 365)),
+    builder: (context, child) {
+      return Theme(
+        data: ThemeData.dark().copyWith(
+          colorScheme: ColorScheme.dark(
+            primary: AppColors.button,
+            onPrimary: Colors.white,
+            surface: AppColors.panel,
+            onSurface: Colors.white,
+            surfaceVariant: AppColors.backgroundButton,
+            onSurfaceVariant: Colors.white70,
+            secondaryContainer: AppColors.backgroundButton,
+            onSecondaryContainer: Colors.white,
           ),
-          child: child!,
-        );
-      },
-    );
+          datePickerTheme: DatePickerThemeData(
+            backgroundColor: AppColors.background,
+            headerBackgroundColor: AppColors.backgroundButton,
+            headerForegroundColor: Colors.white,
+            dayBackgroundColor: WidgetStateProperty.resolveWith((states) {
+              if (states.contains(WidgetState.selected)) return AppColors.button;
+              return AppColors.backgroundButton;
+            }),
+            dayForegroundColor: WidgetStateProperty.resolveWith((states) {
+              if (states.contains(WidgetState.selected)) return Colors.white;
+              return Colors.white;
+            }),
+            todayBackgroundColor: WidgetStateProperty.resolveWith((states) {
+              if (states.contains(WidgetState.selected)) return AppColors.button;
+              return AppColors.backgroundButton;
+            }),
+            todayForegroundColor: WidgetStateProperty.all(AppColors.button),
+            todayBorder: BorderSide(color: AppColors.button, width: 1.5),
+            weekdayStyle: const TextStyle(color: Colors.white54, fontSize: 12),
+            dayStyle: const TextStyle(fontSize: 13),
+            yearBackgroundColor: WidgetStateProperty.resolveWith((states) {
+              if (states.contains(WidgetState.selected)) return AppColors.button;
+              return AppColors.backgroundButton;
+            }),
+            yearForegroundColor: WidgetStateProperty.all(Colors.white),
+          ),
+          dialogBackgroundColor: AppColors.background,
+        ),
+        child: child!,
+      );
+    },
+  );
 
-    if (fecha != null) {
-      setState(() => _fechaSeleccionada = fecha);
-    }
+  if (fecha != null) {
+    setState(() => _fechaSeleccionada = fecha);
   }
+}
 
-  List<Reserva> _filtrarReservasPorFecha() {
-    return _reservas.where((reserva) {
-      return reserva.fecha.year == _fechaSeleccionada.year &&
-          reserva.fecha.month == _fechaSeleccionada.month &&
-          reserva.fecha.day == _fechaSeleccionada.day;
-    }).toList();
-  }
+List<Reserva> _filtrarReservasPorFecha() {
+  return _reservas.where((reserva) {
+    return reserva.fecha.year == _fechaSeleccionada.year &&
+        reserva.fecha.month == _fechaSeleccionada.month &&
+        reserva.fecha.day == _fechaSeleccionada.day;
+  }).toList();
+}
 
   @override
   Widget build(BuildContext context) {
