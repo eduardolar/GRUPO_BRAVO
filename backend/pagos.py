@@ -45,6 +45,13 @@ class GooglePayVerifyRequest(BaseModel):
     purchaseToken: Optional[str] = None
 
 
+class CheckoutSessionCreate(BaseModel):
+    total: float = Field(gt=0)
+    currency: str = "eur"
+    success_url: str
+    cancel_url: str
+
+
 class PayPalOrderCreate(BaseModel):
     total: float = Field(gt=0)
     currency: str = "EUR"
@@ -104,6 +111,47 @@ def verificar_payment_intent(payment_intent_id: str):
             "id": intent["id"],
             "status": intent["status"],
             "paid": intent["status"] == "succeeded",
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# ── Stripe Checkout (web) ──────────────────────────────────────────────────────
+
+@router.post("/stripe/create-checkout-session")
+def crear_checkout_session(payload: CheckoutSessionCreate):
+    if not stripe.api_key:
+        raise HTTPException(status_code=500, detail="Falta STRIPE_SECRET_KEY")
+    try:
+        session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            line_items=[{
+                "price_data": {
+                    "currency": payload.currency.lower(),
+                    "product_data": {"name": "Pedido Restaurante Bravo"},
+                    "unit_amount": int(round(payload.total * 100)),
+                },
+                "quantity": 1,
+            }],
+            mode="payment",
+            success_url=payload.success_url,
+            cancel_url=payload.cancel_url,
+        )
+        return {"session_id": session.id, "checkout_url": session.url}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/stripe/verify-session/{session_id}")
+def verificar_checkout_session(session_id: str):
+    if not stripe.api_key:
+        raise HTTPException(status_code=500, detail="Falta STRIPE_SECRET_KEY")
+    try:
+        session = stripe.checkout.Session.retrieve(session_id)
+        return {
+            "session_id": session.id,
+            "payment_status": session.payment_status,
+            "paid": session.payment_status == "paid",
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

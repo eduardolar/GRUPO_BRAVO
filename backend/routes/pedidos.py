@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query
 from datetime import datetime
 from bson import ObjectId
 from fastapi_mail import FastMail, MessageSchema, MessageType
+from pydantic import BaseModel
 import logging
 
 from database import coleccion_pedidos, coleccion_productos, coleccion_ingredientes, coleccion_usuarios
@@ -183,6 +184,13 @@ async def _enviar_factura(email_destino: str, nombre_usuario: str, pedido_id: st
         logger.error(f"Error enviando factura a {email_destino}: {e}")
 
 
+# ── Modelos ───────────────────────────────────────────────────────────────────
+
+class ActualizarEstadoPago(BaseModel):
+    referencia_pago: str
+    estado_pago: str = "pagado"
+
+
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @router.post("")
@@ -217,13 +225,18 @@ async def crear_pedido(pedido: PedidoCrear):
     if not usuario:
         usuario = coleccion_usuarios.find_one({"_id": pedido.userId})
 
-    if usuario and usuario.get("correo"):
-        await _enviar_factura(
-            email_destino=usuario["correo"],
-            nombre_usuario=usuario.get("nombre", "Cliente"),
-            pedido_id=pedido_id,
-            pedido=pedido_dict,
-        )
+    if usuario:
+        correo = usuario.get("correo", "")
+        if correo and "@" in correo and "." in correo.split("@")[-1]:
+            try:
+                await _enviar_factura(
+                    email_destino=correo,
+                    nombre_usuario=usuario.get("nombre", "Cliente"),
+                    pedido_id=pedido_id,
+                    pedido=pedido_dict,
+                )
+            except Exception as e:
+                logger.error(f"Error enviando factura para pedido {pedido_id}: {e}")
 
     return {
         "id": pedido_id,
@@ -235,6 +248,17 @@ async def crear_pedido(pedido: PedidoCrear):
         "mesa_id": pedido_dict.get("mesa_id"),
         "numero_mesa": pedido_dict.get("numero_mesa"),
     }
+
+
+@router.patch("/actualizar-estado-pago")
+def actualizar_estado_pago(payload: ActualizarEstadoPago):
+    result = coleccion_pedidos.update_one(
+        {"referencia_pago": payload.referencia_pago},
+        {"$set": {"estado_pago": payload.estado_pago}},
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Pedido no encontrado con esa referencia de pago")
+    return {"updated": result.modified_count > 0}
 
 
 @router.get("")
