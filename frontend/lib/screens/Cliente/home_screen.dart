@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -7,7 +8,10 @@ import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/services/api_service.dart';
 import 'package:frontend/screens/cliente/scanner_qr.dart';
 import 'package:frontend/screens/cliente/login_screen.dart';
+import 'package:frontend/screens/cliente/perfil_screen.dart';
+import 'package:frontend/models/destino_login.dart';
 import 'package:frontend/screens/cliente/menu_screen.dart';
+import 'package:frontend/screens/cliente/pedido_confirmado_screen.dart';
 import 'package:frontend/core/colors_style.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -20,6 +24,54 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   bool _isAppReady = false;
 
+  // Datos del redirect de Stripe (solo web)
+  String? _stripeSessionId;
+  String _stripeEntrega = '';
+  double _stripeTotal = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    if (kIsWeb) {
+      final params = Uri.base.queryParameters;
+      final sessionId = params['stripe_session'];
+      if (sessionId != null && sessionId.isNotEmpty) {
+        _stripeSessionId = sessionId;
+        _stripeEntrega = Uri.decodeComponent(params['entrega'] ?? 'Tu pedido');
+        _stripeTotal = double.tryParse(params['total'] ?? '0') ?? 0;
+      }
+    }
+  }
+
+  void _onSplashFinished() {
+    setState(() => _isAppReady = true);
+    if (_stripeSessionId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _verificarStripeRedirect());
+    }
+  }
+
+  Future<void> _verificarStripeRedirect() async {
+    final sessionId = _stripeSessionId!;
+    _stripeSessionId = null;
+    try {
+      final pagado = await ApiService.verificarCheckoutSession(sessionId: sessionId);
+      if (!mounted || !pagado) return;
+      await ApiService.actualizarEstadoPago(referenciaPago: sessionId);
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PedidoConfirmadoScreen(
+            tipoEntrega: _stripeEntrega,
+            tipoPago: 'Tarjeta',
+            total: _stripeTotal,
+            pedidoId: sessionId,
+          ),
+        ),
+      );
+    } catch (_) {}
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -28,7 +80,7 @@ class _HomeScreenState extends State<HomeScreen> {
         duration: const Duration(milliseconds: 600),
         child: _isAppReady
             ? const _HomeContent()
-            : _SimpleSplash(onFinished: () => setState(() => _isAppReady = true)),
+            : _SimpleSplash(onFinished: _onSplashFinished),
       ),
     );
   }
@@ -105,7 +157,7 @@ class _CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
         "RESTAURANTE BRAVO",
         style: TextStyle(
           fontFamily: 'Playfair Display',
-          color: Color(0xFFFFF8E1),
+          color: AppColors.textAppBar,
           fontSize: 18,
           fontWeight: FontWeight.w700,
           letterSpacing: 2.0,
@@ -125,7 +177,11 @@ class _CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
               ),
             ),
             onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+              if (auth.estaAutenticado) {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const PerfilScreen()));
+              } else {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen(mostrarActivarCuenta: true)));
+              }
             },
           ),
         ),
@@ -169,9 +225,9 @@ class _HeroSection extends StatelessWidget {
                 end: Alignment.bottomCenter,
                 stops: const [0.0, 0.3, 0.7, 1.0],
                 colors: [
-                  Colors.black.withOpacity(0.3),
+                  Colors.black.withValues(alpha: 0.3),
                   Colors.transparent,
-                  Colors.black.withOpacity(0.75),
+                  Colors.black.withValues(alpha: 0.75),
                   AppColors.background,
                 ],
               ),
@@ -304,7 +360,7 @@ class _MainButton extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Material(
-        color: isPrimary ? AppColors.button : Colors.black.withOpacity(0.55),
+        color: isPrimary ? AppColors.button : Colors.black.withValues(alpha: 0.55),
         child: InkWell(
           onTap: onPressed,
           child: Container(
@@ -357,7 +413,7 @@ class _FooterQuote extends StatelessWidget {
           ),
           child: Column(
             children: [
-              Icon(Icons.format_quote, color: AppColors.button.withOpacity(0.4), size: 30),
+              Icon(Icons.format_quote, color: AppColors.button.withValues(alpha: 0.4), size: 30),
               const SizedBox(height: 16),
               const Text(
                 "La mejor experiencia gastronómica de la ciudad.",

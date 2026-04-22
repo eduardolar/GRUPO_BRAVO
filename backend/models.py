@@ -1,3 +1,4 @@
+import re
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Optional
 
@@ -41,15 +42,17 @@ class UsuarioActualizar(BaseModel):
     direccion: str
 
 class PedidoCrear(BaseModel):
-    usuario_id: str
+    userId: str
     items: list
-    tipo_entrega: str
-    metodo_pago: str
+    tipoEntrega: str
+    metodoPago: str
     total: float
-    direccion_entrega: Optional[str] = None
-    mesa_id: Optional[str] = None
-    numero_mesa: Optional[int] = None
+    direccionEntrega: Optional[str] = None
+    mesaId: Optional[str] = None
+    numeroMesa: Optional[int] = None
     notas: Optional[str] = None
+    referenciaPago: Optional[str] = None
+    estadoPago: Optional[str] = "pendiente"
 
 class ReservaCrear(BaseModel):
     usuario_id: str

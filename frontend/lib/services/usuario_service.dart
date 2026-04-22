@@ -74,4 +74,31 @@ class UsuarioService {
 
     return response.statusCode == 200;
   }
+
+  Future<bool> crearUsuario({
+  required String nombre,
+  required String correo,
+  required String password,
+  required String rol,
+  required String restauranteId,
+}) async {
+  try {
+    final response = await http.post(
+      Uri.parse('$baseUrl/usuarios/'), // La ruta POST de Python
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'nombre': nombre,
+        'correo': correo,
+        'password': password,
+        'rol': rol,
+        'restaurante_id': restauranteId,
+      }),
+    );
+
+    return response.statusCode == 200 || response.statusCode == 201;
+  } catch (e) {
+    print('Error al crear usuario: $e');
+    return false;
+  } 
+}
 }

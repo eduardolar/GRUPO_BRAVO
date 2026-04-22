@@ -102,7 +102,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1C1C1C),
+        backgroundColor: AppColors.backgroundDark,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(
           children: [
@@ -197,7 +197,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
           padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
           child: Container(
             decoration: const BoxDecoration(
-              color: Color(0xFF1A1A1A),
+              color: AppColors.gold,
               borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
             ),
             padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),

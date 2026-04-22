@@ -90,9 +90,7 @@ class _AdminMenuScreenState extends State<AdminMenuScreen> {
                         final product = filteredProducts[index];
                         return ProductoCard(
                           product: product,
-                          onAdd: () => IrEditarPlato(context, product),
-                          iconoEditar: true,
-                        );
+                          onAdd: () => IrEditarPlato(context, product),                        );
                       },
                     ),
             ),

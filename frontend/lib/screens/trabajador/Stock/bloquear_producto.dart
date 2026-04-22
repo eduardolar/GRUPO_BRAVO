@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/colors_style.dart';
 import '../../../services/api_service.dart';
 import '../../../models/ingrediente_model.dart';
+import '../../../components/trabajador/app_layout.dart';
 
 class BloquearProducto extends StatefulWidget {
   const BloquearProducto({super.key});
@@ -197,7 +198,7 @@ class _BloquearProductoState extends State<BloquearProducto> {
 
           Row(
             children: [
-              const Expanded(child: Divider(color: Color(0xFFE0DBD3))),
+              const Expanded(child: Divider(color: AppColors.line)),
               Container(
                 width: 60,
                 height: 1.5,
@@ -211,7 +212,7 @@ class _BloquearProductoState extends State<BloquearProducto> {
                   ),
                 ),
               ),
-              const Expanded(child: Divider(color: Color(0xFFE0DBD3))),
+              const Expanded(child: Divider(color: AppColors.line)),
             ],
           ),
         ],

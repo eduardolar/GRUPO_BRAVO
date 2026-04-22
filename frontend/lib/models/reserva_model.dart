@@ -74,19 +74,31 @@ class Reserva {
     };
   }
 
-  Reserva copyWith({String? estado, int? comensales}) {
+  Reserva copyWith({
+    String? id,
+    String? usuarioId,
+    String? nombreCompleto,
+    DateTime? fecha,
+    String? hora,
+    int? comensales,
+    String? turno,
+    String? estado,
+    String? mesaId,
+    int? numeroMesa,
+    String? notas,
+  }) {
     return Reserva(
-      id: id,
-      usuarioId: usuarioId,
-      nombreCompleto: nombreCompleto,
-      fecha: fecha,
-      hora: hora,
+      id: id ?? this.id,
+      usuarioId: usuarioId ?? this.usuarioId,
+      nombreCompleto: nombreCompleto ?? this.nombreCompleto,
+      fecha: fecha ?? this.fecha,
+      hora: hora ?? this.hora,
       comensales: comensales ?? this.comensales,
-      turno: turno,
+      turno: turno ?? this.turno,
       estado: estado ?? this.estado,
-      mesaId: mesaId,
-      numeroMesa: numeroMesa,
-      notas: notas,
+      mesaId: mesaId ?? this.mesaId,
+      numeroMesa: numeroMesa ?? this.numeroMesa,
+      notas: notas ?? this.notas,
     );
   }
 }

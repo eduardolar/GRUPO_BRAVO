@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/colors_style.dart';
 import '../../../services/api_service.dart';
 import '../../../models/ingrediente_model.dart';
+import '../../../components/trabajador/app_layout.dart';
 
 class AvisarFaltaScreen extends StatefulWidget {
   const AvisarFaltaScreen({super.key});
@@ -39,10 +40,12 @@ class _AvisarFaltaScreenState extends State<AvisarFaltaScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      extendBodyBehindAppBar: true,
+      appBar: const TrabajadorAppBar(title: "Avisar Falta de Producto"),
       body: SafeArea(
         child: Column(
           children: [
-            _buildHeader(),
+            const SizedBox(height: kToolbarHeight + 40),
             Expanded(
               child: _cargando
                 ? const Center(child: CircularProgressIndicator())
@@ -166,7 +169,7 @@ class _AvisarFaltaScreenState extends State<AvisarFaltaScreen> {
 
           Row(
             children: [
-              const Expanded(child: Divider(color: Color(0xFFE0DBD3))),
+              const Expanded(child: Divider(color: AppColors.line)),
               Container(
                 width: 60,
                 height: 1.5,
@@ -180,7 +183,7 @@ class _AvisarFaltaScreenState extends State<AvisarFaltaScreen> {
                   ),
                 ),
               ),
-              const Expanded(child: Divider(color: Color(0xFFE0DBD3))),
+              const Expanded(child: Divider(color: AppColors.line)),
             ],
           ),
         ],
