@@ -9,10 +9,6 @@ class CamposTarjeta extends StatelessWidget {
   const CamposTarjeta({
     super.key,
     required this.onCardChanged,
-    required TextEditingController controladorNombreTitular,
-    required TextEditingController controladorCvv,
-    required TextEditingController controladorFechaExpiracion,
-    required TextEditingController controladorNumero,
   });
 
   @override

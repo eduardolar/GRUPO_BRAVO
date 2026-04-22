@@ -454,6 +454,9 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       case MetodoPago.paypal:
         await _procesarPaypalYCrearPedido();
         break;
+      case MetodoPago.applePay:
+        await _procesarApplePayYCrearPedido();
+        break;
     }
   }
 
@@ -542,18 +545,6 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
           )
           .toList();
 
-      final itemsResumen = cart.items.values
-          .map(
-            (item) => {
-              'nombre': item.producto.nombre,
-              'cantidad': item.cantidad,
-              'precio': item.producto.precio,
-              if (item.ingredientesExcluidos.isNotEmpty)
-                'sin': item.ingredientesExcluidos,
-            },
-          )
-          .toList();
-
       final direccionEntrega = _entregaSeleccionada == OpcionEntrega.domicilio
           ? (_direccionSeleccionada == OpcionDireccion.registrada
                 ? (auth.usuarioActual?.direccion ?? '')
@@ -582,7 +573,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
         cart.desasignarMesa();
       }
 
-      final resultado = await ApiService.crearPedido(
+      await ApiService.crearPedido(
         userId: auth.usuarioActual?.id ?? '',
         items: items,
         tipoEntrega: tipoEntregaStr,
@@ -600,42 +591,9 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
         estadoPago: 'pendiente_stripe',
       );
 
-      final pedidoId =
-          resultado['id']?.toString() ?? resultado['pedido_id']?.toString();
-
       cart.clearCart();
-      setState(() => _estaCargando = false);
 
-      await launchUrl(Uri.parse(checkoutUrl), webOnlyWindowName: '_blank');
-
-      if (!mounted) return;
-
-      final confirmado = await showDialog<bool>(
-        context: context,
-        barrierDismissible: false,
-        builder: (ctx) => _StripeCheckoutDialog(sessionId: sessionId),
-      );
-
-      if (confirmado != true || !mounted) return;
-
-      try {
-        await ApiService.actualizarEstadoPago(referenciaPago: sessionId);
-      } catch (_) {}
-      if (!mounted) return;
-
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(
-          builder: (_) => PedidoConfirmadoScreen(
-            tipoEntrega: tipoEntregaStr,
-            tipoPago: 'Tarjeta',
-            total: total,
-            pedidoId: pedidoId,
-            items: itemsResumen,
-          ),
-        ),
-        (route) => route.isFirst,
-      );
+      await launchUrl(Uri.parse(checkoutUrl), webOnlyWindowName: '_self');
     } catch (e) {
       if (mounted) {
         setState(() => _estaCargando = false);
@@ -741,6 +699,53 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
     }
   }
 
+  Future<void> _procesarApplePayYCrearPedido() async {
+    if (!_applePayAutorizado) {
+      _mostrarError('Primero autoriza Apple Pay');
+      return;
+    }
+
+    setState(() => _estaCargando = true);
+
+    try {
+      final cart = Provider.of<CartProvider>(context, listen: false);
+      final total = _calcularTotal(cart);
+
+      final paymentIntent = await Stripe.instance.confirmPlatformPayPaymentIntent(
+        clientSecret: (await ApiService.crearIntentoTarjeta(
+          amount: total,
+          currency: 'eur',
+        ))['client_secret']!.toString(),
+        confirmParams: PlatformPayConfirmParams.applePay(
+          applePay: ApplePayParams(
+            merchantCountryCode: 'ES',
+            currencyCode: 'EUR',
+            cartItems: [
+              ApplePayCartSummaryItem.immediate(
+                label: 'Grupo Bravo',
+                amount: total.toStringAsFixed(2),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      if (paymentIntent.status != PaymentIntentsStatus.Succeeded) {
+        throw Exception('El pago con Apple Pay no fue completado');
+      }
+
+      await _crearPedidoFinal(
+        referenciaPago: paymentIntent.id,
+        estadoPago: 'pagado',
+      );
+    } catch (e) {
+      if (mounted) {
+        setState(() => _estaCargando = false);
+        _mostrarError('Error en Apple Pay: $e');
+      }
+    }
+  }
+
   Future<void> _crearPedidoFinal({
     String? referenciaPago,
     String? estadoPago,
@@ -753,6 +758,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       MetodoPago.tarjeta => 'Tarjeta',
       MetodoPago.googlePay => 'Google Pay',
       MetodoPago.paypal => 'PayPal',
+      MetodoPago.applePay => 'Apple Pay',
     };
 
     final tipoEntrega = switch (_entregaSeleccionada) {
@@ -1036,4 +1042,807 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
   }
 }
 
-// ... Resto de los Widgets internos (_StepIndicator, _BottomBar, _EntregaCard, etc. sin cambios) ...
+class _StepIndicator extends StatelessWidget {
+  final int paso;
+  const _StepIndicator({required this.paso});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.35),
+        border: Border(
+          bottom: BorderSide(color: Colors.white.withValues(alpha: 0.10)),
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+      child: Row(
+        children: [
+          _StepDot(label: 'Confirmar', activo: paso == 0, hecho: paso > 0),
+          _Linea(activa: paso > 0),
+          _StepDot(label: 'Entrega', activo: paso == 1, hecho: paso > 1),
+          _Linea(activa: paso > 1),
+          _StepDot(label: 'Pago', activo: paso == 2, hecho: false),
+        ],
+      ),
+    );
+  }
+}
+
+class _Linea extends StatelessWidget {
+  final bool activa;
+  const _Linea({required this.activa});
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 350),
+        height: 1,
+        margin: const EdgeInsets.symmetric(horizontal: 10),
+        color: activa ? AppColors.button : Colors.white.withValues(alpha: 0.20),
+      ),
+    );
+  }
+}
+
+class _StepDot extends StatelessWidget {
+  final String label;
+  final bool activo;
+  final bool hecho;
+
+  const _StepDot({
+    required this.label,
+    required this.activo,
+    required this.hecho,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final filled = activo || hecho;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          width: 28,
+          height: 28,
+          decoration: BoxDecoration(
+            color: filled ? AppColors.button : Colors.transparent,
+            border: Border.all(
+              color: filled
+                  ? AppColors.button
+                  : Colors.white.withValues(alpha: 0.30),
+              width: 1.5,
+            ),
+          ),
+          child: Center(
+            child: hecho
+                ? const Icon(Icons.check, size: 13, color: Colors.white)
+                : Icon(
+                    activo ? Icons.circle : Icons.circle_outlined,
+                    size: 7,
+                    color: filled
+                        ? Colors.white
+                        : Colors.white.withValues(alpha: 0.35),
+                  ),
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          label.toUpperCase(),
+          style: TextStyle(
+            color: filled ? Colors.white : Colors.white.withValues(alpha: 0.35),
+            fontSize: 8,
+            letterSpacing: 1.2,
+            fontWeight: filled ? FontWeight.w700 : FontWeight.w400,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _BottomBar extends StatelessWidget {
+  final int paso;
+  final bool cargando;
+  final OpcionEntrega entrega;
+  final VoidCallback onSiguiente;
+  final VoidCallback? onAtras;
+
+  const _BottomBar({
+    required this.paso,
+    required this.cargando,
+    required this.entrega,
+    required this.onSiguiente,
+    this.onAtras,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<CartProvider>(
+      builder: (context, cart, _) {
+        final envio = paso == 0
+            ? 0.0
+            : (entrega == OpcionEntrega.domicilio ? 3.99 : 0.0);
+        final total = cart.totalPrice + envio;
+        final bottom = MediaQuery.of(context).padding.bottom;
+
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.80),
+            border: Border(
+              top: BorderSide(color: Colors.white.withValues(alpha: 0.12)),
+            ),
+          ),
+          padding: EdgeInsets.fromLTRB(20, 16, 20, bottom + 16),
+          child: Row(
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'TOTAL',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.50),
+                      fontSize: 9,
+                      letterSpacing: 2.0,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${total.toStringAsFixed(2).replaceAll('.', ',')} €',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  if (envio > 0)
+                    Text(
+                      'incl. 3,99 € envío',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.40),
+                        fontSize: 10,
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(width: 16),
+              if (onAtras != null) ...[
+                GestureDetector(
+                  onTap: onAtras,
+                  child: Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.20),
+                      ),
+                    ),
+                    child: Icon(
+                      Icons.arrow_back,
+                      color: Colors.white.withValues(alpha: 0.70),
+                      size: 20,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+              Expanded(
+                child: GestureDetector(
+                  onTap: cargando ? null : onSiguiente,
+                  child: Container(
+                    height: 50,
+                    color: AppColors.button,
+                    child: Center(
+                      child: cargando
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : Text(
+                              paso < 2 ? 'CONTINUAR' : 'CONFIRMAR PEDIDO',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 1.8,
+                              ),
+                            ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _EntregaCard extends StatelessWidget {
+  final IconData icono;
+  final String titulo;
+  final String subtitulo;
+  final String coste;
+  final bool seleccionada;
+  final VoidCallback onTap;
+
+  const _EntregaCard({
+    required this.icono,
+    required this.titulo,
+    required this.subtitulo,
+    required this.coste,
+    required this.seleccionada,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+        decoration: BoxDecoration(
+          color: seleccionada
+              ? AppColors.button.withValues(alpha: 0.18)
+              : Colors.white.withValues(alpha: 0.07),
+          border: Border.all(
+            color: seleccionada
+                ? AppColors.button
+                : Colors.white.withValues(alpha: 0.18),
+            width: seleccionada ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 48,
+              height: 48,
+              color: seleccionada
+                  ? AppColors.button
+                  : Colors.white.withValues(alpha: 0.10),
+              child: Icon(
+                icono,
+                size: 22,
+                color: seleccionada
+                    ? Colors.white
+                    : Colors.white.withValues(alpha: 0.60),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    titulo,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: seleccionada
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    subtitulo,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.55),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              color: seleccionada
+                  ? AppColors.button
+                  : Colors.white.withValues(alpha: 0.10),
+              child: Text(
+                coste,
+                style: TextStyle(
+                  color: seleccionada
+                      ? Colors.white
+                      : Colors.white.withValues(alpha: 0.60),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PagoCard extends StatelessWidget {
+  final IconData icono;
+  final String titulo;
+  final String subtitulo;
+  final bool seleccionada;
+  final VoidCallback onTap;
+
+  const _PagoCard({
+    required this.icono,
+    required this.titulo,
+    required this.subtitulo,
+    required this.seleccionada,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        decoration: BoxDecoration(
+          color: seleccionada
+              ? AppColors.button.withValues(alpha: 0.18)
+              : Colors.white.withValues(alpha: 0.07),
+          border: Border.all(
+            color: seleccionada
+                ? AppColors.button
+                : Colors.white.withValues(alpha: 0.18),
+            width: seleccionada ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icono,
+              size: 24,
+              color: seleccionada
+                  ? AppColors.button
+                  : Colors.white.withValues(alpha: 0.55),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    titulo,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: seleccionada
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                    ),
+                  ),
+                  Text(
+                    subtitulo,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.50),
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                color: seleccionada ? AppColors.button : Colors.transparent,
+                border: Border.all(
+                  color: seleccionada
+                      ? AppColors.button
+                      : Colors.white.withValues(alpha: 0.25),
+                  width: 1.5,
+                ),
+              ),
+              child: seleccionada
+                  ? const Icon(Icons.check, size: 13, color: Colors.white)
+                  : null,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DireccionOption extends StatelessWidget {
+  final IconData icono;
+  final String titulo;
+  final String subtitulo;
+  final bool seleccionada;
+  final VoidCallback onTap;
+
+  const _DireccionOption({
+    required this.icono,
+    required this.titulo,
+    required this.subtitulo,
+    required this.seleccionada,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        decoration: BoxDecoration(
+          color: seleccionada
+              ? AppColors.button.withValues(alpha: 0.15)
+              : Colors.white.withValues(alpha: 0.06),
+          border: Border.all(
+            color: seleccionada
+                ? AppColors.button
+                : Colors.white.withValues(alpha: 0.15),
+            width: seleccionada ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icono,
+              size: 18,
+              color: seleccionada
+                  ? AppColors.button
+                  : Colors.white.withValues(alpha: 0.50),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    titulo,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: seleccionada
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                    ),
+                  ),
+                  Text(
+                    subtitulo,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.50),
+                      fontSize: 11,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            if (seleccionada)
+              const Icon(Icons.check_circle, size: 16, color: AppColors.button),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StripeCheckoutDialog extends StatefulWidget {
+  final String sessionId;
+  const _StripeCheckoutDialog({required this.sessionId});
+
+  @override
+  State<_StripeCheckoutDialog> createState() => _StripeCheckoutDialogState();
+}
+
+class _StripeCheckoutDialogState extends State<_StripeCheckoutDialog> {
+  bool _verificando = false;
+  String? _error;
+
+  Future<void> _verificar() async {
+    setState(() {
+      _verificando = true;
+      _error = null;
+    });
+    try {
+      final pagado = await ApiService.verificarCheckoutSession(
+        sessionId: widget.sessionId,
+      );
+      if (!mounted) return;
+      if (pagado) {
+        Navigator.of(context).pop(true);
+      } else {
+        setState(() {
+          _verificando = false;
+          _error =
+              'El pago aún no se ha completado. Completa el pago en la pestaña de Stripe y vuelve a intentarlo.';
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _verificando = false;
+          _error = e.toString();
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: AppColors.panel,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+      title: const Row(
+        children: [
+          Icon(Icons.open_in_new, color: AppColors.button, size: 20),
+          SizedBox(width: 10),
+          Text(
+            'Completa el pago',
+            style: TextStyle(color: AppColors.textPrimary, fontSize: 16),
+          ),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Se ha abierto la página de pago de Stripe en una nueva pestaña. Completa el pago y pulsa el botón de abajo.',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              _error!,
+              style: const TextStyle(color: AppColors.error, fontSize: 12),
+            ),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed:
+              _verificando ? null : () => Navigator.of(context).pop(false),
+          child: const Text(
+            'Cancelar',
+            style: TextStyle(color: AppColors.textSecondary),
+          ),
+        ),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.button,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+          onPressed: _verificando ? null : _verificar,
+          child: _verificando
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
+                )
+              : const Text('Ya he pagado'),
+        ),
+      ],
+    );
+  }
+}
+
+class _ArticuloCard extends StatelessWidget {
+  final CartItem item;
+  final CartProvider cart;
+
+  const _ArticuloCard({required this.item, required this.cart});
+
+  @override
+  Widget build(BuildContext context) {
+    final imageUrl = item.producto.imagenUrl;
+    return Container(
+      height: 130,
+      clipBehavior: Clip.hardEdge,
+      decoration: const BoxDecoration(),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          imageUrl != null && imageUrl.isNotEmpty
+              ? Image.network(
+                  imageUrl,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => _imgFallback(),
+                )
+              : _imgFallback(),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                stops: const [0.0, 0.35, 0.65, 1.0],
+                colors: [
+                  Colors.black.withValues(alpha: 0.45),
+                  Colors.transparent,
+                  Colors.black.withValues(alpha: 0.55),
+                  Colors.black.withValues(alpha: 0.88),
+                ],
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 8, 12, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Align(
+                  alignment: Alignment.topRight,
+                  child: GestureDetector(
+                    onTap: () => cart.removeProduct(item.key),
+                    child: Container(
+                      width: 26,
+                      height: 26,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.40),
+                        border: Border.all(color: Colors.white24),
+                      ),
+                      child: const Icon(
+                        Icons.close,
+                        size: 13,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  item.producto.nombre,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.playfairDisplay(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    height: 1.2,
+                    shadows: const [
+                      Shadow(color: Colors.black54, blurRadius: 6),
+                    ],
+                  ),
+                ),
+                if (item.ingredientesExcluidos.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    'Sin: ${item.ingredientesExcluidos.join(', ')}',
+                    style: const TextStyle(
+                      color: AppColors.excludedIngredient,
+                      fontSize: 10,
+                      fontStyle: FontStyle.italic,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+                const SizedBox(height: 6),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      '${item.producto.precio.toStringAsFixed(2).replaceAll('.', ',')} € / ud',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.60),
+                        fontSize: 11,
+                      ),
+                    ),
+                    const Spacer(),
+                    _StepperCard(item: item, cart: cart),
+                    const SizedBox(width: 14),
+                    Text(
+                      '${item.subtotal.toStringAsFixed(2).replaceAll('.', ',')} €',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _imgFallback() => Container(
+    color: Colors.white.withValues(alpha: 0.10),
+    child: Icon(
+      Icons.restaurant,
+      color: Colors.white.withValues(alpha: 0.20),
+      size: 28,
+    ),
+  );
+}
+
+class _StepperCard extends StatelessWidget {
+  final CartItem item;
+  final CartProvider cart;
+
+  const _StepperCard({required this.item, required this.cart});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        GestureDetector(
+          onTap: () => cart.removeItem(item.producto.id),
+          child: Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.30),
+              border: Border.all(color: Colors.white38),
+            ),
+            child: const Icon(Icons.remove, size: 13, color: Colors.white),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: Text(
+            '${item.cantidad}',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ),
+        GestureDetector(
+          onTap: () => cart.addItem(item.producto),
+          child: Container(
+            width: 30,
+            height: 30,
+            color: AppColors.button,
+            child: const Icon(Icons.add, size: 15, color: Colors.white),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _FormPanel extends StatelessWidget {
+  final Widget child;
+  const _FormPanel({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.45),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: child,
+    );
+  }
+}
