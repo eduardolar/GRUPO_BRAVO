@@ -62,8 +62,6 @@ class ApiService {
     direccion: direccion,
   );
 
-  
-
   static Future<Map<String, dynamic>> verPerfil({required String userId}) =>
       AuthService.verPerfil(userId: userId);
 
@@ -193,6 +191,74 @@ class ApiService {
     return data['paid'] == true || data['status'] == 'succeeded';
   }
 
+  // ─── APPLE PAY ───────────────────────────────────────────────
+
+  static Future<Map<String, dynamic>> iniciarApplePay({
+    required double total,
+    String currencyCode = 'EUR',
+    String countryCode = 'ES',
+  }) async {
+    final url = Uri.parse('$baseUrl/payments/apple-pay/init');
+
+    final response = await http.post(
+      url,
+      headers: _jsonHeaders(),
+      body: jsonEncode({
+        'total': total,
+        'currencyCode': currencyCode,
+        'countryCode': countryCode,
+      }),
+    );
+
+    final data = _decodeBody(response);
+
+    if (response.statusCode >= 400) {
+      throw Exception(data['detail'] ?? 'Error al iniciar Apple Pay');
+    }
+
+    return Map<String, dynamic>.from(data);
+  }
+
+  static Future<Map<String, dynamic>> confirmarApplePay({
+    required String clientSecret,
+  }) async {
+    final url = Uri.parse('$baseUrl/payments/apple-pay/confirm');
+
+    final response = await http.post(
+      url,
+      headers: _jsonHeaders(),
+      body: jsonEncode({'clientSecret': clientSecret}),
+    );
+
+    final data = _decodeBody(response);
+
+    if (response.statusCode >= 400) {
+      throw Exception(data['detail'] ?? 'Error al confirmar Apple Pay');
+    }
+
+    return Map<String, dynamic>.from(data);
+  }
+
+  static Future<bool> verificarApplePay({
+    required String paymentIntentId,
+  }) async {
+    final url = Uri.parse(
+      '$baseUrl/payments/apple-pay/verify/$paymentIntentId',
+    );
+
+    final response = await http.get(url, headers: _jsonHeaders());
+
+    final data = _decodeBody(response);
+
+    if (response.statusCode >= 400) {
+      throw Exception(data['detail'] ?? 'Error al verificar Apple Pay');
+    }
+
+    return data['paid'] == true ||
+        data['status'] == 'succeeded' ||
+        data['status'] == 'paid';
+  }
+
   static Future<Map<String, dynamic>> crearCheckoutSession({
     required double total,
     String currency = 'eur',
@@ -237,7 +303,10 @@ class ApiService {
     final response = await http.patch(
       url,
       headers: _jsonHeaders(),
-      body: jsonEncode({'referencia_pago': referenciaPago, 'estado_pago': estadoPago}),
+      body: jsonEncode({
+        'referencia_pago': referenciaPago,
+        'estado_pago': estadoPago,
+      }),
     );
     if (response.statusCode >= 400) {
       final data = _decodeBody(response);

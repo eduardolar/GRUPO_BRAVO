@@ -18,13 +18,11 @@ PAYPAL_BASE_URL = os.getenv("PAYPAL_BASE_URL", "https://api-m.sandbox.paypal.com
 
 router = APIRouter(prefix="/payments", tags=["Pagos"])
 
-
 # ── Modelos ────────────────────────────────────────────────────────────────────
 
 class PaymentIntentCreate(BaseModel):
     amount: float = Field(gt=0)
     currency: str = "eur"
-
 
 class CardConfirmRequest(BaseModel):
     clientSecret: str
@@ -33,10 +31,13 @@ class CardConfirmRequest(BaseModel):
     cvv: str
     nombreTitular: str
 
+class ApplePayInitRequest(BaseModel):
+    total: float = Field(gt=0)
+    currencyCode: str = "EUR"
+    countryCode: str = "ES"
 
 class GooglePayInitRequest(BaseModel):
     total: float = Field(gt=0)
-
 
 class GooglePayVerifyRequest(BaseModel):
     token: Optional[Dict[str, Any]] = None
@@ -44,22 +45,18 @@ class GooglePayVerifyRequest(BaseModel):
     productId: Optional[str] = None
     purchaseToken: Optional[str] = None
 
-
 class CheckoutSessionCreate(BaseModel):
     total: float = Field(gt=0)
     currency: str = "eur"
     success_url: str
     cancel_url: str
 
-
 class PayPalOrderCreate(BaseModel):
     total: float = Field(gt=0)
     currency: str = "EUR"
 
-
 class PayPalCaptureRequest(BaseModel):
     orderId: str
-
 
 # ── Stripe ─────────────────────────────────────────────────────────────────────
 
@@ -73,6 +70,8 @@ def crear_payment_intent(payload: PaymentIntentCreate):
             amount=int(round(payload.amount * 100)),
             currency=payload.currency.lower(),
             automatic_payment_methods={"enabled": True},
+            # Soporte para Apple Pay/Google Pay
+            payment_method_types=["card", "card_present"],
         )
         return {
             "payment_intent_id": intent["id"],
@@ -81,7 +80,6 @@ def crear_payment_intent(payload: PaymentIntentCreate):
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
-
 
 @router.post("/stripe/confirm")
 @router.post("/card/confirm")
@@ -99,6 +97,76 @@ def confirmar_payment_intent(payload: CardConfirmRequest):
 
     return {"success": True, "message": "Confirmación simulada en backend de desarrollo"}
 
+# ── APPLE PAY ──────────────────────────────────────────────────────────────────
+
+@router.post("/apple-pay/init")
+async def iniciar_apple_pay(payload: ApplePayInitRequest):
+    """Crea PaymentIntent para Apple Pay (mismo flujo que tarjeta pero confirmación nativa)"""
+    if not stripe.api_key:
+        raise HTTPException(status_code=500, detail="Falta STRIPE_SECRET_KEY")
+    
+    try:
+        # Apple Pay necesita PaymentIntent con soporte para payment_method_types automáticos
+        intent = stripe.PaymentIntent.create(
+            amount=int(round(payload.total * 100)),
+            currency=payload.currencyCode.lower(),
+            automatic_payment_methods={"enabled": True},
+            payment_method_types=["card_apple_pay"],  # Específico para Apple Pay
+            metadata={
+                "apple_pay": "true",
+                "country_code": payload.countryCode,
+                "currency_code": payload.currencyCode,
+            }
+        )
+        
+        return {
+            "payment_intent_id": intent["id"],
+            "client_secret": intent["client_secret"],
+            "status": intent["status"],
+            "apple_pay_supported": True,
+            "merchant_country_code": payload.countryCode,
+            "currency_code": payload.currencyCode,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error al iniciar Apple Pay: {str(e)}")
+
+@router.post("/apple-pay/confirm")
+async def confirmar_apple_pay(client_secret: str):
+    """Confirma Apple Pay después de la autorización nativa iOS"""
+    if not stripe.api_key:
+        raise HTTPException(status_code=500, detail="Falta STRIPE_SECRET_KEY")
+    
+    if not client_secret.strip():
+        raise HTTPException(status_code=400, detail="clientSecret requerido")
+    
+    try:
+        # Apple Pay se confirma automáticamente en el cliente, aquí solo verificamos
+        intent = stripe.PaymentIntent.retrieve(client_secret.split("_secret_")[0])
+        return {
+            "payment_intent_id": intent["id"],
+            "status": intent["status"],
+            "paid": intent["status"] == "succeeded",
+            "apple_pay": True,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error al confirmar Apple Pay: {str(e)}")
+
+@router.get("/apple-pay/verify/{payment_intent_id}")
+def verificar_apple_pay(payment_intent_id: str):
+    """Verifica el estado final del PaymentIntent de Apple Pay"""
+    if not stripe.api_key:
+        raise HTTPException(status_code=500, detail="Falta STRIPE_SECRET_KEY")
+    
+    try:
+        intent = stripe.PaymentIntent.retrieve(payment_intent_id)
+        return {
+            "id": intent["id"],
+            "status": intent["status"],
+            "paid": intent["status"] == "succeeded",
+            "apple_pay": intent["metadata"].get("apple_pay") == "true",
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/stripe/verify/{payment_intent_id}")
 @router.get("/card/verify/{payment_intent_id}")
@@ -114,7 +182,6 @@ def verificar_payment_intent(payment_intent_id: str):
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
-
 
 # ── Stripe Checkout (web) ──────────────────────────────────────────────────────
 
@@ -141,7 +208,6 @@ def crear_checkout_session(payload: CheckoutSessionCreate):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-
 @router.get("/stripe/verify-session/{session_id}")
 def verificar_checkout_session(session_id: str):
     if not stripe.api_key:
@@ -156,7 +222,6 @@ def verificar_checkout_session(session_id: str):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-
 # ── Google Pay ─────────────────────────────────────────────────────────────────
 
 @router.post("/google-pay/init")
@@ -170,7 +235,6 @@ def iniciar_google_pay(payload: GooglePayInitRequest):
         "currency": "EUR",
         "message": "Inicio simulado de Google Pay para desarrollo",
     }
-
 
 @router.post("/google-pay/verify")
 @router.post("/google-play/verify")
@@ -206,7 +270,6 @@ def verificar_google_pay(payload: GooglePayVerifyRequest):
         detail="Debes enviar token o productId + purchaseToken",
     )
 
-
 # ── PayPal ─────────────────────────────────────────────────────────────────────
 
 async def _paypal_access_token() -> str:
@@ -226,9 +289,7 @@ async def _paypal_access_token() -> str:
 
     return response.json()["access_token"]
 
-
 _PAYPAL_SIMULADO = not (PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET)
-
 
 @router.post("/paypal/create-order")
 async def crear_orden_paypal(payload: PayPalOrderCreate):
@@ -272,7 +333,6 @@ async def crear_orden_paypal(payload: PayPalOrderCreate):
         raise HTTPException(status_code=400, detail=response.text)
 
     return response.json()
-
 
 @router.post("/paypal/capture-order")
 @router.post("/paypal/capture")
