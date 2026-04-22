@@ -262,15 +262,6 @@ class ProductoCard extends StatelessWidget {
 
     return card;
   }
-
-    Icon IconoBoton(){
-    if(iconoEditar){
-      return Icon(Icons.edit);
-    } else{
-      return Icon(Icons.add);
-    }
-  }
-
 }
 
 // ─── Placeholder de imagen ────────────────────────────────────────────────────
@@ -314,6 +305,3 @@ class _AddButton extends StatelessWidget {
     );
   }
 }
-
-
-

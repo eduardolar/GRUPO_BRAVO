@@ -1,0 +1,4 @@
+#!/bin/sh
+# Runs flutter pub get automatically after git pull / git merge
+echo "[hook] Ejecutando flutter pub get..."
+flutter pub get

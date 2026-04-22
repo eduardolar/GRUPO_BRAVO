@@ -1,8 +1,13 @@
+import os
 import qrcode
 from io import BytesIO
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def generate_table_qr(table_id: int) -> bytes:
-    url = f"http://127.0.0.1:8000/mesas/validar-qr?mesa={table_id}"
+    base_url = os.getenv("API_BASE_URL", "http://127.0.0.1:8000")
+    url = f"{base_url}/mesas/validar-qr?mesa={table_id}"
 
     qr = qrcode.make(url)
     buffer = BytesIO()

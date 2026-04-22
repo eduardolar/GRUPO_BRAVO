@@ -8,3 +8,5 @@ fastapi-mail
 pydantic[email]
 qrcode[pil]
 httpx
+python-dotenv
+stripe
