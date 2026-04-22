@@ -11,6 +11,9 @@ class NuevoIngrediente extends StatefulWidget {
 
 class _NuevoIngredienteState extends State<NuevoIngrediente> {
 
+  // Key para el formulario
+  final _formKeyNuevoIng = GlobalKey<FormState>();
+
   // Elementos para la creacion de la lista desplegable
   String? _unidadSeleccionada;
   final List<String> _unidades = ["Kg", "Litros", "Unidades"];
@@ -46,42 +49,72 @@ class _NuevoIngredienteState extends State<NuevoIngrediente> {
   Padding BodyNuevoIngrediente() {
     return Padding(
       padding: const EdgeInsets.all(12.0),
-      child: Column(
-        children: [
-          Spacer(),
-          EntradaTexto(
-            etiqueta: "Nombre del ingrediente",
-            icono: Icons.abc_outlined,
-            controlador: _nombreIngrediente,
-          ),
-          SizedBox(height: 30),
-
-          Row(
-            children: [
-              Expanded(child: EntradaTexto(etiqueta: "Cantidad", icono: Icons.face, controlador: _cantidadIngrediente,)),
-              SizedBox(width: 16),
-              DropdownButton(
-                value: _unidadSeleccionada,
-                hint: const Text("Unidades"),
-                items: _unidades.map((String valor) {
-                  return DropdownMenuItem<String>(
-                    value: valor,
-                    child: Text(valor),
-                  );
-                }).toList(),
-                onChanged: (String? nuevoValor) {
-                  setState(() {
-                    _unidadSeleccionada = nuevoValor;
-                  });
-                },
-              ),
-            ],
-          ),
-          SizedBox(height: 30),
-          EntradaTexto(etiqueta: "Cantidad mínima para avisar", icono: Icons.mail, controlador: _cantidadIngredienteMin,),
-          Spacer(),
-          botonGuardar()
-        ],
+      child: Form(
+        key: _formKeyNuevoIng,
+        child: Column(
+          children: [
+            Spacer(),
+            EntradaTexto(
+              etiqueta: "Nombre del ingrediente",
+              icono: Icons.abc_outlined,
+              controlador: _nombreIngrediente,
+              validador: (valor) {
+                if (valor == null || valor.isEmpty) {
+                  return "Campo obligatorio";
+                }
+                return null;
+              },
+            ),
+            SizedBox(height: 30),
+        
+            Row(
+              children: [
+                Expanded(child: EntradaTexto(etiqueta: "Cantidad", icono: Icons.face, controlador: _cantidadIngrediente, validador: (valor) {
+                  if (valor == null || valor.isEmpty) {
+                    return "Campo obligatorio";
+                  }
+                  if (int.tryParse(valor) == null) {
+                    return "Tiene que ser un número";
+                  }
+                  return null;
+                },)),
+                SizedBox(width: 16),
+                DropdownButton(
+                  value: _unidadSeleccionada,
+                  hint: const Text("Unidades"),
+                  items: _unidades.map((String valor) {
+                    return DropdownMenuItem<String>(
+                      value: valor,
+                      child: Text(valor),
+                    );
+                  }).toList(),
+                  onChanged: (String? nuevoValor) {
+                    setState(() {
+                      _unidadSeleccionada = nuevoValor;
+                    });
+                  },
+                ),
+              ],
+            ),
+            SizedBox(height: 30),
+            EntradaTexto(
+              etiqueta: "Cantidad mínima para avisar", 
+              icono: Icons.mail, 
+              controlador: _cantidadIngredienteMin, 
+              validador: (valor) {
+                if (valor == null || valor.isEmpty) {
+                  return "Campo obligatorio";
+                }
+                if (int.tryParse(valor) == null) {
+                  return "Tiene que ser un número";
+                }
+                return null;
+              },
+            ),
+            Spacer(),
+            botonGuardar()
+          ],
+        ),
       ),
     );
   }
@@ -102,8 +135,13 @@ class _NuevoIngredienteState extends State<NuevoIngrediente> {
       ),
       child: ElevatedButton(
         onPressed: (){
-          // Añadir lógica para enviar este nuevo ingrediente al servidor
-          Navigator.pop(context);
+          if (_formKeyNuevoIng.currentState!.validate()) {
+            // Añadir lógica para enviar este nuevo ingrediente al servidor
+            print("guardando nuevo plato...");
+            Navigator.pop(context);
+          } else {
+            print("Formulario no válido");
+          }
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.button,
