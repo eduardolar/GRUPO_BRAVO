@@ -8,6 +8,7 @@ import 'screens/cliente/home_screen.dart';
 import 'providers/auth_provider.dart';
 import 'providers/cart_provider.dart';
 import 'providers/pedido_provider.dart';
+import 'services/api_config.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,9 +16,11 @@ void main() async {
   final authProvider = AuthProvider();
   await authProvider.cargarSesion();
 
-  // flutter_stripe solo funciona en Android/iOS, no en Web
+  // flutter_stripe solo funciona en Android/iOS, no en Web.
+  // La clave se lee de api_config.dart y puede sobreescribirse con
+  // --dart-define=STRIPE_PK=pk_live_... al compilar para producción.
   if (!kIsWeb) {
-    Stripe.publishableKey = 'pk_test_51TOw8VAyHSG5POXsDtUQMKCwyJ5SUdFWc7eyNMsrIq4NsxbhX6kaZLSOZb3B1K0mncosU5pg3bWLqPP4XDFzuB4u00p4DnMegH';
+    Stripe.publishableKey = stripePublishableKey;
     await Stripe.instance.applySettings();
   }
 

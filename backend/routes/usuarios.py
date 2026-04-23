@@ -1,12 +1,13 @@
 import random
 import string
 import bcrypt
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Header
 from bson import ObjectId
 from database import coleccion_usuarios
 from models import UsuarioActualizar
 from pydantic import BaseModel, EmailStr
 from fastapi_mail import FastMail, MessageSchema, MessageType
+from typing import Optional
 
 # Importar la configuración de correo desde auth
 from routes.auth import conf
@@ -130,22 +131,42 @@ def cambiar_password(user_id: str, datos: CambiarPassword):
     )
     return {"mensaje": "Contraseña actualizada correctamente"}
 
+# Roles que requieren que el caller tenga permisos elevados
+_ROLES_PRIVILEGIADOS = {"admin", "administrador", "super_admin", "superadministrador"}
+
 # Ruta obligatoria para que funcione el botón de Flutter de "Cambiar Rol"
 @router.put("/{user_id}/rol")
-def actualizar_rol(user_id: str, datos: UsuarioActualizarRol):
+def actualizar_rol(
+    user_id: str,
+    datos: UsuarioActualizarRol,
+    x_caller_id: Optional[str] = Header(default=None),
+):
     rol_limpio = datos.rol.strip().lower()
-    
-    # Aquí aceptamos los trabajos, pero también el rol de "admin" y "super_admin" para futuras necesidades de administración.
+
     roles_permitidos = ["cliente", "cocinero", "camarero", "mesero", "trabajador", "admin", "administrador", "super_admin", "superadministrador"]
-    
+
     if rol_limpio not in roles_permitidos:
         raise HTTPException(status_code=400, detail=f"Rol '{rol_limpio}' no válido")
+
+    # Si se intenta asignar un rol privilegiado, verificar que el llamante sea super_admin
+    if rol_limpio in _ROLES_PRIVILEGIADOS:
+        if not x_caller_id:
+            raise HTTPException(
+                status_code=403,
+                detail="Se requiere autenticación para asignar roles privilegiados (cabecera X-Caller-Id)"
+            )
+        caller = coleccion_usuarios.find_one({"_id": ObjectId(x_caller_id)})
+        if not caller or caller.get("rol", "").lower() not in {"super_admin", "superadministrador"}:
+            raise HTTPException(
+                status_code=403,
+                detail="Solo un super_admin puede asignar roles de administrador o super_admin"
+            )
 
     resultado = coleccion_usuarios.update_one(
         {"_id": ObjectId(user_id)},
         {"$set": {"rol": rol_limpio}}
     )
-    
+
     if resultado.matched_count == 0:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
     return {"mensaje": f"Rol actualizado exitosamente a {rol_limpio}"}
