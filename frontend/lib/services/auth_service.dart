@@ -2,9 +2,9 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../data/mock_data.dart';
 import 'api_config.dart';
+import 'http_client.dart';
 
 class AuthService {
-  /// Iniciar sesión
   static Future<Map<String, dynamic>> iniciarSesion({
     required String correo,
     required String contrasena,
@@ -13,26 +13,24 @@ class AuthService {
       await Future.delayed(const Duration(milliseconds: 500));
       final usuario = MockData.usuarios.firstWhere(
         (u) => u.email == correo && u.contrasena == contrasena,
-        orElse: () => throw Exception('Credenciales incorrectas'),
+        orElse: () => throw const ApiException(401, 'Credenciales incorrectas'),
       );
       return usuario.toJson();
     }
 
-    final response = await http.post(
-      Uri.parse('$baseUrl/login'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'correo': correo, 'password': contrasena}),
+    final response = await httpWithRetry(
+      () => http.post(
+        Uri.parse('$baseUrl/login'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'correo': correo, 'password': contrasena}),
+      ),
+      retry: false,
     );
 
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      final error = jsonDecode(response.body);
-      throw Exception(error['detail'] ?? 'Credenciales incorrectas');
-    }
+    if (response.statusCode == 200) return jsonDecode(response.body);
+    throw toApiException(response.statusCode, decodeBody(response));
   }
 
-  /// Registrar usuario
   static Future<Map<String, dynamic>> registrarUsuario({
     required String nombre,
     required String correo,
@@ -42,9 +40,8 @@ class AuthService {
   }) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 500));
-      final existe = MockData.usuarios.any((u) => u.email == correo);
-      if (existe) {
-        throw Exception('Ya existe un usuario con ese correo');
+      if (MockData.usuarios.any((u) => u.email == correo)) {
+        throw const ApiException(409, 'Ya existe un usuario con ese correo');
       }
       final nuevoId = 'u_${DateTime.now().millisecondsSinceEpoch}';
       return {
@@ -56,78 +53,68 @@ class AuthService {
       };
     }
 
-    final response = await http.post(
-      Uri.parse('$baseUrl/registro'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'nombre': nombre,
-        'correo': correo,
-        'password': contrasena,
-        'telefono': telefono,
-        'direccion': direccion,
-        'rol': 'cliente',
-      }),
+    final response = await httpWithRetry(
+      () => http.post(
+        Uri.parse('$baseUrl/registro'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'nombre': nombre,
+          'correo': correo,
+          'password': contrasena,
+          'telefono': telefono,
+          'direccion': direccion,
+          'rol': 'cliente',
+        }),
+      ),
+      retry: false,
     );
 
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      final error = jsonDecode(response.body);
-      throw Exception(error['detail'] ?? 'Error al registrar');
-    }
+    if (response.statusCode == 200) return jsonDecode(response.body);
+    throw toApiException(response.statusCode, decodeBody(response));
   }
 
-  /// Verificar código de verificación
   static Future<Map<String, dynamic>> verificarCodigo({
     required String correo,
     required String codigo,
   }) async {
-    // 1. Manejo de Mock (Para que no falle si usas datos de prueba)
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 500));
       return {'success': true, 'message': 'Código verificado en Mock'};
     }
 
-    try {
-      // 2. Enviar como JSON 
-      final response = await http.post(
+    final response = await httpWithRetry(
+      () => http.post(
         Uri.parse('$baseUrl/verificar-codigo'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'correo': correo, 'codigo': codigo}),
-      );
+      ),
+      retry: false,
+    );
 
-      // 3. Validar respuesta del servidor
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      } else {
-        final error = jsonDecode(response.body);
-        throw Exception(error['detail'] ?? 'Código inválido o expirado');
-      }
-    } catch (e) {
-      throw Exception('Error en el servidor: $e');
-    }
+    if (response.statusCode == 200) return jsonDecode(response.body);
+    throw toApiException(response.statusCode, decodeBody(response));
   }
 
-  /// Solicitar recuperación de contraseña
   static Future<void> recuperarPassword({required String correo}) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 500));
       return;
     }
 
-    final response = await http.post(
-      Uri.parse('$baseUrl/recuperar-password'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'correo': correo}),
+    final response = await httpWithRetry(
+      () => http.post(
+        Uri.parse('$baseUrl/recuperar-password'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'correo': correo}),
+      ),
+      retry: false,
     );
 
     if (response.statusCode != 200) {
-      final error = jsonDecode(response.body);
-      throw Exception(error['detail'] ?? 'Error al enviar el código');
+      throw toApiException(response.statusCode, decodeBody(response));
     }
   }
 
-  /// Restablecer contraseña con código
   static Future<void> resetPassword({
     required String correo,
     required String codigo,
@@ -138,42 +125,44 @@ class AuthService {
       return;
     }
 
-    final response = await http.post(
-      Uri.parse('$baseUrl/reset-password'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'correo': correo,
-        'codigo': codigo,
-        'nueva_password': nuevaPassword,
-      }),
+    final response = await httpWithRetry(
+      () => http.post(
+        Uri.parse('$baseUrl/reset-password'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'correo': correo,
+          'codigo': codigo,
+          'nueva_password': nuevaPassword,
+        }),
+      ),
+      retry: false,
     );
 
     if (response.statusCode != 200) {
-      final error = jsonDecode(response.body);
-      throw Exception(error['detail'] ?? 'Error al restablecer la contraseña');
+      throw toApiException(response.statusCode, decodeBody(response));
     }
   }
 
-  /// Reenviar código de verificación
   static Future<void> reenviarCodigo({required String correo}) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 500));
       return;
     }
 
-    final response = await http.post(
-      Uri.parse('$baseUrl/reenviar-codigo'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'correo': correo}),
+    final response = await httpWithRetry(
+      () => http.post(
+        Uri.parse('$baseUrl/reenviar-codigo'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'correo': correo}),
+      ),
+      retry: false,
     );
 
     if (response.statusCode != 200) {
-      final error = jsonDecode(response.body);
-      throw Exception(error['detail'] ?? 'Error al reenviar el código');
+      throw toApiException(response.statusCode, decodeBody(response));
     }
   }
 
-  /// Actualizar perfil
   static Future<bool> actualizarPerfil({
     required String userId,
     required String nombre,
@@ -186,20 +175,22 @@ class AuthService {
       return true;
     }
 
-    final response = await http.put(
-      Uri.parse('$baseUrl/usuarios/$userId'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'nombre': nombre,
-        'correo': email,
-        'telefono': telefono,
-        'direccion': direccion,
-      }),
+    final response = await httpWithRetry(
+      () => http.put(
+        Uri.parse('$baseUrl/usuarios/$userId'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'nombre': nombre,
+          'correo': email,
+          'telefono': telefono,
+          'direccion': direccion,
+        }),
+      ),
+      retry: false,
     );
     return response.statusCode == 200;
   }
 
-  /// Ver perfil de usuario
   static Future<Map<String, dynamic>> verPerfil({
     required String userId,
   }) async {
@@ -207,39 +198,40 @@ class AuthService {
       await Future.delayed(const Duration(milliseconds: 300));
       final usuario = MockData.usuarios.firstWhere(
         (u) => u.id == userId,
-        orElse: () => throw Exception('Usuario no encontrado'),
+        orElse: () => throw const ApiException(404, 'Usuario no encontrado'),
       );
       return usuario.toJson();
     }
 
-    final response = await http.get(
-      Uri.parse('$baseUrl/usuarios/$userId'),
-      headers: {'Content-Type': 'application/json'},
+    final response = await httpWithRetry(
+      () => http.get(
+        Uri.parse('$baseUrl/usuarios/$userId'),
+        headers: {'Content-Type': 'application/json'},
+      ),
     );
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body) as Map<String, dynamic>;
-    } else {
-      final error = jsonDecode(response.body);
-      throw Exception(error['detail'] ?? 'Error al obtener el perfil');
     }
+    throw toApiException(response.statusCode, decodeBody(response));
   }
 
-  /// Eliminar perfil
   static Future<bool> eliminarPerfil({required String userId}) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 300));
       return true;
     }
 
-    final response = await http.delete(
-      Uri.parse('$baseUrl/usuarios/$userId'),
-      headers: {'Content-Type': 'application/json'},
+    final response = await httpWithRetry(
+      () => http.delete(
+        Uri.parse('$baseUrl/usuarios/$userId'),
+        headers: {'Content-Type': 'application/json'},
+      ),
+      retry: false,
     );
     return response.statusCode == 200;
   }
 
-  /// Cambiar contraseña
   static Future<void> cambiarContrasena({
     required String userId,
     required String passwordActual,
@@ -250,29 +242,33 @@ class AuthService {
       return;
     }
 
-    final response = await http.put(
-      Uri.parse('$baseUrl/usuarios/$userId/cambiar-password'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'password_actual': passwordActual,
-        'nueva_password': nuevaPassword,
-      }),
+    final response = await httpWithRetry(
+      () => http.put(
+        Uri.parse('$baseUrl/usuarios/$userId/cambiar-password'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'password_actual': passwordActual,
+          'nueva_password': nuevaPassword,
+        }),
+      ),
+      retry: false,
     );
 
     if (response.statusCode != 200) {
-      final error = jsonDecode(response.body);
-      throw Exception(error['detail'] ?? 'Error al cambiar la contraseña');
+      throw toApiException(response.statusCode, decodeBody(response));
     }
   }
 
-  /// Eliminar cuenta de usuario
   static Future<bool> eliminarCuenta({required String userId}) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 500));
       return true;
     }
 
-    final response = await http.delete(Uri.parse('$baseUrl/usuarios/$userId'));
+    final response = await httpWithRetry(
+      () => http.delete(Uri.parse('$baseUrl/usuarios/$userId')),
+      retry: false,
+    );
     return response.statusCode == 200;
   }
 }

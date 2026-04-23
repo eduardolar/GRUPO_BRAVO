@@ -4,6 +4,7 @@ import '../models/reserva_model.dart';
 import '../models/mesa_model.dart';
 import '../data/mock_data.dart';
 import 'api_config.dart';
+import 'http_client.dart';
 
 class ReservaService {
   static const int _duracionReservaMinutos = 90;
@@ -30,7 +31,8 @@ class ReservaService {
       );
 
       if (mesaAsignada == null) {
-        throw Exception(
+        throw ApiException(
+          409,
           'No hay mesas disponibles para $comensales comensales a las $hora. '
           'Prueba otra hora o reduce el número de comensales.',
         );
@@ -54,26 +56,27 @@ class ReservaService {
       return reserva;
     }
 
-    final response = await http.post(
-      Uri.parse('$baseUrl/reservas'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'usuarioId': userId,
-        'nombreCompleto': nombreCompleto,
-        'fecha': fecha.toIso8601String().split('T').first,
-        'hora': hora,
-        'comensales': comensales,
-        'turno': turno,
-        'notas': notas,
-      }),
+    final response = await httpWithRetry(
+      () => http.post(
+        Uri.parse('$baseUrl/reservas'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'usuarioId': userId,
+          'nombreCompleto': nombreCompleto,
+          'fecha': fecha.toIso8601String().split('T').first,
+          'hora': hora,
+          'comensales': comensales,
+          'turno': turno,
+          'notas': notas,
+        }),
+      ),
+      retry: false,
     );
 
     if (response.statusCode == 200) {
       return Reserva.fromMap(jsonDecode(response.body));
-    } else {
-      final error = jsonDecode(response.body);
-      throw Exception(error['detail'] ?? 'Error al crear reserva');
     }
+    throw toApiException(response.statusCode, decodeBody(response));
   }
 
   static Future<bool> hayDisponibilidad({
@@ -93,9 +96,11 @@ class ReservaService {
     }
 
     final fechaStr = fecha.toIso8601String().split('T').first;
-    final response = await http.get(
-      Uri.parse(
-        '$baseUrl/reservas/mesas-disponibles?fecha=$fechaStr&hora=$hora&comensales=$comensales',
+    final response = await httpWithRetry(
+      () => http.get(
+        Uri.parse(
+          '$baseUrl/reservas/mesas-disponibles?fecha=$fechaStr&hora=$hora&comensales=$comensales',
+        ),
       ),
     );
 
@@ -112,8 +117,8 @@ class ReservaService {
       return MockData.reservas.where((r) => r.usuarioId == userId).toList();
     }
 
-    final response = await http.get(
-      Uri.parse('$baseUrl/reservas?usuarioId=$userId'),
+    final response = await httpWithRetry(
+      () => http.get(Uri.parse('$baseUrl/reservas?usuarioId=$userId')),
     );
 
     if (response.statusCode == 200) {
@@ -121,9 +126,8 @@ class ReservaService {
       return data
           .map((m) => Reserva.fromMap(m as Map<String, dynamic>))
           .toList();
-    } else {
-      throw Exception('Error al obtener reservas - Status: ${response.statusCode}');
     }
+    throw toApiException(response.statusCode, decodeBody(response));
   }
 
   static Future<bool> actualizarComensales({
@@ -140,10 +144,13 @@ class ReservaService {
       return true;
     }
 
-    final response = await http.patch(
-      Uri.parse('$baseUrl/reservas/$reservaId'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'comensales': comensales}),
+    final response = await httpWithRetry(
+      () => http.patch(
+        Uri.parse('$baseUrl/reservas/$reservaId'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'comensales': comensales}),
+      ),
+      retry: false,
     );
     return response.statusCode == 200;
   }
@@ -155,13 +162,13 @@ class ReservaService {
       return true;
     }
 
-    final response = await http.delete(
-      Uri.parse('$baseUrl/reservas/$reservaId'),
+    final response = await httpWithRetry(
+      () => http.delete(Uri.parse('$baseUrl/reservas/$reservaId')),
+      retry: false,
     );
     return response.statusCode == 200;
   }
 
-  /// Obtener todas las reservas futuras (para trabajadores)
   static Future<List<Reserva>> obtenerReservasFuturas() async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 400));
@@ -170,16 +177,16 @@ class ReservaService {
       return MockData.reservas.where((r) => !r.fecha.isBefore(hoy)).toList();
     }
 
-    final response = await http.get(Uri.parse('$baseUrl/reservas/futuras'));
+    final response = await httpWithRetry(
+      () => http.get(Uri.parse('$baseUrl/reservas/futuras')),
+    );
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
       return data.map((m) => Reserva.fromMap(m as Map<String, dynamic>)).toList();
-    } else {
-      throw Exception('Error al obtener reservas futuras - Status: ${response.statusCode}');
     }
+    throw toApiException(response.statusCode, decodeBody(response));
   }
 
-  /// Actualizar reserva completa (fecha, hora, comensales, turno, notas)
   static Future<bool> actualizarReserva(Reserva reserva) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 300));
@@ -190,23 +197,23 @@ class ReservaService {
       return true;
     }
 
-    final response = await http.put(
-      Uri.parse('$baseUrl/reservas/${reserva.id}'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'fecha': reserva.fecha.toIso8601String().split('T').first,
-        'hora': reserva.hora,
-        'comensales': reserva.comensales,
-        'turno': reserva.turno,
-        'notas': reserva.notas,
-      }),
+    final response = await httpWithRetry(
+      () => http.put(
+        Uri.parse('$baseUrl/reservas/${reserva.id}'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'fecha': reserva.fecha.toIso8601String().split('T').first,
+          'hora': reserva.hora,
+          'comensales': reserva.comensales,
+          'turno': reserva.turno,
+          'notas': reserva.notas,
+        }),
+      ),
+      retry: false,
     );
 
-    if (response.statusCode == 200) {
-      return true;
-    } else {
-      throw Exception('Error al actualizar reserva - Status: ${response.statusCode}');
-    }
+    if (response.statusCode == 200) return true;
+    throw toApiException(response.statusCode, decodeBody(response));
   }
 
   // ─── Helpers privados ────────────────────────────────────────
@@ -239,7 +246,8 @@ class ReservaService {
       final tieneConflicto = MockData.reservas.any(
         (r) =>
             r.mesaId == mesa.id &&
-            r.fecha == fecha &&
+            '${r.fecha.day.toString().padLeft(2, '0')}/${r.fecha.month.toString().padLeft(2, '0')}/${r.fecha.year}' ==
+                fecha &&
             r.estado == 'Confirmada' &&
             _hayConflictoHorario(r.hora, hora),
       );

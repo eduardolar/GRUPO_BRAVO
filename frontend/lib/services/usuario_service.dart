@@ -2,13 +2,15 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/usuario_model.dart';
 import 'api_config.dart';
+import 'http_client.dart';
 
 class UsuarioService {
-  // 1. Obtener todos los usuarios
   Future<List<Usuario>> obtenerTodos() async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/usuarios'), // Esta ruta debe existir en Python
-      headers: {'Content-Type': 'application/json'},
+    final response = await httpWithRetry(
+      () => http.get(
+        Uri.parse('$baseUrl/usuarios'),
+        headers: {'Content-Type': 'application/json'},
+      ),
     );
 
     if (response.statusCode == 200) {
@@ -16,25 +18,27 @@ class UsuarioService {
       return body
           .map((item) => Usuario.fromJson(item as Map<String, dynamic>))
           .toList();
-    } else {
-      throw Exception('Error al traer usuarios');
     }
+    throw toApiException(response.statusCode, decodeBody(response));
   }
 
-  // 2. Borrar un usuario
   Future<bool> eliminarUsuario(String id) async {
-    final response = await http.delete(
-      Uri.parse('$baseUrl/usuarios/$id'),
-      headers: {'Content-Type': 'application/json'},
+    final response = await httpWithRetry(
+      () => http.delete(
+        Uri.parse('$baseUrl/usuarios/$id'),
+        headers: {'Content-Type': 'application/json'},
+      ),
+      retry: false,
     );
     return response.statusCode == 200;
   }
 
-  // 3. Obtener solo administradores
   Future<List<Usuario>> obtenerAdmins() async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/usuarios?rol=admin'),
-      headers: {'Content-Type': 'application/json'},
+    final response = await httpWithRetry(
+      () => http.get(
+        Uri.parse('$baseUrl/usuarios?rol=admin'),
+        headers: {'Content-Type': 'application/json'},
+      ),
     );
 
     if (response.statusCode == 200) {
@@ -42,63 +46,62 @@ class UsuarioService {
       return body
           .map((item) => Usuario.fromJson(item as Map<String, dynamic>))
           .toList();
-    } else {
-      throw Exception('Error al traer administradores');
     }
+    throw toApiException(response.statusCode, decodeBody(response));
   }
 
-  // 4. Obtener usuario administrador por id
   Future<Usuario> obtenerAdminPorId(String id) async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/usuarios/$id?rol=admin'),
-      headers: {'Content-Type': 'application/json'},
+    final response = await httpWithRetry(
+      () => http.get(
+        Uri.parse('$baseUrl/usuarios/$id?rol=admin'),
+        headers: {'Content-Type': 'application/json'},
+      ),
     );
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       return Usuario.fromJson(data as Map<String, dynamic>);
-    } else if (response.statusCode == 404) {
-      throw Exception('Administrador no encontrado');
-    } else {
-      throw Exception('Error al obtener administrador');
     }
+    throw toApiException(response.statusCode, decodeBody(response));
   }
 
-  // 5. Cambiar el rol de un usuario (para gestionar el rol admin)
   Future<bool> cambiarRol(String id, String nuevoRol) async {
-    final response = await http.put(
-      Uri.parse('$baseUrl/usuarios/$id/rol'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'rol': nuevoRol}),
+    final response = await httpWithRetry(
+      () => http.put(
+        Uri.parse('$baseUrl/usuarios/$id/rol'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'rol': nuevoRol}),
+      ),
+      retry: false,
     );
-
     return response.statusCode == 200;
   }
 
   Future<bool> crearUsuario({
-  required String nombre,
-  required String correo,
-  required String password,
-  required String rol,
-  required String restauranteId,
-}) async {
-  try {
-    final response = await http.post(
-      Uri.parse('$baseUrl/usuarios/'), // La ruta POST de Python
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'nombre': nombre,
-        'correo': correo,
-        'password': password,
-        'rol': rol,
-        'restaurante_id': restauranteId,
-      }),
-    );
-
-    return response.statusCode == 200 || response.statusCode == 201;
-  } catch (e) {
-    print('Error al crear usuario: $e');
-    return false;
-  } 
-}
+    required String nombre,
+    required String correo,
+    required String password,
+    required String rol,
+    required String restauranteId,
+  }) async {
+    try {
+      final response = await httpWithRetry(
+        () => http.post(
+          Uri.parse('$baseUrl/usuarios/'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'nombre': nombre,
+            'correo': correo,
+            'password': password,
+            'rol': rol,
+            'restaurante_id': restauranteId,
+          }),
+        ),
+        retry: false,
+      );
+      return response.statusCode == 200 || response.statusCode == 201;
+    } on ApiException {
+      return false;
+    }
+  }
 }

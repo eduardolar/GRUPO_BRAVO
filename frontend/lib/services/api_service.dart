@@ -15,6 +15,7 @@ import 'ingredientes_service.dart';
 import 'pedido_service.dart';
 import 'reserva_service.dart';
 import 'mesa_service.dart';
+import 'http_client.dart';
 
 class ApiService {
   static String get baseUrl {
@@ -104,22 +105,19 @@ class ApiService {
     String? notas,
     String? referenciaPago,
     required String estadoPago,
-  }) {
-    var crearPedido = PedidoService.crearPedido(
-      userId: userId,
-      items: items,
-      tipoEntrega: tipoEntrega,
-      metodoPago: metodoPago,
-      total: total,
-      direccionEntrega: direccionEntrega,
-      mesaId: mesaId,
-      numeroMesa: numeroMesa,
-      notas: notas,
-      referenciaPago: referenciaPago,
-      estadoPago: estadoPago,
-    );
-    return crearPedido;
-  }
+  }) => PedidoService.crearPedido(
+    userId: userId,
+    items: items,
+    tipoEntrega: tipoEntrega,
+    metodoPago: metodoPago,
+    total: total,
+    direccionEntrega: direccionEntrega,
+    mesaId: mesaId,
+    numeroMesa: numeroMesa,
+    notas: notas,
+    referenciaPago: referenciaPago,
+    estadoPago: estadoPago,
+  );
 
   static Future<List<Pedido>> obtenerHistorialPedidos({
     required String userId,
@@ -131,21 +129,18 @@ class ApiService {
     required double amount,
     String currency = 'eur',
   }) async {
-    final url = Uri.parse('$baseUrl/payments/stripe/create-intent');
-
-    final response = await http.post(
-      url,
-      headers: _jsonHeaders(),
-      body: jsonEncode({'amount': amount, 'currency': currency}),
+    final response = await httpWithRetry(
+      () => http.post(
+        Uri.parse('$baseUrl/payments/stripe/create-intent'),
+        headers: _jsonHeaders(),
+        body: jsonEncode({'amount': amount, 'currency': currency}),
+      ),
+      retry: false,
     );
-
-    final data = _decodeBody(response);
-
     if (response.statusCode >= 400) {
-      throw Exception(data['detail'] ?? 'Error al crear intento de tarjeta');
+      throw toApiException(response.statusCode, decodeBody(response));
     }
-
-    return Map<String, dynamic>.from(data);
+    return Map<String, dynamic>.from(decodeBody(response));
   }
 
   static Future<bool> confirmarPagoTarjeta({
@@ -155,42 +150,40 @@ class ApiService {
     required String cvv,
     required String nombreTitular,
   }) async {
-    final url = Uri.parse('$baseUrl/payments/stripe/confirm');
-
-    final response = await http.post(
-      url,
-      headers: _jsonHeaders(),
-      body: jsonEncode({
-        'clientSecret': clientSecret,
-        'numeroTarjeta': numeroTarjeta,
-        'fechaExpiracion': fechaExpiracion,
-        'cvv': cvv,
-        'nombreTitular': nombreTitular,
-      }),
+    final response = await httpWithRetry(
+      () => http.post(
+        Uri.parse('$baseUrl/payments/stripe/confirm'),
+        headers: _jsonHeaders(),
+        body: jsonEncode({
+          'clientSecret': clientSecret,
+          'numeroTarjeta': numeroTarjeta,
+          'fechaExpiracion': fechaExpiracion,
+          'cvv': cvv,
+          'nombreTitular': nombreTitular,
+        }),
+      ),
+      retry: false,
     );
-
-    final data = _decodeBody(response);
-
     if (response.statusCode >= 400) {
-      throw Exception(data['detail'] ?? 'Error al confirmar pago con tarjeta');
+      throw toApiException(response.statusCode, decodeBody(response));
     }
-
+    final data = decodeBody(response);
     return data['success'] == true || data['status'] == 'succeeded';
   }
 
   static Future<bool> verificarPagoTarjeta({
     required String paymentIntentId,
   }) async {
-    final url = Uri.parse('$baseUrl/payments/stripe/verify/$paymentIntentId');
-
-    final response = await http.get(url, headers: _jsonHeaders());
-
-    final data = _decodeBody(response);
-
+    final response = await httpWithRetry(
+      () => http.get(
+        Uri.parse('$baseUrl/payments/stripe/verify/$paymentIntentId'),
+        headers: _jsonHeaders(),
+      ),
+    );
     if (response.statusCode >= 400) {
-      throw Exception(data['detail'] ?? 'Error al verificar pago con tarjeta');
+      throw toApiException(response.statusCode, decodeBody(response));
     }
-
+    final data = decodeBody(response);
     return data['paid'] == true || data['status'] == 'succeeded';
   }
 
@@ -201,62 +194,54 @@ class ApiService {
     String currencyCode = 'EUR',
     String countryCode = 'ES',
   }) async {
-    final url = Uri.parse('$baseUrl/payments/apple-pay/init');
-
-    final response = await http.post(
-      url,
-      headers: _jsonHeaders(),
-      body: jsonEncode({
-        'total': total,
-        'currencyCode': currencyCode,
-        'countryCode': countryCode,
-      }),
+    final response = await httpWithRetry(
+      () => http.post(
+        Uri.parse('$baseUrl/payments/apple-pay/init'),
+        headers: _jsonHeaders(),
+        body: jsonEncode({
+          'total': total,
+          'currencyCode': currencyCode,
+          'countryCode': countryCode,
+        }),
+      ),
+      retry: false,
     );
-
-    final data = _decodeBody(response);
-
     if (response.statusCode >= 400) {
-      throw Exception(data['detail'] ?? 'Error al iniciar Apple Pay');
+      throw toApiException(response.statusCode, decodeBody(response));
     }
-
-    return Map<String, dynamic>.from(data);
+    return Map<String, dynamic>.from(decodeBody(response));
   }
 
   static Future<Map<String, dynamic>> confirmarApplePay({
     required String clientSecret,
   }) async {
-    final url = Uri.parse('$baseUrl/payments/apple-pay/confirm');
-
-    final response = await http.post(
-      url,
-      headers: _jsonHeaders(),
-      body: jsonEncode({'clientSecret': clientSecret}),
+    final response = await httpWithRetry(
+      () => http.post(
+        Uri.parse('$baseUrl/payments/apple-pay/confirm'),
+        headers: _jsonHeaders(),
+        body: jsonEncode({'clientSecret': clientSecret}),
+      ),
+      retry: false,
     );
-
-    final data = _decodeBody(response);
-
     if (response.statusCode >= 400) {
-      throw Exception(data['detail'] ?? 'Error al confirmar Apple Pay');
+      throw toApiException(response.statusCode, decodeBody(response));
     }
-
-    return Map<String, dynamic>.from(data);
+    return Map<String, dynamic>.from(decodeBody(response));
   }
 
   static Future<bool> verificarApplePay({
     required String paymentIntentId,
   }) async {
-    final url = Uri.parse(
-      '$baseUrl/payments/apple-pay/verify/$paymentIntentId',
+    final response = await httpWithRetry(
+      () => http.get(
+        Uri.parse('$baseUrl/payments/apple-pay/verify/$paymentIntentId'),
+        headers: _jsonHeaders(),
+      ),
     );
-
-    final response = await http.get(url, headers: _jsonHeaders());
-
-    final data = _decodeBody(response);
-
     if (response.statusCode >= 400) {
-      throw Exception(data['detail'] ?? 'Error al verificar Apple Pay');
+      throw toApiException(response.statusCode, decodeBody(response));
     }
-
+    final data = decodeBody(response);
     return data['paid'] == true ||
         data['status'] == 'succeeded' ||
         data['status'] == 'paid';
@@ -268,52 +253,57 @@ class ApiService {
     required String successUrl,
     required String cancelUrl,
   }) async {
-    final url = Uri.parse('$baseUrl/payments/stripe/create-checkout-session');
-    final response = await http.post(
-      url,
-      headers: _jsonHeaders(),
-      body: jsonEncode({
-        'total': total,
-        'currency': currency,
-        'success_url': successUrl,
-        'cancel_url': cancelUrl,
-      }),
+    final response = await httpWithRetry(
+      () => http.post(
+        Uri.parse('$baseUrl/payments/stripe/create-checkout-session'),
+        headers: _jsonHeaders(),
+        body: jsonEncode({
+          'total': total,
+          'currency': currency,
+          'success_url': successUrl,
+          'cancel_url': cancelUrl,
+        }),
+      ),
+      retry: false,
     );
-    final data = _decodeBody(response);
     if (response.statusCode >= 400) {
-      throw Exception(data['detail'] ?? 'Error al crear sesión de Checkout');
+      throw toApiException(response.statusCode, decodeBody(response));
     }
-    return Map<String, dynamic>.from(data);
+    return Map<String, dynamic>.from(decodeBody(response));
   }
 
   static Future<bool> verificarCheckoutSession({
     required String sessionId,
   }) async {
-    final url = Uri.parse('$baseUrl/payments/stripe/verify-session/$sessionId');
-    final response = await http.get(url, headers: _jsonHeaders());
-    final data = _decodeBody(response);
+    final response = await httpWithRetry(
+      () => http.get(
+        Uri.parse('$baseUrl/payments/stripe/verify-session/$sessionId'),
+        headers: _jsonHeaders(),
+      ),
+    );
     if (response.statusCode >= 400) {
-      throw Exception(data['detail'] ?? 'Error al verificar sesión');
+      throw toApiException(response.statusCode, decodeBody(response));
     }
-    return data['paid'] == true;
+    return decodeBody(response)['paid'] == true;
   }
 
   static Future<void> actualizarEstadoPago({
     required String referenciaPago,
     String estadoPago = 'pagado',
   }) async {
-    final url = Uri.parse('$baseUrl/pedidos/actualizar-estado-pago');
-    final response = await http.patch(
-      url,
-      headers: _jsonHeaders(),
-      body: jsonEncode({
-        'referencia_pago': referenciaPago,
-        'estado_pago': estadoPago,
-      }),
+    final response = await httpWithRetry(
+      () => http.patch(
+        Uri.parse('$baseUrl/pedidos/actualizar-estado-pago'),
+        headers: _jsonHeaders(),
+        body: jsonEncode({
+          'referencia_pago': referenciaPago,
+          'estado_pago': estadoPago,
+        }),
+      ),
+      retry: false,
     );
     if (response.statusCode >= 400) {
-      final data = _decodeBody(response);
-      throw Exception(data['detail'] ?? 'Error al actualizar estado de pago');
+      throw toApiException(response.statusCode, decodeBody(response));
     }
   }
 
@@ -323,41 +313,35 @@ class ApiService {
     required double total,
     String currency = 'EUR',
   }) async {
-    final url = Uri.parse('$baseUrl/payments/paypal/create-order');
-
-    final response = await http.post(
-      url,
-      headers: _jsonHeaders(),
-      body: jsonEncode({'total': total, 'currency': currency}),
+    final response = await httpWithRetry(
+      () => http.post(
+        Uri.parse('$baseUrl/payments/paypal/create-order'),
+        headers: _jsonHeaders(),
+        body: jsonEncode({'total': total, 'currency': currency}),
+      ),
+      retry: false,
     );
-
-    final data = _decodeBody(response);
-
     if (response.statusCode >= 400) {
-      throw Exception(data['detail'] ?? 'Error al crear orden de PayPal');
+      throw toApiException(response.statusCode, decodeBody(response));
     }
-
-    return Map<String, dynamic>.from(data);
+    return Map<String, dynamic>.from(decodeBody(response));
   }
 
   static Future<Map<String, dynamic>> capturarOrdenPaypal({
     required String orderId,
   }) async {
-    final url = Uri.parse('$baseUrl/payments/paypal/capture-order');
-
-    final response = await http.post(
-      url,
-      headers: _jsonHeaders(),
-      body: jsonEncode({'orderId': orderId}),
+    final response = await httpWithRetry(
+      () => http.post(
+        Uri.parse('$baseUrl/payments/paypal/capture-order'),
+        headers: _jsonHeaders(),
+        body: jsonEncode({'orderId': orderId}),
+      ),
+      retry: false,
     );
-
-    final data = _decodeBody(response);
-
     if (response.statusCode >= 400) {
-      throw Exception(data['detail'] ?? 'Error al capturar orden PayPal');
+      throw toApiException(response.statusCode, decodeBody(response));
     }
-
-    return Map<String, dynamic>.from(data);
+    return Map<String, dynamic>.from(decodeBody(response));
   }
 
   // ─── GOOGLE PAY / GOOGLE PLAY ────────────────────────────────
@@ -367,25 +351,22 @@ class ApiService {
     String currencyCode = 'EUR',
     String countryCode = 'ES',
   }) async {
-    final url = Uri.parse('$baseUrl/payments/google-pay/init');
-
-    final response = await http.post(
-      url,
-      headers: _jsonHeaders(),
-      body: jsonEncode({
-        'total': total,
-        'currencyCode': currencyCode,
-        'countryCode': countryCode,
-      }),
+    final response = await httpWithRetry(
+      () => http.post(
+        Uri.parse('$baseUrl/payments/google-pay/init'),
+        headers: _jsonHeaders(),
+        body: jsonEncode({
+          'total': total,
+          'currencyCode': currencyCode,
+          'countryCode': countryCode,
+        }),
+      ),
+      retry: false,
     );
-
-    final data = _decodeBody(response);
-
     if (response.statusCode >= 400) {
-      throw Exception(data['detail'] ?? 'Error al iniciar Google Pay');
+      throw toApiException(response.statusCode, decodeBody(response));
     }
-
-    return Map<String, dynamic>.from(data);
+    return Map<String, dynamic>.from(decodeBody(response));
   }
 
   static Future<Map<String, dynamic>> verificarCompraGooglePlay({
@@ -393,32 +374,25 @@ class ApiService {
     required String productId,
     required String purchaseToken,
   }) async {
-    final url = Uri.parse('$baseUrl/payments/google-play/verify');
-
     final body = <String, dynamic>{
       'productId': productId,
       'purchaseToken': purchaseToken,
     };
-
     if (packageName != null && packageName.isNotEmpty) {
       body['packageName'] = packageName;
     }
-
-    final response = await http.post(
-      url,
-      headers: _jsonHeaders(),
-      body: jsonEncode(body),
+    final response = await httpWithRetry(
+      () => http.post(
+        Uri.parse('$baseUrl/payments/google-play/verify'),
+        headers: _jsonHeaders(),
+        body: jsonEncode(body),
+      ),
+      retry: false,
     );
-
-    final data = _decodeBody(response);
-
     if (response.statusCode >= 400) {
-      throw Exception(
-        data['detail'] ?? 'Error al verificar compra en Google Play',
-      );
+      throw toApiException(response.statusCode, decodeBody(response));
     }
-
-    return Map<String, dynamic>.from(data);
+    return Map<String, dynamic>.from(decodeBody(response));
   }
 
   // ─── MESAS ───────────────────────────────────────────────────
@@ -479,19 +453,5 @@ class ApiService {
 
   static Map<String, String> _jsonHeaders() {
     return {'Content-Type': 'application/json', 'Accept': 'application/json'};
-  }
-
-  static Map<String, dynamic> _decodeBody(http.Response response) {
-    if (response.body.isEmpty) {
-      return <String, dynamic>{};
-    }
-
-    final decoded = jsonDecode(response.body);
-
-    if (decoded is Map<String, dynamic>) {
-      return decoded;
-    }
-
-    return {'data': decoded};
   }
 }
