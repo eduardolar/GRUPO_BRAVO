@@ -10,14 +10,14 @@ from pydantic import BaseModel, EmailStr
 from database import coleccion_usuarios
 from models import UsuarioRegistro, UsuarioLogin
 
-load_dotenv()
+load_dotenv(override=True)
 
 router = APIRouter()
 
 conf = ConnectionConfig(
-    MAIL_USERNAME=os.getenv("MAIL_USERNAME"),
-    MAIL_PASSWORD=os.getenv("MAIL_PASSWORD"),
-    MAIL_FROM=os.getenv("MAIL_FROM"),
+    MAIL_USERNAME=os.getenv("MAIL_USERNAME", "no-reply@bravo.com"), # Valor por defecto
+    MAIL_PASSWORD=os.getenv("MAIL_PASSWORD", "password-falsa"),
+    MAIL_FROM=os.getenv("MAIL_FROM", "no-reply@bravo.com"),
     MAIL_PORT=int(os.getenv("MAIL_PORT", 587)),
     MAIL_SERVER=os.getenv("MAIL_SERVER", "smtp.gmail.com"),
     MAIL_STARTTLS=True,
