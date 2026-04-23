@@ -7,7 +7,7 @@ class Usuario {
   final String contrasena;
   final String telefono;
   final String direccion;
-  final RolUsuario rol;
+  RolUsuario rol;
   // Rol exacto devuelto por la API (cocinero, camarero, mesero, …).
   // Usar este campo para mostrar y agrupar en pantalla.
   final String rolRaw;

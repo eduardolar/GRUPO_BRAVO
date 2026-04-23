@@ -132,7 +132,7 @@ def cambiar_password(user_id: str, datos: CambiarPassword):
     return {"mensaje": "Contraseña actualizada correctamente"}
 
 # Roles que requieren que el caller tenga permisos elevados
-_ROLES_PRIVILEGIADOS = {"admin", "administrador", "super_admin", "superadministrador"}
+_ROLES_PRIVILEGIADOS = {"super_admin", "superadministrador"}
 
 # Ruta obligatoria para que funcione el botón de Flutter de "Cambiar Rol"
 @router.put("/{user_id}/rol")

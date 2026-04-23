@@ -26,6 +26,8 @@ class Mesa {
     );
   }
 
+  set estado(String estado) {}
+
   Map<String, dynamic> toMap() {
     return {
       'id': id,
