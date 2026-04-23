@@ -8,7 +8,10 @@ class Usuario {
   final String telefono;
   final String direccion;
   final RolUsuario rol;
-  final String? restauranteId; // Para trabajadores, el restaurante al que pertenecen
+  // Rol exacto devuelto por la API (cocinero, camarero, mesero, …).
+  // Usar este campo para mostrar y agrupar en pantalla.
+  final String rolRaw;
+  final String? restauranteId;
 
   Usuario({
     required this.id,
@@ -18,12 +21,13 @@ class Usuario {
     required this.telefono,
     required this.direccion,
     this.rol = RolUsuario.cliente,
+    String? rolRaw,
     this.restauranteId,
+  }) : rolRaw = rolRaw ?? rol.name;
 
-  });
-
-  // Factory para crear desde JSON (útil para API real)
   factory Usuario.fromJson(Map<String, dynamic> json) {
+    final rawRol = (json['rol'] ?? '').toString().toLowerCase().trim();
+    final normalizedRol = _normalizeRol(rawRol);
     return Usuario(
       id: json['id'] ?? json['_id'] ?? '',
       nombre: json['nombre'] ?? '',
@@ -31,34 +35,37 @@ class Usuario {
       contrasena: json['password_hash'] ?? json['contrasena'] ?? '',
       telefono: json['telefono'] ?? '',
       direccion: json['direccion'] ?? '',
-      rol: _parseRol(json['rol']),
-      restauranteId: json['restaurante_id'] ?.toString(),
+      rol: _parseRol(normalizedRol),
+      rolRaw: normalizedRol,
+      restauranteId: json['restaurante_id']?.toString(),
     );
   }
 
-static RolUsuario _parseRol(dynamic rol) {
-  if (rol == null) return RolUsuario.cliente;
-  
-  final String rolStr = rol.toString().toLowerCase().trim();
-  
-  switch (rolStr) {
-    case 'superadministrador':
-    case 'superadmin':
-      return RolUsuario.superadministrador;
-    case 'cocinero':      // añadimos casos comunes para trabajadores
-    case 'camarero':
-    case 'mesero':
-    case 'trabajador':
-      return RolUsuario.trabajador;
-    case 'administrador':
-    case 'admin':
-      return RolUsuario.administrador;
-    default:
-      return RolUsuario.cliente;
+  // Normaliza aliases a nombres canónicos ("admin" → "administrador", etc.)
+  static String _normalizeRol(String rolStr) {
+    switch (rolStr) {
+      case 'admin': return 'administrador';
+      case 'superadmin': return 'superadministrador';
+      default: return rolStr;
+    }
   }
-}
 
-  // Copia con campos modificados
+  static RolUsuario _parseRol(String rolStr) {
+    switch (rolStr) {
+      case 'superadministrador':
+        return RolUsuario.superadministrador;
+      case 'cocinero':
+      case 'camarero':
+      case 'mesero':
+      case 'trabajador':
+        return RolUsuario.trabajador;
+      case 'administrador':
+        return RolUsuario.administrador;
+      default:
+        return RolUsuario.cliente;
+    }
+  }
+
   Usuario copyWith({
     String? nombre,
     String? email,
@@ -66,6 +73,7 @@ static RolUsuario _parseRol(dynamic rol) {
     String? telefono,
     String? direccion,
     RolUsuario? rol,
+    String? rolRaw,
     String? restauranteId,
   }) {
     return Usuario(
@@ -76,11 +84,11 @@ static RolUsuario _parseRol(dynamic rol) {
       telefono: telefono ?? this.telefono,
       direccion: direccion ?? this.direccion,
       rol: rol ?? this.rol,
+      rolRaw: rolRaw ?? this.rolRaw,
       restauranteId: restauranteId ?? this.restauranteId,
     );
   }
 
-  // Convertir a JSON
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -89,7 +97,7 @@ static RolUsuario _parseRol(dynamic rol) {
       'contrasena': contrasena,
       'telefono': telefono,
       'direccion': direccion,
-      'rol': rol.name,
+      'rol': rolRaw,
       if (restauranteId != null) 'restaurante_id': restauranteId,
     };
   }
