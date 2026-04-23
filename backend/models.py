@@ -4,16 +4,14 @@ from typing import Optional, Any
 
 class UsuarioRegistro(BaseModel):
     nombre: str
-    password_hash: str = Field(..., min_length=8)
+    password: str = Field(..., min_length=8)
     correo: EmailStr
     telefono: str
     direccion: str
     rol: str = "cliente"
-    restaurante_id: Optional[str] = None
-    is_verified: bool = False
-    verification_code: Optional[str] = None
+    restauranteId: Optional[str] = None
 
-    @field_validator("password_hash")
+    @field_validator("password")
     @classmethod
     def validar_password_registro(cls, value: str) -> str:
         errores = []
@@ -33,7 +31,7 @@ class UsuarioRegistro(BaseModel):
 
 class UsuarioLogin(BaseModel):
     correo: str
-    password_hash: str  # Sin min_length: la validación de contraseña se hace solo en registro
+    password: str
 
 class UsuarioActualizar(BaseModel):
     nombre: str
@@ -55,30 +53,30 @@ class PedidoCrear(BaseModel):
     estadoPago: Optional[str] = "pendiente"
 
 class ReservaCrear(BaseModel):
-    usuario_id: str
-    nombre_completo: str
+    usuarioId: str
+    nombreCompleto: str
     fecha: str
     hora: str
     comensales: int
     turno: str
-    mesa_id: Optional[str] = None
+    mesaId: Optional[str] = None
     notas: Optional[str] = None
 
 class ValidarQR(BaseModel):
-    codigo_qr: str
+    codigoQr: str
 
 class IngredienteCrear(BaseModel):
     nombre: str
-    cantidad_actual: float = 0
+    cantidadActual: float = 0
     unidad: str = "kg"
-    stock_minimo: float = 0
+    stockMinimo: float = 0
     categoria: str = "Otros"
 
 class IngredienteActualizar(BaseModel):
     nombre: Optional[str] = None
-    cantidad_actual: Optional[float] = None
+    cantidadActual: Optional[float] = None
     unidad: Optional[str] = None
-    stock_minimo: Optional[float] = None
+    stockMinimo: Optional[float] = None
     categoria: Optional[str] = None
 
 class ProductoCrear(BaseModel):

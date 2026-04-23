@@ -48,8 +48,8 @@ class UsuarioActualizarRol(BaseModel):
     rol: str
 
 class CambiarPassword(BaseModel):
-    password_actual: str
-    nueva_password: str
+    passwordActual: str
+    nuevaPassword: str
 
 # NUEVO: Modelo para crear usuarios desde el panel de Admin
 class UsuarioCrear(BaseModel):
@@ -57,7 +57,7 @@ class UsuarioCrear(BaseModel):
     correo: EmailStr
     password: str = ''  # Opcional: si vacío, el backend genera una contraseña aleatoria
     rol: str
-    restaurante_id: str
+    restauranteId: str
 
 router = APIRouter(prefix="/usuarios", tags=["Usuarios"])
 
@@ -81,7 +81,7 @@ def listar_usuarios(rol: str | None = None):
             "direccion": u.get("direccion", ""),
             "rol": u.get("rol", "cliente"),
             # Lo convertimos a str() por si en Mongo es un ObjectId
-            "restaurante_id": str(res_id) if res_id else None
+            "restauranteId": str(res_id) if res_id else None
         })
     return resultado
 
@@ -121,10 +121,10 @@ def cambiar_password(user_id: str, datos: CambiarPassword):
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
     hash_almacenado = usuario.get("password_hash", "").encode("utf-8")
-    if not bcrypt.checkpw(datos.password_actual.encode("utf-8"), hash_almacenado):
+    if not bcrypt.checkpw(datos.passwordActual.encode("utf-8"), hash_almacenado):
         raise HTTPException(status_code=400, detail="La contraseña actual es incorrecta")
 
-    nueva_hash = bcrypt.hashpw(datos.nueva_password.encode("utf-8"), bcrypt.gensalt())
+    nueva_hash = bcrypt.hashpw(datos.nuevaPassword.encode("utf-8"), bcrypt.gensalt())
     coleccion_usuarios.update_one(
         {"_id": ObjectId(user_id)},
         {"$set": {"password_hash": nueva_hash.decode("utf-8")}}
@@ -200,7 +200,7 @@ async def crear_usuario(datos: UsuarioCrear):
         "correo": correo_limpio,
         "password_hash": hash_password,
         "rol": datos.rol.lower().strip(),
-        "restaurante_id": datos.restaurante_id,
+        "restaurante_id": datos.restauranteId,
         "is_verified": False,  # Debe activar su cuenta vía email
         "telefono": "",
         "direccion": "",

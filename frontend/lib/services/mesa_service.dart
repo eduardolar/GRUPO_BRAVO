@@ -35,8 +35,8 @@ class MesaService {
         throw Exception('QR no válido');
       }
       return {
-        'mesa_id': mesa.id,
-        'numero_mesa': mesa.numero,
+        'mesaId': mesa.id,
+        'numeroMesa': mesa.numero,
         'estado': mesa.disponible ? 'disponible' : 'ocupada',
       };
     }
@@ -44,7 +44,7 @@ class MesaService {
     final response = await http.post(
       Uri.parse('$baseUrl/mesas/validar-qr'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'codigo_qr': codigoQr}),
+      body: jsonEncode({'codigoQr': codigoQr}),
     );
 
     if (response.statusCode == 200) {
@@ -83,7 +83,7 @@ class MesaService {
         'numero': numero,
         'capacidad': capacidad,
         'ubicacion': ubicacion,
-        'codigo_qr': codigoQr,
+        'codigoQr': codigoQr,
       }),
     );
 

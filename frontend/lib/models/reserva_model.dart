@@ -45,15 +45,15 @@ class Reserva {
   factory Reserva.fromMap(Map<String, dynamic> mapa) {
     return Reserva(
       id: mapa['id'] ?? '',
-      usuarioId: mapa['usuario_id'] ?? '',
-      nombreCompleto: mapa['nombre_completo'] ?? mapa['nombreCompleto'] ?? '',
+      usuarioId: mapa['usuarioId'] ?? mapa['usuario_id'] ?? '',
+      nombreCompleto: mapa['nombreCompleto'] ?? mapa['nombre_completo'] ?? '',
       fecha: _parseFecha(mapa['fecha'] ?? ''),
       hora: mapa['hora'] ?? '',
       comensales: mapa['comensales'] ?? 1,
       turno: mapa['turno'] ?? 'comida',
       estado: mapa['estado'] ?? 'Confirmada',
-      mesaId: mapa['mesa_id'],
-      numeroMesa: mapa['numero_mesa'],
+      mesaId: mapa['mesaId'] ?? mapa['mesa_id'],
+      numeroMesa: mapa['numeroMesa'] ?? mapa['numero_mesa'],
       notas: mapa['notas'],
     );
   }
@@ -61,15 +61,15 @@ class Reserva {
   Map<String, dynamic> toMap() {
     return {
       'id': id,
-      'usuario_id': usuarioId,
-      'nombre_completo': nombreCompleto, 
+      'usuarioId': usuarioId,
+      'nombreCompleto': nombreCompleto,
       'fecha': DateFormat('yyyy-MM-dd').format(fecha),
       'hora': hora,
       'comensales': comensales,
       'turno': turno,
       'estado': estado,
-      'mesa_id': mesaId,
-      'numero_mesa': numeroMesa,
+      'mesaId': mesaId,
+      'numeroMesa': numeroMesa,
       'notas': notas,
     };
   }

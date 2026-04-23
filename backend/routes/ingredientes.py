@@ -9,9 +9,9 @@ def _formato(i: dict) -> dict:
     return {
         "id": str(i["_id"]),
         "nombre": i.get("nombre", i.get("ingrediente", "")),
-        "cantidad_actual": i.get("cantidad_actual", 0),
+        "cantidadActual": i.get("cantidad_actual", 0),
         "unidad": i.get("unidad", "kg"),
-        "stock_minimo": i.get("stock_minimo", 0),
+        "stockMinimo": i.get("stock_minimo", 0),
         "categoria": i.get("categoria", "Otros"),
     }
 
@@ -37,12 +37,30 @@ def ingredientes_stock_bajo():
 
 @router.post("")
 def crear_ingrediente(ingrediente: IngredienteCrear):
-    resultado = coleccion_ingredientes.insert_one(ingrediente.model_dump())
+    doc = {
+        "nombre": ingrediente.nombre,
+        "cantidad_actual": ingrediente.cantidadActual,
+        "unidad": ingrediente.unidad,
+        "stock_minimo": ingrediente.stockMinimo,
+        "categoria": ingrediente.categoria,
+    }
+    resultado = coleccion_ingredientes.insert_one(doc)
     return {"id": str(resultado.inserted_id), "mensaje": "Ingrediente creado"}
 
 @router.put("/{ingrediente_id}")
 def actualizar_ingrediente(ingrediente_id: str, datos: IngredienteActualizar):
-    campos = {k: v for k, v in datos.model_dump().items() if v is not None}
+    mapa_campos = {
+        "cantidadActual": "cantidad_actual",
+        "stockMinimo": "stock_minimo",
+        "nombre": "nombre",
+        "unidad": "unidad",
+        "categoria": "categoria",
+    }
+    campos = {
+        mapa_campos[k]: v
+        for k, v in datos.model_dump().items()
+        if v is not None and k in mapa_campos
+    }
     if not campos:
         raise HTTPException(status_code=400, detail="No hay campos para actualizar")
     resultado = coleccion_ingredientes.update_one(

@@ -58,8 +58,8 @@ class ReservaService {
       Uri.parse('$baseUrl/reservas'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
-        'usuario_id': userId,
-        'nombre_completo': nombreCompleto,
+        'usuarioId': userId,
+        'nombreCompleto': nombreCompleto,
         'fecha': fecha.toIso8601String().split('T').first,
         'hora': hora,
         'comensales': comensales,
@@ -113,7 +113,7 @@ class ReservaService {
     }
 
     final response = await http.get(
-      Uri.parse('$baseUrl/reservas?usuario_id=$userId'),
+      Uri.parse('$baseUrl/reservas?usuarioId=$userId'),
     );
 
     if (response.statusCode == 200) {

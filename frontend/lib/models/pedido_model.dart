@@ -63,11 +63,11 @@ class Pedido {
       total: (mapa['total'] ?? 0.0).toDouble(),
       estado: mapa['estado'] ?? '',
       items: mapa['items'] ?? 0,
-      tipoEntrega: mapa['tipo_entrega'] ?? '',
-      metodoPago: mapa['metodo_pago'] ?? '',
+      tipoEntrega: mapa['tipoEntrega'] ?? '',
+      metodoPago: mapa['metodoPago'] ?? '',
       direccion: mapa['direccion'],
-      mesaId: mapa['mesa_id'],
-      numeroMesa: mapa['numero_mesa'],
+      mesaId: mapa['mesaId'],
+      numeroMesa: mapa['numeroMesa'],
       productos: productosList,
     );
   }
@@ -79,11 +79,11 @@ class Pedido {
       'total': total,
       'estado': estado,
       'items': items,
-      'tipo_entrega': tipoEntrega,
-      'metodo_pago': metodoPago,
+      'tipoEntrega': tipoEntrega,
+      'metodoPago': metodoPago,
       'direccion': direccion,
-      'mesa_id': mesaId,
-      'numero_mesa': numeroMesa,
+      'mesaId': mesaId,
+      'numeroMesa': numeroMesa,
       'productos': productos.map((p) => p.toMap()).toList(),
     };
   }
