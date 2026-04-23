@@ -454,4 +454,42 @@ class ApiService {
   static Map<String, String> _jsonHeaders() {
     return {'Content-Type': 'application/json', 'Accept': 'application/json'};
   }
+
+  static Map<String, dynamic> _decodeBody(http.Response response) {
+    if (response.body.isEmpty) {
+      return <String, dynamic>{};
+    }
+
+    final decoded = jsonDecode(response.body);
+
+    if (decoded is Map<String, dynamic>) {
+      return decoded;
+    }
+
+    return {'data': decoded};
+  }
+
+  static Future<void> agregarItemTicket({
+  required String mesaId,
+  required Producto producto,
+  required int cantidad,
+}) async {
+  final body = {
+    "producto_id": producto.id,
+    "nombre": producto.nombre,
+    "cantidad": cantidad,
+    "precio": producto.precio,
+  };
+
+  final res = await http.post(
+    Uri.parse("$baseUrl/tickets/mesa/$mesaId"),
+    headers: {"Content-Type": "application/json"},
+    body: jsonEncode(body),
+  );
+
+  if (res.statusCode != 200) {
+    throw Exception("Error al enviar item al ticket");
+  }
+}
+
 }
