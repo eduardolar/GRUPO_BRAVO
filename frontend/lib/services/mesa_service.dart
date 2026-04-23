@@ -3,25 +3,25 @@ import 'package:http/http.dart' as http;
 import '../models/mesa_model.dart';
 import '../data/mock_data.dart';
 import 'api_config.dart';
+import 'http_client.dart';
 
 class MesaService {
-  /// Obtener todas las mesas del local
   static Future<List<Mesa>> obtenerMesas() async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 300));
       return List.from(MockData.mesas);
     }
 
-    final response = await http.get(Uri.parse('$baseUrl/mesas'));
+    final response = await httpWithRetry(
+      () => http.get(Uri.parse('$baseUrl/mesas')),
+    );
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
       return data.map((m) => Mesa.fromMap(m as Map<String, dynamic>)).toList();
-    } else {
-      throw Exception('Error al obtener mesas');
     }
+    throw toApiException(response.statusCode, decodeBody(response));
   }
 
-  /// Validar código QR de una mesa
   static Future<Map<String, dynamic>> validarQrMesa({
     required String codigoQr,
   }) async {
@@ -32,7 +32,7 @@ class MesaService {
         orElse: () => null,
       );
       if (mesa == null) {
-        throw Exception('QR no válido');
+        throw const ApiException(404, 'QR no válido');
       }
       return {
         'mesaId': mesa.id,
@@ -41,21 +41,19 @@ class MesaService {
       };
     }
 
-    final response = await http.post(
-      Uri.parse('$baseUrl/mesas/validar-qr'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'codigoQr': codigoQr}),
+    final response = await httpWithRetry(
+      () => http.post(
+        Uri.parse('$baseUrl/mesas/validar-qr'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'codigoQr': codigoQr}),
+      ),
+      retry: false,
     );
 
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      final error = jsonDecode(response.body);
-      throw Exception(error['detail'] ?? 'QR no válido');
-    }
+    if (response.statusCode == 200) return jsonDecode(response.body);
+    throw toApiException(response.statusCode, decodeBody(response));
   }
 
-  /// Crear una nueva mesa
   static Future<Mesa> crearMesa({
     required int numero,
     required int capacidad,
@@ -76,26 +74,26 @@ class MesaService {
       return nueva;
     }
 
-    final response = await http.post(
-      Uri.parse('$baseUrl/mesas'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'numero': numero,
-        'capacidad': capacidad,
-        'ubicacion': ubicacion,
-        'codigoQr': codigoQr,
-      }),
+    final response = await httpWithRetry(
+      () => http.post(
+        Uri.parse('$baseUrl/mesas'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'numero': numero,
+          'capacidad': capacidad,
+          'ubicacion': ubicacion,
+          'codigoQr': codigoQr,
+        }),
+      ),
+      retry: false,
     );
 
     if (response.statusCode == 200 || response.statusCode == 201) {
       return Mesa.fromMap(jsonDecode(response.body) as Map<String, dynamic>);
-    } else {
-      final error = jsonDecode(response.body);
-      throw Exception(error['detail'] ?? 'Error al crear la mesa');
     }
+    throw toApiException(response.statusCode, decodeBody(response));
   }
 
-  /// Marcar una mesa como ocupada
   static Future<void> marcarMesaOcupada(String mesaId) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 200));
@@ -106,14 +104,17 @@ class MesaService {
       return;
     }
 
-    final response = await http.patch(
-      Uri.parse('$baseUrl/mesas/$mesaId'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'disponible': false}),
+    final response = await httpWithRetry(
+      () => http.patch(
+        Uri.parse('$baseUrl/mesas/$mesaId'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'disponible': false}),
+      ),
+      retry: false,
     );
 
     if (response.statusCode != 200) {
-      throw Exception('Error al marcar mesa como ocupada');
+      throw toApiException(response.statusCode, decodeBody(response));
     }
   }
 }

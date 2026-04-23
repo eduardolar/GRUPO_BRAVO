@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import '../models/pedido_model.dart';
 import '../data/mock_data.dart';
 import 'api_config.dart';
+import 'http_client.dart';
 
 class PedidoService {
   static Future<Map<String, dynamic>> crearPedido({
@@ -39,34 +40,34 @@ class PedidoService {
       };
     }
 
-    final response = await http.post(
-      Uri.parse('$baseUrl/pedidos'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: jsonEncode({
-        'userId': userId,
-        'items': items,
-        'tipoEntrega': tipoEntrega,
-        'metodoPago': metodoPago,
-        'total': total,
-        'direccionEntrega': direccionEntrega,
-        'mesaId': mesaId,
-        'numeroMesa': numeroMesa,
-        'notas': notas,
-        'referenciaPago': referenciaPago,
-        'estadoPago': estadoPago,
-      }),
+    final response = await httpWithRetry(
+      () => http.post(
+        Uri.parse('$baseUrl/pedidos'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({
+          'userId': userId,
+          'items': items,
+          'tipoEntrega': tipoEntrega,
+          'metodoPago': metodoPago,
+          'total': total,
+          'direccionEntrega': direccionEntrega,
+          'mesaId': mesaId,
+          'numeroMesa': numeroMesa,
+          'notas': notas,
+          'referenciaPago': referenciaPago,
+          'estadoPago': estadoPago,
+        }),
+      ),
+      retry: false,
     );
 
-    final data = _decodeBody(response);
-
     if (response.statusCode == 200 || response.statusCode == 201) {
-      return Map<String, dynamic>.from(data);
-    } else {
-      throw Exception(data['detail'] ?? 'Error al crear pedido');
+      return Map<String, dynamic>.from(decodeBody(response));
     }
+    throw toApiException(response.statusCode, decodeBody(response));
   }
 
   static Future<List<Pedido>> obtenerHistorialPedidos({
@@ -77,9 +78,11 @@ class PedidoService {
       return MockData.pedidos.map((m) => Pedido.fromMap(m)).toList();
     }
 
-    final response = await http.get(
-      Uri.parse('$baseUrl/pedidos?userId=$userId'),
-      headers: {'Accept': 'application/json'},
+    final response = await httpWithRetry(
+      () => http.get(
+        Uri.parse('$baseUrl/pedidos?userId=$userId'),
+        headers: {'Accept': 'application/json'},
+      ),
     );
 
     if (response.statusCode == 200) {
@@ -87,10 +90,8 @@ class PedidoService {
       return data
           .map((json) => Pedido.fromMap(json as Map<String, dynamic>))
           .toList();
-    } else {
-      final data = _decodeBody(response);
-      throw Exception(data['detail'] ?? 'Error al obtener historial');
     }
+    throw toApiException(response.statusCode, decodeBody(response));
   }
 
   static Future<bool> enviarPedidoPorQR({
@@ -98,41 +99,29 @@ class PedidoService {
     required List<dynamic> items,
   }) async {
     try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/pedidos'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: jsonEncode({
-          'userId': '',
-          'items': items,
-          'tipoEntrega': 'Comer en el local',
-          'metodoPago': 'Pendiente',
-          'total': 0,
-          'mesaId': mesaId,
-          'notas': 'Pedido enviado por QR',
-          'estadoPago': 'pendiente',
-        }),
+      final response = await httpWithRetry(
+        () => http.post(
+          Uri.parse('$baseUrl/pedidos'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: jsonEncode({
+            'userId': '',
+            'items': items,
+            'tipoEntrega': 'Comer en el local',
+            'metodoPago': 'Pendiente',
+            'total': 0,
+            'mesaId': mesaId,
+            'notas': 'Pedido enviado por QR',
+            'estadoPago': 'pendiente',
+          }),
+        ),
+        retry: false,
       );
-
       return response.statusCode == 200 || response.statusCode == 201;
-    } catch (_) {
+    } on ApiException {
       return false;
     }
-  }
-
-  static Map<String, dynamic> _decodeBody(http.Response response) {
-    if (response.body.isEmpty) {
-      return <String, dynamic>{};
-    }
-
-    final decoded = jsonDecode(response.body);
-
-    if (decoded is Map<String, dynamic>) {
-      return decoded;
-    }
-
-    return {'data': decoded};
   }
 }

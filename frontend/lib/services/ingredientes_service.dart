@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/ingrediente_model.dart';
 import 'api_config.dart';
+import 'http_client.dart';
 
 class IngredienteService {
   static const List<String> categorias = [
@@ -38,13 +39,14 @@ class IngredienteService {
       await Future.delayed(const Duration(milliseconds: 300));
       return List.from(_mockIngredientes);
     }
-    final response = await http.get(Uri.parse('$baseUrl/ingredientes'));
+    final response = await httpWithRetry(
+      () => http.get(Uri.parse('$baseUrl/ingredientes')),
+    );
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
       return data.map((json) => Ingrediente.fromJson(json)).toList();
-    } else {
-      throw Exception('Error al obtener ingredientes');
     }
+    throw toApiException(response.statusCode, decodeBody(response));
   }
 
   static Future<Map<String, List<Ingrediente>>> obtenerIngredientesPorCategoria() async {
@@ -56,44 +58,54 @@ class IngredienteService {
       }
       return agrupados;
     }
-    final response = await http.get(Uri.parse('$baseUrl/ingredientes/por-categoria'));
+    final response = await httpWithRetry(
+      () => http.get(Uri.parse('$baseUrl/ingredientes/por-categoria')),
+    );
     if (response.statusCode == 200) {
       final Map<String, dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
       return data.map((key, value) {
         final lista = (value as List).map((json) => Ingrediente.fromJson(json)).toList();
         return MapEntry(key, lista);
       });
-    } else {
-      throw Exception('Error al obtener ingredientes por categoría');
     }
+    throw toApiException(response.statusCode, decodeBody(response));
   }
 
   static Future<void> crearIngrediente(Map<String, dynamic> datos) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/ingredientes'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(datos),
+    final response = await httpWithRetry(
+      () => http.post(
+        Uri.parse('$baseUrl/ingredientes'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(datos),
+      ),
+      retry: false,
     );
     if (response.statusCode != 200 && response.statusCode != 201) {
-      throw Exception('Error al crear ingrediente');
+      throw toApiException(response.statusCode, decodeBody(response));
     }
   }
 
   static Future<void> actualizarIngrediente(String id, Map<String, dynamic> datos) async {
-    final response = await http.put(
-      Uri.parse('$baseUrl/ingredientes/$id'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(datos),
+    final response = await httpWithRetry(
+      () => http.put(
+        Uri.parse('$baseUrl/ingredientes/$id'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(datos),
+      ),
+      retry: false,
     );
     if (response.statusCode != 200) {
-      throw Exception('Error al actualizar ingrediente');
+      throw toApiException(response.statusCode, decodeBody(response));
     }
   }
 
   static Future<void> eliminarIngrediente(String id) async {
-    final response = await http.delete(Uri.parse('$baseUrl/ingredientes/$id'));
+    final response = await httpWithRetry(
+      () => http.delete(Uri.parse('$baseUrl/ingredientes/$id')),
+      retry: false,
+    );
     if (response.statusCode != 200) {
-      throw Exception('Error al eliminar ingrediente');
+      throw toApiException(response.statusCode, decodeBody(response));
     }
   }
 }
