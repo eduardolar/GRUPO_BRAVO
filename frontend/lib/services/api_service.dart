@@ -119,6 +119,16 @@ class ApiService {
     estadoPago: estadoPago,
   );
 
+  static Future<void> agregarItemsPedido({
+    required String pedidoId,
+    required List<Map<String, dynamic>> items,
+    required double totalExtra,
+  }) => PedidoService.agregarItemsPedido(
+    pedidoId: pedidoId,
+    items: items,
+    totalExtra: totalExtra,
+  );
+
   static Future<List<Pedido>> obtenerHistorialPedidos({
     required String userId,
   }) => PedidoService.obtenerHistorialPedidos(userId: userId);
@@ -481,14 +491,17 @@ class ApiService {
     "precio": producto.precio,
   };
 
-  final res = await http.post(
-    Uri.parse("$baseUrl/tickets/mesa/$mesaId"),
-    headers: {"Content-Type": "application/json"},
-    body: jsonEncode(body),
+  final response = await httpWithRetry(
+    () => http.post(
+      Uri.parse("$baseUrl/tickets/mesa/$mesaId"),
+      headers: _jsonHeaders(),
+      body: jsonEncode(body),
+    ),
+    retry: false,
   );
 
-  if (res.statusCode != 200) {
-    throw Exception("Error al enviar item al ticket");
+  if (response.statusCode >= 400) {
+    throw Exception("Error al enviar item al ticket: ${response.body}");
   }
 }
 

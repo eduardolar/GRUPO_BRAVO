@@ -8,7 +8,9 @@ import 'package:google_fonts/google_fonts.dart';
 
 
 class CrearPedidos extends StatefulWidget {
-  const CrearPedidos({super.key});
+  final String mesaId;
+
+  const CrearPedidos({super.key, required this.mesaId});
 
   @override
   State<CrearPedidos> createState() => _CrearPedidosState();
@@ -20,6 +22,10 @@ class _CrearPedidosState extends State<CrearPedidos> {
   List<Producto> _productos = [];
   bool _cargando = true;
   final Map<Producto, int> _carrito = {};
+  String? _pedidoId;
+  // Acumulado de todos los items ya enviados, clave = producto_id
+  final Map<String, Map<String, dynamic>> _itemsAcumulados = {};
+  double _totalAcumulado = 0.0;
 
   @override
   void initState() {
@@ -200,29 +206,90 @@ class _CrearPedidosState extends State<CrearPedidos> {
   );
 }
 
- void _enviarPedido(BuildContext context) async {
-  final mesaId = ModalRoute.of(context)!.settings.arguments as String;
+void _enviarPedido(BuildContext context) async {
+  try {
+    final mesaId = widget.mesaId;
 
-  for (var entry in _carrito.entries) {
-    await ApiService.agregarItemTicket(
-      mesaId: mesaId,
-      producto: entry.key,
-      cantidad: entry.value,
-    );
+    // Mergear carrito actual en el acumulado:
+    // si el producto ya existe, sumar cantidades; si no, añadirlo
+    for (final entry in _carrito.entries) {
+      final id = entry.key.id;
+      if (_itemsAcumulados.containsKey(id)) {
+        _itemsAcumulados[id]!['cantidad'] =
+            (_itemsAcumulados[id]!['cantidad'] as int) + entry.value;
+      } else {
+        _itemsAcumulados[id] = {
+          "producto_id": id,
+          "nombre": entry.key.nombre,
+          "cantidad": entry.value,
+          "precio": entry.key.precio,
+        };
+      }
+    }
+    _totalAcumulado += _totalPrecio;
+    final allItems = _itemsAcumulados.values.toList();
+
+    if (_pedidoId != null) {
+      // Pedido ya existente: reemplazar items con la lista completa acumulada
+      await ApiService.agregarItemsPedido(
+        pedidoId: _pedidoId!,
+        items: allItems,
+        totalExtra: _totalAcumulado,
+      );
+    } else {
+      // Primer envío: crear pedido nuevo y guardar su id
+      final resultado = await ApiService.crearPedido(
+        userId: "TRABAJADOR",
+        items: allItems,
+        tipoEntrega: "local",
+        metodoPago: "efectivo",
+        total: _totalAcumulado,
+        direccionEntrega: null,
+        mesaId: mesaId,
+        numeroMesa: int.tryParse(mesaId),
+        notas: "",
+        referenciaPago: "",
+        estadoPago: "pendiente",
+      );
+      _pedidoId = (resultado['id'] ?? resultado['_id'])?.toString();
+    }
+
+    if (!mounted) return;
+    setState(() => _carrito.clear());
+    _showSnack(context, "Pedido enviado a cocina · puedes añadir más platos");
+
+  } catch (e) {
+    if (!mounted) return;
+    // Si falla, deshacer el merge para no corromper el acumulado
+    for (final entry in _carrito.entries) {
+      final id = entry.key.id;
+      final item = _itemsAcumulados[id];
+      if (item != null) {
+        final nuevaCantidad = (item['cantidad'] as int) - entry.value;
+        if (nuevaCantidad <= 0) {
+          _itemsAcumulados.remove(id);
+        } else {
+          item['cantidad'] = nuevaCantidad;
+        }
+      }
+    }
+    _totalAcumulado -= _totalPrecio;
+    _showSnack(context, "Error al enviar pedido", error: true);
   }
-
-  setState(() => _carrito.clear());
-  _showSnack(context, 'Pedido enviado a cocina');
 }
 
 
-  void _showSnack(BuildContext context, String mensaje) {
+  void _showSnack(BuildContext context, String mensaje, {bool error = false}) {
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
           children: [
-            const Icon(Icons.check, color: Colors.white, size: 15),
+            Icon(
+              error ? Icons.error_outline : Icons.check,
+              color: Colors.white,
+              size: 15,
+            ),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
@@ -237,8 +304,8 @@ class _CrearPedidosState extends State<CrearPedidos> {
             ),
           ],
         ),
-        duration: const Duration(seconds: 2),
-        backgroundColor: AppColors.button,
+        duration: const Duration(seconds: 3),
+        backgroundColor: error ? Colors.red.shade800 : AppColors.button,
         behavior: SnackBarBehavior.floating,
         shape: const RoundedRectangleBorder(),
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 32),

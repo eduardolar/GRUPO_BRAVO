@@ -94,6 +94,37 @@ class PedidoService {
     throw toApiException(response.statusCode, decodeBody(response));
   }
 
+  static Future<void> agregarItemsPedido({
+    required String pedidoId,
+    required List<Map<String, dynamic>> items,
+    required double totalExtra,
+  }) async {
+    if (!usarApiReal) {
+      await Future.delayed(const Duration(milliseconds: 400));
+      return;
+    }
+
+    // PATCH: reemplaza items y total con la lista completa acumulada
+    final response = await httpWithRetry(
+      () => http.patch(
+        Uri.parse('$baseUrl/pedidos/$pedidoId'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({
+          'items': items,
+          'total': totalExtra,
+        }),
+      ),
+      retry: false,
+    );
+
+    if (response.statusCode >= 400) {
+      throw toApiException(response.statusCode, decodeBody(response));
+    }
+  }
+
   static Future<bool> enviarPedidoPorQR({
     required String mesaId,
     required List<dynamic> items,

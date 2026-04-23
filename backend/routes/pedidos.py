@@ -3,6 +3,7 @@ from datetime import datetime
 from bson import ObjectId
 from fastapi_mail import FastMail, MessageSchema, MessageType
 from pydantic import BaseModel
+from typing import Optional
 import logging
 
 from database import coleccion_pedidos, coleccion_productos, coleccion_ingredientes, coleccion_usuarios
@@ -191,6 +192,11 @@ class ActualizarEstadoPago(BaseModel):
     estadoPago: str = "pagado"
 
 
+class ActualizarItemsPedido(BaseModel):
+    items: list[dict]
+    total: Optional[float] = None
+
+
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @router.post("")
@@ -261,6 +267,24 @@ def actualizar_estado_pago(payload: ActualizarEstadoPago):
     return {"updated": result.modified_count > 0}
 
 
+@router.patch("/{pedido_id}")
+def actualizar_items_pedido(pedido_id: str, payload: ActualizarItemsPedido):
+    if not ObjectId.is_valid(pedido_id):
+        raise HTTPException(status_code=400, detail="ID de pedido inválido")
+
+    campos = {"items": payload.items}
+    if payload.total is not None:
+        campos["total"] = payload.total
+
+    result = coleccion_pedidos.update_one(
+        {"_id": ObjectId(pedido_id)},
+        {"$set": campos},
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Pedido no encontrado")
+    return {"updated": result.modified_count > 0}
+
+
 @router.get("")
 def obtener_pedidos(userId: str = Query(...)):
     pedidos = coleccion_pedidos.find({"usuario_id": userId})
@@ -283,3 +307,28 @@ def obtener_pedidos(userId: str = Query(...)):
             "notas": p.get("notas", ""),
         })
     return resultado
+
+
+@router.patch("/{pedido_id}/items")
+def actualizar_items_pedido(pedido_id: str, payload: ActualizarItemsPedido):
+    if not ObjectId.is_valid(pedido_id):
+        raise HTTPException(status_code=400, detail="ID de pedido inválido")
+
+    pedido = coleccion_pedidos.find_one({"_id": ObjectId(pedido_id)})
+    if not pedido:
+        raise HTTPException(status_code=404, detail="Pedido no encontrado")
+
+    total = payload.total if payload.total is not None else sum(
+        it.get("cantidad", 1) * it.get("precio", 0) for it in payload.items
+    )
+
+    coleccion_pedidos.update_one(
+        {"_id": ObjectId(pedido_id)},
+        {"$set": {"items": payload.items, "total": total}},
+    )
+
+    return {
+        "id": pedido_id,
+        "items": payload.items,
+        "total": total,
+    }
