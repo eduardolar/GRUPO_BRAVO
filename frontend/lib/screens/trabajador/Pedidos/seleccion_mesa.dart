@@ -104,7 +104,7 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const CrearPedidos()),
+        MaterialPageRoute(builder: (_) => CrearPedidos(mesaId: mesa.id)),
       );
     } catch (_) {
       if (!mounted) return;
