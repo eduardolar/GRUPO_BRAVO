@@ -422,4 +422,28 @@ class ApiService {
 
     return {'data': decoded};
   }
+
+  static Future<void> agregarItemTicket({
+  required String mesaId,
+  required Producto producto,
+  required int cantidad,
+}) async {
+  final body = {
+    "producto_id": producto.id,
+    "nombre": producto.nombre,
+    "cantidad": cantidad,
+    "precio": producto.precio,
+  };
+
+  final res = await http.post(
+    Uri.parse("$baseUrl/tickets/mesa/$mesaId"),
+    headers: {"Content-Type": "application/json"},
+    body: jsonEncode(body),
+  );
+
+  if (res.statusCode != 200) {
+    throw Exception("Error al enviar item al ticket");
+  }
+}
+
 }

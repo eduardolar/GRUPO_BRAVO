@@ -200,10 +200,21 @@ class _CrearPedidosState extends State<CrearPedidos> {
   );
 }
 
-  void _enviarPedido(BuildContext context) {
-    setState(() => _carrito.clear());
-    _showSnack(context, 'Pedido enviado a cocina');
+ void _enviarPedido(BuildContext context) async {
+  final mesaId = ModalRoute.of(context)!.settings.arguments as String;
+
+  for (var entry in _carrito.entries) {
+    await ApiService.agregarItemTicket(
+      mesaId: mesaId,
+      producto: entry.key,
+      cantidad: entry.value,
+    );
   }
+
+  setState(() => _carrito.clear());
+  _showSnack(context, 'Pedido enviado a cocina');
+}
+
 
   void _showSnack(BuildContext context, String mensaje) {
     ScaffoldMessenger.of(context).clearSnackBars();
