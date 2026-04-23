@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../../models/usuario_model.dart';
-import '../../services/usuario_service.dart';
+import '../../providers/usuario_provider.dart';
 import '../../core/colors_style.dart';
 
 class GestionRolesScreen extends StatefulWidget {
@@ -14,7 +15,13 @@ class GestionRolesScreen extends StatefulWidget {
 }
 
 class _GestionRolesScreenState extends State<GestionRolesScreen> {
-  final UsuarioService _usuarioService = UsuarioService();
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<UsuarioProvider>().cargar();
+    });
+  }
 
   static const _rolesOrden = [
     'administrador',
@@ -86,15 +93,14 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
               children: [
                 _buildHeader(),
                 Expanded(
-                  child: FutureBuilder<List<Usuario>>(
-                    future: _usuarioService.obtenerTodos(),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
+                  child: Consumer<UsuarioProvider>(
+                    builder: (context, provider, _) {
+                      if (provider.cargando) {
                         return const Center(
                           child: CircularProgressIndicator(color: AppColors.button),
                         );
                       }
-                      if (snapshot.hasError) {
+                      if (provider.error != null) {
                         return Center(
                           child: Text(
                             'Error al cargar datos',
@@ -103,7 +109,7 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
                         );
                       }
 
-                      final lista = _filtrarPorRestaurante(snapshot.data ?? []);
+                      final lista = _filtrarPorRestaurante(provider.usuarios);
                       final grupos = _agruparPorRol(lista);
 
                       if (grupos.isEmpty) {
@@ -307,12 +313,12 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
               onPressed: () async {
                 final nav = Navigator.of(context);
                 final messenger = ScaffoldMessenger.of(context);
+                final provider = context.read<UsuarioProvider>();
                 try {
-                  final ok = await _usuarioService.cambiarRol(user.id, rolActual);
+                  final ok = await provider.cambiarRol(user.id, rolActual);
                   if (ok) {
                     if (!mounted) return;
                     nav.pop();
-                    setState(() {});
                     messenger.showSnackBar(SnackBar(
                       content: Text('Rol actualizado a ${_rolesEtiqueta[rolActual] ?? rolActual}', style: GoogleFonts.manrope()),
                       backgroundColor: AppColors.button,

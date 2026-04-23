@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../../models/usuario_model.dart';
-import '../../services/usuario_service.dart';
+import '../../providers/usuario_provider.dart';
 import '../../core/colors_style.dart';
 
 class GestionAdministradorScreen extends StatefulWidget {
@@ -13,7 +14,13 @@ class GestionAdministradorScreen extends StatefulWidget {
 }
 
 class _GestionAdministradorScreen extends State<GestionAdministradorScreen> {
-  final UsuarioService _usuarioService = UsuarioService();
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<UsuarioProvider>().cargar();
+    });
+  }
 
   String get _titulo {
     final r = widget.rolAFiltrar.toLowerCase();
@@ -35,10 +42,9 @@ class _GestionAdministradorScreen extends State<GestionAdministradorScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: FutureBuilder<List<Usuario>>(
-        future: _usuarioService.obtenerTodos(),
-        builder: (context, snapshot) {
-          final lista = snapshot.hasData ? _filtrar(snapshot.data!) : <Usuario>[];
+      body: Consumer<UsuarioProvider>(
+        builder: (context, provider, _) {
+          final lista = _filtrar(provider.usuarios);
 
           return CustomScrollView(
             slivers: [
@@ -54,7 +60,7 @@ class _GestionAdministradorScreen extends State<GestionAdministradorScreen> {
                   style: GoogleFonts.manrope(fontWeight: FontWeight.w700, color: Colors.white),
                 ),
                 actions: [
-                  if (snapshot.hasData)
+                  if (!provider.cargando)
                     Padding(
                       padding: const EdgeInsets.only(right: 16),
                       child: Center(
@@ -70,15 +76,15 @@ class _GestionAdministradorScreen extends State<GestionAdministradorScreen> {
                     ),
                 ],
               ),
-              if (snapshot.connectionState == ConnectionState.waiting)
+              if (provider.cargando)
                 const SliverFillRemaining(
                   child: Center(child: CircularProgressIndicator(color: AppColors.button)),
                 )
-              else if (snapshot.hasError)
+              else if (provider.error != null)
                 SliverFillRemaining(
                   child: Center(
                     child: Text(
-                      'Error al cargar datos: ${snapshot.error}',
+                      'Error al cargar datos',
                       style: GoogleFonts.manrope(color: AppColors.textSecondary),
                     ),
                   ),
@@ -168,11 +174,10 @@ class _GestionAdministradorScreen extends State<GestionAdministradorScreen> {
             onPressed: () async {
               final nav = Navigator.of(context);
               final messenger = ScaffoldMessenger.of(context);
-              final borrado = await _usuarioService.eliminarUsuario(user.id);
+              final borrado = await context.read<UsuarioProvider>().eliminar(user.id);
               if (borrado) {
                 if (!mounted) return;
                 nav.pop();
-                setState(() {});
                 messenger.showSnackBar(
                   SnackBar(
                     content: Text('Usuario eliminado', style: GoogleFonts.manrope()),

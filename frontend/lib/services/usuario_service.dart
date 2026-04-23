@@ -94,7 +94,7 @@ class UsuarioService {
             'correo': correo,
             'password': password,
             'rol': rol,
-            'restaurante_id': restauranteId,
+            'restauranteId': restauranteId,
           }),
         ),
         retry: false,
