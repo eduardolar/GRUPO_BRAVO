@@ -55,16 +55,14 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
     final idFiltro = widget.restauranteId.trim().toLowerCase();
     return todos.where((u) {
       if ((u.restauranteId ?? '').toString().trim().toLowerCase() != idFiltro) return false;
-      final rol = u.rol.toString().split('.').last.toLowerCase();
-      return rol != 'cliente';
+      return u.rolRaw != 'cliente';
     }).toList();
   }
 
   Map<String, List<Usuario>> _agruparPorRol(List<Usuario> lista) {
     final Map<String, List<Usuario>> grupos = {};
     for (final u in lista) {
-      final rol = u.rol.toString().split('.').last.toLowerCase();
-      grupos.putIfAbsent(rol, () => []).add(u);
+      grupos.putIfAbsent(u.rolRaw, () => []).add(u);
     }
     grupos.removeWhere((_, v) => v.isEmpty);
     return grupos;
@@ -232,7 +230,7 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
   }
 
   void _mostrarDialogoCambiarRol(BuildContext context, Usuario user) {
-    String rolActual = user.rol.toString().split('.').last.toLowerCase();
+    String rolActual = user.rolRaw;
     if (!_opcionesRol.contains(rolActual)) rolActual = 'trabajador';
 
     showDialog(
@@ -348,7 +346,7 @@ class _RolTile extends StatelessWidget {
         ? usuario.nombre.trim().split(' ').map((e) => e.isNotEmpty ? e[0].toUpperCase() : '').take(2).join()
         : '?';
 
-    final rolLabel = _labelRol(usuario.rol.toString().split('.').last.toLowerCase());
+    final rolLabel = _labelRol(usuario.rolRaw);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),

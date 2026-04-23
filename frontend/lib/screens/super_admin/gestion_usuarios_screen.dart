@@ -60,20 +60,19 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
       final idDB = (u.restauranteId ?? '').toString().trim().toLowerCase();
       if (idDB != idFiltro) return false;
 
-      final rol = u.rol.toString().split('.').last.toLowerCase();
+      final rol = u.rolRaw;
 
       if (filtro == 'cliente') return rol == 'cliente';
       if (filtro == 'trabajador') return _rolesPersonal.contains(rol);
       if (filtro.isNotEmpty) return rol == filtro;
-      return true; // sin filtro: todos
+      return true;
     }).toList();
   }
 
   Map<String, List<Usuario>> _agruparPorRol(List<Usuario> lista) {
     final Map<String, List<Usuario>> grupos = {};
     for (final u in lista) {
-      final rol = u.rol.toString().split('.').last.toLowerCase();
-      grupos.putIfAbsent(rol, () => []).add(u);
+      grupos.putIfAbsent(u.rolRaw, () => []).add(u);
     }
     grupos.removeWhere((_, v) => v.isEmpty);
     return grupos;
