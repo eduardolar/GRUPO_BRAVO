@@ -37,7 +37,7 @@ class Usuario {
       direccion: json['direccion'] ?? '',
       rol: _parseRol(normalizedRol),
       rolRaw: normalizedRol,
-      restauranteId: json['restaurante_id']?.toString(),
+      restauranteId: (json['restauranteId'] ?? json['restaurante_id'])?.toString(),
     );
   }
 
@@ -98,7 +98,7 @@ class Usuario {
       'telefono': telefono,
       'direccion': direccion,
       'rol': rolRaw,
-      if (restauranteId != null) 'restaurante_id': restauranteId,
+      if (restauranteId != null) 'restauranteId': restauranteId,
     };
   }
 }

@@ -187,8 +187,8 @@ async def _enviar_factura(email_destino: str, nombre_usuario: str, pedido_id: st
 # ── Modelos ───────────────────────────────────────────────────────────────────
 
 class ActualizarEstadoPago(BaseModel):
-    referencia_pago: str
-    estado_pago: str = "pagado"
+    referenciaPago: str
+    estadoPago: str = "pagado"
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
@@ -243,18 +243,18 @@ async def crear_pedido(pedido: PedidoCrear):
         "fecha": pedido_dict["fecha"],
         "total": pedido.total,
         "estado": "pendiente",
-        "estado_pago": pedido_dict["estado_pago"],
+        "estadoPago": pedido_dict["estado_pago"],
         "items": len(pedido.items),
-        "mesa_id": pedido_dict.get("mesa_id"),
-        "numero_mesa": pedido_dict.get("numero_mesa"),
+        "mesaId": pedido_dict.get("mesa_id"),
+        "numeroMesa": pedido_dict.get("numero_mesa"),
     }
 
 
 @router.patch("/actualizar-estado-pago")
 def actualizar_estado_pago(payload: ActualizarEstadoPago):
     result = coleccion_pedidos.update_one(
-        {"referencia_pago": payload.referencia_pago},
-        {"$set": {"estado_pago": payload.estado_pago}},
+        {"referencia_pago": payload.referenciaPago},
+        {"$set": {"estado_pago": payload.estadoPago}},
     )
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Pedido no encontrado con esa referencia de pago")
@@ -272,14 +272,14 @@ def obtener_pedidos(userId: str = Query(...)):
             "fecha": p.get("fecha", ""),
             "total": p.get("total", 0),
             "estado": p.get("estado", "pendiente"),
-            "estado_pago": p.get("estado_pago", "pendiente"),
+            "estadoPago": p.get("estado_pago", "pendiente"),
             "items": len(items_raw) if isinstance(items_raw, list) else items_raw,
             "productos": items_raw if isinstance(items_raw, list) else [],
-            "tipo_entrega": p.get("tipo_entrega", ""),
-            "metodo_pago": p.get("metodo_pago", ""),
+            "tipoEntrega": p.get("tipo_entrega", ""),
+            "metodoPago": p.get("metodo_pago", ""),
             "direccion": p.get("direccion_entrega", ""),
-            "mesa_id": p.get("mesa_id"),
-            "numero_mesa": p.get("numero_mesa"),
+            "mesaId": p.get("mesa_id"),
+            "numeroMesa": p.get("numero_mesa"),
             "notas": p.get("notas", ""),
         })
     return resultado

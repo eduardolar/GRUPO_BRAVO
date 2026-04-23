@@ -90,24 +90,31 @@ async def registrar_usuario(usuario: UsuarioRegistro):
             raise HTTPException(status_code=400, detail="El correo ya está registrado")
 
         # Regla Senior: Validar restaurante_id para empleados
-        if usuario.rol != "cliente" and not usuario.restaurante_id:
+        if usuario.rol != "cliente" and not usuario.restauranteId:
             raise HTTPException(
-                status_code=400, 
-                detail="Los empleados deben estar vinculados a un restaurante_id"
+                status_code=400,
+                detail="Los empleados deben estar vinculados a un restauranteId"
             )
 
         # Generar OTP de 6 dígitos
         codigo_otp = ''.join(random.choices(string.digits, k=6))
 
         # Hashear contraseña
-        password_bytes = usuario.password_hash.encode('utf-8')
+        password_bytes = usuario.password.encode('utf-8')
         hashed_password = bcrypt.hashpw(password_bytes, bcrypt.gensalt())
 
-        # Preparar documento para MongoDB
-        usuario_dict = usuario.model_dump()
-        usuario_dict["password_hash"] = hashed_password.decode('utf-8')
-        usuario_dict["is_verified"] = False
-        usuario_dict["verification_code"] = codigo_otp
+        # Preparar documento para MongoDB (DB usa snake_case internamente)
+        usuario_dict = {
+            "nombre": usuario.nombre,
+            "correo": usuario.correo,
+            "telefono": usuario.telefono,
+            "direccion": usuario.direccion,
+            "rol": usuario.rol,
+            "restaurante_id": usuario.restauranteId,
+            "password_hash": hashed_password.decode('utf-8'),
+            "is_verified": False,
+            "verification_code": codigo_otp,
+        }
 
         # Guardar en base de datos
         coleccion_usuarios.insert_one(usuario_dict)
@@ -169,7 +176,7 @@ def iniciar_sesion(credenciales: UsuarioLogin):
                 detail="Cuenta no verificada. Por favor, revisa tu correo."
             )
 
-        password_escrita = credenciales.password_hash.encode('utf-8')
+        password_escrita = credenciales.password.encode('utf-8')
         hash_almacenado = usuario_db["password_hash"].encode('utf-8')
 
         if bcrypt.checkpw(password_escrita, hash_almacenado):
@@ -178,7 +185,7 @@ def iniciar_sesion(credenciales: UsuarioLogin):
                 "nombre": usuario_db["nombre"],
                 "correo": usuario_db["correo"],
                 "rol": usuario_db.get("rol", "cliente"),
-                "restaurante_id": usuario_db.get("restaurante_id", "")
+                "restauranteId": usuario_db.get("restaurante_id", "")
             }
    
     raise HTTPException(status_code=401, detail="Credenciales incorrectas")

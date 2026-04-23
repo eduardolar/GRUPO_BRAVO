@@ -64,53 +64,53 @@ def obtener_reservas_futuras():
     for r in reservas:
         item = {
             "id": str(r["_id"]),
-            "usuario_id": r.get("usuario_id", ""),
-            "nombre_completo": r.get("nombre_completo", ""),
+            "usuarioId": r.get("usuario_id", ""),
+            "nombreCompleto": r.get("nombre_completo", ""),
             "fecha": r.get("fecha", ""),
             "hora": r.get("hora", ""),
             "comensales": r.get("comensales", 0),
             "turno": r.get("turno", ""),
             "estado": r.get("estado", "Confirmada"),
-            "mesa_id": r.get("mesa_id", ""),
-            "numero_mesa": r.get("numero_mesa"),
+            "mesaId": r.get("mesa_id", ""),
+            "numeroMesa": r.get("numero_mesa"),
             "notas": r.get("notas", ""),
         }
-        if item["numero_mesa"] is None and r.get("mesa_id"):
+        if item["numeroMesa"] is None and r.get("mesa_id"):
             try:
                 mesa = coleccion_mesas.find_one({"_id": ObjectId(r["mesa_id"])})
-                item["numero_mesa"] = mesa.get("numero", 0) if mesa else None
+                item["numeroMesa"] = mesa.get("numero", 0) if mesa else None
             except Exception:
                 logger.warning("No se pudo obtener número de mesa para mesa_id=%s", r.get("mesa_id"))
-                item["numero_mesa"] = None
+                item["numeroMesa"] = None
         resultado.append(item)
     return resultado
 
 
 @router.get("")
-def obtener_reservas(usuario_id: str = Query(...)):
-    reservas = coleccion_reservas.find({"usuario_id": usuario_id})
+def obtener_reservas(usuarioId: str = Query(...)):
+    reservas = coleccion_reservas.find({"usuario_id": usuarioId})
     resultado = []
     for r in reservas:
         item = {
             "id": str(r["_id"]),
-            "usuario_id": r.get("usuario_id", ""),
-            "nombre_completo": r.get("nombre_completo", ""),
+            "usuarioId": r.get("usuario_id", ""),
+            "nombreCompleto": r.get("nombre_completo", ""),
             "fecha": r.get("fecha", ""),
             "hora": r.get("hora", ""),
             "comensales": r.get("comensales", 0),
             "turno": r.get("turno", ""),
             "estado": r.get("estado", "Confirmada"),
-            "mesa_id": r.get("mesa_id", ""),
-            "numero_mesa": r.get("numero_mesa"),
+            "mesaId": r.get("mesa_id", ""),
+            "numeroMesa": r.get("numero_mesa"),
             "notas": r.get("notas", ""),
         }
-        if item["numero_mesa"] is None and r.get("mesa_id"):
+        if item["numeroMesa"] is None and r.get("mesa_id"):
             try:
                 mesa = coleccion_mesas.find_one({"_id": ObjectId(r["mesa_id"])})
-                item["numero_mesa"] = mesa.get("numero", 0) if mesa else None
+                item["numeroMesa"] = mesa.get("numero", 0) if mesa else None
             except Exception:
                 logger.warning("No se pudo obtener número de mesa para mesa_id=%s", r.get("mesa_id"))
-                item["numero_mesa"] = None
+                item["numeroMesa"] = None
         resultado.append(item)
     return resultado
 
@@ -119,8 +119,8 @@ def obtener_reservas(usuario_id: str = Query(...)):
 def crear_reserva(reserva: ReservaCrear):
     ocupadas = _mesas_ocupadas_por_hora(reserva.fecha, reserva.hora)
 
-    if reserva.mesa_id:
-        mesa = coleccion_mesas.find_one({"_id": ObjectId(reserva.mesa_id)})
+    if reserva.mesaId:
+        mesa = coleccion_mesas.find_one({"_id": ObjectId(reserva.mesaId)})
         if not mesa:
             raise HTTPException(status_code=404, detail="Mesa no encontrada")
         if mesa.get("capacidad", 0) < reserva.comensales:
@@ -128,7 +128,7 @@ def crear_reserva(reserva: ReservaCrear):
                 status_code=400,
                 detail=f"La mesa tiene capacidad para {mesa.get('capacidad', 0)} personas, pero se solicitan {reserva.comensales}",
             )
-        if reserva.mesa_id in ocupadas:
+        if reserva.mesaId in ocupadas:
             raise HTTPException(
                 status_code=409,
                 detail="Esa mesa ya está reservada para esa fecha y hora",
@@ -152,14 +152,35 @@ def crear_reserva(reserva: ReservaCrear):
     mesa_id = str(mesa_asignada["_id"])
     numero_mesa = mesa_asignada.get("numero", 0)
 
-    reserva_dict = {k: v for k, v in reserva.model_dump().items() if v is not None}
-    reserva_dict["mesa_id"] = mesa_id
-    reserva_dict["numero_mesa"] = numero_mesa
-    reserva_dict["estado"] = "Confirmada"
+    # DB stores snake_case field names
+    reserva_dict = {
+        "usuario_id": reserva.usuarioId,
+        "nombre_completo": reserva.nombreCompleto,
+        "fecha": reserva.fecha,
+        "hora": reserva.hora,
+        "comensales": reserva.comensales,
+        "turno": reserva.turno,
+        "notas": reserva.notas,
+        "mesa_id": mesa_id,
+        "numero_mesa": numero_mesa,
+        "estado": "Confirmada",
+    }
+    if reserva.notas is None:
+        reserva_dict.pop("notas")
     resultado = coleccion_reservas.insert_one(reserva_dict)
-    reserva_dict["id"] = str(resultado.inserted_id)
-    reserva_dict.pop("_id", None)
-    return reserva_dict
+    return {
+        "id": str(resultado.inserted_id),
+        "usuarioId": reserva.usuarioId,
+        "nombreCompleto": reserva.nombreCompleto,
+        "fecha": reserva.fecha,
+        "hora": reserva.hora,
+        "comensales": reserva.comensales,
+        "turno": reserva.turno,
+        "estado": "Confirmada",
+        "mesaId": mesa_id,
+        "numeroMesa": numero_mesa,
+        "notas": reserva.notas,
+    }
 
 
 @router.patch("/{reserva_id}")

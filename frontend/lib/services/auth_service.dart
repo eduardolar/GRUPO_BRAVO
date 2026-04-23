@@ -21,7 +21,7 @@ class AuthService {
     final response = await http.post(
       Uri.parse('$baseUrl/login'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'correo': correo, 'password_hash': contrasena}),
+      body: jsonEncode({'correo': correo, 'password': contrasena}),
     );
 
     if (response.statusCode == 200) {
@@ -62,7 +62,7 @@ class AuthService {
       body: jsonEncode({
         'nombre': nombre,
         'correo': correo,
-        'password_hash': contrasena,
+        'password': contrasena,
         'telefono': telefono,
         'direccion': direccion,
         'rol': 'cliente',

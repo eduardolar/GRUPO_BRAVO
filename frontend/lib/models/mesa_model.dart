@@ -22,7 +22,7 @@ class Mesa {
       capacidad: mapa['capacidad'] ?? 2,
       ubicacion: mapa['ubicacion'] ?? 'interior',
       disponible: mapa['disponible'] ?? true,
-      codigoQr: mapa['codigo_qr'],
+      codigoQr: mapa['codigoQr'] ?? mapa['codigo_qr'],
     );
   }
 
@@ -33,7 +33,7 @@ class Mesa {
       'capacidad': capacidad,
       'ubicacion': ubicacion,
       'disponible': disponible,
-      'codigo_qr': codigoQr,
+      'codigoQr': codigoQr,
     };
   }
 

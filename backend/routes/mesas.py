@@ -12,7 +12,7 @@ class CrearMesa(BaseModel):
     numero: int
     capacidad: int
     ubicacion: str = "interior"
-    codigo_qr: str
+    codigoQr: str
 
 router = APIRouter(prefix="/mesas", tags=["Mesas"])
 
@@ -27,7 +27,7 @@ def obtener_mesas():
             "capacidad": m.get("capacidad", 0),
             "ubicacion": m.get("ubicacion", "interior"),
             "disponible": m.get("estado", "libre") == "libre",
-            "codigo_qr": m.get("codigoQr", f"mesa_{m.get('numero', 0)}"),
+            "codigoQr": m.get("codigoQr", m.get("codigo_qr", f"mesa_{m.get('numero', 0)}")),
         })
     return resultado
 
@@ -41,7 +41,7 @@ def crear_mesa(datos: CrearMesa):
         "numero": datos.numero,
         "capacidad": datos.capacidad,
         "ubicacion": datos.ubicacion,
-        "codigoQr": datos.codigo_qr,
+        "codigoQr": datos.codigoQr,
         "estado": "libre",
     }
     result = coleccion_mesas.insert_one(nueva)
@@ -51,7 +51,7 @@ def crear_mesa(datos: CrearMesa):
         "capacidad": datos.capacidad,
         "ubicacion": datos.ubicacion,
         "disponible": True,
-        "codigo_qr": datos.codigo_qr,
+        "codigoQr": datos.codigoQr,
     }
 
 
@@ -76,7 +76,7 @@ def actualizar_estado_mesa(mesa_id: str, datos: ActualizarEstadoMesa):
 
 @router.post("/validar-qr")
 def validar_qr_mesa(datos: ValidarQR):
-    mesa = coleccion_mesas.find_one({"codigoQr": datos.codigo_qr})
+    mesa = coleccion_mesas.find_one({"codigoQr": datos.codigoQr}) or coleccion_mesas.find_one({"codigo_qr": datos.codigoQr})
     if not mesa:
         try:
             numero = int(datos.codigo_qr.replace("mesa_", ""))
@@ -86,8 +86,8 @@ def validar_qr_mesa(datos: ValidarQR):
     if not mesa:
         raise HTTPException(status_code=404, detail="Mesa no encontrada")
     return {
-        "mesa_id": str(mesa["_id"]),
-        "numero_mesa": mesa.get("numero", 0),
+        "mesaId": str(mesa["_id"]),
+        "numeroMesa": mesa.get("numero", 0),
         "estado": "disponible" if mesa.get("estado", "libre") == "libre" else "ocupada",
     }
     return Response(content=image_bytes, media_type="image/png")
