@@ -104,21 +104,24 @@ async def registrar_usuario(usuario: UsuarioRegistro):
         hashed_password = bcrypt.hashpw(password_bytes, bcrypt.gensalt())
 
         # Preparar documento para MongoDB
-        usuario_dict = usuario.dict()
+        usuario_dict = usuario.model_dump()
         usuario_dict["password_hash"] = hashed_password.decode('utf-8')
         usuario_dict["is_verified"] = False
         usuario_dict["verification_code"] = codigo_otp
 
         # Guardar en base de datos
         coleccion_usuarios.insert_one(usuario_dict)
-        
+
         # Enviar correo real a la bandeja del usuario
         await enviar_correo_verificacion(usuario.correo, codigo_otp)
 
         return {"mensaje": "Registro exitoso. Revisa tu bandeja de entrada.", "correo": usuario.correo}
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al registrar: {str(e)}")
+    except HTTPException:
+        raise
+    except Exception:
+        logger.error("Error inesperado en /registro", exc_info=True)
+        raise HTTPException(status_code=500, detail="Error interno al registrar el usuario")
 
 # --- 4. ENDPOINT: VERIFICAR CÓDIGO ---
 @router.post("/verificar-codigo")

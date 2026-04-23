@@ -1,6 +1,6 @@
 import re
 from pydantic import BaseModel, EmailStr, Field, field_validator
-from typing import Optional
+from typing import Optional, Any
 
 class UsuarioRegistro(BaseModel):
     nombre: str
@@ -17,11 +17,10 @@ class UsuarioRegistro(BaseModel):
     @classmethod
     def validar_password_registro(cls, value: str) -> str:
         errores = []
-        print(" la contraseña debe tener al menos 8 caracteres, al menos una mayúscula,al menos un número y al menos un carácter especial")
         if len(value) < 8:
-            errores.append("al menos 8 caracteres, al menos una mayúscula,al menos un número y al menos un carácter especial")
-        if not re.search(r"[aA-zZ]", value):
-            errores.append("al menos una mayúscula") 
+            errores.append("al menos 8 caracteres")
+        if not re.search(r"[A-Z]", value):
+            errores.append("al menos una mayúscula")
         if not re.search(r"\d", value):
             errores.append("al menos un número")
         if not re.search(r"[^\w\s]", value):
@@ -31,9 +30,10 @@ class UsuarioRegistro(BaseModel):
             raise ValueError("La contraseña debe tener " + ", ".join(errores))
 
         return value
+
 class UsuarioLogin(BaseModel):
     correo: str
-    password_hash: str = Field(..., min_length=6)
+    password_hash: str  # Sin min_length: la validación de contraseña se hace solo en registro
 
 class UsuarioActualizar(BaseModel):
     nombre: str
@@ -43,7 +43,7 @@ class UsuarioActualizar(BaseModel):
 
 class PedidoCrear(BaseModel):
     userId: str
-    items: list
+    items: list[dict[str, Any]]
     tipoEntrega: str
     metodoPago: str
     total: float
@@ -88,4 +88,4 @@ class ProductoCrear(BaseModel):
     categoria: str
     imagen: Optional[str] = None
     disponible: bool = True
-    ingredientes: list = []
+    ingredientes: list[str] = []

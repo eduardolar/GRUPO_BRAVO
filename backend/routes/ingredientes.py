@@ -37,12 +37,12 @@ def ingredientes_stock_bajo():
 
 @router.post("")
 def crear_ingrediente(ingrediente: IngredienteCrear):
-    resultado = coleccion_ingredientes.insert_one(ingrediente.dict())
+    resultado = coleccion_ingredientes.insert_one(ingrediente.model_dump())
     return {"id": str(resultado.inserted_id), "mensaje": "Ingrediente creado"}
 
 @router.put("/{ingrediente_id}")
 def actualizar_ingrediente(ingrediente_id: str, datos: IngredienteActualizar):
-    campos = {k: v for k, v in datos.dict().items() if v is not None}
+    campos = {k: v for k, v in datos.model_dump().items() if v is not None}
     if not campos:
         raise HTTPException(status_code=400, detail="No hay campos para actualizar")
     resultado = coleccion_ingredientes.update_one(

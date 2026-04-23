@@ -1,8 +1,11 @@
+import logging
 from fastapi import APIRouter, HTTPException, Query
 from bson import ObjectId
 from datetime import date
 from database import coleccion_reservas, coleccion_mesas
 from models import ReservaCrear
+
+logger = logging.getLogger("uvicorn")
 
 router = APIRouter(prefix="/reservas", tags=["Reservas"])
 
@@ -77,6 +80,7 @@ def obtener_reservas_futuras():
                 mesa = coleccion_mesas.find_one({"_id": ObjectId(r["mesa_id"])})
                 item["numero_mesa"] = mesa.get("numero", 0) if mesa else None
             except Exception:
+                logger.warning("No se pudo obtener número de mesa para mesa_id=%s", r.get("mesa_id"))
                 item["numero_mesa"] = None
         resultado.append(item)
     return resultado
@@ -105,6 +109,7 @@ def obtener_reservas(usuario_id: str = Query(...)):
                 mesa = coleccion_mesas.find_one({"_id": ObjectId(r["mesa_id"])})
                 item["numero_mesa"] = mesa.get("numero", 0) if mesa else None
             except Exception:
+                logger.warning("No se pudo obtener número de mesa para mesa_id=%s", r.get("mesa_id"))
                 item["numero_mesa"] = None
         resultado.append(item)
     return resultado
@@ -147,7 +152,7 @@ def crear_reserva(reserva: ReservaCrear):
     mesa_id = str(mesa_asignada["_id"])
     numero_mesa = mesa_asignada.get("numero", 0)
 
-    reserva_dict = {k: v for k, v in reserva.dict().items() if v is not None}
+    reserva_dict = {k: v for k, v in reserva.model_dump().items() if v is not None}
     reserva_dict["mesa_id"] = mesa_id
     reserva_dict["numero_mesa"] = numero_mesa
     reserva_dict["estado"] = "Confirmada"
