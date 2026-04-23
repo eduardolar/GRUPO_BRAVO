@@ -1,28 +1,43 @@
+import os
+import logging
+import traceback
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from routes import auth, usuarios, categorias, productos, pedidos, mesas, reservas, ingredientes
 from routes import restaurantes
 import pagos
-import traceback
+
+logger = logging.getLogger("uvicorn")
 
 app = FastAPI(title="API Restaurante Bravo")
 
 # Configuración de CORS
+# En producción define ALLOWED_ORIGINS en el .env con las URLs reales del frontend.
+# Ejemplo: ALLOWED_ORIGINS=https://miapp.com,https://admin.miapp.com
+_raw_origins = os.getenv("ALLOWED_ORIGINS", "")
+allowed_origins = [o.strip() for o in _raw_origins.split(",") if o.strip()]
+# Sin orígenes explícitos (desarrollo) se permite cualquier origen.
+# allow_credentials es incompatible con "*", y el auth es por token (no cookies).
+_wildcard = not allowed_origins
+if _wildcard:
+    allowed_origins = ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=allowed_origins,
+    allow_credentials=not _wildcard,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    traceback.print_exc()
+    # El detalle completo se queda en los logs del servidor, nunca en la respuesta al cliente
+    logger.error("Error no controlado en %s %s:\n%s", request.method, request.url.path, traceback.format_exc())
     return JSONResponse(
         status_code=500,
-        content={"detail": str(exc)},
+        content={"detail": "Error interno del servidor. Por favor, inténtalo de nuevo más tarde."},
     )
 
 # Registrar routers

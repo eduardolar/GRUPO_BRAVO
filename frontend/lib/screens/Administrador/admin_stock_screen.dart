@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/components/Cliente/entrada_texto.dart';
 import '../../core/colors_style.dart';
 import '../../models/ingrediente_model.dart';
 import '../../services/ingredientes_service.dart';
@@ -14,19 +15,18 @@ class AdminStockScreen extends StatefulWidget {
 
 class _AdminStockScreenState extends State<AdminStockScreen> {
   String _busqueda = '';
-  String _filtroCategoria = 'Todas';
-  final List<String> _categorias = [
-    'Todas',
-    'Carnes',
-    'Vegetales',
-    'Lácteos',
-    'Panadería',
-    'Salsas',
-    'Otras'
-  ];
+  late Future<Map<String, List<Ingrediente>>> _future;
 
-  void _recargarStock() {
-    setState(() {}); 
+  @override
+  void initState() {
+    super.initState();
+    _cargar();
+  }
+
+  void _cargar() {
+    setState(() {
+      _future = IngredienteService.obtenerIngredientesPorCategoria();
+    });
   }
 
   @override
@@ -40,123 +40,62 @@ class _AdminStockScreenState extends State<AdminStockScreen> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    decoration: InputDecoration(
-                      hintText: 'Buscar ingrediente...',
-                      prefixIcon: const Icon(Icons.search),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                      filled: true,
-                      fillColor: Colors.white,
-                    ),
-                    onChanged: (valor) => setState(() => _busqueda = valor.toLowerCase()),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey.shade300),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _filtroCategoria,
-                      items: _categorias.map((String cat) {
-                        return DropdownMenuItem<String>(value: cat, child: Text(cat));
-                      }).toList(),
-                      onChanged: (val) {
-                        if (val != null) setState(() => _filtroCategoria = val);
-                      },
-                    ),
-                  ),
-                ),
-              ],
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: TextField(
+              decoration: InputDecoration(
+                hintText: 'Buscar ingrediente...',
+                prefixIcon: const Icon(Icons.search),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                filled: true,
+                fillColor: Colors.white,
+              ),
+              onChanged: (valor) => setState(() => _busqueda = valor.toLowerCase()),
             ),
           ),
           Expanded(
-            child: FutureBuilder<List<Ingrediente>>(
-              // Usamos el nombre correcto de la clase y el método estático
-              future: IngredienteService.obtenerIngredientes(),
+            child: FutureBuilder<Map<String, List<Ingrediente>>>(
+              future: _future,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
                 if (snapshot.hasError) {
                   return Center(
-                    child: Text('Error al cargar:\n${snapshot.error}', style: const TextStyle(color: Colors.red)),
+                    child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.red)),
                   );
                 }
                 if (!snapshot.hasData || snapshot.data!.isEmpty) {
                   return const Center(child: Text('No hay ingredientes registrados.'));
                 }
 
-                final List<Ingrediente> stockReal = snapshot.data!;
-                final stockFiltrado = stockReal.where((item) {
-                  final coincideBusqueda = item.nombre.toLowerCase().contains(_busqueda);
-                  final coincideCategoria = _filtroCategoria == 'Todas' || item.categoria == _filtroCategoria;
-                  return coincideBusqueda && coincideCategoria;
-                }).toList();
+                final datos = snapshot.data!;
 
-                if (stockFiltrado.isEmpty) {
-                   return const Center(child: Text('Ningún ingrediente coincide con los filtros.'));
+                if (_busqueda.isNotEmpty) {
+                  final filtrados = datos.values
+                      .expand((lista) => lista)
+                      .where((i) => i.nombre.toLowerCase().contains(_busqueda))
+                      .toList();
+                  if (filtrados.isEmpty) {
+                    return const Center(child: Text('Ningún ingrediente coincide.'));
+                  }
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    itemCount: filtrados.length,
+                    itemBuilder: (_, i) => _tarjetaIngrediente(filtrados[i]),
+                  );
                 }
 
-                return ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: stockFiltrado.length,
-                  itemBuilder: (context, index) {
-                    final item = stockFiltrado[index];
-                    // Usamos las variables correctas
-                    final estaBajo = item.cantidadActual <= item.stockMinimo;
+                final categorias = datos.keys.toList()..sort();
+                final items = <Widget>[];
+                for (final cat in categorias) {
+                  final lista = datos[cat]!;
+                  items.add(_cabeceraCategoria(cat, lista.length));
+                  items.addAll(lista.map(_tarjetaIngrediente));
+                }
 
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: BorderSide(color: estaBajo ? Colors.red.shade300 : Colors.transparent, width: estaBajo ? 2 : 0),
-                      ),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.all(16),
-                        title: Row(
-                          children: [
-                            Text(item.nombre, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                            if (estaBajo) ...[
-                              const SizedBox(width: 8),
-                              const Icon(Icons.warning, color: Colors.red, size: 20),
-                            ],
-                          ],
-                        ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SizedBox(height: 8),
-                            Text('Categoría: ${item.categoria}'),
-                            Text(
-                              'Cantidad: ${item.cantidadActual} / Mínimo: ${item.stockMinimo} ${item.unidad}',
-                              style: TextStyle(
-                                color: estaBajo ? Colors.red : Colors.grey.shade700,
-                                fontWeight: estaBajo ? FontWeight.bold : FontWeight.normal,
-                              ),
-                            ),
-                          ],
-                        ),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.edit, color: Colors.blue),
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => AdminEditarStockScreen(ingrediente: item)),
-                            ).then((_) => _recargarStock()); 
-                          },
-                        ),
-                      ),
-                    );
-                  },
+                return ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
+                  children: items,
                 );
               },
             ),
@@ -167,12 +106,90 @@ class _AdminStockScreenState extends State<AdminStockScreen> {
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const AdminNuevoIngredienteScreen()),
-          ).then((_) => _recargarStock()); 
+            MaterialPageRoute(builder: (_) => const AdminNuevoIngredienteScreen()),
+          ).then((_) => _cargar());
         },
         backgroundColor: AppColors.button,
         icon: const Icon(Icons.add, color: Colors.white),
         label: const Text('Nuevo Ingrediente', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+      ),
+    );
+  }
+
+  Widget _cabeceraCategoria(String categoria, int total) {
+    return Container(
+      margin: const EdgeInsets.only(top: 16, bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.backgroundButton,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.label_outline, color: Colors.white, size: 18),
+          const SizedBox(width: 8),
+          Text(
+            categoria,
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+          ),
+          const Spacer(),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: Colors.white24,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              '$total',
+              style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _tarjetaIngrediente(Ingrediente item) {
+    final estaBajo = item.cantidadActual <= item.stockMinimo;
+    return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: estaBajo ? Colors.red.shade300 : Colors.transparent,
+          width: estaBajo ? 2 : 0,
+        ),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        title: Row(
+          children: [
+            Text(item.nombre, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            if (estaBajo) ...[
+              const SizedBox(width: 8),
+              const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 20),
+            ],
+          ],
+        ),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Text(
+            'Stock: ${item.cantidadActual} ${item.unidad}  ·  Mín: ${item.stockMinimo} ${item.unidad}',
+            style: TextStyle(
+              color: estaBajo ? Colors.red : Colors.grey.shade700,
+              fontWeight: estaBajo ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+        ),
+        trailing: IconButton(
+          icon: const Icon(Icons.edit_outlined, color: Colors.blue),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => AdminEditarStockScreen(ingrediente: item)),
+            ).then((_) => _cargar());
+          },
+        ),
       ),
     );
   }

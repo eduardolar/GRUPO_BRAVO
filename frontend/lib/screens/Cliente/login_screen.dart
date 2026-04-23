@@ -14,7 +14,6 @@ import 'package:frontend/screens/cliente/menu_screen.dart';
 import 'package:frontend/screens/cliente/register_screen.dart';
 import 'package:frontend/screens/cliente/reservar_mesa_screen.dart';
 import 'package:frontend/screens/home_screen_trabajador.dart';
-import 'package:frontend/screens/admin/home_screen_admin.dart';
 import 'package:frontend/screens/super_admin/seleccionar_restaurante_screen.dart';
 
 import 'package:frontend/components/Cliente/entrada_texto.dart';
@@ -154,7 +153,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           onPressed: () => Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const AdminMenuScreen()),
+            MaterialPageRoute(builder: (_) => const MenuAdministrador()),
           ),
           child: null,
         ),

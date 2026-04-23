@@ -1,11 +1,32 @@
 version: '3.8'
 
 services:
-  app:
-    build: .
+  backend:
+    build: ./backend
     ports:
       - "8000:8000"
+    env_file:
+      - ./backend/.env
     environment:
-      - NODE_ENV=development
+      # Apunta al servicio mongo definido abajo (solo si no usas MongoDB Atlas)
+      # Si usas Atlas, define MONGO_URI en el .env y comenta las líneas de mongo.
+      - ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8080
+    depends_on:
+      - mongo
     volumes:
-      - .:/app
+      - ./backend:/app
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  mongo:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    # Elimina las siguientes líneas si no necesitas autenticación local
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: changeme
+
+volumes:
+  mongo_data:

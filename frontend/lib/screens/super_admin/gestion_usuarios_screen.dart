@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../../models/usuario_model.dart';
-import '../../services/usuario_service.dart';
+import '../../providers/usuario_provider.dart';
 import '../../core/colors_style.dart';
 import 'crear_usuario_screen.dart';
 
@@ -20,7 +21,13 @@ class GestionUsuariosScreen extends StatefulWidget {
 }
 
 class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
-  final UsuarioService _usuarioService = UsuarioService();
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<UsuarioProvider>().cargar();
+    });
+  }
 
   // Orden y etiquetas de roles
   static const _rolesOrden = [
@@ -60,20 +67,19 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
       final idDB = (u.restauranteId ?? '').toString().trim().toLowerCase();
       if (idDB != idFiltro) return false;
 
-      final rol = u.rol.toString().split('.').last.toLowerCase();
+      final rol = u.rolRaw;
 
       if (filtro == 'cliente') return rol == 'cliente';
       if (filtro == 'trabajador') return _rolesPersonal.contains(rol);
       if (filtro.isNotEmpty) return rol == filtro;
-      return true; // sin filtro: todos
+      return true;
     }).toList();
   }
 
   Map<String, List<Usuario>> _agruparPorRol(List<Usuario> lista) {
     final Map<String, List<Usuario>> grupos = {};
     for (final u in lista) {
-      final rol = u.rol.toString().split('.').last.toLowerCase();
-      grupos.putIfAbsent(rol, () => []).add(u);
+      grupos.putIfAbsent(u.rolRaw, () => []).add(u);
     }
     grupos.removeWhere((_, v) => v.isEmpty);
     return grupos;
@@ -90,7 +96,6 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
         ),
       ),
     );
-    setState(() {});
   }
 
   @override
@@ -114,15 +119,14 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
               children: [
                 _buildHeader(),
                 Expanded(
-                  child: FutureBuilder<List<Usuario>>(
-                    future: _usuarioService.obtenerTodos(),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
+                  child: Consumer<UsuarioProvider>(
+                    builder: (context, provider, _) {
+                      if (provider.cargando) {
                         return const Center(
                           child: CircularProgressIndicator(color: AppColors.button),
                         );
                       }
-                      if (snapshot.hasError) {
+                      if (provider.error != null) {
                         return Center(
                           child: Text(
                             'Error al cargar datos',
@@ -131,7 +135,7 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
                         );
                       }
 
-                      final lista = _filtrarPorRestaurante(snapshot.data ?? []);
+                      final lista = _filtrarPorRestaurante(provider.usuarios);
                       final grupos = _agruparPorRol(lista);
 
                       if (grupos.isEmpty) {
@@ -312,11 +316,10 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
             onPressed: () async {
               final nav = Navigator.of(context);
               final messenger = ScaffoldMessenger.of(context);
-              final borrado = await _usuarioService.eliminarUsuario(user.id);
+              final borrado = await context.read<UsuarioProvider>().eliminar(user.id);
               if (borrado) {
                 if (!mounted) return;
                 nav.pop();
-                setState(() {});
                 messenger.showSnackBar(SnackBar(
                   content: Text('Usuario eliminado', style: GoogleFonts.manrope()),
                   backgroundColor: AppColors.button,

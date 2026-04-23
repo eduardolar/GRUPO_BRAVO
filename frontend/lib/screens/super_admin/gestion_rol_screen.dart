@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../../models/usuario_model.dart';
-import '../../services/usuario_service.dart';
+import '../../providers/usuario_provider.dart';
 import '../../core/colors_style.dart';
 
 class GestionRolesScreen extends StatefulWidget {
@@ -14,7 +15,13 @@ class GestionRolesScreen extends StatefulWidget {
 }
 
 class _GestionRolesScreenState extends State<GestionRolesScreen> {
-  final UsuarioService _usuarioService = UsuarioService();
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<UsuarioProvider>().cargar();
+    });
+  }
 
   static const _rolesOrden = [
     'administrador',
@@ -55,16 +62,14 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
     final idFiltro = widget.restauranteId.trim().toLowerCase();
     return todos.where((u) {
       if ((u.restauranteId ?? '').toString().trim().toLowerCase() != idFiltro) return false;
-      final rol = u.rol.toString().split('.').last.toLowerCase();
-      return rol != 'cliente';
+      return u.rolRaw != 'cliente';
     }).toList();
   }
 
   Map<String, List<Usuario>> _agruparPorRol(List<Usuario> lista) {
     final Map<String, List<Usuario>> grupos = {};
     for (final u in lista) {
-      final rol = u.rol.toString().split('.').last.toLowerCase();
-      grupos.putIfAbsent(rol, () => []).add(u);
+      grupos.putIfAbsent(u.rolRaw, () => []).add(u);
     }
     grupos.removeWhere((_, v) => v.isEmpty);
     return grupos;
@@ -88,15 +93,14 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
               children: [
                 _buildHeader(),
                 Expanded(
-                  child: FutureBuilder<List<Usuario>>(
-                    future: _usuarioService.obtenerTodos(),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
+                  child: Consumer<UsuarioProvider>(
+                    builder: (context, provider, _) {
+                      if (provider.cargando) {
                         return const Center(
                           child: CircularProgressIndicator(color: AppColors.button),
                         );
                       }
-                      if (snapshot.hasError) {
+                      if (provider.error != null) {
                         return Center(
                           child: Text(
                             'Error al cargar datos',
@@ -105,7 +109,7 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
                         );
                       }
 
-                      final lista = _filtrarPorRestaurante(snapshot.data ?? []);
+                      final lista = _filtrarPorRestaurante(provider.usuarios);
                       final grupos = _agruparPorRol(lista);
 
                       if (grupos.isEmpty) {
@@ -232,7 +236,7 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
   }
 
   void _mostrarDialogoCambiarRol(BuildContext context, Usuario user) {
-    String rolActual = user.rol.toString().split('.').last.toLowerCase();
+    String rolActual = user.rolRaw;
     if (!_opcionesRol.contains(rolActual)) rolActual = 'trabajador';
 
     showDialog(
@@ -272,7 +276,7 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
               ),
               const SizedBox(height: 20),
               DropdownButtonFormField<String>(
-                initialValue: rolActual,
+                value: rolActual,
                 decoration: InputDecoration(
                   labelText: 'Nuevo rol',
                   labelStyle: GoogleFonts.manrope(fontSize: 13),
@@ -309,12 +313,12 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
               onPressed: () async {
                 final nav = Navigator.of(context);
                 final messenger = ScaffoldMessenger.of(context);
+                final provider = context.read<UsuarioProvider>();
                 try {
-                  final ok = await _usuarioService.cambiarRol(user.id, rolActual);
+                  final ok = await provider.cambiarRol(user.id, rolActual);
                   if (ok) {
                     if (!mounted) return;
                     nav.pop();
-                    setState(() {});
                     messenger.showSnackBar(SnackBar(
                       content: Text('Rol actualizado a ${_rolesEtiqueta[rolActual] ?? rolActual}', style: GoogleFonts.manrope()),
                       backgroundColor: AppColors.button,
@@ -348,7 +352,7 @@ class _RolTile extends StatelessWidget {
         ? usuario.nombre.trim().split(' ').map((e) => e.isNotEmpty ? e[0].toUpperCase() : '').take(2).join()
         : '?';
 
-    final rolLabel = _labelRol(usuario.rol.toString().split('.').last.toLowerCase());
+    final rolLabel = _labelRol(usuario.rolRaw);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
