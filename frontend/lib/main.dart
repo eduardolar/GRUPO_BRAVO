@@ -8,6 +8,8 @@ import 'screens/cliente/home_screen.dart';
 import 'providers/auth_provider.dart';
 import 'providers/cart_provider.dart';
 import 'providers/pedido_provider.dart';
+import 'providers/restaurante_provider.dart';
+import 'providers/usuario_provider.dart';
 import 'services/api_config.dart';
 
 void main() async {
@@ -38,6 +40,8 @@ class MainApp extends StatelessWidget {
         ChangeNotifierProvider.value(value: authProvider),
         ChangeNotifierProvider(create: (_) => CartProvider()),
         ChangeNotifierProvider(create: (_) => PedidoProvider()),
+        ChangeNotifierProvider(create: (_) => RestauranteProvider()),
+        ChangeNotifierProvider(create: (_) => UsuarioProvider()),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
