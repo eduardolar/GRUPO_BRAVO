@@ -10,6 +10,8 @@ class ProductoCard extends StatelessWidget {
   final int quantity;
   final bool compactAdd;
 
+  bool iconoEditar = false;
+
   static DateTime _lastTap = DateTime(2000);
 
   ProductoCard({
@@ -19,6 +21,7 @@ class ProductoCard extends StatelessWidget {
     this.onRemove,
     this.quantity = 0,
     this.compactAdd = false,
+    this.iconoEditar = false,
   });
 
   @override
