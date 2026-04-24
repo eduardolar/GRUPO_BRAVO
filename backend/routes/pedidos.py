@@ -286,8 +286,12 @@ def actualizar_items_pedido(pedido_id: str, payload: ActualizarItemsPedido):
 
 
 @router.get("")
-def obtener_pedidos(userId: str = Query(...)):
-    pedidos = coleccion_pedidos.find({"usuario_id": userId})
+def obtener_pedidos(userId: Optional[str] = Query(None)):
+    filtro = {}
+    if userId:
+        filtro["usuario_id"] = userId
+        # Si se proporciona userId, se filtran los pedidos de ese usuario. Si no, se devuelven todos.
+    pedidos = coleccion_pedidos.find(filtro)
     resultado = []
     for p in pedidos:
         items_raw = p.get("items", [])
