@@ -1,29 +1,29 @@
+import os
 import random
 import string
 import bcrypt
-from fastapi import APIRouter, HTTPException, status
+from dotenv import load_dotenv
+from fastapi import APIRouter, HTTPException
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
 from pydantic import BaseModel, EmailStr
-from typing import Optional
 
-# Importamos tus dependencias locales
 from database import coleccion_usuarios
 from models import UsuarioRegistro, UsuarioLogin
 
+load_dotenv(override=True)
+
 router = APIRouter()
 
-# --- 1. CONFIGURACIÓN DE CORREO (GMAIL REAL) ---
-
 conf = ConnectionConfig(
-    MAIL_USERNAME = "proyectorestaurantebravo@gmail.com",       
-    MAIL_PASSWORD = "sfgl yrgp pkub bhvj",  
-    MAIL_FROM = "proyectorestaurantebravo@gmail.com",      
-    MAIL_PORT = 587,
-    MAIL_SERVER = "smtp.gmail.com",
-    MAIL_STARTTLS = True,
-    MAIL_SSL_TLS = False,
-    USE_CREDENTIALS = True,
-    VALIDATE_CERTS = True
+    MAIL_USERNAME=os.getenv("MAIL_USERNAME", "no-reply@bravo.com"), # Valor por defecto
+    MAIL_PASSWORD=os.getenv("MAIL_PASSWORD", "password-falsa"),
+    MAIL_FROM=os.getenv("MAIL_FROM", "no-reply@bravo.com"),
+    MAIL_PORT=int(os.getenv("MAIL_PORT", 587)),
+    MAIL_SERVER=os.getenv("MAIL_SERVER", "smtp.gmail.com"),
+    MAIL_STARTTLS=True,
+    MAIL_SSL_TLS=False,
+    USE_CREDENTIALS=True,
+    VALIDATE_CERTS=True,
 )
 
 # Modelo para recibir el código desde Flutter
@@ -90,35 +90,45 @@ async def registrar_usuario(usuario: UsuarioRegistro):
             raise HTTPException(status_code=400, detail="El correo ya está registrado")
 
         # Regla Senior: Validar restaurante_id para empleados
-        if usuario.rol != "cliente" and not usuario.restaurante_id:
+        if usuario.rol != "cliente" and not usuario.restauranteId:
             raise HTTPException(
-                status_code=400, 
-                detail="Los empleados deben estar vinculados a un restaurante_id"
+                status_code=400,
+                detail="Los empleados deben estar vinculados a un restauranteId"
             )
 
         # Generar OTP de 6 dígitos
         codigo_otp = ''.join(random.choices(string.digits, k=6))
 
         # Hashear contraseña
-        password_bytes = usuario.password_hash.encode('utf-8')
+        password_bytes = usuario.password.encode('utf-8')
         hashed_password = bcrypt.hashpw(password_bytes, bcrypt.gensalt())
 
-        # Preparar documento para MongoDB
-        usuario_dict = usuario.dict()
-        usuario_dict["password_hash"] = hashed_password.decode('utf-8')
-        usuario_dict["is_verified"] = False
-        usuario_dict["verification_code"] = codigo_otp
+        # Preparar documento para MongoDB (DB usa snake_case internamente)
+        usuario_dict = {
+            "nombre": usuario.nombre,
+            "correo": usuario.correo,
+            "telefono": usuario.telefono,
+            "direccion": usuario.direccion,
+            "rol": usuario.rol,
+            "restaurante_id": usuario.restauranteId,
+            "password_hash": hashed_password.decode('utf-8'),
+            "is_verified": False,
+            "verification_code": codigo_otp,
+        }
 
         # Guardar en base de datos
         coleccion_usuarios.insert_one(usuario_dict)
-        
+
         # Enviar correo real a la bandeja del usuario
         await enviar_correo_verificacion(usuario.correo, codigo_otp)
 
         return {"mensaje": "Registro exitoso. Revisa tu bandeja de entrada.", "correo": usuario.correo}
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al registrar: {str(e)}")
+    except HTTPException:
+        raise
+    except Exception:
+        logger.error("Error inesperado en /registro", exc_info=True)
+        raise HTTPException(status_code=500, detail="Error interno al registrar el usuario")
 
 # --- 4. ENDPOINT: VERIFICAR CÓDIGO ---
 @router.post("/verificar-codigo")
@@ -166,7 +176,7 @@ def iniciar_sesion(credenciales: UsuarioLogin):
                 detail="Cuenta no verificada. Por favor, revisa tu correo."
             )
 
-        password_escrita = credenciales.password_hash.encode('utf-8')
+        password_escrita = credenciales.password.encode('utf-8')
         hash_almacenado = usuario_db["password_hash"].encode('utf-8')
 
         if bcrypt.checkpw(password_escrita, hash_almacenado):
@@ -175,7 +185,7 @@ def iniciar_sesion(credenciales: UsuarioLogin):
                 "nombre": usuario_db["nombre"],
                 "correo": usuario_db["correo"],
                 "rol": usuario_db.get("rol", "cliente"),
-                "restaurante_id": usuario_db.get("restaurante_id", "")
+                "restauranteId": usuario_db.get("restaurante_id", "")
             }
    
     raise HTTPException(status_code=401, detail="Credenciales incorrectas")

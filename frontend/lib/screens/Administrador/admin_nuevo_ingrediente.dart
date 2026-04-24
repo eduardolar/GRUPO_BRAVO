@@ -20,10 +20,11 @@ class _AdminNuevoIngredienteScreenState
   final _cantidadCtrl = TextEditingController();
   final _minimoCtrl = TextEditingController();
 
-  String _categoriaSeleccionada = 'Vegetales';
+  String _categoriaSeleccionada = 'Carnes';
   String _unidadSeleccionada = 'kg';
 
-  final List<String> _unidades = ['kg', 'L', 'ud'];
+  final List<String> _categorias = IngredienteService.categorias;
+  final List<String> _unidades = IngredienteService.unidades;
 
   @override
   void dispose() {

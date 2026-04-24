@@ -3,6 +3,7 @@ from datetime import datetime
 from bson import ObjectId
 from fastapi_mail import FastMail, MessageSchema, MessageType
 from pydantic import BaseModel
+from typing import Optional
 import logging
 
 from database import coleccion_pedidos, coleccion_productos, coleccion_ingredientes, coleccion_usuarios
@@ -187,8 +188,13 @@ async def _enviar_factura(email_destino: str, nombre_usuario: str, pedido_id: st
 # ── Modelos ───────────────────────────────────────────────────────────────────
 
 class ActualizarEstadoPago(BaseModel):
-    referencia_pago: str
-    estado_pago: str = "pagado"
+    referenciaPago: str
+    estadoPago: str = "pagado"
+
+
+class ActualizarItemsPedido(BaseModel):
+    items: list[dict]
+    total: Optional[float] = None
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
@@ -243,27 +249,49 @@ async def crear_pedido(pedido: PedidoCrear):
         "fecha": pedido_dict["fecha"],
         "total": pedido.total,
         "estado": "pendiente",
-        "estado_pago": pedido_dict["estado_pago"],
+        "estadoPago": pedido_dict["estado_pago"],
         "items": len(pedido.items),
-        "mesa_id": pedido_dict.get("mesa_id"),
-        "numero_mesa": pedido_dict.get("numero_mesa"),
+        "mesaId": pedido_dict.get("mesa_id"),
+        "numeroMesa": pedido_dict.get("numero_mesa"),
     }
 
 
 @router.patch("/actualizar-estado-pago")
 def actualizar_estado_pago(payload: ActualizarEstadoPago):
     result = coleccion_pedidos.update_one(
-        {"referencia_pago": payload.referencia_pago},
-        {"$set": {"estado_pago": payload.estado_pago}},
+        {"referencia_pago": payload.referenciaPago},
+        {"$set": {"estado_pago": payload.estadoPago}},
     )
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Pedido no encontrado con esa referencia de pago")
     return {"updated": result.modified_count > 0}
 
 
+@router.patch("/{pedido_id}")
+def actualizar_items_pedido(pedido_id: str, payload: ActualizarItemsPedido):
+    if not ObjectId.is_valid(pedido_id):
+        raise HTTPException(status_code=400, detail="ID de pedido inválido")
+
+    campos = {"items": payload.items}
+    if payload.total is not None:
+        campos["total"] = payload.total
+
+    result = coleccion_pedidos.update_one(
+        {"_id": ObjectId(pedido_id)},
+        {"$set": campos},
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Pedido no encontrado")
+    return {"updated": result.modified_count > 0}
+
+
 @router.get("")
-def obtener_pedidos(userId: str = Query(...)):
-    pedidos = coleccion_pedidos.find({"usuario_id": userId})
+def obtener_pedidos(userId: Optional[str] = Query(None)):
+    filtro = {}
+    if userId:
+        filtro["usuario_id"] = userId
+        # Si se proporciona userId, se filtran los pedidos de ese usuario. Si no, se devuelven todos.
+    pedidos = coleccion_pedidos.find(filtro)
     resultado = []
     for p in pedidos:
         items_raw = p.get("items", [])
@@ -272,14 +300,39 @@ def obtener_pedidos(userId: str = Query(...)):
             "fecha": p.get("fecha", ""),
             "total": p.get("total", 0),
             "estado": p.get("estado", "pendiente"),
-            "estado_pago": p.get("estado_pago", "pendiente"),
+            "estadoPago": p.get("estado_pago", "pendiente"),
             "items": len(items_raw) if isinstance(items_raw, list) else items_raw,
             "productos": items_raw if isinstance(items_raw, list) else [],
-            "tipo_entrega": p.get("tipo_entrega", ""),
-            "metodo_pago": p.get("metodo_pago", ""),
+            "tipoEntrega": p.get("tipo_entrega", ""),
+            "metodoPago": p.get("metodo_pago", ""),
             "direccion": p.get("direccion_entrega", ""),
-            "mesa_id": p.get("mesa_id"),
-            "numero_mesa": p.get("numero_mesa"),
+            "mesaId": p.get("mesa_id"),
+            "numeroMesa": p.get("numero_mesa"),
             "notas": p.get("notas", ""),
         })
     return resultado
+
+
+@router.patch("/{pedido_id}/items")
+def actualizar_items_pedido(pedido_id: str, payload: ActualizarItemsPedido):
+    if not ObjectId.is_valid(pedido_id):
+        raise HTTPException(status_code=400, detail="ID de pedido inválido")
+
+    pedido = coleccion_pedidos.find_one({"_id": ObjectId(pedido_id)})
+    if not pedido:
+        raise HTTPException(status_code=404, detail="Pedido no encontrado")
+
+    total = payload.total if payload.total is not None else sum(
+        it.get("cantidad", 1) * it.get("precio", 0) for it in payload.items
+    )
+
+    coleccion_pedidos.update_one(
+        {"_id": ObjectId(pedido_id)},
+        {"$set": {"items": payload.items, "total": total}},
+    )
+
+    return {
+        "id": pedido_id,
+        "items": payload.items,
+        "total": total,
+    }

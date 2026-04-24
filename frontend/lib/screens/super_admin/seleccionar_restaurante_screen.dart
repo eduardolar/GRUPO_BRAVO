@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../../models/restaurante_model.dart';
-import '../../services/restaurante_service.dart';
+import '../../providers/restaurante_provider.dart';
 import 'home_screen_super_admin.dart';
 import '../../core/colors_style.dart';
 
@@ -13,18 +14,11 @@ class SeleccionarRestauranteScreen extends StatefulWidget {
 }
 
 class _SeleccionarRestauranteScreenState extends State<SeleccionarRestauranteScreen> {
-  final RestauranteService _service = RestauranteService();
-  late Future<List<Restaurante>> _futureRestaurantes;
-
   @override
   void initState() {
     super.initState();
-    _cargar();
-  }
-
-  void _cargar() {
-    setState(() {
-      _futureRestaurantes = _service.obtenerTodos();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<RestauranteProvider>().cargar();
     });
   }
 
@@ -117,24 +111,23 @@ class _SeleccionarRestauranteScreenState extends State<SeleccionarRestauranteScr
 
     final nombre = nombreCtrl.text.trim();
     final direccion = direccionCtrl.text.trim();
+    final provider = context.read<RestauranteProvider>();
 
     if (esEdicion) {
-      final ok = await _service.editarRestaurante(id: restaurante.id, nombre: nombre, direccion: direccion);
+      final ok = await provider.editar(id: restaurante.id, nombre: nombre, direccion: direccion);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(ok ? 'Sucursal actualizada' : 'Error al actualizar', style: GoogleFonts.manrope()),
           backgroundColor: ok ? AppColors.button : AppColors.error,
         ));
-        if (ok) _cargar();
       }
     } else {
-      final nuevo = await _service.crearRestaurante(nombre: nombre, direccion: direccion);
+      final ok = await provider.crear(nombre: nombre, direccion: direccion);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(nuevo != null ? 'Sucursal creada' : 'Error al crear', style: GoogleFonts.manrope()),
-          backgroundColor: nuevo != null ? AppColors.button : AppColors.error,
+          content: Text(ok ? 'Sucursal creada' : 'Error al crear', style: GoogleFonts.manrope()),
+          backgroundColor: ok ? AppColors.button : AppColors.error,
         ));
-        if (nuevo != null) _cargar();
       }
     }
   }
@@ -166,13 +159,12 @@ class _SeleccionarRestauranteScreenState extends State<SeleccionarRestauranteScr
 
     if (confirmado != true || !mounted) return;
 
-    final ok = await _service.eliminarRestaurante(restaurante.id);
+    final ok = await context.read<RestauranteProvider>().eliminar(restaurante.id);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(ok ? 'Sucursal eliminada' : 'Error al eliminar', style: GoogleFonts.manrope()),
         backgroundColor: ok ? AppColors.button : AppColors.error,
       ));
-      if (ok) _cargar();
     }
   }
 
@@ -228,10 +220,9 @@ class _SeleccionarRestauranteScreenState extends State<SeleccionarRestauranteScr
             ),
           ),
 
-          FutureBuilder<List<Restaurante>>(
-            future: _futureRestaurantes,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
+          Consumer<RestauranteProvider>(
+            builder: (context, provider, _) {
+              if (provider.cargando) {
                 return const SliverFillRemaining(
                   hasScrollBody: false,
                   child: Padding(
@@ -241,7 +232,7 @@ class _SeleccionarRestauranteScreenState extends State<SeleccionarRestauranteScr
                 );
               }
 
-              if (snapshot.hasError) {
+              if (provider.error != null) {
                 return SliverFillRemaining(
                   hasScrollBody: false,
                   child: _EmptyState(
@@ -251,7 +242,7 @@ class _SeleccionarRestauranteScreenState extends State<SeleccionarRestauranteScr
                 );
               }
 
-              if (!snapshot.hasData || snapshot.data!.isEmpty) {
+              if (provider.restaurantes.isEmpty) {
                 return SliverFillRemaining(
                   hasScrollBody: false,
                   child: _EmptyState(
@@ -261,7 +252,7 @@ class _SeleccionarRestauranteScreenState extends State<SeleccionarRestauranteScr
                 );
               }
 
-              final restaurantes = snapshot.data!;
+              final restaurantes = provider.restaurantes;
               return SliverPadding(
                 padding: const EdgeInsets.fromLTRB(24, 12, 24, 100),
                 sliver: SliverList(

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:frontend/screens/admin/home_screen_admin.dart';
 import 'package:provider/provider.dart'; // <-- IMPORTANTE: Para leer la sesión
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/screens/Administrador/admin_home_screen.dart'; // Pantalla del Admin
+import 'package:frontend/screens/super_admin/seleccionar_restaurante_screen.dart';
 import 'package:frontend/screens/cliente/forgotten_password.dart';
 import 'package:frontend/screens/cliente/menu_screen.dart'; // Pantalla del Cliente
 import 'package:frontend/screens/cliente/register_screen.dart';
@@ -115,7 +115,7 @@ class _MyWidgetState extends State<loginScreen> {
                           pantallaDestino = const MenuAdministrador(); 
                             break;
                           case RolUsuario.superadministrador:
-                            pantallaDestino = const HomeScreenAdmin();
+                            pantallaDestino = const SeleccionarRestauranteScreen();
                             break;
                           case RolUsuario.trabajador:
                             // Cámbialo por la pantalla real de tus trabajadores

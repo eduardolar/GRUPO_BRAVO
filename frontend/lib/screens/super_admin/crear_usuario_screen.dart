@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../../core/colors_style.dart';
-import '../../services/usuario_service.dart';
+import '../../providers/usuario_provider.dart';
 import '../../components/Cliente/entrada_texto.dart';
 
 class CrearUsuarioScreen extends StatefulWidget {
@@ -15,7 +16,6 @@ class CrearUsuarioScreen extends StatefulWidget {
 
 class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _usuarioService = UsuarioService();
 
   final _nombreCtrl = TextEditingController();
   final _correoCtrl = TextEditingController();
@@ -41,10 +41,9 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
     setState(() => _cargando = true);
 
     final correo = _correoCtrl.text.trim();
-    final exito = await _usuarioService.crearUsuario(
+    final exito = await context.read<UsuarioProvider>().crear(
       nombre: _nombreCtrl.text.trim(),
       correo: correo,
-      password: '',
       rol: _rolSeleccionado,
       restauranteId: widget.restauranteId,
     );
