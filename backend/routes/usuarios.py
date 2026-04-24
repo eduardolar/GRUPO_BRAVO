@@ -1,13 +1,12 @@
 import random
 import string
 import bcrypt
-from fastapi import APIRouter, HTTPException, Header
+from fastapi import APIRouter, HTTPException
 from bson import ObjectId
 from database import coleccion_usuarios
 from models import UsuarioActualizar
 from pydantic import BaseModel, EmailStr
 from fastapi_mail import FastMail, MessageSchema, MessageType
-from typing import Optional
 
 # Importar la configuración de correo desde auth
 from routes.auth import conf
@@ -48,16 +47,25 @@ class UsuarioActualizarRol(BaseModel):
     rol: str
 
 class CambiarPassword(BaseModel):
-    passwordActual: str
-    nuevaPassword: str
+    password_actual: str
+    nueva_password: str
 
-# NUEVO: Modelo para crear usuarios desde el panel de Admin
+# NUEVO: Agregamos latitud y longitud
+class UsuarioActualizar(BaseModel):
+    nombre: str | None = None
+    correo: str | None = None
+    telefono: str | None = ""
+    direccion: str | None = ""
+    latitud: float | None = None
+    longitud: float | None = None    
+
+# Modelo para crear usuarios desde el panel de Admin
 class UsuarioCrear(BaseModel):
     nombre: str
     correo: EmailStr
     password: str = ''  # Opcional: si vacío, el backend genera una contraseña aleatoria
     rol: str
-    restauranteId: str
+    restaurante_id: str
 
 router = APIRouter(prefix="/usuarios", tags=["Usuarios"])
 
@@ -79,9 +87,12 @@ def listar_usuarios(rol: str | None = None):
             "correo": u.get("correo", ""),
             "telefono": u.get("telefono", ""),
             "direccion": u.get("direccion", ""),
+            # AGREGADO:
+            "latitud": u.get("latitud"),
+            "longitud": u.get("longitud"),
             "rol": u.get("rol", "cliente"),
             # Lo convertimos a str() por si en Mongo es un ObjectId
-            "restauranteId": str(res_id) if res_id else None
+            "restaurante_id": str(res_id) if res_id else None
         })
     return resultado
 
@@ -96,23 +107,33 @@ def ver_perfil(user_id: str):
         "correo": usuario.get("correo", ""),
         "telefono": usuario.get("telefono", ""),
         "direccion": usuario.get("direccion", ""),
+        "latitud": usuario.get("latitud"),
+        "longitud": usuario.get("longitud"),
         "rol": usuario.get("rol", "cliente"),
     }
-
 @router.put("/{user_id}")
 def actualizar_perfil(user_id: str, datos: UsuarioActualizar):
+    # 1. Convertimos el modelo Pydantic a un diccionario de Python
+    datos_dict = datos.dict()
+
+    # Creamos un nuevo diccionario solo con los campos 
+    # que NO son None. Así no intentamos sobrescribir nombre/correo con nulos.
+    actualizacion = {k: v for k, v in datos_dict.items() if v is not None}
+
+    # Si por algún motivo el diccionario queda vacío, avisamos
+    if not actualizacion:
+        raise HTTPException(status_code=400, detail="No se enviaron datos válidos para actualizar")
+
+    # 3. Ejecutamos la actualización en MongoDB usando solo los campos filtrados
     resultado = coleccion_usuarios.update_one(
         {"_id": ObjectId(user_id)},
-        {"$set": {
-            "nombre": datos.nombre,
-            "correo": datos.correo,
-            "telefono": datos.telefono,
-            "direccion": datos.direccion,
-        }}
+        {"$set": actualizacion} 
     )
+
     if resultado.matched_count == 0:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    return {"mensaje": "Perfil actualizado"}
+
+    return {"mensaje": "Perfil actualizado correctamente"}
 
 @router.put("/{user_id}/cambiar-password")
 def cambiar_password(user_id: str, datos: CambiarPassword):
@@ -121,52 +142,32 @@ def cambiar_password(user_id: str, datos: CambiarPassword):
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
     hash_almacenado = usuario.get("password_hash", "").encode("utf-8")
-    if not bcrypt.checkpw(datos.passwordActual.encode("utf-8"), hash_almacenado):
+    if not bcrypt.checkpw(datos.password_actual.encode("utf-8"), hash_almacenado):
         raise HTTPException(status_code=400, detail="La contraseña actual es incorrecta")
 
-    nueva_hash = bcrypt.hashpw(datos.nuevaPassword.encode("utf-8"), bcrypt.gensalt())
+    nueva_hash = bcrypt.hashpw(datos.nueva_password.encode("utf-8"), bcrypt.gensalt())
     coleccion_usuarios.update_one(
         {"_id": ObjectId(user_id)},
         {"$set": {"password_hash": nueva_hash.decode("utf-8")}}
     )
     return {"mensaje": "Contraseña actualizada correctamente"}
 
-# Roles que requieren que el caller tenga permisos elevados
-_ROLES_PRIVILEGIADOS = {"super_admin", "superadministrador"}
-
 # Ruta obligatoria para que funcione el botón de Flutter de "Cambiar Rol"
 @router.put("/{user_id}/rol")
-def actualizar_rol(
-    user_id: str,
-    datos: UsuarioActualizarRol,
-    x_caller_id: Optional[str] = Header(default=None),
-):
+def actualizar_rol(user_id: str, datos: UsuarioActualizarRol):
     rol_limpio = datos.rol.strip().lower()
-
+    
+    # Aquí aceptamos los trabajos, pero también el rol de "admin" y "super_admin" para futuras necesidades de administración.
     roles_permitidos = ["cliente", "cocinero", "camarero", "mesero", "trabajador", "admin", "administrador", "super_admin", "superadministrador"]
-
+    
     if rol_limpio not in roles_permitidos:
         raise HTTPException(status_code=400, detail=f"Rol '{rol_limpio}' no válido")
-
-    # Si se intenta asignar un rol privilegiado, verificar que el llamante sea super_admin
-    if rol_limpio in _ROLES_PRIVILEGIADOS:
-        if not x_caller_id:
-            raise HTTPException(
-                status_code=403,
-                detail="Se requiere autenticación para asignar roles privilegiados (cabecera X-Caller-Id)"
-            )
-        caller = coleccion_usuarios.find_one({"_id": ObjectId(x_caller_id)})
-        if not caller or caller.get("rol", "").lower() not in {"super_admin", "superadministrador"}:
-            raise HTTPException(
-                status_code=403,
-                detail="Solo un super_admin puede asignar roles de administrador o super_admin"
-            )
 
     resultado = coleccion_usuarios.update_one(
         {"_id": ObjectId(user_id)},
         {"$set": {"rol": rol_limpio}}
     )
-
+    
     if resultado.matched_count == 0:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
     return {"mensaje": f"Rol actualizado exitosamente a {rol_limpio}"}
@@ -200,10 +201,13 @@ async def crear_usuario(datos: UsuarioCrear):
         "correo": correo_limpio,
         "password_hash": hash_password,
         "rol": datos.rol.lower().strip(),
-        "restaurante_id": datos.restauranteId,
+        "restaurante_id": datos.restaurante_id,
         "is_verified": False,  # Debe activar su cuenta vía email
         "telefono": "",
         "direccion": "",
+        # AGREGADO: Inicializamos coordenadas en None
+        "latitud": None,
+        "longitud": None,
         "verification_code": None,
         "reset_code": reset_code,
     }

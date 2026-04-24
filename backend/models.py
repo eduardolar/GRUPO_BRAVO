@@ -1,6 +1,6 @@
 import re
 from pydantic import BaseModel, EmailStr, Field, field_validator
-from typing import Optional, Any
+from typing import Optional
 
 class UsuarioRegistro(BaseModel):
     nombre: str
@@ -38,10 +38,12 @@ class UsuarioActualizar(BaseModel):
     correo: str
     telefono: str
     direccion: str
+    latitud: float | None = None  # Permitimos que sea opcional o nulo
+    longitud: float | None = None
 
 class PedidoCrear(BaseModel):
     userId: str
-    items: list[dict[str, Any]]
+    items: list
     tipoEntrega: str
     metodoPago: str
     total: float
@@ -86,4 +88,4 @@ class ProductoCrear(BaseModel):
     categoria: str
     imagen: Optional[str] = None
     disponible: bool = True
-    ingredientes: list[str] = []
+    ingredientes: list = []

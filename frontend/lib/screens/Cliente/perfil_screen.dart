@@ -5,6 +5,7 @@ import '../../core/colors_style.dart';
 import '../../providers/auth_provider.dart';
 import 'home_screen.dart';
 import 'historial_pedidos_screen.dart';
+import 'direccion_screen.dart';
 
 class PerfilScreen extends StatefulWidget {
   const PerfilScreen({super.key});
@@ -96,6 +97,17 @@ class _PerfilScreenState extends State<PerfilScreen> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _abrirSelectorDireccion() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const DireccionScreen()),
+    );
+    if (!mounted) return;
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    _direccionController.text = auth.usuarioActual?.direccion ?? '';
+    _detectarCambios();
   }
 
   void _mostrarDialogoEliminarCuenta() {
@@ -426,13 +438,21 @@ class _PerfilScreenState extends State<PerfilScreen> {
                             },
                           ),
                           const SizedBox(height: 12),
-                          _buildCampo('Dirección de entrega', _direccionController, Icons.map_outlined,
-                            keyboardType: TextInputType.streetAddress,
-                            validator: (v) {
-                              if (v == null || v.trim().isEmpty) return 'La dirección es obligatoria';
-                              if (v.trim().length < 5) return 'Dirección demasiado corta';
-                              return null;
-                            },
+                          GestureDetector(
+                            onTap: _abrirSelectorDireccion,
+                            child: AbsorbPointer(
+                              child: _buildCampo(
+                                'Dirección de entrega',
+                                _direccionController,
+                                Icons.map_outlined,
+                                readOnly: true,
+                                suffixIcon: const Icon(Icons.chevron_right, color: AppColors.button, size: 20),
+                                validator: (v) {
+                                  if (v == null || v.trim().isEmpty) return 'La dirección es obligatoria';
+                                  return null;
+                                },
+                              ),
+                            ),
                           ),
                           const SizedBox(height: 24),
 
@@ -607,16 +627,20 @@ class _PerfilScreenState extends State<PerfilScreen> {
     IconData icono, {
     String? Function(String?)? validator,
     TextInputType? keyboardType,
+    bool readOnly = false,
+    Widget? suffixIcon,
   }) {
     return TextFormField(
       controller: controller,
       validator: validator,
       keyboardType: keyboardType,
+      readOnly: readOnly,
       style: const TextStyle(color: Colors.white, fontSize: 15),
       decoration: InputDecoration(
         labelText: label,
         labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 14),
         prefixIcon: Icon(icono, color: AppColors.button, size: 20),
+        suffixIcon: suffixIcon,
         filled: true,
         fillColor: Colors.white.withValues(alpha: 0.07),
         enabledBorder: OutlineInputBorder(

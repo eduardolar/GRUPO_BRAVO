@@ -12,6 +12,7 @@ import '../../components/Cliente/primary_button.dart';
 
 import 'login_screen.dart';
 import 'verificacion_screen.dart';
+import 'direccion_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   final DestinoLogin destino;
@@ -32,6 +33,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _telefonoController = TextEditingController();
   final TextEditingController _direccionController = TextEditingController();
+  double? _latitud;
+  double? _longitud;
 
   @override
   void dispose() {
@@ -105,12 +108,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
           validador: (v) => v!.length < 7 ? 'Teléfono incompleto' : null,
         ),
         const SizedBox(height: 15),
-        EntradaTexto(
-          etiqueta: 'Dirección de entrega',
-          icono: Icons.map_outlined,
-          tipoTeclado: TextInputType.streetAddress,
-          controlador: _direccionController,
-          validador: (v) => v!.isEmpty ? 'La dirección es obligatoria' : null,
+        GestureDetector(
+          onTap: _abrirSelectorDireccion,
+          child: AbsorbPointer(
+            child: TextFormField(
+              controller: _direccionController,
+              readOnly: true,
+              validator: (v) => (v == null || v.isEmpty) ? 'La dirección es obligatoria' : null,
+              style: const TextStyle(color: AppColors.textPrimary),
+              decoration: InputDecoration(
+                labelText: 'Dirección de entrega',
+                labelStyle: const TextStyle(color: AppColors.textSecondary),
+                prefixIcon: const Icon(Icons.map_outlined, color: AppColors.gold),
+                suffixIcon: const Icon(Icons.chevron_right, color: AppColors.gold),
+                filled: true,
+                fillColor: AppColors.panel,
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(15),
+                  borderSide: const BorderSide(color: AppColors.line),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(15),
+                  borderSide: const BorderSide(color: AppColors.button, width: 2),
+                ),
+                errorStyle: const TextStyle(color: AppColors.error),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+              ),
+            ),
+          ),
         ),
       ],
     );
@@ -141,6 +166,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _abrirSelectorDireccion() async {
+    final resultado = await Navigator.push<Map<String, dynamic>>(
+      context,
+      MaterialPageRoute(builder: (_) => const DireccionScreen(soloSeleccionar: true)),
+    );
+    if (resultado != null && mounted) {
+      setState(() {
+        _direccionController.text = resultado['direccion'] as String;
+        _latitud = resultado['latitud'] as double;
+        _longitud = resultado['longitud'] as double;
+      });
+    }
   }
 
   String? _validarContrasena(String? v) {
