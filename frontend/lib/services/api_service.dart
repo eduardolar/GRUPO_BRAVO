@@ -306,8 +306,8 @@ class ApiService {
         Uri.parse('$baseUrl/pedidos/actualizar-estado-pago'),
         headers: _jsonHeaders(),
         body: jsonEncode({
-          'referencia_pago': referenciaPago,
-          'estado_pago': estadoPago,
+          'referenciaPago': referenciaPago,
+          'estadoPago': estadoPago,
         }),
       ),
       retry: false,
