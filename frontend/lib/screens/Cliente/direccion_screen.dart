@@ -11,7 +11,9 @@ import '../../services/usuario_service.dart'; // Para 'UsuarioService' y actuali
 import '../../providers/auth_provider.dart';
 
 class DireccionScreen extends StatefulWidget {
-  const DireccionScreen({super.key});
+  final bool soloSeleccionar;
+
+  const DireccionScreen({super.key, this.soloSeleccionar = false});
 
   @override
   State<DireccionScreen> createState() => _DireccionScreenState();
@@ -193,9 +195,17 @@ class _DireccionScreenState extends State<DireccionScreen> {
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
   ),
   onPressed: _cargando ? null : () async {
+    if (widget.soloSeleccionar) {
+      Navigator.pop(context, {
+        'direccion': _direccionTexto,
+        'latitud': _puntoActual.latitude,
+        'longitud': _puntoActual.longitude,
+      });
+      return;
+    }
+
     setState(() => _cargando = true);
 
-    // 1. Obtenemos los servicios y el usuario actual
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final usuarioService = UsuarioService();
     final userId = auth.usuarioActual?.id;
@@ -206,7 +216,6 @@ class _DireccionScreenState extends State<DireccionScreen> {
     }
 
     try {
-      // 2. GUARDAR EN MONGODB (Llamada a tu API Python)
       bool exito = await usuarioService.actualizarDireccion(
         userId: userId,
         direccion: _direccionTexto,
@@ -215,8 +224,6 @@ class _DireccionScreenState extends State<DireccionScreen> {
       );
 
       if (exito) {
-        // 3. ACTUALIZAR MEMORIA LOCAL (Para que la pantalla de entrega se entere)
-        // Nota: Asegúrate de tener esta función en tu AuthProvider (paso siguiente)
         auth.actualizarDireccionLocal(
           nuevaDir: _direccionTexto,
           nuevaLat: _puntoActual.latitude,
@@ -227,8 +234,7 @@ class _DireccionScreenState extends State<DireccionScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("¡Ubicación guardada con éxito!"), backgroundColor: Colors.green),
         );
-        
-        Navigator.pop(context); // Ahora sí, volvemos con los datos guardados
+        Navigator.pop(context);
       } else {
         _mostrarError("El servidor no pudo guardar la dirección.");
       }

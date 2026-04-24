@@ -79,7 +79,7 @@ def validar_qr_mesa(datos: ValidarQR):
     mesa = coleccion_mesas.find_one({"codigoQr": datos.codigoQr}) or coleccion_mesas.find_one({"codigo_qr": datos.codigoQr})
     if not mesa:
         try:
-            numero = int(datos.codigo_qr.replace("mesa_", ""))
+            numero = int(datos.codigoQr.replace("mesa_", ""))
             mesa = coleccion_mesas.find_one({"numero": numero})
         except ValueError:
             pass

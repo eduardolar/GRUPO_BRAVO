@@ -12,32 +12,34 @@ class Usuario {
   final RolUsuario rol;
   final String? restauranteId; // Para trabajadores, el restaurante al que pertenecen
 
-  //copia campos modificados
-Usuario copyWith({
-  String? id,
-  String? nombre,
-  String? email,
-  String? contrasena,
-  String? telefono,
-  String? direccion,
-  double? latitud,
-  double? longitud,
-  RolUsuario? rol,
-  String? restauranteId,
-}) {
-  return Usuario(
-    id: id ?? this.id,
-    nombre: nombre ?? this.nombre,
-    email: email ?? this.email,
-    contrasena: contrasena ?? this.contrasena,
-    telefono: telefono ?? this.telefono,
-    direccion: direccion ?? this.direccion,
-    latitud: latitud ?? this.latitud,
-    longitud: longitud ?? this.longitud,
-    rol: rol ?? this.rol,
-    restauranteId: restauranteId ?? this.restauranteId,
-  );
-}
+  String get rolRaw => rol.name;
+
+  Usuario copyWith({
+    String? id,
+    String? nombre,
+    String? email,
+    String? contrasena,
+    String? telefono,
+    String? direccion,
+    double? latitud,
+    double? longitud,
+    RolUsuario? rol,
+    String? restauranteId,
+    String? rolRaw,
+  }) {
+    return Usuario(
+      id: id ?? this.id,
+      nombre: nombre ?? this.nombre,
+      email: email ?? this.email,
+      contrasena: contrasena ?? this.contrasena,
+      telefono: telefono ?? this.telefono,
+      direccion: direccion ?? this.direccion,
+      latitud: latitud ?? this.latitud,
+      longitud: longitud ?? this.longitud,
+      rol: rol ?? this.rol,
+      restauranteId: restauranteId ?? this.restauranteId,
+    );
+  }
   Usuario({
     required this.id,
     required this.nombre,

@@ -4,24 +4,21 @@ from typing import Optional
 
 class UsuarioRegistro(BaseModel):
     nombre: str
-    password_hash: str = Field(..., min_length=8)
+    password: str = Field(..., min_length=8)
     correo: EmailStr
     telefono: str
     direccion: str
     rol: str = "cliente"
-    restaurante_id: Optional[str] = None
-    is_verified: bool = False
-    verification_code: Optional[str] = None
+    restauranteId: Optional[str] = None
 
-    @field_validator("password_hash")
+    @field_validator("password")
     @classmethod
     def validar_password_registro(cls, value: str) -> str:
         errores = []
-        print(" la contraseña debe tener al menos 8 caracteres, al menos una mayúscula,al menos un número y al menos un carácter especial")
         if len(value) < 8:
-            errores.append("al menos 8 caracteres, al menos una mayúscula,al menos un número y al menos un carácter especial")
-        if not re.search(r"[aA-zZ]", value):
-            errores.append("al menos una mayúscula") 
+            errores.append("al menos 8 caracteres")
+        if not re.search(r"[A-Z]", value):
+            errores.append("al menos una mayúscula")
         if not re.search(r"\d", value):
             errores.append("al menos un número")
         if not re.search(r"[^\w\s]", value):
@@ -31,9 +28,10 @@ class UsuarioRegistro(BaseModel):
             raise ValueError("La contraseña debe tener " + ", ".join(errores))
 
         return value
+
 class UsuarioLogin(BaseModel):
     correo: str
-    password_hash: str = Field(..., min_length=6)
+    password: str
 
 class UsuarioActualizar(BaseModel):
     nombre: str
@@ -57,27 +55,31 @@ class PedidoCrear(BaseModel):
     estadoPago: Optional[str] = "pendiente"
 
 class ReservaCrear(BaseModel):
-    usuario_id: str
-    nombre_completo: str
+    usuarioId: str
+    nombreCompleto: str
     fecha: str
     hora: str
     comensales: int
     turno: str
-    mesa_id: Optional[str] = None
+    mesaId: Optional[str] = None
     notas: Optional[str] = None
 
 class ValidarQR(BaseModel):
-    codigo_qr: str
+    codigoQr: str
 
 class IngredienteCrear(BaseModel):
     nombre: str
-    cantidad_actual: float = 0
+    cantidadActual: float = 0
     unidad: str = "kg"
-    stock_minimo: float = 0
+    stockMinimo: float = 0
+    categoria: str = "Otros"
 
 class IngredienteActualizar(BaseModel):
-    cantidad_actual: Optional[float] = None
-    stock_minimo: Optional[float] = None
+    nombre: Optional[str] = None
+    cantidadActual: Optional[float] = None
+    unidad: Optional[str] = None
+    stockMinimo: Optional[float] = None
+    categoria: Optional[str] = None
 
 class ProductoCrear(BaseModel):
     nombre: str

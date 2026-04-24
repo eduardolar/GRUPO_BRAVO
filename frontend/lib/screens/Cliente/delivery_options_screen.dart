@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -8,9 +7,6 @@ import '../../models/opciones_pedido.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
-import '../../components/Cliente/campos_direccion.dart';
-import 'package:flutter_stripe/flutter_stripe.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../components/Cliente/campos_tarjeta.dart';
@@ -439,13 +435,10 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       final usuario = auth.usuarioActual;
 
       // Validación de dirección: Si no hay dirección en el perfil, no pasa al pago
-      if (usuario == null || (usuario.direccion ?? '').isEmpty) {
+      if (usuario == null || usuario.direccion.isEmpty) {
         _mostrarError('Por favor, selecciona una ubicación en el mapa.');
         return;
       }
-
-      // al llegar aquí, ya tenemos direccion, latitud y longitud validadas por Nominatim
-      print("Procesando envío a: ${usuario.direccion} [Lat: ${usuario.latitud}, Lon: ${usuario.longitud}]");
     }
 
     setState(() => _paso = 2);
@@ -467,6 +460,9 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       case MetodoPago.paypal:
         await _procesarPaypalYCrearPedido();
         break;
+      case MetodoPago.applePay:
+        _mostrarError('Apple Pay no está disponible en este dispositivo');
+        break;
     }
   }
 
@@ -476,15 +472,6 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
   }
 
   Future<void> _procesarTarjetaYCrearPedido() async {
-    if (kIsWeb) {
-      await _procesarStripeCheckoutWeb();
-      return;
-    }
-
-    if (_cardDetails == null || !(_cardDetails!.complete)) {
-      _mostrarError('Completa los datos de la tarjeta');
-      return;
-    }
     if (kIsWeb) {
       await _procesarStripeCheckoutWeb();
       return;
@@ -775,6 +762,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       MetodoPago.tarjeta => 'Tarjeta',
       MetodoPago.googlePay => 'Google Pay',
       MetodoPago.paypal => 'PayPal',
+      MetodoPago.applePay => 'Apple Pay',
     };
 
     final tipoEntrega = switch (_entregaSeleccionada) {
@@ -1635,7 +1623,7 @@ class _ArticuloCard extends StatelessWidget {
               ? Image.network(
                   imageUrl,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => _imgFallback(),
+                  errorBuilder: (_, _, _) => _imgFallback(),
                 )
               : _imgFallback(),
           DecoratedBox(
