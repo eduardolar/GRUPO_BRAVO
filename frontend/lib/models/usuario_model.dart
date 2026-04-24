@@ -7,12 +7,37 @@ class Usuario {
   final String contrasena;
   final String telefono;
   final String direccion;
-  RolUsuario rol;
-  // Rol exacto devuelto por la API (cocinero, camarero, mesero, …).
-  // Usar este campo para mostrar y agrupar en pantalla.
-  final String rolRaw;
-  final String? restauranteId;
+  final double? latitud;  //nuevas propiedades para geolocalización
+  final double? longitud;
+  final RolUsuario rol;
+  final String? restauranteId; // Para trabajadores, el restaurante al que pertenecen
 
+  //copia campos modificados
+Usuario copyWith({
+  String? id,
+  String? nombre,
+  String? email,
+  String? contrasena,
+  String? telefono,
+  String? direccion,
+  double? latitud,
+  double? longitud,
+  RolUsuario? rol,
+  String? restauranteId,
+}) {
+  return Usuario(
+    id: id ?? this.id,
+    nombre: nombre ?? this.nombre,
+    email: email ?? this.email,
+    contrasena: contrasena ?? this.contrasena,
+    telefono: telefono ?? this.telefono,
+    direccion: direccion ?? this.direccion,
+    latitud: latitud ?? this.latitud,
+    longitud: longitud ?? this.longitud,
+    rol: rol ?? this.rol,
+    restauranteId: restauranteId ?? this.restauranteId,
+  );
+}
   Usuario({
     required this.id,
     required this.nombre,
@@ -20,14 +45,15 @@ class Usuario {
     required this.contrasena,
     required this.telefono,
     required this.direccion,
+    this.latitud,
+    this.longitud,
     this.rol = RolUsuario.cliente,
-    String? rolRaw,
     this.restauranteId,
-  }) : rolRaw = rolRaw ?? rol.name;
 
+  });
+
+  // Factory para crear desde JSON (útil para API real)
   factory Usuario.fromJson(Map<String, dynamic> json) {
-    final rawRol = (json['rol'] ?? '').toString().toLowerCase().trim();
-    final normalizedRol = _normalizeRol(rawRol);
     return Usuario(
       id: json['id'] ?? json['_id'] ?? '',
       nombre: json['nombre'] ?? '',
@@ -35,60 +61,38 @@ class Usuario {
       contrasena: json['password_hash'] ?? json['contrasena'] ?? '',
       telefono: json['telefono'] ?? '',
       direccion: json['direccion'] ?? '',
-      rol: _parseRol(normalizedRol),
-      rolRaw: normalizedRol,
-      restauranteId: (json['restauranteId'] ?? json['restaurante_id'])?.toString(),
+      // Mapeamos los nuevos campos desde el JSON de Python
+      latitud: json['latitud'] != null ? double.parse(json['latitud'].toString()) : null,
+      longitud: json['longitud'] != null ? double.parse(json['longitud'].toString()) : null,
+      rol: _parseRol(json['rol']),
+      restauranteId: json['restaurante_id'] ?.toString(),
     );
   }
 
-  // Normaliza aliases a nombres canónicos ("admin" → "administrador", etc.)
-  static String _normalizeRol(String rolStr) {
-    switch (rolStr) {
-      case 'admin': return 'administrador';
-      case 'superadmin': return 'superadministrador';
-      default: return rolStr;
-    }
+static RolUsuario _parseRol(dynamic rol) {
+  if (rol == null) return RolUsuario.cliente;
+  
+  final String rolStr = rol.toString().toLowerCase().trim();
+  
+  switch (rolStr) {
+    case 'superadministrador':
+    case 'superadmin':
+      return RolUsuario.superadministrador;
+    case 'cocinero':      // añadimos casos comunes para trabajadores
+    case 'camarero':
+    case 'mesero':
+    case 'trabajador':
+      return RolUsuario.trabajador;
+    case 'administrador':
+    case 'admin':
+      return RolUsuario.administrador;
+    default:
+      return RolUsuario.cliente;
   }
+}
 
-  static RolUsuario _parseRol(String rolStr) {
-    switch (rolStr) {
-      case 'superadministrador':
-        return RolUsuario.superadministrador;
-      case 'cocinero':
-      case 'camarero':
-      case 'mesero':
-      case 'trabajador':
-        return RolUsuario.trabajador;
-      case 'administrador':
-        return RolUsuario.administrador;
-      default:
-        return RolUsuario.cliente;
-    }
-  }
 
-  Usuario copyWith({
-    String? nombre,
-    String? email,
-    String? contrasena,
-    String? telefono,
-    String? direccion,
-    RolUsuario? rol,
-    String? rolRaw,
-    String? restauranteId,
-  }) {
-    return Usuario(
-      id: id,
-      nombre: nombre ?? this.nombre,
-      email: email ?? this.email,
-      contrasena: contrasena ?? this.contrasena,
-      telefono: telefono ?? this.telefono,
-      direccion: direccion ?? this.direccion,
-      rol: rol ?? this.rol,
-      rolRaw: rolRaw ?? this.rolRaw,
-      restauranteId: restauranteId ?? this.restauranteId,
-    );
-  }
-
+  // Convertir a JSON
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -97,8 +101,8 @@ class Usuario {
       'contrasena': contrasena,
       'telefono': telefono,
       'direccion': direccion,
-      'rol': rolRaw,
-      if (restauranteId != null) 'restauranteId': restauranteId,
+      'rol': rol.name,
+      if (restauranteId != null) 'restaurante_id': restauranteId,
     };
   }
 }

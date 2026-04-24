@@ -1,18 +1,21 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_stripe/flutter_stripe.dart';
-import 'package:url_launcher/url_launcher.dart';
-
 import '../../core/colors_style.dart';
 import '../../models/opciones_pedido.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
 import '../../components/Cliente/campos_direccion.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../components/Cliente/campos_tarjeta.dart';
 import 'pedido_confirmado_screen.dart';
+import 'direccion_screen.dart';
 
 export '../../models/opciones_pedido.dart';
 
@@ -33,7 +36,6 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
 
   bool _googlePayAutorizado = false;
   bool _paypalAutorizado = false;
-  bool _applePayAutorizado = false; // Agregado desde el bloque de conflicto
   CardFieldInputDetails? _cardDetails;
 
   final _controladorDireccion = TextEditingController();
@@ -334,8 +336,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
                 const SizedBox(height: 2),
                 _FormPanel(
                   child: CamposTarjeta(
-                    onCardChanged: (details) =>
-                        setState(() => _cardDetails = details),
+                    onCardChanged: (details) => setState(() => _cardDetails = details),
                   ),
                 ),
               ],
@@ -385,39 +386,46 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
   Widget _seccionDireccion() {
     return Consumer<AuthProvider>(
       builder: (context, auth, _) {
+        // Obtenemos la dirección directamente del perfil del usuario (MongoDB)
         final dir = auth.usuarioActual?.direccion ?? '';
+
         return Column(
           children: [
+            // Opción 1: La dirección que ya está en la Base de Datos
             _DireccionOption(
               icono: Icons.home_outlined,
               titulo: 'Dirección registrada',
               subtitulo: dir.isNotEmpty ? dir : 'No tienes dirección guardada',
-              seleccionada:
-                  _direccionSeleccionada == OpcionDireccion.registrada,
+              seleccionada: _direccionSeleccionada == OpcionDireccion.registrada,
               onTap: () => setState(
                 () => _direccionSeleccionada = OpcionDireccion.registrada,
               ),
             ),
             const SizedBox(height: 8),
+
+            // Opción 2: El botón que activa nuestra nueva pantalla de GPS/Mapa
             _DireccionOption(
-              icono: Icons.edit_location_alt_outlined,
-              titulo: 'Otra dirección',
-              subtitulo: 'Especifica una diferente',
-              seleccionada:
-                  _direccionSeleccionada == OpcionDireccion.alternativa,
-              onTap: () => setState(
-                () => _direccionSeleccionada = OpcionDireccion.alternativa,
-              ),
+              icono: Icons.map_outlined,
+              titulo: 'Cambiar o usar mapa / GPS',
+              subtitulo: 'Selecciona tu ubicación exacta en el mapa',
+              seleccionada: _direccionSeleccionada == OpcionDireccion.alternativa,
+              onTap: () async {
+                // Navegamos al mapa y esperamos a que el usuario guarde
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const DireccionScreen()),
+                );
+
+                // Al volver, forzamos la selección a "registrada" porque 
+                // la pantalla de mapa ya actualiza la dirección en el perfil del usuario
+                setState(() {
+                  _direccionSeleccionada = OpcionDireccion.registrada;
+                });
+              },
             ),
-            const SizedBox(height: 12),
-            _FormPanel(
-              child: CamposDireccion(
-                controladorDireccion: _controladorDireccion,
-                controladorNotas: _controladorNotas,
-                mostrarDireccionAlternativa:
-                    _direccionSeleccionada == OpcionDireccion.alternativa,
-              ),
-            ),
+            
+            // He quitado el panel de formulario antiguo (_FormPanel) 
+            // para que la interfaz quede limpia y obligue a usar el mapa.
           ],
         );
       },
@@ -426,15 +434,20 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
 
   void _irAPago() {
     final auth = Provider.of<AuthProvider>(context, listen: false);
+
     if (_entregaSeleccionada == OpcionEntrega.domicilio) {
-      final dir = _direccionSeleccionada == OpcionDireccion.registrada
-          ? (auth.usuarioActual?.direccion ?? '')
-          : _controladorDireccion.text.trim();
-      if (dir.isEmpty) {
-        _mostrarError('Introduce una dirección de entrega');
+      final usuario = auth.usuarioActual;
+
+      // Validación de dirección: Si no hay dirección en el perfil, no pasa al pago
+      if (usuario == null || (usuario.direccion ?? '').isEmpty) {
+        _mostrarError('Por favor, selecciona una ubicación en el mapa.');
         return;
       }
+
+      // al llegar aquí, ya tenemos direccion, latitud y longitud validadas por Nominatim
+      print("Procesando envío a: ${usuario.direccion} [Lat: ${usuario.latitud}, Lon: ${usuario.longitud}]");
     }
+
     setState(() => _paso = 2);
   }
 
@@ -454,9 +467,6 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       case MetodoPago.paypal:
         await _procesarPaypalYCrearPedido();
         break;
-      case MetodoPago.applePay:
-        await _procesarApplePayYCrearPedido();
-        break;
     }
   }
 
@@ -466,6 +476,15 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
   }
 
   Future<void> _procesarTarjetaYCrearPedido() async {
+    if (kIsWeb) {
+      await _procesarStripeCheckoutWeb();
+      return;
+    }
+
+    if (_cardDetails == null || !(_cardDetails!.complete)) {
+      _mostrarError('Completa los datos de la tarjeta');
+      return;
+    }
     if (kIsWeb) {
       await _procesarStripeCheckoutWeb();
       return;
@@ -532,17 +551,26 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
         OpcionEntrega.enMesa => 'Comer en el local',
       };
 
+      // Capturar datos del carrito ANTES de limpiarlo
       final items = cart.items.values
-          .map(
-            (item) => {
-              'producto_id': item.producto.id,
-              'nombre': item.producto.nombre,
-              'cantidad': item.cantidad,
-              'precio': item.producto.precio,
-              if (item.ingredientesExcluidos.isNotEmpty)
-                'sin': item.ingredientesExcluidos,
-            },
-          )
+          .map((item) => {
+                'producto_id': item.producto.id,
+                'nombre': item.producto.nombre,
+                'cantidad': item.cantidad,
+                'precio': item.producto.precio,
+                if (item.ingredientesExcluidos.isNotEmpty)
+                  'sin': item.ingredientesExcluidos,
+              })
+          .toList();
+
+      final itemsResumen = cart.items.values
+          .map((item) => {
+                'nombre': item.producto.nombre,
+                'cantidad': item.cantidad,
+                'precio': item.producto.precio,
+                if (item.ingredientesExcluidos.isNotEmpty)
+                  'sin': item.ingredientesExcluidos,
+              })
           .toList();
 
       final direccionEntrega = _entregaSeleccionada == OpcionEntrega.domicilio
@@ -551,6 +579,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
                 : _controladorDireccion.text.trim())
           : null;
 
+      // 1. Crear sesión Stripe — la URL de éxito lleva entrega y total
       final totalStr = total.toStringAsFixed(2);
       final session = await ApiService.crearCheckoutSession(
         total: total,
@@ -569,11 +598,12 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
         throw Exception('No se pudo iniciar la sesión de pago');
       }
 
+      // 2. Crear el pedido ANTES de abrir Stripe para que quede en BD
       if (_entregaSeleccionada != OpcionEntrega.enMesa) {
         cart.desasignarMesa();
       }
 
-      await ApiService.crearPedido(
+      final resultado = await ApiService.crearPedido(
         userId: auth.usuarioActual?.id ?? '',
         items: items,
         tipoEntrega: tipoEntregaStr,
@@ -591,9 +621,43 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
         estadoPago: 'pendiente_stripe',
       );
 
-      cart.clearCart();
+      final pedidoId =
+          resultado['id']?.toString() ?? resultado['pedido_id']?.toString();
 
-      await launchUrl(Uri.parse(checkoutUrl), webOnlyWindowName: '_self');
+      cart.clearCart();
+      setState(() => _estaCargando = false);
+
+      // 3. Abrir Stripe (nueva pestaña si el navegador lo permite)
+      await launchUrl(Uri.parse(checkoutUrl), webOnlyWindowName: '_blank');
+
+      if (!mounted) return;
+
+      // 4. Diálogo para quien vuelve a esta misma pestaña
+      final confirmado = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => _StripeCheckoutDialog(sessionId: sessionId),
+      );
+
+      if (confirmado != true || !mounted) return;
+
+      // Marcar el pedido como pagado en la BD
+      try { await ApiService.actualizarEstadoPago(referenciaPago: sessionId); } catch (_) {}
+      if (!mounted) return;
+
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PedidoConfirmadoScreen(
+            tipoEntrega: tipoEntregaStr,
+            tipoPago: 'Tarjeta',
+            total: total,
+            pedidoId: pedidoId,
+            items: itemsResumen,
+          ),
+        ),
+        (route) => route.isFirst,
+      );
     } catch (e) {
       if (mounted) {
         setState(() => _estaCargando = false);
@@ -699,53 +763,6 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
     }
   }
 
-  Future<void> _procesarApplePayYCrearPedido() async {
-    if (!_applePayAutorizado) {
-      _mostrarError('Primero autoriza Apple Pay');
-      return;
-    }
-
-    setState(() => _estaCargando = true);
-
-    try {
-      final cart = Provider.of<CartProvider>(context, listen: false);
-      final total = _calcularTotal(cart);
-
-      final paymentIntent = await Stripe.instance.confirmPlatformPayPaymentIntent(
-        clientSecret: (await ApiService.crearIntentoTarjeta(
-          amount: total,
-          currency: 'eur',
-        ))['client_secret']!.toString(),
-        confirmParams: PlatformPayConfirmParams.applePay(
-          applePay: ApplePayParams(
-            merchantCountryCode: 'ES',
-            currencyCode: 'EUR',
-            cartItems: [
-              ApplePayCartSummaryItem.immediate(
-                label: 'Grupo Bravo',
-                amount: total.toStringAsFixed(2),
-              ),
-            ],
-          ),
-        ),
-      );
-
-      if (paymentIntent.status != PaymentIntentsStatus.Succeeded) {
-        throw Exception('El pago con Apple Pay no fue completado');
-      }
-
-      await _crearPedidoFinal(
-        referenciaPago: paymentIntent.id,
-        estadoPago: 'pagado',
-      );
-    } catch (e) {
-      if (mounted) {
-        setState(() => _estaCargando = false);
-        _mostrarError('Error en Apple Pay: $e');
-      }
-    }
-  }
-
   Future<void> _crearPedidoFinal({
     String? referenciaPago,
     String? estadoPago,
@@ -758,7 +775,6 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       MetodoPago.tarjeta => 'Tarjeta',
       MetodoPago.googlePay => 'Google Pay',
       MetodoPago.paypal => 'PayPal',
-      MetodoPago.applePay => 'Apple Pay',
     };
 
     final tipoEntrega = switch (_entregaSeleccionada) {
@@ -826,7 +842,8 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       );
 
       final pedidoId =
-          resultado['id']?.toString() ?? resultado['pedido_id']?.toString();
+          resultado['id']?.toString() ??
+          resultado['pedido_id']?.toString();
 
       cart.clearCart();
 
@@ -887,10 +904,10 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
           ),
         ),
         if (_googlePayAutorizado)
-          const Padding(
-            padding: EdgeInsets.only(top: 8),
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
             child: Row(
-              children: [
+              children: const [
                 Icon(Icons.check_circle, color: Colors.greenAccent, size: 18),
                 SizedBox(width: 8),
                 Text(
@@ -930,10 +947,10 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
           ),
         ),
         if (_paypalAutorizado)
-          const Padding(
-            padding: EdgeInsets.only(top: 8),
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
             child: Row(
-              children: [
+              children: const [
                 Icon(Icons.check_circle, color: Colors.greenAccent, size: 18),
                 SizedBox(width: 8),
                 Text(
@@ -949,6 +966,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
 
   Future<void> _autorizarGooglePayFrontend() async {
     if (_estaCargando) return;
+
     setState(() => _estaCargando = true);
     try {
       await Future.delayed(const Duration(seconds: 1));
@@ -956,7 +974,6 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
         setState(() {
           _googlePayAutorizado = true;
           _paypalAutorizado = false;
-          _applePayAutorizado = false;
           _estaCargando = false;
         });
       }
@@ -968,32 +985,9 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
     }
   }
 
-  Future<void> _autorizarApplePayFrontend() async {
-    if (_estaCargando) return;
-    setState(() => _estaCargando = true);
-    try {
-      final soportado = await Stripe.instance.isPlatformPaySupported();
-      if (!soportado) {
-        throw Exception('Apple Pay no está disponible en este dispositivo');
-      }
-      if (mounted) {
-        setState(() {
-          _applePayAutorizado = true;
-          _googlePayAutorizado = false;
-          _paypalAutorizado = false;
-          _estaCargando = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _estaCargando = false);
-        _mostrarError('No se pudo autorizar Apple Pay: $e');
-      }
-    }
-  }
-
   Future<void> _autorizarPaypalFrontend() async {
     if (_estaCargando) return;
+
     setState(() => _estaCargando = true);
     try {
       await Future.delayed(const Duration(seconds: 1));
@@ -1001,7 +995,6 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
         setState(() {
           _paypalAutorizado = true;
           _googlePayAutorizado = false;
-          _applePayAutorizado = false;
           _estaCargando = false;
         });
       }
@@ -1541,6 +1534,8 @@ class _DireccionOption extends StatelessWidget {
   }
 }
 
+// ── Diálogo de confirmación Stripe Checkout ───────────────────────────────────
+
 class _StripeCheckoutDialog extends StatefulWidget {
   final String sessionId;
   const _StripeCheckoutDialog({required this.sessionId});
@@ -1554,10 +1549,7 @@ class _StripeCheckoutDialogState extends State<_StripeCheckoutDialog> {
   String? _error;
 
   Future<void> _verificar() async {
-    setState(() {
-      _verificando = true;
-      _error = null;
-    });
+    setState(() { _verificando = true; _error = null; });
     try {
       final pagado = await ApiService.verificarCheckoutSession(
         sessionId: widget.sessionId,
@@ -1568,17 +1560,11 @@ class _StripeCheckoutDialogState extends State<_StripeCheckoutDialog> {
       } else {
         setState(() {
           _verificando = false;
-          _error =
-              'El pago aún no se ha completado. Completa el pago en la pestaña de Stripe y vuelve a intentarlo.';
+          _error = 'El pago aún no se ha completado. Completa el pago en la pestaña de Stripe y vuelve a intentarlo.';
         });
       }
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _verificando = false;
-          _error = e.toString();
-        });
-      }
+      if (mounted) setState(() { _verificando = false; _error = e.toString(); });
     }
   }
 
@@ -1591,10 +1577,7 @@ class _StripeCheckoutDialogState extends State<_StripeCheckoutDialog> {
         children: [
           Icon(Icons.open_in_new, color: AppColors.button, size: 20),
           SizedBox(width: 10),
-          Text(
-            'Completa el pago',
-            style: TextStyle(color: AppColors.textPrimary, fontSize: 16),
-          ),
+          Text('Completa el pago', style: TextStyle(color: AppColors.textPrimary, fontSize: 16)),
         ],
       ),
       content: Column(
@@ -1607,40 +1590,24 @@ class _StripeCheckoutDialogState extends State<_StripeCheckoutDialog> {
           ),
           if (_error != null) ...[
             const SizedBox(height: 12),
-            Text(
-              _error!,
-              style: const TextStyle(color: AppColors.error, fontSize: 12),
-            ),
+            Text(_error!, style: const TextStyle(color: AppColors.error, fontSize: 12)),
           ],
         ],
       ),
       actions: [
         TextButton(
-          onPressed:
-              _verificando ? null : () => Navigator.of(context).pop(false),
-          child: const Text(
-            'Cancelar',
-            style: TextStyle(color: AppColors.textSecondary),
-          ),
+          onPressed: _verificando ? null : () => Navigator.of(context).pop(false),
+          child: const Text('Cancelar', style: TextStyle(color: AppColors.textSecondary)),
         ),
         ElevatedButton(
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.button,
             foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(4),
-            ),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
           ),
           onPressed: _verificando ? null : _verificar,
           child: _verificando
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2,
-                  ),
-                )
+              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
               : const Text('Ya he pagado'),
         ),
       ],
@@ -1668,7 +1635,7 @@ class _ArticuloCard extends StatelessWidget {
               ? Image.network(
                   imageUrl,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => _imgFallback(),
+                  errorBuilder: (_, __, ___) => _imgFallback(),
                 )
               : _imgFallback(),
           DecoratedBox(
