@@ -155,4 +155,26 @@ class PedidoService {
       return false;
     }
   }
+  static Future<List<Pedido>> obtenerTodosLosPedidos() async {
+    if (!usarApiReal) {
+      await Future.delayed(const Duration(milliseconds: 400));
+      return MockData.pedidos.map((m) => Pedido.fromMap(m)).toList();
+    }
+
+    // Llama al endpoint general de pedidos sin filtrar por usuario
+    final response = await httpWithRetry(
+      () => http.get(
+        Uri.parse('$baseUrl/pedidos'),
+        headers: {'Accept': 'application/json'},
+      ),
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data
+          .map((json) => Pedido.fromMap(json as Map<String, dynamic>))
+          .toList();
+    }
+    throw toApiException(response.statusCode, decodeBody(response));
+  }
 }
