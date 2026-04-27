@@ -1,8 +1,11 @@
 import os
+from pathlib import Path
 from pymongo import MongoClient
 from dotenv import load_dotenv
 
-load_dotenv()
+# Cargar el archivo de entorno local llamado 'env'
+dotenv_path = Path(__file__).with_name("env")
+load_dotenv(dotenv_path=dotenv_path)
 
 MONGO_URI = os.getenv("MONGO_URI")
 cliente = MongoClient(MONGO_URI)
