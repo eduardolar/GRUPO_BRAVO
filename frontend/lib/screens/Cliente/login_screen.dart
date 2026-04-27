@@ -21,6 +21,7 @@ import 'package:frontend/components/Cliente/entrada_texto.dart';
 import 'package:frontend/components/Cliente/auth_scaffold.dart';
 import 'package:frontend/components/Cliente/auth_header.dart';
 import 'package:frontend/components/Cliente/primary_button.dart';
+import 'package:frontend/screens/cliente/totp_login_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   final DestinoLogin destino;
@@ -188,8 +189,16 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final success = await authProvider.iniciarSesion(email, password);
-      if (success && mounted) {
+      if (!mounted) return;
+      if (success) {
         _navigateToRoleHome(authProvider.usuarioActual!);
+      } else {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => TotpLoginScreen(destino: widget.destino),
+          ),
+        );
       }
     } catch (e) {
       if (mounted) _showSnackBar('Error: ${e.toString()}');

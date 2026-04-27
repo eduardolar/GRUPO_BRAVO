@@ -2,6 +2,8 @@ import os
 import random
 import string
 import bcrypt
+import pyotp
+from bson import ObjectId
 from dotenv import load_dotenv
 from fastapi import APIRouter, HTTPException
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
@@ -35,6 +37,16 @@ class ResetPassword(BaseModel):
     correo: EmailStr
     codigo: str
     nueva_password: str
+
+class Verificar2FA(BaseModel):
+    user_id: str
+    codigo: str
+
+class Activar2FA(BaseModel):
+    codigo: str
+
+class Desactivar2FA(BaseModel):
+    codigo: str
 
 # --- 2. FUNCIÓN PARA ENVIAR EL EMAIL ---
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
@@ -180,12 +192,18 @@ def iniciar_sesion(credenciales: UsuarioLogin):
         hash_almacenado = usuario_db["password_hash"].encode('utf-8')
 
         if bcrypt.checkpw(password_escrita, hash_almacenado):
+            if usuario_db.get("totp_enabled"):
+                return {
+                    "requires_2fa": True,
+                    "user_id": str(usuario_db["_id"]),
+                }
             return {
                 "id": str(usuario_db["_id"]),
                 "nombre": usuario_db["nombre"],
                 "correo": usuario_db["correo"],
                 "rol": usuario_db.get("rol", "cliente"),
-                "restauranteId": usuario_db.get("restaurante_id", "")
+                "restauranteId": usuario_db.get("restaurante_id", ""),
+                "totp_enabled": usuario_db.get("totp_enabled", False),
             }
    
     raise HTTPException(status_code=401, detail="Credenciales incorrectas")
@@ -294,3 +312,111 @@ async def reset_password(datos: ResetPassword):
     )
 
     return {"mensaje": "Contraseña actualizada correctamente"}
+
+
+# --- 9. ENDPOINT: SETUP 2FA ---
+@router.post("/usuarios/{user_id}/2fa/setup")
+def setup_2fa(user_id: str):
+    try:
+        usuario_db = coleccion_usuarios.find_one({"_id": ObjectId(user_id)})
+    except Exception:
+        raise HTTPException(status_code=400, detail="ID de usuario inválido")
+    if not usuario_db:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    secret = pyotp.random_base32()
+    correo = usuario_db["correo"]
+    uri = pyotp.totp.TOTP(secret).provisioning_uri(
+        name=correo,
+        issuer_name="Restaurante Bravo"
+    )
+
+    coleccion_usuarios.update_one(
+        {"_id": ObjectId(user_id)},
+        {"$set": {"totp_secret_temp": secret}}
+    )
+
+    return {"secret": secret, "otpauth_uri": uri}
+
+
+# --- 10. ENDPOINT: ACTIVAR 2FA ---
+@router.post("/usuarios/{user_id}/2fa/activar")
+def activar_2fa(user_id: str, datos: Activar2FA):
+    try:
+        usuario_db = coleccion_usuarios.find_one({"_id": ObjectId(user_id)})
+    except Exception:
+        raise HTTPException(status_code=400, detail="ID de usuario inválido")
+    if not usuario_db:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    secret_temp = usuario_db.get("totp_secret_temp")
+    if not secret_temp:
+        raise HTTPException(status_code=400, detail="Primero inicia el proceso de configuración")
+
+    totp = pyotp.TOTP(secret_temp)
+    if not totp.verify(datos.codigo.strip(), valid_window=1):
+        raise HTTPException(status_code=400, detail="Código incorrecto")
+
+    coleccion_usuarios.update_one(
+        {"_id": ObjectId(user_id)},
+        {"$set": {"totp_secret": secret_temp, "totp_enabled": True}, "$unset": {"totp_secret_temp": ""}}
+    )
+
+    return {"mensaje": "Autenticación de dos factores activada correctamente"}
+
+
+# --- 11. ENDPOINT: DESACTIVAR 2FA ---
+@router.post("/usuarios/{user_id}/2fa/desactivar")
+def desactivar_2fa(user_id: str, datos: Desactivar2FA):
+    try:
+        usuario_db = coleccion_usuarios.find_one({"_id": ObjectId(user_id)})
+    except Exception:
+        raise HTTPException(status_code=400, detail="ID de usuario inválido")
+    if not usuario_db:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    if not usuario_db.get("totp_enabled"):
+        raise HTTPException(status_code=400, detail="El 2FA no está activado")
+
+    secret = usuario_db.get("totp_secret")
+    if not secret:
+        raise HTTPException(status_code=400, detail="Configuración 2FA no encontrada")
+
+    totp = pyotp.TOTP(secret)
+    if not totp.verify(datos.codigo.strip(), valid_window=1):
+        raise HTTPException(status_code=400, detail="Código incorrecto")
+
+    coleccion_usuarios.update_one(
+        {"_id": ObjectId(user_id)},
+        {"$set": {"totp_enabled": False}, "$unset": {"totp_secret": ""}}
+    )
+
+    return {"mensaje": "Autenticación de dos factores desactivada"}
+
+
+# --- 12. ENDPOINT: VERIFICAR CÓDIGO 2FA EN LOGIN ---
+@router.post("/verificar-2fa")
+def verificar_2fa(datos: Verificar2FA):
+    try:
+        usuario_db = coleccion_usuarios.find_one({"_id": ObjectId(datos.user_id)})
+    except Exception:
+        raise HTTPException(status_code=400, detail="ID de usuario inválido")
+    if not usuario_db:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    secret = usuario_db.get("totp_secret")
+    if not secret:
+        raise HTTPException(status_code=400, detail="2FA no configurado")
+
+    totp = pyotp.TOTP(secret)
+    if not totp.verify(datos.codigo.strip(), valid_window=1):
+        raise HTTPException(status_code=400, detail="Código incorrecto. Verifica tu Google Authenticator")
+
+    return {
+        "id": str(usuario_db["_id"]),
+        "nombre": usuario_db["nombre"],
+        "correo": usuario_db["correo"],
+        "rol": usuario_db.get("rol", "cliente"),
+        "restauranteId": usuario_db.get("restaurante_id", ""),
+        "totp_enabled": True,
+    }
