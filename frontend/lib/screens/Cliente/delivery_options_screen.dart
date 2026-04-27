@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -33,6 +33,9 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
   bool _googlePayAutorizado = false;
   bool _paypalAutorizado = false;
   bool _applePayAutorizado = false;
+  String? _paypalOrderId;
+  String? _googlePayClientSecret;
+  String? _googlePayPaymentIntentId;
   CardFieldInputDetails? _cardDetails;
 
   final _controladorDireccion = TextEditingController();
@@ -312,6 +315,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
                     _pagoSeleccionado = MetodoPago.efectivo;
                     _googlePayAutorizado = false;
                     _paypalAutorizado = false;
+                    _paypalOrderId = null;
                   });
                 },
               ),
@@ -326,6 +330,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
                     _pagoSeleccionado = MetodoPago.tarjeta;
                     _googlePayAutorizado = false;
                     _paypalAutorizado = false;
+                    _paypalOrderId = null;
                   });
                 },
               ),
@@ -349,6 +354,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
                     _pagoSeleccionado = MetodoPago.googlePay;
                     _googlePayAutorizado = false;
                     _paypalAutorizado = false;
+                    _paypalOrderId = null;
                   });
                 },
               ),
@@ -368,6 +374,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
                     _googlePayAutorizado = false;
                     _paypalAutorizado = false;
                     _applePayAutorizado = false;
+                    _paypalOrderId = null;
                   });
                 },
               ),
@@ -386,6 +393,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
                     _pagoSeleccionado = MetodoPago.applePay;
                     _googlePayAutorizado = false;
                     _paypalAutorizado = false;
+                    _paypalOrderId = null;
                     _applePayAutorizado = false;
                   });
                 },
@@ -690,7 +698,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
   }
 
   Future<void> _procesarGooglePayYCrearPedido() async {
-    if (!_googlePayAutorizado) {
+    if (!_googlePayAutorizado || _googlePayClientSecret == null) {
       _mostrarError('Primero autoriza Google Pay');
       return;
     }
@@ -698,40 +706,18 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
     setState(() => _estaCargando = true);
 
     try {
-      final cart = Provider.of<CartProvider>(context, listen: false);
-      final total = _calcularTotal(cart);
-
-      final compra = await ApiService.iniciarGooglePay(total: total);
-
-      final productId = (compra['productId'] ?? 'pedido_bravo').toString();
-      final purchaseToken = (compra['purchaseToken'] ?? compra['token'] ?? '')
-          .toString();
-
-      if (purchaseToken.isEmpty) {
-        throw Exception('No se recibió purchaseToken de Google Pay');
-      }
-
-      final verificacion = await ApiService.verificarCompraGooglePlay(
-        packageName: 'com.tuempresa.grupo_bravo',
-        productId: productId,
-        purchaseToken: purchaseToken,
-      );
-
-      final verificado =
-          verificacion['success'] == true ||
-          verificacion['verified'] == true ||
-          verificacion['valid'] == true ||
-          verificacion['status'] == 'OK' ||
-          verificacion['status'] == 'SUCCESS';
-
-      if (!verificado) {
-        throw Exception('La compra no fue validada por Google');
-      }
-
+      await Stripe.instance.presentPaymentSheet();
       await _crearPedidoFinal(
-        referenciaPago: (verificacion['orderId'] ?? purchaseToken).toString(),
+        referenciaPago: _googlePayPaymentIntentId,
         estadoPago: 'pagado',
       );
+    } on StripeException catch (e) {
+      if (mounted) {
+        setState(() => _estaCargando = false);
+        _mostrarError(
+          'Pago de Google Pay cancelado o fallido: ${e.error.localizedMessage ?? e.error.message}',
+        );
+      }
     } catch (e) {
       if (mounted) {
         setState(() => _estaCargando = false);
@@ -741,27 +727,15 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
   }
 
   Future<void> _procesarPaypalYCrearPedido() async {
-    if (!_paypalAutorizado) {
-      _mostrarError('Primero autoriza PayPal');
+    if (!_paypalAutorizado || _paypalOrderId == null) {
+      _mostrarError('Primero completa el pago en PayPal');
       return;
     }
 
     setState(() => _estaCargando = true);
 
     try {
-      final cart = Provider.of<CartProvider>(context, listen: false);
-      final total = _calcularTotal(cart);
-
-      final orden = await ApiService.crearOrdenPaypal(
-        total: total,
-        currency: 'EUR',
-      );
-
-      final orderId = orden['id']?.toString();
-      if (orderId == null || orderId.isEmpty) {
-        throw Exception('No se pudo crear la orden de PayPal');
-      }
-
+      final orderId = _paypalOrderId!;
       final captura = await ApiService.capturarOrdenPaypal(orderId: orderId);
       final status = (captura['status'] ?? '').toString().toUpperCase();
 
@@ -1058,11 +1032,39 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       final cart = Provider.of<CartProvider>(context, listen: false);
       final total = _calcularTotal(cart);
       final applePayInit = await ApiService.iniciarApplePay(total: total);
+
+      final clientSecret = applePayInit['client_secret']?.toString();
       final paymentIntentId = applePayInit['payment_intent_id']?.toString();
+      final applePayStatus = applePayInit['status']?.toString().toLowerCase();
+
+      if (clientSecret != null && clientSecret.isNotEmpty) {
+        await ApiService.confirmarApplePay(clientSecret: clientSecret);
+      }
+
+      bool pagado = false;
+      if (paymentIntentId != null && paymentIntentId.isNotEmpty) {
+        pagado = await ApiService.verificarApplePay(
+          paymentIntentId: paymentIntentId,
+        );
+      }
+
+      if (!pagado) {
+        pagado =
+            applePayStatus == 'succeeded' ||
+            applePayStatus == 'paid' ||
+            applePayStatus == 'completed';
+      }
+
+      if (!pagado) {
+        throw Exception('El pago con Apple Pay no se completó');
+      }
 
       await _crearPedidoFinal(
-        referenciaPago: paymentIntentId ?? 'applepay_pending',
-        estadoPago: 'pendiente_applepay',
+        referenciaPago:
+            paymentIntentId ??
+            applePayInit['id']?.toString() ??
+            'applepay_success',
+        estadoPago: 'pagado',
       );
     } catch (e) {
       if (mounted) {
@@ -1074,21 +1076,67 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
 
   Future<void> _autorizarGooglePayFrontend() async {
     if (_estaCargando) return;
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+      _mostrarError('Google Pay solo está disponible en Android.');
+      return;
+    }
 
     setState(() => _estaCargando = true);
+
     try {
-      await Future.delayed(const Duration(seconds: 1));
+      final cart = Provider.of<CartProvider>(context, listen: false);
+      final total = _calcularTotal(cart);
+
+      final intent = await ApiService.crearIntentoTarjeta(
+        amount: total,
+        currency: 'eur',
+      );
+
+      final clientSecret = intent['client_secret']?.toString();
+      final paymentIntentId = intent['payment_intent_id']?.toString();
+
+      if (clientSecret == null || clientSecret.isEmpty) {
+        throw Exception('No se pudo iniciar el pago de Google Pay');
+      }
+
+      final googlePaySupported = await Stripe.instance.isGooglePaySupported();
+      if (!googlePaySupported) {
+        throw Exception('Google Pay no está disponible en este dispositivo.');
+      }
+
+      await Stripe.instance.initPaymentSheet(
+        paymentSheetParameters: SetupPaymentSheetParameters(
+          paymentIntentClientSecret: clientSecret,
+          merchantDisplayName: 'Bravo',
+          googlePay: const PaymentSheetGooglePay(
+            merchantCountryCode: 'ES',
+            currencyCode: 'EUR',
+            testEnv: true,
+          ),
+        ),
+      );
+
       if (mounted) {
         setState(() {
           _googlePayAutorizado = true;
+          _googlePayClientSecret = clientSecret;
+          _googlePayPaymentIntentId = paymentIntentId;
           _paypalAutorizado = false;
+          _applePayAutorizado = false;
           _estaCargando = false;
         });
+      }
+    } on StripeException catch (e) {
+      if (mounted) {
+        setState(() => _estaCargando = false);
+        _mostrarError(
+          'No se pudo autorizar Google Pay: ${e.error.localizedMessage ?? e.error.message}',
+        );
       }
     } catch (e) {
       if (mounted) {
         setState(() => _estaCargando = false);
-        _mostrarError('No se pudo autorizar Google Pay');
+        _mostrarError('No se pudo autorizar Google Pay: $e');
       }
     }
   }
@@ -1098,10 +1146,43 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
 
     setState(() => _estaCargando = true);
     try {
-      await Future.delayed(const Duration(seconds: 1));
+      final cart = Provider.of<CartProvider>(context, listen: false);
+      final total = _calcularTotal(cart);
+
+      final orden = await ApiService.crearOrdenPaypal(
+        total: total,
+        currency: 'EUR',
+      );
+
+      final orderId = orden['id']?.toString();
+      if (orderId == null || orderId.isEmpty) {
+        throw Exception('No se pudo crear la orden de PayPal');
+      }
+
+      String? approvalUrl;
+      if (orden['approval_url'] != null) {
+        approvalUrl = orden['approval_url'].toString();
+      } else if (orden['links'] != null && orden['links'] is List) {
+        for (final link in orden['links'] as List) {
+          if (link is Map<String, dynamic> &&
+              (link['rel']?.toString().toLowerCase() == 'approve' ||
+                  link['rel']?.toString().toLowerCase() == 'approval_url')) {
+            approvalUrl = link['href']?.toString();
+            break;
+          }
+        }
+      }
+
+      if (approvalUrl == null || approvalUrl.isEmpty) {
+        throw Exception('No se recibió URL de aprobación de PayPal');
+      }
+
+      await launchUrl(Uri.parse(approvalUrl), webOnlyWindowName: '_blank');
+
       if (mounted) {
         setState(() {
           _paypalAutorizado = true;
+          _paypalOrderId = orderId;
           _googlePayAutorizado = false;
           _estaCargando = false;
         });
@@ -1109,7 +1190,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
     } catch (e) {
       if (mounted) {
         setState(() => _estaCargando = false);
-        _mostrarError('No se pudo autorizar PayPal');
+        _mostrarError('Error al iniciar PayPal: $e');
       }
     }
   }

@@ -31,8 +31,18 @@ class CardConfirmRequest(BaseModel):
     cvv: str
     nombreTitular: str
 
+class ApplePayInitRequest(BaseModel):
+    total: float = Field(gt=0)
+    currency: str = "EUR"
+    country: str = "ES"
+
 class GooglePayInitRequest(BaseModel):
     total: float = Field(gt=0)
+    currency: str = "EUR"
+
+class ConfirmPaymentIntentRequest(BaseModel):
+    payment_intent_id: str
+    payment_method_id: str
 
 class GooglePayVerifyRequest(BaseModel):
     token: Optional[Dict[str, Any]] = None
@@ -92,6 +102,114 @@ def confirmar_payment_intent(payload: CardConfirmRequest):
 
     return {"success": True, "message": "Confirmación simulada en backend de desarrollo"}
 
+@router.post("/apple-pay/init")
+async def iniciar_apple_pay(payload: ApplePayInitRequest):
+    if not stripe.api_key:
+        raise HTTPException(status_code=500, detail="Falta STRIPE_SECRET_KEY")
+    try:
+        intent = stripe.PaymentIntent.create(
+            amount=int(round(payload.total * 100)),
+            currency=payload.currency.lower(),
+            automatic_payment_methods={"enabled": True},
+            payment_method_types=["card"],
+            metadata={"platform": "apple_pay", "country": payload.country},
+        )
+        return {
+            "payment_intent_id": intent["id"],
+            "client_secret": intent["client_secret"],
+            "status": intent["status"],
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/apple-pay/confirm")
+async def confirmar_apple_pay(payload: ConfirmPaymentIntentRequest):
+    if not stripe.api_key:
+        raise HTTPException(status_code=500, detail="Falta STRIPE_SECRET_KEY")
+    if not payload.payment_intent_id.strip() or not payload.payment_method_id.strip():
+        raise HTTPException(status_code=400, detail="payment_intent_id y payment_method_id son requeridos")
+    try:
+        intent = stripe.PaymentIntent.confirm(
+            payload.payment_intent_id,
+            payment_method=payload.payment_method_id,
+        )
+        return {
+            "id": intent["id"],
+            "status": intent["status"],
+            "paid": intent["status"] == "succeeded",
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.get("/apple-pay/verify/{payment_intent_id}")
+def verificar_apple_pay(payment_intent_id: str):
+    if not stripe.api_key:
+        raise HTTPException(status_code=500, detail="Falta STRIPE_SECRET_KEY")
+    try:
+        intent = stripe.PaymentIntent.retrieve(payment_intent_id)
+        return {
+            "id": intent["id"],
+            "status": intent["status"],
+            "paid": intent["status"] == "succeeded",
+            "apple_pay": intent["metadata"].get("platform") == "apple_pay",
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/google-pay/init")
+async def iniciar_google_pay(payload: GooglePayInitRequest):
+    if not stripe.api_key:
+        raise HTTPException(status_code=500, detail="Falta STRIPE_SECRET_KEY")
+    try:
+        intent = stripe.PaymentIntent.create(
+            amount=int(round(payload.total * 100)),
+            currency=payload.currency.lower(),
+            automatic_payment_methods={"enabled": True},
+            payment_method_types=["card"],
+            metadata={"platform": "google_pay"},
+        )
+        return {
+            "payment_intent_id": intent["id"],
+            "client_secret": intent["client_secret"],
+            "status": intent["status"],
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/google-pay/confirm")
+async def confirmar_google_pay(payload: ConfirmPaymentIntentRequest):
+    if not stripe.api_key:
+        raise HTTPException(status_code=500, detail="Falta STRIPE_SECRET_KEY")
+    if not payload.payment_intent_id.strip() or not payload.payment_method_id.strip():
+        raise HTTPException(status_code=400, detail="payment_intent_id y payment_method_id son requeridos")
+    try:
+        intent = stripe.PaymentIntent.confirm(
+            payload.payment_intent_id,
+            payment_method=payload.payment_method_id,
+        )
+        return {
+            "id": intent["id"],
+            "status": intent["status"],
+            "paid": intent["status"] == "succeeded",
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.get("/google-pay/verify/{payment_intent_id}")
+def verificar_google_pay(payment_intent_id: str):
+    if not stripe.api_key:
+        raise HTTPException(status_code=500, detail="Falta STRIPE_SECRET_KEY")
+    try:
+        intent = stripe.PaymentIntent.retrieve(payment_intent_id)
+        return {
+            "id": intent["id"],
+            "status": intent["status"],
+            "paid": intent["status"] == "succeeded",
+            "google_pay": intent["metadata"].get("platform") == "google_pay",
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 @router.get("/stripe/verify/{payment_intent_id}")
 @router.get("/card/verify/{payment_intent_id}")
 def verificar_payment_intent(payment_intent_id: str):
@@ -145,54 +263,6 @@ def verificar_checkout_session(session_id: str):
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
-
-# ── Google Pay ─────────────────────────────────────────────────────────────────
-
-@router.post("/google-pay/init")
-@router.post("/google-play/init")
-def iniciar_google_pay(payload: GooglePayInitRequest):
-    return {
-        "success": True,
-        "productId": "pedido_bravo",
-        "purchaseToken": f"gpay_{uuid.uuid4().hex}",
-        "amount": payload.total,
-        "currency": "EUR",
-        "message": "Inicio simulado de Google Pay para desarrollo",
-    }
-
-@router.post("/google-pay/verify")
-@router.post("/google-play/verify")
-def verificar_google_pay(payload: GooglePayVerifyRequest):
-    if payload.token:
-        signed_message = payload.token.get("signedMessage")
-        protocol_version = payload.token.get("protocolVersion")
-        valid = bool(signed_message and protocol_version)
-        return {
-            "valid": valid,
-            "verified": valid,
-            "success": valid,
-            "status": "SUCCESS" if valid else "ERROR",
-            "message": "Validación básica de token Google Pay recibida",
-            "orderId": f"gpay_order_{uuid.uuid4().hex[:12]}",
-        }
-
-    if payload.productId and payload.purchaseToken:
-        return {
-            "valid": True,
-            "verified": True,
-            "success": True,
-            "status": "SUCCESS",
-            "productId": payload.productId,
-            "purchaseToken": payload.purchaseToken,
-            "packageName": payload.packageName,
-            "orderId": f"gplay_order_{uuid.uuid4().hex[:12]}",
-            "message": "Verificación simulada de Google Play/Google Pay en desarrollo",
-        }
-
-    raise HTTPException(
-        status_code=400,
-        detail="Debes enviar token o productId + purchaseToken",
-    )
 
 # ── PayPal ─────────────────────────────────────────────────────────────────────
 
@@ -258,6 +328,42 @@ async def crear_orden_paypal(payload: PayPalOrderCreate):
 
     return response.json()
 
+@router.get("/paypal/order/{order_id}")
+async def obtener_orden_paypal(order_id: str):
+    if _PAYPAL_SIMULADO:
+        return {
+            "id": order_id,
+            "status": "CREATED",
+            "simulated": True,
+            "purchase_units": [
+                {
+                    "amount": {
+                        "currency_code": "EUR",
+                        "value": "0.00",
+                    },
+                    "payments": {
+                        "captures": [],
+                    },
+                }
+            ],
+        }
+
+    token = await _paypal_access_token()
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.get(
+            f"{PAYPAL_BASE_URL}/v2/checkout/orders/{order_id}",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+            },
+        )
+
+    if response.status_code >= 400:
+        raise HTTPException(status_code=400, detail=response.text)
+
+    return response.json()
+
 @router.post("/paypal/capture-order")
 @router.post("/paypal/capture")
 async def capturar_orden_paypal(payload: PayPalCaptureRequest):
@@ -285,6 +391,43 @@ async def capturar_orden_paypal(payload: PayPalCaptureRequest):
     async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.post(
             f"{PAYPAL_BASE_URL}/v2/checkout/orders/{payload.orderId}/capture",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+            },
+        )
+
+    if response.status_code >= 400:
+        raise HTTPException(status_code=400, detail=response.text)
+
+    return response.json()
+
+@router.get("/paypal/capture/{order_id}")
+async def capturar_orden_paypal_get(order_id: str):
+    if _PAYPAL_SIMULADO:
+        return {
+            "id": order_id,
+            "status": "COMPLETED",
+            "simulated": True,
+            "purchase_units": [
+                {
+                    "payments": {
+                        "captures": [
+                            {
+                                "id": f"CAP_{uuid.uuid4().hex[:12].upper()}",
+                                "status": "COMPLETED",
+                            }
+                        ]
+                    }
+                }
+            ],
+        }
+
+    token = await _paypal_access_token()
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.post(
+            f"{PAYPAL_BASE_URL}/v2/checkout/orders/{order_id}/capture",
             headers={
                 "Authorization": f"Bearer {token}",
                 "Content-Type": "application/json",
