@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:frontend/components/bravo_app_bar.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/screens/Administrador/admin_contabilidad_screen.dart';
 import 'package:frontend/screens/Administrador/admin_menu_screen.dart';
@@ -20,21 +21,7 @@ class _MenuAdministradorState extends State<MenuAdministrador> {
     return Scaffold(
       backgroundColor: Colors.black, // Color base
       extendBodyBehindAppBar: true, // Para que la imagen pase por debajo del AppBar
-      appBar: AppBar(
-        centerTitle: true,
-        title: const Text(
-          "PANEL DE CONTROL",
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            letterSpacing: 2.0,
-            fontSize: 20,
-            color: Colors.white,
-          ),
-        ),
-        backgroundColor: Colors.transparent, // AppBar transparente
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
+      appBar: const BravoAppBar(title: "PANEL DE CONTROL"),
       // --- FONDO FIJO A PANTALLA COMPLETA ---
       body: Container(
         width: double.infinity,
