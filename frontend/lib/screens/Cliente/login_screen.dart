@@ -4,6 +4,7 @@ import 'package:frontend/screens/Administrador/admin_menu_screen.dart';
 import 'package:frontend/screens/super_admin/activar_cuenta_screen.dart';
 import 'package:provider/provider.dart';
 
+import 'package:frontend/core/app_routes.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/models/usuario_model.dart';
@@ -102,7 +103,7 @@ class _LoginScreenState extends State<LoginScreen> {
       child: TextButton(
         onPressed: () => Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => const ForgottenPassword()),
+          AppRoute.slide(const ForgottenPassword()),
         ),
         child: Text(
           '¿Olvidaste tu contraseña?',
@@ -133,8 +134,7 @@ class _LoginScreenState extends State<LoginScreen> {
             TextButton(
               onPressed: () => Navigator.push(
                 context,
-                MaterialPageRoute(
-                    builder: (_) => RegisterScreen(destino: widget.destino)),
+                AppRoute.slide(RegisterScreen(destino: widget.destino)),
               ),
               child: Text(
                 'Regístrate',
@@ -155,7 +155,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           onPressed: () => Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const MenuAdministrador()),
+            AppRoute.fade(const MenuAdministrador()),
           ),
           child: null,
         ),
@@ -164,7 +164,7 @@ class _LoginScreenState extends State<LoginScreen> {
           TextButton.icon(
             onPressed: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const ActivarCuentaScreen()),
+              AppRoute.slide(const ActivarCuentaScreen()),
             ),
             icon: const Icon(Icons.vpn_key_outlined,
                 size: 16, color: Colors.white54),
@@ -195,9 +195,7 @@ class _LoginScreenState extends State<LoginScreen> {
       } else {
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (_) => TotpLoginScreen(destino: widget.destino),
-          ),
+          AppRoute.slide(TotpLoginScreen(destino: widget.destino)),
         );
       }
     } catch (e) {
@@ -230,7 +228,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(builder: (_) => destino),
+      AppRoute.reveal(destino),
       (route) => false,
     );
   }
