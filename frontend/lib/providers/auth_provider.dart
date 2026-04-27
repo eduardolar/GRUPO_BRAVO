@@ -171,4 +171,18 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
     await _limpiarSesion();
   }
+//
+  void actualizarDireccionLocal({required String nuevaDir, required double nuevaLat, required double nuevaLon}) {
+  if (_usuarioActual != null) {
+    // Creamos una COPIA del usuario con los nuevos datos
+    _usuarioActual = _usuarioActual!.copyWith(
+      direccion: nuevaDir,
+      latitud: nuevaLat,
+      longitud: nuevaLon,
+    );
+    
+    // Avisamos a las pantallas para que se redibujen
+    notifyListeners(); 
+  }
+}
 }

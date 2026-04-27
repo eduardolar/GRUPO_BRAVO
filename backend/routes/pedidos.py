@@ -268,7 +268,7 @@ def actualizar_estado_pago(payload: ActualizarEstadoPago):
 
 
 @router.patch("/{pedido_id}")
-def actualizar_items_pedido(pedido_id: str, payload: ActualizarItemsPedido):
+def actualizar_pedido(pedido_id: str, payload: ActualizarItemsPedido):
     if not ObjectId.is_valid(pedido_id):
         raise HTTPException(status_code=400, detail="ID de pedido inválido")
 
