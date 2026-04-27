@@ -1,6 +1,7 @@
 import os
 import logging
 import traceback
+from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -12,6 +13,10 @@ load_dotenv()
 # Puerto y host configurables desde .env o variables de entorno
 PORT = int(os.getenv("PORT", 8001))
 HOST = os.getenv("HOST", "127.0.0.1")
+# Cargar variables de entorno desde el archivo local 'env'
+dotenv_path = Path(__file__).with_name("env")
+load_dotenv(dotenv_path=dotenv_path)
+MONGO_URI = os.getenv("MONGO_URI")
 
 from routes import auth, usuarios, categorias, productos, pedidos, mesas, reservas, ingredientes
 from routes import restaurantes

@@ -934,7 +934,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
             ),
             onPressed: _autorizarPaypalFrontend,
             child: const Text(
-              'AUTORIZAR PAYPAL',
+              'PAGAR CON PAYPAL',
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w700,
@@ -950,9 +950,11 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
               children: const [
                 Icon(Icons.check_circle, color: Colors.greenAccent, size: 18),
                 SizedBox(width: 8),
-                Text(
-                  'PayPal autorizado',
-                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                Flexible(
+                  child: Text(
+                    'Orden creada. Completa el pago en PayPal y luego confirma el pedido.',
+                    style: TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
                 ),
               ],
             ),
@@ -1151,9 +1153,14 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       final cart = Provider.of<CartProvider>(context, listen: false);
       final total = _calcularTotal(cart);
 
+      const successUrl = 'https://example.com/paypal-success';
+      const cancelUrl = 'https://example.com/paypal-cancel';
+
       final orden = await ApiService.crearOrdenPaypal(
         total: total,
         currency: 'EUR',
+        successUrl: successUrl,
+        cancelUrl: cancelUrl,
       );
 
       final orderId = orden['id']?.toString();
@@ -1166,11 +1173,12 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
         approvalUrl = orden['approval_url'].toString();
       } else if (orden['links'] != null && orden['links'] is List) {
         for (final link in orden['links'] as List) {
-          if (link is Map<String, dynamic> &&
-              (link['rel']?.toString().toLowerCase() == 'approve' ||
-                  link['rel']?.toString().toLowerCase() == 'approval_url')) {
-            approvalUrl = link['href']?.toString();
-            break;
+          if (link is Map<String, dynamic>) {
+            final rel = link['rel']?.toString().toLowerCase();
+            if (rel == 'approve' || rel == 'approval_url') {
+              approvalUrl = link['href']?.toString();
+              break;
+            }
           }
         }
       }
@@ -1179,15 +1187,35 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
         throw Exception('No se recibió URL de aprobación de PayPal');
       }
 
-      await launchUrl(Uri.parse(approvalUrl), webOnlyWindowName: '_blank');
+      final approvalUri = Uri.parse(approvalUrl);
+      if (!await canLaunchUrl(approvalUri)) {
+        throw Exception('No se puede abrir la URL de PayPal');
+      }
+
+      final launched = await launchUrl(
+        approvalUri,
+        mode: kIsWeb
+            ? LaunchMode.platformDefault
+            : LaunchMode.externalApplication,
+      );
+      if (!launched) {
+        throw Exception('No se pudo abrir el pago de PayPal');
+      }
 
       if (mounted) {
         setState(() {
           _paypalAutorizado = true;
           _paypalOrderId = orderId;
           _googlePayAutorizado = false;
+          _applePayAutorizado = false;
           _estaCargando = false;
         });
+      }
+
+      if (mounted) {
+        _mostrarInfo(
+          'PayPal abierto. Completa el pago en la ventana que se abrió y luego confirma el pedido.',
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -1202,6 +1230,18 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       SnackBar(
         content: Text(mensaje),
         backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+        shape: const RoundedRectangleBorder(),
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+      ),
+    );
+  }
+
+  void _mostrarInfo(String mensaje) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(mensaje),
+        backgroundColor: Colors.green[700],
         behavior: SnackBarBehavior.floating,
         shape: const RoundedRectangleBorder(),
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),

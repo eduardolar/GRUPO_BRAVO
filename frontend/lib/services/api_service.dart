@@ -83,7 +83,8 @@ class ApiService {
   static Future<List<Ingrediente>> obtenerIngredientes() =>
       IngredienteService.obtenerIngredientes();
 
-  static Future<Map<String, List<Ingrediente>>> obtenerIngredientesPorCategoria() =>
+  static Future<Map<String, List<Ingrediente>>>
+  obtenerIngredientesPorCategoria() =>
       IngredienteService.obtenerIngredientesPorCategoria();
 
   // ─── PEDIDOS ─────────────────────────────────────────────────
@@ -330,19 +331,38 @@ class ApiService {
   static Future<Map<String, dynamic>> crearOrdenPaypal({
     required double total,
     String currency = 'EUR',
+    String? successUrl,
+    String? cancelUrl,
   }) async {
+    final payload = {'total': total, 'currency': currency};
+    if (successUrl != null) {
+      payload['success_url'] = successUrl;
+      payload['return_url'] = successUrl;
+    }
+    if (cancelUrl != null) {
+      payload['cancel_url'] = cancelUrl;
+    }
+
     final response = await httpWithRetry(
       () => http.post(
         Uri.parse('$baseUrl/payments/paypal/create-order'),
         headers: _jsonHeaders(),
-        body: jsonEncode({'total': total, 'currency': currency}),
+        body: jsonEncode(payload),
       ),
       retry: false,
     );
     if (response.statusCode >= 400) {
+      print(
+        'DEBUG PayPal create-order error: '
+        'status=${response.statusCode} body=${response.body}',
+      );
       throw toApiException(response.statusCode, decodeBody(response));
     }
-    return Map<String, dynamic>.from(decodeBody(response));
+    final body = Map<String, dynamic>.from(decodeBody(response));
+    print(
+      'DEBUG PayPal create-order success: status=${response.statusCode} body=$body',
+    );
+    return body;
   }
 
   static Future<Map<String, dynamic>> capturarOrdenPaypal({
@@ -488,29 +508,28 @@ class ApiService {
   }
 
   static Future<void> agregarItemTicket({
-  required String mesaId,
-  required Producto producto,
-  required int cantidad,
-}) async {
-  final body = {
-    "producto_id": producto.id,
-    "nombre": producto.nombre,
-    "cantidad": cantidad,
-    "precio": producto.precio,
-  };
+    required String mesaId,
+    required Producto producto,
+    required int cantidad,
+  }) async {
+    final body = {
+      "producto_id": producto.id,
+      "nombre": producto.nombre,
+      "cantidad": cantidad,
+      "precio": producto.precio,
+    };
 
-  final response = await httpWithRetry(
-    () => http.post(
-      Uri.parse("$baseUrl/tickets/mesa/$mesaId"),
-      headers: _jsonHeaders(),
-      body: jsonEncode(body),
-    ),
-    retry: false,
-  );
+    final response = await httpWithRetry(
+      () => http.post(
+        Uri.parse("$baseUrl/tickets/mesa/$mesaId"),
+        headers: _jsonHeaders(),
+        body: jsonEncode(body),
+      ),
+      retry: false,
+    );
 
-  if (response.statusCode >= 400) {
-    throw Exception("Error al enviar item al ticket: ${response.body}");
+    if (response.statusCode >= 400) {
+      throw Exception("Error al enviar item al ticket: ${response.body}");
+    }
   }
-}
-
 }

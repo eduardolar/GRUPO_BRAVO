@@ -281,19 +281,54 @@ async def _paypal_access_token() -> str:
 
 _PAYPAL_SIMULADO = not (PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET)
 
+def _paypal_simulado_order_response(order_id: str, total: float = 0.0, currency: str = "EUR") -> Dict[str, Any]:
+    return {
+        "id": order_id,
+        "status": "CREATED",
+        "purchase_units": [
+            {
+                "amount": {
+                    "currency_code": currency,
+                    "value": f"{total:.2f}",
+                }
+            }
+        ],
+        "links": [
+            {
+                "href": f"https://www.sandbox.paypal.com/checkoutnow?token={order_id}",
+                "rel": "approve",
+                "method": "GET",
+            }
+        ],
+    }
+
+
+def _paypal_simulado_capture_response(order_id: str, total: float = 0.0, currency: str = "EUR") -> Dict[str, Any]:
+    return {
+        "id": order_id,
+        "status": "COMPLETED",
+        "purchase_units": [
+            {
+                "payments": {
+                    "captures": [
+                        {
+                            "id": f"{order_id}-CAPTURE",
+                            "status": "COMPLETED",
+                            "amount": {
+                                "currency_code": currency,
+                                "value": f"{total:.2f}",
+                            },
+                        }
+                    ]
+                }
+            }
+        ],
+    }
+
 @router.post("/paypal/create-order")
 async def crear_orden_paypal(payload: PayPalOrderCreate):
     if _PAYPAL_SIMULADO:
-        order_id = f"SIMPP_{uuid.uuid4().hex[:16].upper()}"
-        return {
-            "id": order_id,
-            "status": "CREATED",
-            "simulated": True,
-            "links": [
-                {"rel": "approve", "href": f"https://sandbox.paypal.com/checkoutnow?token={order_id}", "method": "GET"},
-                {"rel": "capture", "href": f"/payments/paypal/capture-order", "method": "POST"},
-            ],
-        }
+        return _paypal_simulado_order_response(str(uuid.uuid4()), payload.total, payload.currency)
 
     token = await _paypal_access_token()
 
@@ -327,22 +362,7 @@ async def crear_orden_paypal(payload: PayPalOrderCreate):
 @router.get("/paypal/order/{order_id}")
 async def obtener_orden_paypal(order_id: str):
     if _PAYPAL_SIMULADO:
-        return {
-            "id": order_id,
-            "status": "CREATED",
-            "simulated": True,
-            "purchase_units": [
-                {
-                    "amount": {
-                        "currency_code": "EUR",
-                        "value": "0.00",
-                    },
-                    "payments": {
-                        "captures": [],
-                    },
-                }
-            ],
-        }
+        return _paypal_simulado_order_response(order_id)
 
     token = await _paypal_access_token()
 
@@ -364,23 +384,7 @@ async def obtener_orden_paypal(order_id: str):
 @router.post("/paypal/capture")
 async def capturar_orden_paypal(payload: PayPalCaptureRequest):
     if _PAYPAL_SIMULADO:
-        return {
-            "id": payload.orderId,
-            "status": "COMPLETED",
-            "simulated": True,
-            "purchase_units": [
-                {
-                    "payments": {
-                        "captures": [
-                            {
-                                "id": f"CAP_{uuid.uuid4().hex[:12].upper()}",
-                                "status": "COMPLETED",
-                            }
-                        ]
-                    }
-                }
-            ],
-        }
+        return _paypal_simulado_capture_response(payload.orderId)
 
     token = await _paypal_access_token()
 
@@ -401,23 +405,7 @@ async def capturar_orden_paypal(payload: PayPalCaptureRequest):
 @router.get("/paypal/capture/{order_id}")
 async def capturar_orden_paypal_get(order_id: str):
     if _PAYPAL_SIMULADO:
-        return {
-            "id": order_id,
-            "status": "COMPLETED",
-            "simulated": True,
-            "purchase_units": [
-                {
-                    "payments": {
-                        "captures": [
-                            {
-                                "id": f"CAP_{uuid.uuid4().hex[:12].upper()}",
-                                "status": "COMPLETED",
-                            }
-                        ]
-                    }
-                }
-            ],
-        }
+        return _paypal_simulado_capture_response(order_id)
 
     token = await _paypal_access_token()
 
