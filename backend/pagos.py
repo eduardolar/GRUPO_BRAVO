@@ -75,8 +75,6 @@ def crear_payment_intent(payload: PaymentIntentCreate):
             amount=int(round(payload.amount * 100)),
             currency=payload.currency.lower(),
             automatic_payment_methods={"enabled": True},
-            # Soporte para Apple Pay/Google Pay
-            payment_method_types=["card", "card_present"],
         )
         return {
             "payment_intent_id": intent["id"],
@@ -111,7 +109,6 @@ async def iniciar_apple_pay(payload: ApplePayInitRequest):
             amount=int(round(payload.total * 100)),
             currency=payload.currency.lower(),
             automatic_payment_methods={"enabled": True},
-            payment_method_types=["card"],
             metadata={"platform": "apple_pay", "country": payload.country},
         )
         return {
@@ -165,7 +162,6 @@ async def iniciar_google_pay(payload: GooglePayInitRequest):
             amount=int(round(payload.total * 100)),
             currency=payload.currency.lower(),
             automatic_payment_methods={"enabled": True},
-            payment_method_types=["card"],
             metadata={"platform": "google_pay"},
         )
         return {

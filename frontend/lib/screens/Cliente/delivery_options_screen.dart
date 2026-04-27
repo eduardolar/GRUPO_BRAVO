@@ -1099,7 +1099,9 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
         throw Exception('No se pudo iniciar el pago de Google Pay');
       }
 
-      final googlePaySupported = await Stripe.instance.isGooglePaySupported();
+      final googlePaySupported = await Stripe.instance.isGooglePaySupported(
+        const IsGooglePaySupportedParams(),
+      );
       if (!googlePaySupported) {
         throw Exception('Google Pay no está disponible en este dispositivo.');
       }
