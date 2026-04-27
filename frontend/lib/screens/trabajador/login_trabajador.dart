@@ -3,6 +3,7 @@ import 'package:frontend/components/Cliente/entrada_texto.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/models/usuario_model.dart';
 import 'package:frontend/providers/auth_provider.dart';
+import 'package:frontend/screens/cliente/totp_login_screen.dart';
 import 'package:frontend/screens/cocinero/home_screen_cocinero.dart';
 import 'package:frontend/screens/home_screen_trabajador.dart';
 import 'package:provider/provider.dart';
@@ -225,7 +226,8 @@ class _LoginTrabajadorState extends State<LoginTrabajador> {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final success = await authProvider.iniciarSesion(email, password);
 
-      if (success && mounted) {
+      if (!mounted) return;
+      if (success) {
         final rol = authProvider.usuarioActual?.rol;
         final destino = rol == RolUsuario.cocinero
             ? const HomeCocinero()
@@ -233,6 +235,11 @@ class _LoginTrabajadorState extends State<LoginTrabajador> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => destino),
+        );
+      } else {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const TotpLoginScreen()),
         );
       }
     } catch (e) {

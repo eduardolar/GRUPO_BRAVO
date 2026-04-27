@@ -13,6 +13,7 @@ import 'package:frontend/models/destino_login.dart';
 import 'package:frontend/screens/cliente/menu_screen.dart';
 import 'package:frontend/screens/cliente/reservar_mesa_screen.dart';
 import 'package:frontend/screens/cliente/pedido_confirmado_screen.dart';
+import 'package:frontend/core/app_routes.dart';
 import 'package:frontend/core/colors_style.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -61,14 +62,12 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!mounted) return;
       Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (_) => PedidoConfirmadoScreen(
-            tipoEntrega: _stripeEntrega,
-            tipoPago: 'Tarjeta',
-            total: _stripeTotal,
-            pedidoId: sessionId,
-          ),
-        ),
+        AppRoute.reveal(PedidoConfirmadoScreen(
+          tipoEntrega: _stripeEntrega,
+          tipoPago: 'Tarjeta',
+          total: _stripeTotal,
+          pedidoId: sessionId,
+        )),
       );
     } catch (_) {}
   }
@@ -179,9 +178,9 @@ class _CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
             ),
             onPressed: () {
               if (auth.estaAutenticado) {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const PerfilScreen()));
+                Navigator.push(context, AppRoute.slideUp(const PerfilScreen()));
               } else {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen(mostrarActivarCuenta: true)));
+                Navigator.push(context, AppRoute.slideUp(const LoginScreen(mostrarActivarCuenta: true)));
               }
             },
           ),
@@ -324,11 +323,9 @@ class _ActionButtonsGroup extends StatelessWidget {
           label: "Pedido a domicilio",
           onPressed: () => Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (_) => auth.estaAutenticado
-                  ? const MenuScreen()
-                  : const LoginScreen(),
-            ),
+            auth.estaAutenticado
+                ? AppRoute.slide(const MenuScreen())
+                : AppRoute.slideUp(const LoginScreen()),
           ),
         ),
         _MainButton(
@@ -336,11 +333,9 @@ class _ActionButtonsGroup extends StatelessWidget {
           label: "Reservar mesa",
           onPressed: () => Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (_) => auth.estaAutenticado
-                  ? const ReservarMesaScreen()
-                  : const LoginScreen(destino: DestinoLogin.reservar),
-            ),
+            auth.estaAutenticado
+                ? AppRoute.slide(const ReservarMesaScreen())
+                : AppRoute.slideUp(const LoginScreen(destino: DestinoLogin.reservar)),
           ),
         ),
       ],
@@ -349,7 +344,7 @@ class _ActionButtonsGroup extends StatelessWidget {
 
   Future<void> _handleQrScan(BuildContext context) async {
     final cart = context.read<CartProvider>();
-    final codigoQr = await Navigator.push<String>(context, MaterialPageRoute(builder: (context) => const QRScanner()));
+    final codigoQr = await Navigator.push<String>(context, AppRoute.slideUp(const QRScanner()));
     if (codigoQr == null) return;
 
     try {
@@ -361,7 +356,12 @@ class _ActionButtonsGroup extends StatelessWidget {
       if (!context.mounted) return;
 
       final auth = context.read<AuthProvider>();
-      Navigator.push(context, MaterialPageRoute(builder: (_) => auth.estaAutenticado ? const MenuScreen() : const LoginScreen(destino: DestinoLogin.menu)));
+      Navigator.push(
+        context,
+        auth.estaAutenticado
+            ? AppRoute.slide(const MenuScreen())
+            : AppRoute.slideUp(const LoginScreen(destino: DestinoLogin.menu)),
+      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error));
     }

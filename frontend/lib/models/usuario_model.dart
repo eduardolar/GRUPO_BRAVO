@@ -69,7 +69,7 @@ class Usuario {
       latitud: json['latitud'] != null ? double.parse(json['latitud'].toString()) : null,
       longitud: json['longitud'] != null ? double.parse(json['longitud'].toString()) : null,
       rol: _parseRol(json['rol']),
-      restauranteId: json['restaurante_id']?.toString(),
+      restauranteId: (json['restauranteId'] ?? json['restaurante_id'])?.toString(),
       totpEnabled: json['totp_enabled'] == true,
     );
   }

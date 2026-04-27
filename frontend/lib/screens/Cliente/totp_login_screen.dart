@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/app_routes.dart';
 import '../../core/colors_style.dart';
 import '../../models/usuario_model.dart';
 import '../../models/destino_login.dart';
@@ -83,7 +84,7 @@ class _TotpLoginScreenState extends State<TotpLoginScreen> {
     }
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(builder: (_) => destino),
+      AppRoute.reveal(destino),
       (route) => false,
     );
   }
