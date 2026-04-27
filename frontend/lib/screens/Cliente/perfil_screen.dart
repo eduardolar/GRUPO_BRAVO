@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:frontend/screens/cliente/login_screen.dart';
 import 'package:provider/provider.dart';
 import '../../core/colors_style.dart';
+import '../../models/usuario_model.dart';
 import '../../providers/auth_provider.dart';
 import 'home_screen.dart';
 import 'historial_pedidos_screen.dart';
@@ -612,12 +613,14 @@ class _PerfilScreenState extends State<PerfilScreen> {
                             },
                           ),
                           const SizedBox(height: 10),
-                          _buildAccion(
-                            icono: Icons.receipt_long_outlined,
-                            label: 'Historial de pedidos',
-                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HistorialPedidosScreen())),
-                          ),
-                          const SizedBox(height: 10),
+                          if (usuario?.rol == RolUsuario.cliente) ...[
+                            _buildAccion(
+                              icono: Icons.receipt_long_outlined,
+                              label: 'Historial de pedidos',
+                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HistorialPedidosScreen())),
+                            ),
+                            const SizedBox(height: 10),
+                          ],
                           _buildAccion(
                             icono: Icons.logout,
                             label: 'Cerrar sesión',

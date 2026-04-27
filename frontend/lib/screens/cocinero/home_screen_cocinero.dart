@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/components/bravo_app_bar.dart';
 import 'package:frontend/core/colors_style.dart';
-import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/screens/cocinero/pedidos_cocina_screen.dart';
-import 'package:provider/provider.dart';
 
 class HomeCocinero extends StatefulWidget {
   const HomeCocinero({super.key});
@@ -70,7 +69,7 @@ class _HomeContent extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       extendBodyBehindAppBar: true,
-      appBar: const _CustomAppBar(),
+      appBar: const BravoAppBar(title: 'RESTAURANTE BRAVO'),
       body: const SingleChildScrollView(
         physics: BouncingScrollPhysics(),
         child: Column(
@@ -84,52 +83,6 @@ class _HomeContent extends StatelessWidget {
   }
 }
 
-// ── APPBAR ───────────────────────────────────────────────────────
-class _CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
-  const _CustomAppBar();
-
-  @override
-  Widget build(BuildContext context) {
-    return AppBar(
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      centerTitle: true,
-      title: const Text(
-        'RESTAURANTE BRAVO',
-        style: TextStyle(
-          fontFamily: 'Playfair Display',
-          color: AppColors.textAppBar,
-          fontSize: 18,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 2.0,
-        ),
-      ),
-      actions: [
-        Padding(
-          padding: const EdgeInsets.only(right: 16.0),
-          child: IconButton(
-            icon: const CircleAvatar(
-              backgroundColor: Colors.white24,
-              radius: 18,
-              child: Icon(Icons.logout, color: Colors.white, size: 18),
-            ),
-            tooltip: 'Cerrar sesión',
-            onPressed: () async {
-              final auth = Provider.of<AuthProvider>(context, listen: false);
-              await auth.cerrarSesion();
-              if (context.mounted) {
-                Navigator.of(context).popUntil((route) => route.isFirst);
-              }
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
-}
 
 // ── HERO ─────────────────────────────────────────────────────────
 class _HeroSection extends StatelessWidget {
