@@ -57,12 +57,14 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
 
   Color _colorEstado(String estado) {
     switch (estado) {
-      case 'Entregado':
+      case 'entregado':
         return Colors.green;
-      case 'Cancelado':
+      case 'cancelado':
         return Colors.redAccent;
-      case 'En preparación':
-        return Colors.orange;
+      case 'preparando':
+        return Colors.deepOrange;
+      case 'listo':
+        return Colors.blue;
       default:
         return AppColors.gold;
     }
@@ -70,14 +72,33 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
 
   IconData _iconoEstado(String estado) {
     switch (estado) {
-      case 'Entregado':
+      case 'entregado':
         return Icons.check_circle_outline;
-      case 'Cancelado':
+      case 'cancelado':
         return Icons.cancel_outlined;
-      case 'En preparación':
-        return Icons.access_time;
+      case 'preparando':
+        return Icons.local_fire_department_outlined;
+      case 'listo':
+        return Icons.done_all;
       default:
         return Icons.receipt_long;
+    }
+  }
+
+  String _etiquetaEstado(String estado) {
+    switch (estado) {
+      case 'pendiente':
+        return 'Pendiente';
+      case 'preparando':
+        return 'En cocina';
+      case 'listo':
+        return 'Listo para recoger';
+      case 'entregado':
+        return 'Entregado';
+      case 'cancelado':
+        return 'Cancelado';
+      default:
+        return estado;
     }
   }
 
@@ -183,7 +204,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    '${pedido.items} artículos · ${pedido.estado}',
+                                    '${pedido.items} artículos · ${_etiquetaEstado(pedido.estado)}',
                                     style: TextStyle(
                                       color: AppColors.textSecondary
                                           .withValues(alpha: 0.7),
@@ -215,7 +236,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
-                                    pedido.estado,
+                                    _etiquetaEstado(pedido.estado),
                                     style: TextStyle(
                                       color: colorEstado,
                                       fontSize: 11,

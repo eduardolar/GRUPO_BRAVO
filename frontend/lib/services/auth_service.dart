@@ -271,4 +271,64 @@ class AuthService {
     );
     return response.statusCode == 200;
   }
+
+  static Future<Map<String, dynamic>> setup2fa({required String userId}) async {
+    final response = await httpWithRetry(
+      () => http.post(Uri.parse('$baseUrl/usuarios/$userId/2fa/setup'),
+          headers: {'Content-Type': 'application/json'}),
+      retry: false,
+    );
+    if (response.statusCode == 200) return jsonDecode(response.body);
+    throw toApiException(response.statusCode, decodeBody(response));
+  }
+
+  static Future<void> activar2fa({
+    required String userId,
+    required String codigo,
+  }) async {
+    final response = await httpWithRetry(
+      () => http.post(
+        Uri.parse('$baseUrl/usuarios/$userId/2fa/activar'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'codigo': codigo}),
+      ),
+      retry: false,
+    );
+    if (response.statusCode != 200) {
+      throw toApiException(response.statusCode, decodeBody(response));
+    }
+  }
+
+  static Future<void> desactivar2fa({
+    required String userId,
+    required String codigo,
+  }) async {
+    final response = await httpWithRetry(
+      () => http.post(
+        Uri.parse('$baseUrl/usuarios/$userId/2fa/desactivar'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'codigo': codigo}),
+      ),
+      retry: false,
+    );
+    if (response.statusCode != 200) {
+      throw toApiException(response.statusCode, decodeBody(response));
+    }
+  }
+
+  static Future<Map<String, dynamic>> verificar2fa({
+    required String userId,
+    required String codigo,
+  }) async {
+    final response = await httpWithRetry(
+      () => http.post(
+        Uri.parse('$baseUrl/verificar-2fa'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'user_id': userId, 'codigo': codigo}),
+      ),
+      retry: false,
+    );
+    if (response.statusCode == 200) return jsonDecode(response.body);
+    throw toApiException(response.statusCode, decodeBody(response));
+  }
 }
