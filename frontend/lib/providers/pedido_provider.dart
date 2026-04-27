@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../services/api_service.dart';
 import 'auth_provider.dart';
 import 'cart_provider.dart';
 
@@ -41,18 +42,29 @@ class PedidoProvider extends ChangeNotifier {
     }
 
     // Llamamos al servicio para enviar a Python
-    var ApiService;
-    bool exito = await ApiService.crearPedido(
-      userId: authProv.usuarioActual, // ID del usuario logueado
-      items: cartProv.itemCount, // Los productos del carrito
+    final items = cartProv.items.values
+        .map(
+          (item) => {
+            'producto_id': item.producto.id,
+            'nombre': item.producto.nombre,
+            'cantidad': item.cantidad,
+            'precio': item.producto.precio,
+          },
+        )
+        .toList();
+
+    final resultado = await ApiService.crearPedido(
+      userId: authProv.usuarioActual?.id ?? '',
+      items: items,
       tipoEntrega: 'MESA',
-      metodoPago: 'EFECTIVO', // O el que elijas
+      metodoPago: 'EFECTIVO',
       total: cartProv.totalPrice,
-      mesaId: pedidoProv.mesaId, // <--- AQUÍ ENVIAMOS EL QR ESCANEADO
-      numeroMesa: int.tryParse(
-        pedidoProv.mesaId,
-      ), // Por si el backend pide número
+      mesaId: pedidoProv.mesaId,
+      numeroMesa: int.tryParse(pedidoProv.mesaId),
+      estadoPago: 'pendiente',
     );
+
+    final exito = resultado['id'] != null || resultado['pedido_id'] != null;
 
     if (exito) {
       cartProv.clearCart();

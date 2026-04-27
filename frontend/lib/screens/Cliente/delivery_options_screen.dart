@@ -32,6 +32,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
 
   bool _googlePayAutorizado = false;
   bool _paypalAutorizado = false;
+  bool _applePayAutorizado = false;
   CardFieldInputDetails? _cardDetails;
 
   final _controladorDireccion = TextEditingController();
@@ -332,7 +333,8 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
                 const SizedBox(height: 2),
                 _FormPanel(
                   child: CamposTarjeta(
-                    onCardChanged: (details) => setState(() => _cardDetails = details),
+                    onCardChanged: (details) =>
+                        setState(() => _cardDetails = details),
                   ),
                 ),
               ],
@@ -365,12 +367,32 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
                     _pagoSeleccionado = MetodoPago.paypal;
                     _googlePayAutorizado = false;
                     _paypalAutorizado = false;
+                    _applePayAutorizado = false;
                   });
                 },
               ),
               if (_pagoSeleccionado == MetodoPago.paypal) ...[
                 const SizedBox(height: 8),
                 _buildPaypalButton(),
+              ],
+              const SizedBox(height: 10),
+              _PagoCard(
+                icono: Icons.apple,
+                titulo: 'Apple Pay',
+                subtitulo: 'Paga con Apple Pay',
+                seleccionada: _pagoSeleccionado == MetodoPago.applePay,
+                onTap: () {
+                  setState(() {
+                    _pagoSeleccionado = MetodoPago.applePay;
+                    _googlePayAutorizado = false;
+                    _paypalAutorizado = false;
+                    _applePayAutorizado = false;
+                  });
+                },
+              ),
+              if (_pagoSeleccionado == MetodoPago.applePay) ...[
+                const SizedBox(height: 8),
+                _buildApplePayButton(),
               ],
             ],
           ),
@@ -392,7 +414,8 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
               icono: Icons.home_outlined,
               titulo: 'Dirección registrada',
               subtitulo: dir.isNotEmpty ? dir : 'No tienes dirección guardada',
-              seleccionada: _direccionSeleccionada == OpcionDireccion.registrada,
+              seleccionada:
+                  _direccionSeleccionada == OpcionDireccion.registrada,
               onTap: () => setState(
                 () => _direccionSeleccionada = OpcionDireccion.registrada,
               ),
@@ -404,23 +427,26 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
               icono: Icons.map_outlined,
               titulo: 'Cambiar o usar mapa / GPS',
               subtitulo: 'Selecciona tu ubicación exacta en el mapa',
-              seleccionada: _direccionSeleccionada == OpcionDireccion.alternativa,
+              seleccionada:
+                  _direccionSeleccionada == OpcionDireccion.alternativa,
               onTap: () async {
                 // Navegamos al mapa y esperamos a que el usuario guarde
                 await Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const DireccionScreen()),
+                  MaterialPageRoute(
+                    builder: (context) => const DireccionScreen(),
+                  ),
                 );
 
-                // Al volver, forzamos la selección a "registrada" porque 
+                // Al volver, forzamos la selección a "registrada" porque
                 // la pantalla de mapa ya actualiza la dirección en el perfil del usuario
                 setState(() {
                   _direccionSeleccionada = OpcionDireccion.registrada;
                 });
               },
             ),
-            
-            // He quitado el panel de formulario antiguo (_FormPanel) 
+
+            // He quitado el panel de formulario antiguo (_FormPanel)
             // para que la interfaz quede limpia y obligue a usar el mapa.
           ],
         );
@@ -461,7 +487,11 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
         await _procesarPaypalYCrearPedido();
         break;
       case MetodoPago.applePay:
-        _mostrarError('Apple Pay no está disponible en este dispositivo');
+        if (_applePayAutorizado) {
+          await _procesarApplePayYCrearPedido();
+        } else {
+          _mostrarError('Primero autoriza Apple Pay');
+        }
         break;
     }
   }
@@ -540,24 +570,28 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
 
       // Capturar datos del carrito ANTES de limpiarlo
       final items = cart.items.values
-          .map((item) => {
-                'producto_id': item.producto.id,
-                'nombre': item.producto.nombre,
-                'cantidad': item.cantidad,
-                'precio': item.producto.precio,
-                if (item.ingredientesExcluidos.isNotEmpty)
-                  'sin': item.ingredientesExcluidos,
-              })
+          .map(
+            (item) => {
+              'producto_id': item.producto.id,
+              'nombre': item.producto.nombre,
+              'cantidad': item.cantidad,
+              'precio': item.producto.precio,
+              if (item.ingredientesExcluidos.isNotEmpty)
+                'sin': item.ingredientesExcluidos,
+            },
+          )
           .toList();
 
       final itemsResumen = cart.items.values
-          .map((item) => {
-                'nombre': item.producto.nombre,
-                'cantidad': item.cantidad,
-                'precio': item.producto.precio,
-                if (item.ingredientesExcluidos.isNotEmpty)
-                  'sin': item.ingredientesExcluidos,
-              })
+          .map(
+            (item) => {
+              'nombre': item.producto.nombre,
+              'cantidad': item.cantidad,
+              'precio': item.producto.precio,
+              if (item.ingredientesExcluidos.isNotEmpty)
+                'sin': item.ingredientesExcluidos,
+            },
+          )
           .toList();
 
       final direccionEntrega = _entregaSeleccionada == OpcionEntrega.domicilio
@@ -629,7 +663,9 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       if (confirmado != true || !mounted) return;
 
       // Marcar el pedido como pagado en la BD
-      try { await ApiService.actualizarEstadoPago(referenciaPago: sessionId); } catch (_) {}
+      try {
+        await ApiService.actualizarEstadoPago(referenciaPago: sessionId);
+      } catch (_) {}
       if (!mounted) return;
 
       Navigator.pushAndRemoveUntil(
@@ -830,8 +866,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       );
 
       final pedidoId =
-          resultado['id']?.toString() ??
-          resultado['pedido_id']?.toString();
+          resultado['id']?.toString() ?? resultado['pedido_id']?.toString();
 
       cart.clearCart();
 
@@ -950,6 +985,91 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
           ),
       ],
     );
+  }
+
+  Widget _buildApplePayButton() {
+    return Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              backgroundColor: Colors.white,
+              side: BorderSide.none,
+              padding: const EdgeInsets.symmetric(vertical: 15),
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.zero,
+              ),
+            ),
+            onPressed: _autorizarApplePayFrontend,
+            child: const Text(
+              'AUTORIZAR APPLE PAY',
+              style: TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1,
+              ),
+            ),
+          ),
+        ),
+        if (_applePayAutorizado)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Row(
+              children: const [
+                Icon(Icons.check_circle, color: Colors.greenAccent, size: 18),
+                SizedBox(width: 8),
+                Text(
+                  'Apple Pay autorizado',
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  Future<void> _autorizarApplePayFrontend() async {
+    if (_estaCargando) return;
+
+    setState(() => _estaCargando = true);
+    try {
+      await Future.delayed(const Duration(seconds: 1));
+      if (mounted) {
+        setState(() {
+          _applePayAutorizado = true;
+          _googlePayAutorizado = false;
+          _paypalAutorizado = false;
+          _estaCargando = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _estaCargando = false);
+        _mostrarError('No se pudo autorizar Apple Pay');
+      }
+    }
+  }
+
+  Future<void> _procesarApplePayYCrearPedido() async {
+    setState(() => _estaCargando = true);
+    try {
+      final cart = Provider.of<CartProvider>(context, listen: false);
+      final total = _calcularTotal(cart);
+      final applePayInit = await ApiService.iniciarApplePay(total: total);
+      final paymentIntentId = applePayInit['payment_intent_id']?.toString();
+
+      await _crearPedidoFinal(
+        referenciaPago: paymentIntentId ?? 'applepay_pending',
+        estadoPago: 'pendiente_applepay',
+      );
+    } catch (e) {
+      if (mounted) {
+        setState(() => _estaCargando = false);
+        _mostrarError('Error en Apple Pay: $e');
+      }
+    }
   }
 
   Future<void> _autorizarGooglePayFrontend() async {
@@ -1537,7 +1657,10 @@ class _StripeCheckoutDialogState extends State<_StripeCheckoutDialog> {
   String? _error;
 
   Future<void> _verificar() async {
-    setState(() { _verificando = true; _error = null; });
+    setState(() {
+      _verificando = true;
+      _error = null;
+    });
     try {
       final pagado = await ApiService.verificarCheckoutSession(
         sessionId: widget.sessionId,
@@ -1548,11 +1671,16 @@ class _StripeCheckoutDialogState extends State<_StripeCheckoutDialog> {
       } else {
         setState(() {
           _verificando = false;
-          _error = 'El pago aún no se ha completado. Completa el pago en la pestaña de Stripe y vuelve a intentarlo.';
+          _error =
+              'El pago aún no se ha completado. Completa el pago en la pestaña de Stripe y vuelve a intentarlo.';
         });
       }
     } catch (e) {
-      if (mounted) setState(() { _verificando = false; _error = e.toString(); });
+      if (mounted)
+        setState(() {
+          _verificando = false;
+          _error = e.toString();
+        });
     }
   }
 
@@ -1565,7 +1693,10 @@ class _StripeCheckoutDialogState extends State<_StripeCheckoutDialog> {
         children: [
           Icon(Icons.open_in_new, color: AppColors.button, size: 20),
           SizedBox(width: 10),
-          Text('Completa el pago', style: TextStyle(color: AppColors.textPrimary, fontSize: 16)),
+          Text(
+            'Completa el pago',
+            style: TextStyle(color: AppColors.textPrimary, fontSize: 16),
+          ),
         ],
       ),
       content: Column(
@@ -1578,24 +1709,41 @@ class _StripeCheckoutDialogState extends State<_StripeCheckoutDialog> {
           ),
           if (_error != null) ...[
             const SizedBox(height: 12),
-            Text(_error!, style: const TextStyle(color: AppColors.error, fontSize: 12)),
+            Text(
+              _error!,
+              style: const TextStyle(color: AppColors.error, fontSize: 12),
+            ),
           ],
         ],
       ),
       actions: [
         TextButton(
-          onPressed: _verificando ? null : () => Navigator.of(context).pop(false),
-          child: const Text('Cancelar', style: TextStyle(color: AppColors.textSecondary)),
+          onPressed: _verificando
+              ? null
+              : () => Navigator.of(context).pop(false),
+          child: const Text(
+            'Cancelar',
+            style: TextStyle(color: AppColors.textSecondary),
+          ),
         ),
         ElevatedButton(
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.button,
             foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(4),
+            ),
           ),
           onPressed: _verificando ? null : _verificar,
           child: _verificando
-              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
+                )
               : const Text('Ya he pagado'),
         ),
       ],
