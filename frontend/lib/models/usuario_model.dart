@@ -1,4 +1,4 @@
-enum RolUsuario { cliente, trabajador, administrador, superadministrador }
+enum RolUsuario { cliente, trabajador, cocinero, administrador, superadministrador }
 
 class Usuario {
   final String id;
@@ -80,7 +80,8 @@ static RolUsuario _parseRol(dynamic rol) {
     case 'superadministrador':
     case 'superadmin':
       return RolUsuario.superadministrador;
-    case 'cocinero':      // añadimos casos comunes para trabajadores
+    case 'cocinero':
+      return RolUsuario.cocinero;
     case 'camarero':
     case 'mesero':
     case 'trabajador':

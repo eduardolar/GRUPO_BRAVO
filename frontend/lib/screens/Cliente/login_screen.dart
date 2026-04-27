@@ -13,6 +13,7 @@ import 'package:frontend/screens/cliente/forgotten_password.dart';
 import 'package:frontend/screens/cliente/menu_screen.dart';
 import 'package:frontend/screens/cliente/register_screen.dart';
 import 'package:frontend/screens/cliente/reservar_mesa_screen.dart';
+import 'package:frontend/screens/cocinero/home_screen_cocinero.dart';
 import 'package:frontend/screens/home_screen_trabajador.dart';
 import 'package:frontend/screens/super_admin/seleccionar_restaurante_screen.dart';
 
@@ -213,6 +214,9 @@ class _LoginScreenState extends State<LoginScreen> {
         destino = widget.destino == DestinoLogin.reservar
             ? const ReservarMesaScreen()
             : const MenuScreen();
+        break;
+      case RolUsuario.cocinero:
+        destino = const HomeCocinero();
         break;
     }
     Navigator.pushAndRemoveUntil(

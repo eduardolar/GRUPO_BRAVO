@@ -133,6 +133,14 @@ class ApiService {
     required String userId,
   }) => PedidoService.obtenerHistorialPedidos(userId: userId);
 
+  static Future<List<Pedido>> obtenerTodosLosPedidos() =>
+      PedidoService.obtenerTodosLosPedidos();
+
+  static Future<void> actualizarEstadoPedido({
+    required String pedidoId,
+    required String estado,
+  }) => PedidoService.actualizarEstadoPedido(pedidoId: pedidoId, estado: estado);
+
   // ─── PAGOS TARJETA / STRIPE ──────────────────────────────────
 
   static Future<Map<String, dynamic>> crearIntentoTarjeta({
