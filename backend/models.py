@@ -73,6 +73,7 @@ class IngredienteCrear(BaseModel):
     unidad: str = "kg"
     stockMinimo: float = 0
     categoria: str = "Otros"
+    restauranteId: Optional[str] = None
 
 class IngredienteActualizar(BaseModel):
     nombre: Optional[str] = None

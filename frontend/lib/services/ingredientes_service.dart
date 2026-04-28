@@ -34,14 +34,15 @@ class IngredienteService {
     Ingrediente(id: '10', nombre: 'Patatas', cantidadActual: 80, unidad: 'kg', stockMinimo: 20, categoria: 'Almidones y Cereales'),
   ];
 
-  static Future<List<Ingrediente>> obtenerIngredientes() async {
+  static Future<List<Ingrediente>> obtenerIngredientes({String? restauranteId}) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 300));
       return List.from(_mockIngredientes);
     }
-    final response = await httpWithRetry(
-      () => http.get(Uri.parse('$baseUrl/ingredientes')),
+    final uri = Uri.parse('$baseUrl/ingredientes').replace(
+      queryParameters: restauranteId != null ? {'restaurante_id': restauranteId} : null,
     );
+    final response = await httpWithRetry(() => http.get(uri));
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
       return data.map((json) => Ingrediente.fromJson(json)).toList();
@@ -49,7 +50,7 @@ class IngredienteService {
     throw toApiException(response.statusCode, decodeBody(response));
   }
 
-  static Future<Map<String, List<Ingrediente>>> obtenerIngredientesPorCategoria() async {
+  static Future<Map<String, List<Ingrediente>>> obtenerIngredientesPorCategoria({String? restauranteId}) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 300));
       final Map<String, List<Ingrediente>> agrupados = {};
@@ -58,9 +59,10 @@ class IngredienteService {
       }
       return agrupados;
     }
-    final response = await httpWithRetry(
-      () => http.get(Uri.parse('$baseUrl/ingredientes/por-categoria')),
+    final uri = Uri.parse('$baseUrl/ingredientes/por-categoria').replace(
+      queryParameters: restauranteId != null ? {'restaurante_id': restauranteId} : null,
     );
+    final response = await httpWithRetry(() => http.get(uri));
     if (response.statusCode == 200) {
       final Map<String, dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
       return data.map((key, value) {
@@ -107,5 +109,21 @@ class IngredienteService {
     if (response.statusCode != 200) {
       throw toApiException(response.statusCode, decodeBody(response));
     }
+  }
+
+  static Future<List<Ingrediente>> obtenerIngredientesStockBajo({String? restauranteId}) async {
+    if (!usarApiReal) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      return _mockIngredientes.where((i) => i.stockBajo).toList();
+    }
+    final uri = Uri.parse('$baseUrl/ingredientes/stock-bajo').replace(
+      queryParameters: restauranteId != null ? {'restaurante_id': restauranteId} : null,
+    );
+    final response = await httpWithRetry(() => http.get(uri));
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
+      return data.map((json) => Ingrediente.fromJson(json)).toList();
+    }
+    throw toApiException(response.statusCode, decodeBody(response));
   }
 }
