@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Puerto y host configurables desde .env o variables de entorno
-PORT = int(os.getenv("PORT", 8001))
+PORT = int(os.getenv("PORT", 8000))
 HOST = os.getenv("HOST", "127.0.0.1")
 # Cargar variables de entorno desde el archivo local 'env'
 dotenv_path = Path(__file__).with_name("env")
