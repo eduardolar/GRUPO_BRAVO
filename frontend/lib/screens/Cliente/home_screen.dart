@@ -224,12 +224,12 @@ class _HeroSection extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.white70, width: 1.5),
+        border: Border.all(color: AppColors.button, width: 1.5),
       ),
       child: const Text(
         "EST. 2024",
         style: TextStyle(
-          color: Colors.white, 
+          color:  AppColors.line, 
           fontSize: 10, 
           letterSpacing: 4,
           fontWeight: FontWeight.w600,

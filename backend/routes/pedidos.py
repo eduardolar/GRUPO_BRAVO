@@ -36,20 +36,20 @@ def _descontar_stock(items: list):
         for ing in producto_db.get("ingredientes", []):
             if isinstance(ing, str):
                 nombre_ing = ing
+                cantidad_receta = 1
             elif isinstance(ing, dict):
                 nombre_ing = ing.get("nombre", "")
+                cantidad_receta = ing.get("cantidad_receta", 1) or 1
             else:
                 continue
 
             if nombre_ing in ingredientes_excluidos:
                 continue
 
+            descuento = cantidad_pedida * cantidad_receta
             coleccion_ingredientes.update_one(
-                {
-                    "nombre": {"$regex": f"^{nombre_ing}$", "$options": "i"},
-                    "cantidad_actual": {"$gte": cantidad_pedida},
-                },
-                {"$inc": {"cantidad_actual": -cantidad_pedida}},
+                {"nombre": {"$regex": f"^{nombre_ing}$", "$options": "i"}},
+                {"$inc": {"cantidad_actual": -descuento}},
             )
 
 
