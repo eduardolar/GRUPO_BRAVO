@@ -36,20 +36,20 @@ def _descontar_stock(items: list):
         for ing in producto_db.get("ingredientes", []):
             if isinstance(ing, str):
                 nombre_ing = ing
+                cantidad_receta = 1
             elif isinstance(ing, dict):
                 nombre_ing = ing.get("nombre", "")
+                cantidad_receta = ing.get("cantidad_receta", 1) or 1
             else:
                 continue
 
             if nombre_ing in ingredientes_excluidos:
                 continue
 
+            descuento = cantidad_pedida * cantidad_receta
             coleccion_ingredientes.update_one(
-                {
-                    "nombre": {"$regex": f"^{nombre_ing}$", "$options": "i"},
-                    "cantidad_actual": {"$gte": cantidad_pedida},
-                },
-                {"$inc": {"cantidad_actual": -cantidad_pedida}},
+                {"nombre": {"$regex": f"^{nombre_ing}$", "$options": "i"}},
+                {"$inc": {"cantidad_actual": -descuento}},
             )
 
 
@@ -197,6 +197,12 @@ class ActualizarItemsPedido(BaseModel):
     total: Optional[float] = None
 
 
+class ActualizarEstado(BaseModel):
+    estado: str
+
+_ESTADOS_VALIDOS = {"pendiente", "preparando", "listo", "entregado", "cancelado"}
+
+
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @router.post("")
@@ -265,6 +271,21 @@ def actualizar_estado_pago(payload: ActualizarEstadoPago):
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Pedido no encontrado con esa referencia de pago")
     return {"updated": result.modified_count > 0}
+
+
+@router.patch("/{pedido_id}/estado")
+def actualizar_estado_pedido(pedido_id: str, payload: ActualizarEstado):
+    if not ObjectId.is_valid(pedido_id):
+        raise HTTPException(status_code=400, detail="ID de pedido inválido")
+    if payload.estado not in _ESTADOS_VALIDOS:
+        raise HTTPException(status_code=400, detail=f"Estado inválido. Válidos: {_ESTADOS_VALIDOS}")
+    result = coleccion_pedidos.update_one(
+        {"_id": ObjectId(pedido_id)},
+        {"$set": {"estado": payload.estado}},
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Pedido no encontrado")
+    return {"updated": result.modified_count > 0, "estado": payload.estado}
 
 
 @router.patch("/{pedido_id}")

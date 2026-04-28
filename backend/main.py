@@ -1,13 +1,22 @@
 import os
 import logging
 import traceback
+from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 
-# Cargar variables de entorno del archivo .env [cite: 1]
-uri = os.getenv("Mongo_URI")
+# Cargar variables de entorno del archivo .env
+load_dotenv()
+
+# Puerto y host configurables desde .env o variables de entorno
+PORT = int(os.getenv("PORT", 8001))
+HOST = os.getenv("HOST", "127.0.0.1")
+# Cargar variables de entorno desde el archivo local 'env'
+dotenv_path = Path(__file__).with_name("env")
+load_dotenv(dotenv_path=dotenv_path)
+MONGO_URI = os.getenv("MONGO_URI")
 
 from routes import auth, usuarios, categorias, productos, pedidos, mesas, reservas, ingredientes
 from routes import restaurantes
@@ -58,5 +67,9 @@ def inicio():
 
 if __name__ == "__main__":
     import uvicorn
-    # Mantenemos 127.0.0.1 para que coincida con tu "localhost" del frontend
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    try:
+        uvicorn.run(app, host=HOST, port=PORT)
+    except OSError as exc:
+        logger.error("No se pudo iniciar el servidor en %s:%d - %s", HOST, PORT, exc)
+        print(f"ERROR: No se pudo iniciar el servidor en {HOST}:{PORT}. Puede que el puerto ya esté en uso. Usa otro puerto en la variable PORT o detén el proceso que lo está usando.")
+        raise

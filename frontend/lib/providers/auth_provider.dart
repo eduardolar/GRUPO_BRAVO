@@ -6,10 +6,14 @@ import '../services/auth_service.dart';
 
 class AuthProvider with ChangeNotifier {
   Usuario? _usuarioActual;
+  String? _pendingUserId2fa;
   static const _kSesionKey = 'usuario_sesion';
 
   Usuario? get usuarioActual => _usuarioActual;
   bool get estaAutenticado => _usuarioActual != null;
+
+  /// ID temporal durante el flujo de login con 2FA activo.
+  String? get pendingUserId2fa => _pendingUserId2fa;
 
   Future<void> cargarSesion() async {
     try {
@@ -35,29 +39,30 @@ class AuthProvider with ChangeNotifier {
     await prefs.remove(_kSesionKey);
   }
 
-  // Lógica para verificar el código
   Future<bool> verificarCodigo(String email, String codigo) async {
     try {
-      // Llamamos al método estático de AuthService
-      await AuthService.verificarCodigo(
-        correo: email,
-        codigo: codigo,
-      );
-
-      // AuthService ya lanza excepción en caso de error; si llegamos aquí el código es válido
+      await AuthService.verificarCodigo(correo: email, codigo: codigo);
       if (_usuarioActual != null && _usuarioActual!.email == email) {
         notifyListeners();
       }
       return true;
     } catch (e) {
       debugPrint("Error en verificarCodigo Provider: $e");
-      rethrow; // Reenviamos el error para que la UI lo muestre
+      rethrow;
     }
   }
 
+  /// Devuelve `true` si el login fue completo.
+  /// Devuelve `false` si se requiere 2FA (consultar [pendingUserId2fa]).
   Future<bool> iniciarSesion(String email, String contrasena) async {
     try {
       final response = await AuthService.iniciarSesion(correo: email, contrasena: contrasena);
+      if (response['requires_2fa'] == true) {
+        _pendingUserId2fa = response['user_id'] as String?;
+        notifyListeners();
+        return false;
+      }
+      _pendingUserId2fa = null;
       _usuarioActual = Usuario.fromJson(response);
       notifyListeners();
       await _guardarSesion();
@@ -65,6 +70,19 @@ class AuthProvider with ChangeNotifier {
     } catch (e) {
       rethrow;
     }
+  }
+
+  /// Completa el login verificando el código TOTP.
+  Future<void> completarLogin2fa(String codigo) async {
+    if (_pendingUserId2fa == null) throw Exception('No hay login pendiente');
+    final response = await AuthService.verificar2fa(
+      userId: _pendingUserId2fa!,
+      codigo: codigo,
+    );
+    _pendingUserId2fa = null;
+    _usuarioActual = Usuario.fromJson(response);
+    notifyListeners();
+    await _guardarSesion();
   }
 
   Future<bool> registrarse({
@@ -82,7 +100,6 @@ class AuthProvider with ChangeNotifier {
         telefono: telefono,
         direccion: direccion,
       );
-      // Tras el registro, el usuario aún no está verificado en la DB
       _usuarioActual = Usuario(
         id: response['id'] ?? '',
         nombre: nombre,
@@ -157,9 +174,7 @@ class AuthProvider with ChangeNotifier {
 
   Future<void> eliminarCuenta() async {
     if (_usuarioActual == null) throw Exception('No hay usuario autenticado');
-    final success = await AuthService.eliminarCuenta(
-      userId: _usuarioActual!.id,
-    );
+    final success = await AuthService.eliminarCuenta(userId: _usuarioActual!.id);
     if (!success) throw Exception('Error al eliminar la cuenta');
     _usuarioActual = null;
     notifyListeners();
@@ -168,21 +183,46 @@ class AuthProvider with ChangeNotifier {
 
   Future<void> cerrarSesion() async {
     _usuarioActual = null;
+    _pendingUserId2fa = null;
     notifyListeners();
     await _limpiarSesion();
   }
-//
-  void actualizarDireccionLocal({required String nuevaDir, required double nuevaLat, required double nuevaLon}) {
-  if (_usuarioActual != null) {
-    // Creamos una COPIA del usuario con los nuevos datos
-    _usuarioActual = _usuarioActual!.copyWith(
-      direccion: nuevaDir,
-      latitud: nuevaLat,
-      longitud: nuevaLon,
-    );
-    
-    // Avisamos a las pantallas para que se redibujen
-    notifyListeners(); 
+
+  void actualizarDireccionLocal({
+    required String nuevaDir,
+    required double nuevaLat,
+    required double nuevaLon,
+  }) {
+    if (_usuarioActual != null) {
+      _usuarioActual = _usuarioActual!.copyWith(
+        direccion: nuevaDir,
+        latitud: nuevaLat,
+        longitud: nuevaLon,
+      );
+      notifyListeners();
+    }
   }
-}
+
+  // --- 2FA ---
+
+  Future<Map<String, dynamic>> setup2fa() async {
+    if (_usuarioActual == null) throw Exception('No hay usuario autenticado');
+    return AuthService.setup2fa(userId: _usuarioActual!.id);
+  }
+
+  Future<void> activar2fa(String codigo) async {
+    if (_usuarioActual == null) throw Exception('No hay usuario autenticado');
+    await AuthService.activar2fa(userId: _usuarioActual!.id, codigo: codigo);
+    _usuarioActual = _usuarioActual!.copyWith(totpEnabled: true);
+    notifyListeners();
+    await _guardarSesion();
+  }
+
+  Future<void> desactivar2fa(String codigo) async {
+    if (_usuarioActual == null) throw Exception('No hay usuario autenticado');
+    await AuthService.desactivar2fa(userId: _usuarioActual!.id, codigo: codigo);
+    _usuarioActual = _usuarioActual!.copyWith(totpEnabled: false);
+    notifyListeners();
+    await _guardarSesion();
+  }
 }

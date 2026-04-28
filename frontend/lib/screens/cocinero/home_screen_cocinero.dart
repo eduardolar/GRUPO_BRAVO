@@ -1,19 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/components/bravo_app_bar.dart';
 import 'package:frontend/core/colors_style.dart';
-import 'package:frontend/screens/trabajador/Pedidos/gestion_pedidos.dart';
-import 'package:frontend/screens/trabajador/Reservas/gestion_reservas.dart';
-import 'package:frontend/screens/trabajador/Stock/gestion_stock.dart';
-import 'package:frontend/screens/trabajador/servicio.dart';
+import 'package:frontend/screens/cocinero/pedidos_cocina_screen.dart';
 
-class HomeTrabajador extends StatefulWidget {
-  const HomeTrabajador({super.key});
+class HomeCocinero extends StatefulWidget {
+  const HomeCocinero({super.key});
 
   @override
-  State<HomeTrabajador> createState() => _HomeTrabajadorState();
+  State<HomeCocinero> createState() => _HomeCocineroState();
 }
 
-class _HomeTrabajadorState extends State<HomeTrabajador> {
+class _HomeCocineroState extends State<HomeCocinero> {
   bool _isAppReady = false;
 
   @override
@@ -30,7 +27,7 @@ class _HomeTrabajadorState extends State<HomeTrabajador> {
   }
 }
 
-// ── SPLASH INICIAL ──────────────────────────────────────────────
+// ── SPLASH ──────────────────────────────────────────────────────
 class _SimpleSplash extends StatefulWidget {
   final VoidCallback onFinished;
   const _SimpleSplash({required this.onFinished});
@@ -54,7 +51,8 @@ class _SimpleSplashState extends State<_SimpleSplash> {
         child: TweenAnimationBuilder<double>(
           tween: Tween(begin: 0.8, end: 1.0),
           duration: const Duration(milliseconds: 800),
-          builder: (context, value, child) => Transform.scale(scale: value, child: child),
+          builder: (context, value, child) =>
+              Transform.scale(scale: value, child: child),
           child: Image.asset('assets/images/Bravo restaurante.jpg', width: 220),
         ),
       ),
@@ -71,13 +69,13 @@ class _HomeContent extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       extendBodyBehindAppBar: true,
-      appBar: const BravoAppBar(title: "RESTAURANTE BRAVO"),
-      body: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
+      appBar: const BravoAppBar(title: 'RESTAURANTE BRAVO'),
+      body: const SingleChildScrollView(
+        physics: BouncingScrollPhysics(),
         child: Column(
           children: [
-            const _HeroSection(),
-            const _FooterQuote(),
+            _HeroSection(),
+            _FooterQuote(),
           ],
         ),
       ),
@@ -86,7 +84,7 @@ class _HomeContent extends StatelessWidget {
 }
 
 
-// ── SECCIÓN HERO (CENTRADA Y RESPONSIVA) ──────────────────────────
+// ── HERO ─────────────────────────────────────────────────────────
 class _HeroSection extends StatelessWidget {
   const _HeroSection();
 
@@ -99,7 +97,6 @@ class _HeroSection extends StatelessWidget {
     return Stack(
       alignment: Alignment.bottomCenter,
       children: [
-        // 1. Imagen de Fondo Inmersiva
         SizedBox(
           width: screenWidth,
           height: isWeb ? screenHeight * 0.85 : screenHeight * 0.75,
@@ -108,8 +105,6 @@ class _HeroSection extends StatelessWidget {
             fit: BoxFit.cover,
           ),
         ),
-
-        // 2. Overlay Gradiente de Alto Contraste
         Positioned.fill(
           child: DecoratedBox(
             decoration: BoxDecoration(
@@ -118,17 +113,15 @@ class _HeroSection extends StatelessWidget {
                 end: Alignment.bottomCenter,
                 stops: const [0.0, 0.3, 0.7, 1.0],
                 colors: [
-                  Colors.black.withOpacity(0.3),
+                  Colors.black.withValues(alpha: 0.3),
                   Colors.transparent,
-                  Colors.black.withOpacity(0.75),
+                  Colors.black.withValues(alpha: 0.75),
                   AppColors.background,
                 ],
               ),
             ),
           ),
         ),
-
-        // 3. Contenido Centrado
         Container(
           width: double.infinity,
           padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
@@ -142,7 +135,7 @@ class _HeroSection extends StatelessWidget {
                   _buildBadge(),
                   const SizedBox(height: 24),
                   const Text(
-                    "Panel de control\ndel trabajador",
+                    'Panel de\ncocina',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontFamily: 'Playfair Display',
@@ -172,7 +165,7 @@ class _HeroSection extends StatelessWidget {
         border: Border.all(color: AppColors.background, width: 1.5),
       ),
       child: const Text(
-        "GESTIÓN RESTAURANTE",
+        'ÁREA DE COCINA',
         style: TextStyle(
           color: AppColors.background,
           fontSize: 10,
@@ -184,100 +177,59 @@ class _HeroSection extends StatelessWidget {
   }
 }
 
-// ── GRUPO DE BOTONES ─────────────────────────────────────────────
+// ── BOTONES ──────────────────────────────────────────────────────
 class _ActionButtonsGroup extends StatelessWidget {
   const _ActionButtonsGroup();
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        _MainButton(
-          icon: Icons.event_available_outlined,
-          label: "Gestión de reservas",
-          isPrimary: true,
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const GestionReservas()),
-          ),
-        ),
-        _MainButton(
-          icon: Icons.receipt_long_outlined,
-          label: "Gestión de pedidos",
-          isPrimary: true,
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const GestionPedidos()),
-          ),
-        ),
-        _MainButton(
-          icon: Icons.room_service_outlined,
-          label: "Servicio",
-          isPrimary: true,
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const ServicioTrabajador()),
-          ),
-        ),
-        _MainButton(
-          icon: Icons.inventory_2_outlined,
-          label: "Gestión de stock",
-          isPrimary: true,
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const GestionStock()),
-          ),
-        ),
-      ],
+    return _MainButton(
+      icon: Icons.receipt_long_outlined,
+      label: 'Pedidos activos',
+      onPressed: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const PedidosCocinaScreen()),
+      ),
     );
   }
 }
 
-// ── BOTÓN MODULAR ────────────────────────────────────────────────
 class _MainButton extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback onPressed;
-  final bool isPrimary;
 
   const _MainButton({
     required this.icon,
     required this.label,
     required this.onPressed,
-    this.isPrimary = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: Material(
-        color: isPrimary ? AppColors.button : Colors.black.withOpacity(0.55),
-        child: InkWell(
-          onTap: onPressed,
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 24),
-            decoration: BoxDecoration(
-              border: isPrimary ? null : Border.all(color: Colors.white24),
-            ),
-            child: Row(
-              children: [
-                Icon(icon, color: Colors.white, size: 20),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Text(
-                    label.toUpperCase(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                      letterSpacing: 1.0,
-                    ),
+    return Material(
+      color: AppColors.button,
+      child: InkWell(
+        onTap: onPressed,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 24),
+          child: Row(
+            children: [
+              Icon(icon, color: Colors.white, size: 20),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  label.toUpperCase(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    letterSpacing: 1.0,
                   ),
                 ),
-                const Icon(Icons.chevron_right, color: Colors.white54, size: 18),
-              ],
-            ),
+              ),
+              const Icon(Icons.chevron_right, color: Colors.white54, size: 18),
+            ],
           ),
         ),
       ),
@@ -305,10 +257,14 @@ class _FooterQuote extends StatelessWidget {
           ),
           child: Column(
             children: [
-              Icon(Icons.format_quote, color: AppColors.button.withOpacity(0.4), size: 30),
+              Icon(
+                Icons.format_quote,
+                color: AppColors.button.withValues(alpha: 0.4),
+                size: 30,
+              ),
               const SizedBox(height: 16),
               const Text(
-                "Excelencia en cada servicio.",
+                'La cocina es el corazón del restaurante.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontFamily: 'Playfair Display',

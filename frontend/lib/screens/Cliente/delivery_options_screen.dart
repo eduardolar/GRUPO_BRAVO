@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -32,6 +32,10 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
 
   bool _googlePayAutorizado = false;
   bool _paypalAutorizado = false;
+  bool _applePayAutorizado = false;
+  String? _paypalOrderId;
+  String? _googlePayClientSecret;
+  String? _googlePayPaymentIntentId;
   CardFieldInputDetails? _cardDetails;
 
   final _controladorDireccion = TextEditingController();
@@ -311,6 +315,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
                     _pagoSeleccionado = MetodoPago.efectivo;
                     _googlePayAutorizado = false;
                     _paypalAutorizado = false;
+                    _paypalOrderId = null;
                   });
                 },
               ),
@@ -325,6 +330,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
                     _pagoSeleccionado = MetodoPago.tarjeta;
                     _googlePayAutorizado = false;
                     _paypalAutorizado = false;
+                    _paypalOrderId = null;
                   });
                 },
               ),
@@ -332,7 +338,8 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
                 const SizedBox(height: 2),
                 _FormPanel(
                   child: CamposTarjeta(
-                    onCardChanged: (details) => setState(() => _cardDetails = details),
+                    onCardChanged: (details) =>
+                        setState(() => _cardDetails = details),
                   ),
                 ),
               ],
@@ -347,6 +354,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
                     _pagoSeleccionado = MetodoPago.googlePay;
                     _googlePayAutorizado = false;
                     _paypalAutorizado = false;
+                    _paypalOrderId = null;
                   });
                 },
               ),
@@ -365,12 +373,34 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
                     _pagoSeleccionado = MetodoPago.paypal;
                     _googlePayAutorizado = false;
                     _paypalAutorizado = false;
+                    _applePayAutorizado = false;
+                    _paypalOrderId = null;
                   });
                 },
               ),
               if (_pagoSeleccionado == MetodoPago.paypal) ...[
                 const SizedBox(height: 8),
                 _buildPaypalButton(),
+              ],
+              const SizedBox(height: 10),
+              _PagoCard(
+                icono: Icons.apple,
+                titulo: 'Apple Pay',
+                subtitulo: 'Paga con Apple Pay',
+                seleccionada: _pagoSeleccionado == MetodoPago.applePay,
+                onTap: () {
+                  setState(() {
+                    _pagoSeleccionado = MetodoPago.applePay;
+                    _googlePayAutorizado = false;
+                    _paypalAutorizado = false;
+                    _paypalOrderId = null;
+                    _applePayAutorizado = false;
+                  });
+                },
+              ),
+              if (_pagoSeleccionado == MetodoPago.applePay) ...[
+                const SizedBox(height: 8),
+                _buildApplePayButton(),
               ],
             ],
           ),
@@ -392,7 +422,8 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
               icono: Icons.home_outlined,
               titulo: 'Dirección registrada',
               subtitulo: dir.isNotEmpty ? dir : 'No tienes dirección guardada',
-              seleccionada: _direccionSeleccionada == OpcionDireccion.registrada,
+              seleccionada:
+                  _direccionSeleccionada == OpcionDireccion.registrada,
               onTap: () => setState(
                 () => _direccionSeleccionada = OpcionDireccion.registrada,
               ),
@@ -404,23 +435,26 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
               icono: Icons.map_outlined,
               titulo: 'Cambiar o usar mapa / GPS',
               subtitulo: 'Selecciona tu ubicación exacta en el mapa',
-              seleccionada: _direccionSeleccionada == OpcionDireccion.alternativa,
+              seleccionada:
+                  _direccionSeleccionada == OpcionDireccion.alternativa,
               onTap: () async {
                 // Navegamos al mapa y esperamos a que el usuario guarde
                 await Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const DireccionScreen()),
+                  MaterialPageRoute(
+                    builder: (context) => const DireccionScreen(),
+                  ),
                 );
 
-                // Al volver, forzamos la selección a "registrada" porque 
+                // Al volver, forzamos la selección a "registrada" porque
                 // la pantalla de mapa ya actualiza la dirección en el perfil del usuario
                 setState(() {
                   _direccionSeleccionada = OpcionDireccion.registrada;
                 });
               },
             ),
-            
-            // He quitado el panel de formulario antiguo (_FormPanel) 
+
+            // He quitado el panel de formulario antiguo (_FormPanel)
             // para que la interfaz quede limpia y obligue a usar el mapa.
           ],
         );
@@ -461,7 +495,11 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
         await _procesarPaypalYCrearPedido();
         break;
       case MetodoPago.applePay:
-        _mostrarError('Apple Pay no está disponible en este dispositivo');
+        if (_applePayAutorizado) {
+          await _procesarApplePayYCrearPedido();
+        } else {
+          _mostrarError('Primero autoriza Apple Pay');
+        }
         break;
     }
   }
@@ -540,24 +578,28 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
 
       // Capturar datos del carrito ANTES de limpiarlo
       final items = cart.items.values
-          .map((item) => {
-                'producto_id': item.producto.id,
-                'nombre': item.producto.nombre,
-                'cantidad': item.cantidad,
-                'precio': item.producto.precio,
-                if (item.ingredientesExcluidos.isNotEmpty)
-                  'sin': item.ingredientesExcluidos,
-              })
+          .map(
+            (item) => {
+              'producto_id': item.producto.id,
+              'nombre': item.producto.nombre,
+              'cantidad': item.cantidad,
+              'precio': item.producto.precio,
+              if (item.ingredientesExcluidos.isNotEmpty)
+                'sin': item.ingredientesExcluidos,
+            },
+          )
           .toList();
 
       final itemsResumen = cart.items.values
-          .map((item) => {
-                'nombre': item.producto.nombre,
-                'cantidad': item.cantidad,
-                'precio': item.producto.precio,
-                if (item.ingredientesExcluidos.isNotEmpty)
-                  'sin': item.ingredientesExcluidos,
-              })
+          .map(
+            (item) => {
+              'nombre': item.producto.nombre,
+              'cantidad': item.cantidad,
+              'precio': item.producto.precio,
+              if (item.ingredientesExcluidos.isNotEmpty)
+                'sin': item.ingredientesExcluidos,
+            },
+          )
           .toList();
 
       final direccionEntrega = _entregaSeleccionada == OpcionEntrega.domicilio
@@ -629,7 +671,9 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       if (confirmado != true || !mounted) return;
 
       // Marcar el pedido como pagado en la BD
-      try { await ApiService.actualizarEstadoPago(referenciaPago: sessionId); } catch (_) {}
+      try {
+        await ApiService.actualizarEstadoPago(referenciaPago: sessionId);
+      } catch (_) {}
       if (!mounted) return;
 
       Navigator.pushAndRemoveUntil(
@@ -654,7 +698,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
   }
 
   Future<void> _procesarGooglePayYCrearPedido() async {
-    if (!_googlePayAutorizado) {
+    if (!_googlePayAutorizado || _googlePayClientSecret == null) {
       _mostrarError('Primero autoriza Google Pay');
       return;
     }
@@ -662,40 +706,18 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
     setState(() => _estaCargando = true);
 
     try {
-      final cart = Provider.of<CartProvider>(context, listen: false);
-      final total = _calcularTotal(cart);
-
-      final compra = await ApiService.iniciarGooglePay(total: total);
-
-      final productId = (compra['productId'] ?? 'pedido_bravo').toString();
-      final purchaseToken = (compra['purchaseToken'] ?? compra['token'] ?? '')
-          .toString();
-
-      if (purchaseToken.isEmpty) {
-        throw Exception('No se recibió purchaseToken de Google Pay');
-      }
-
-      final verificacion = await ApiService.verificarCompraGooglePlay(
-        packageName: 'com.tuempresa.grupo_bravo',
-        productId: productId,
-        purchaseToken: purchaseToken,
-      );
-
-      final verificado =
-          verificacion['success'] == true ||
-          verificacion['verified'] == true ||
-          verificacion['valid'] == true ||
-          verificacion['status'] == 'OK' ||
-          verificacion['status'] == 'SUCCESS';
-
-      if (!verificado) {
-        throw Exception('La compra no fue validada por Google');
-      }
-
+      await Stripe.instance.presentPaymentSheet();
       await _crearPedidoFinal(
-        referenciaPago: (verificacion['orderId'] ?? purchaseToken).toString(),
+        referenciaPago: _googlePayPaymentIntentId,
         estadoPago: 'pagado',
       );
+    } on StripeException catch (e) {
+      if (mounted) {
+        setState(() => _estaCargando = false);
+        _mostrarError(
+          'Pago de Google Pay cancelado o fallido: ${e.error.localizedMessage ?? e.error.message}',
+        );
+      }
     } catch (e) {
       if (mounted) {
         setState(() => _estaCargando = false);
@@ -705,27 +727,15 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
   }
 
   Future<void> _procesarPaypalYCrearPedido() async {
-    if (!_paypalAutorizado) {
-      _mostrarError('Primero autoriza PayPal');
+    if (!_paypalAutorizado || _paypalOrderId == null) {
+      _mostrarError('Primero completa el pago en PayPal');
       return;
     }
 
     setState(() => _estaCargando = true);
 
     try {
-      final cart = Provider.of<CartProvider>(context, listen: false);
-      final total = _calcularTotal(cart);
-
-      final orden = await ApiService.crearOrdenPaypal(
-        total: total,
-        currency: 'EUR',
-      );
-
-      final orderId = orden['id']?.toString();
-      if (orderId == null || orderId.isEmpty) {
-        throw Exception('No se pudo crear la orden de PayPal');
-      }
-
+      final orderId = _paypalOrderId!;
       final captura = await ApiService.capturarOrdenPaypal(orderId: orderId);
       final status = (captura['status'] ?? '').toString().toUpperCase();
 
@@ -830,8 +840,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       );
 
       final pedidoId =
-          resultado['id']?.toString() ??
-          resultado['pedido_id']?.toString();
+          resultado['id']?.toString() ?? resultado['pedido_id']?.toString();
 
       cart.clearCart();
 
@@ -925,7 +934,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
             ),
             onPressed: _autorizarPaypalFrontend,
             child: const Text(
-              'AUTORIZAR PAYPAL',
+              'PAGAR CON PAYPAL',
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w700,
@@ -941,8 +950,53 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
               children: const [
                 Icon(Icons.check_circle, color: Colors.greenAccent, size: 18),
                 SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    'Orden creada. Completa el pago en PayPal y luego confirma el pedido.',
+                    style: TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildApplePayButton() {
+    return Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              backgroundColor: Colors.white,
+              side: BorderSide.none,
+              padding: const EdgeInsets.symmetric(vertical: 15),
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.zero,
+              ),
+            ),
+            onPressed: _autorizarApplePayFrontend,
+            child: const Text(
+              'AUTORIZAR APPLE PAY',
+              style: TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1,
+              ),
+            ),
+          ),
+        ),
+        if (_applePayAutorizado)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Row(
+              children: const [
+                Icon(Icons.check_circle, color: Colors.greenAccent, size: 18),
+                SizedBox(width: 8),
                 Text(
-                  'PayPal autorizado',
+                  'Apple Pay autorizado',
                   style: TextStyle(color: Colors.white70, fontSize: 12),
                 ),
               ],
@@ -952,7 +1006,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
     );
   }
 
-  Future<void> _autorizarGooglePayFrontend() async {
+  Future<void> _autorizarApplePayFrontend() async {
     if (_estaCargando) return;
 
     setState(() => _estaCargando = true);
@@ -960,7 +1014,8 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       await Future.delayed(const Duration(seconds: 1));
       if (mounted) {
         setState(() {
-          _googlePayAutorizado = true;
+          _applePayAutorizado = true;
+          _googlePayAutorizado = false;
           _paypalAutorizado = false;
           _estaCargando = false;
         });
@@ -968,7 +1023,124 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
     } catch (e) {
       if (mounted) {
         setState(() => _estaCargando = false);
-        _mostrarError('No se pudo autorizar Google Pay');
+        _mostrarError('No se pudo autorizar Apple Pay');
+      }
+    }
+  }
+
+  Future<void> _procesarApplePayYCrearPedido() async {
+    setState(() => _estaCargando = true);
+    try {
+      final cart = Provider.of<CartProvider>(context, listen: false);
+      final total = _calcularTotal(cart);
+      final applePayInit = await ApiService.iniciarApplePay(total: total);
+
+      final clientSecret = applePayInit['client_secret']?.toString();
+      final paymentIntentId = applePayInit['payment_intent_id']?.toString();
+      final applePayStatus = applePayInit['status']?.toString().toLowerCase();
+
+      if (clientSecret != null && clientSecret.isNotEmpty) {
+        await ApiService.confirmarApplePay(clientSecret: clientSecret);
+      }
+
+      bool pagado = false;
+      if (paymentIntentId != null && paymentIntentId.isNotEmpty) {
+        pagado = await ApiService.verificarApplePay(
+          paymentIntentId: paymentIntentId,
+        );
+      }
+
+      if (!pagado) {
+        pagado =
+            applePayStatus == 'succeeded' ||
+            applePayStatus == 'paid' ||
+            applePayStatus == 'completed';
+      }
+
+      if (!pagado) {
+        throw Exception('El pago con Apple Pay no se completó');
+      }
+
+      await _crearPedidoFinal(
+        referenciaPago:
+            paymentIntentId ??
+            applePayInit['id']?.toString() ??
+            'applepay_success',
+        estadoPago: 'pagado',
+      );
+    } catch (e) {
+      if (mounted) {
+        setState(() => _estaCargando = false);
+        _mostrarError('Error en Apple Pay: $e');
+      }
+    }
+  }
+
+  Future<void> _autorizarGooglePayFrontend() async {
+    if (_estaCargando) return;
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+      _mostrarError('Google Pay solo está disponible en Android.');
+      return;
+    }
+
+    setState(() => _estaCargando = true);
+
+    try {
+      final cart = Provider.of<CartProvider>(context, listen: false);
+      final total = _calcularTotal(cart);
+
+      final intent = await ApiService.crearIntentoTarjeta(
+        amount: total,
+        currency: 'eur',
+      );
+
+      final clientSecret = intent['client_secret']?.toString();
+      final paymentIntentId = intent['payment_intent_id']?.toString();
+
+      if (clientSecret == null || clientSecret.isEmpty) {
+        throw Exception('No se pudo iniciar el pago de Google Pay');
+      }
+
+      final googlePaySupported = await Stripe.instance.isGooglePaySupported(
+        const IsGooglePaySupportedParams(),
+      );
+      if (!googlePaySupported) {
+        throw Exception('Google Pay no está disponible en este dispositivo.');
+      }
+
+      await Stripe.instance.initPaymentSheet(
+        paymentSheetParameters: SetupPaymentSheetParameters(
+          paymentIntentClientSecret: clientSecret,
+          merchantDisplayName: 'Bravo',
+          googlePay: const PaymentSheetGooglePay(
+            merchantCountryCode: 'ES',
+            currencyCode: 'EUR',
+            testEnv: true,
+          ),
+        ),
+      );
+
+      if (mounted) {
+        setState(() {
+          _googlePayAutorizado = true;
+          _googlePayClientSecret = clientSecret;
+          _googlePayPaymentIntentId = paymentIntentId;
+          _paypalAutorizado = false;
+          _applePayAutorizado = false;
+          _estaCargando = false;
+        });
+      }
+    } on StripeException catch (e) {
+      if (mounted) {
+        setState(() => _estaCargando = false);
+        _mostrarError(
+          'No se pudo autorizar Google Pay: ${e.error.localizedMessage ?? e.error.message}',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _estaCargando = false);
+        _mostrarError('No se pudo autorizar Google Pay: $e');
       }
     }
   }
@@ -978,18 +1150,77 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
 
     setState(() => _estaCargando = true);
     try {
-      await Future.delayed(const Duration(seconds: 1));
+      final cart = Provider.of<CartProvider>(context, listen: false);
+      final total = _calcularTotal(cart);
+
+      const successUrl = 'https://example.com/paypal-success';
+      const cancelUrl = 'https://example.com/paypal-cancel';
+
+      final orden = await ApiService.crearOrdenPaypal(
+        total: total,
+        currency: 'EUR',
+        successUrl: successUrl,
+        cancelUrl: cancelUrl,
+      );
+
+      final orderId = orden['id']?.toString();
+      if (orderId == null || orderId.isEmpty) {
+        throw Exception('No se pudo crear la orden de PayPal');
+      }
+
+      String? approvalUrl;
+      if (orden['approval_url'] != null) {
+        approvalUrl = orden['approval_url'].toString();
+      } else if (orden['links'] != null && orden['links'] is List) {
+        for (final link in orden['links'] as List) {
+          if (link is Map<String, dynamic>) {
+            final rel = link['rel']?.toString().toLowerCase();
+            if (rel == 'approve' || rel == 'approval_url') {
+              approvalUrl = link['href']?.toString();
+              break;
+            }
+          }
+        }
+      }
+
+      if (approvalUrl == null || approvalUrl.isEmpty) {
+        throw Exception('No se recibió URL de aprobación de PayPal');
+      }
+
+      final approvalUri = Uri.parse(approvalUrl);
+      if (!await canLaunchUrl(approvalUri)) {
+        throw Exception('No se puede abrir la URL de PayPal');
+      }
+
+      final launched = await launchUrl(
+        approvalUri,
+        mode: kIsWeb
+            ? LaunchMode.platformDefault
+            : LaunchMode.externalApplication,
+      );
+      if (!launched) {
+        throw Exception('No se pudo abrir el pago de PayPal');
+      }
+
       if (mounted) {
         setState(() {
           _paypalAutorizado = true;
+          _paypalOrderId = orderId;
           _googlePayAutorizado = false;
+          _applePayAutorizado = false;
           _estaCargando = false;
         });
+      }
+
+      if (mounted) {
+        _mostrarInfo(
+          'PayPal abierto. Completa el pago en la ventana que se abrió y luego confirma el pedido.',
+        );
       }
     } catch (e) {
       if (mounted) {
         setState(() => _estaCargando = false);
-        _mostrarError('No se pudo autorizar PayPal');
+        _mostrarError('Error al iniciar PayPal: $e');
       }
     }
   }
@@ -999,6 +1230,18 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       SnackBar(
         content: Text(mensaje),
         backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+        shape: const RoundedRectangleBorder(),
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+      ),
+    );
+  }
+
+  void _mostrarInfo(String mensaje) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(mensaje),
+        backgroundColor: Colors.green[700],
         behavior: SnackBarBehavior.floating,
         shape: const RoundedRectangleBorder(),
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
@@ -1537,7 +1780,10 @@ class _StripeCheckoutDialogState extends State<_StripeCheckoutDialog> {
   String? _error;
 
   Future<void> _verificar() async {
-    setState(() { _verificando = true; _error = null; });
+    setState(() {
+      _verificando = true;
+      _error = null;
+    });
     try {
       final pagado = await ApiService.verificarCheckoutSession(
         sessionId: widget.sessionId,
@@ -1548,11 +1794,16 @@ class _StripeCheckoutDialogState extends State<_StripeCheckoutDialog> {
       } else {
         setState(() {
           _verificando = false;
-          _error = 'El pago aún no se ha completado. Completa el pago en la pestaña de Stripe y vuelve a intentarlo.';
+          _error =
+              'El pago aún no se ha completado. Completa el pago en la pestaña de Stripe y vuelve a intentarlo.';
         });
       }
     } catch (e) {
-      if (mounted) setState(() { _verificando = false; _error = e.toString(); });
+      if (mounted)
+        setState(() {
+          _verificando = false;
+          _error = e.toString();
+        });
     }
   }
 
@@ -1565,7 +1816,10 @@ class _StripeCheckoutDialogState extends State<_StripeCheckoutDialog> {
         children: [
           Icon(Icons.open_in_new, color: AppColors.button, size: 20),
           SizedBox(width: 10),
-          Text('Completa el pago', style: TextStyle(color: AppColors.textPrimary, fontSize: 16)),
+          Text(
+            'Completa el pago',
+            style: TextStyle(color: AppColors.textPrimary, fontSize: 16),
+          ),
         ],
       ),
       content: Column(
@@ -1578,24 +1832,41 @@ class _StripeCheckoutDialogState extends State<_StripeCheckoutDialog> {
           ),
           if (_error != null) ...[
             const SizedBox(height: 12),
-            Text(_error!, style: const TextStyle(color: AppColors.error, fontSize: 12)),
+            Text(
+              _error!,
+              style: const TextStyle(color: AppColors.error, fontSize: 12),
+            ),
           ],
         ],
       ),
       actions: [
         TextButton(
-          onPressed: _verificando ? null : () => Navigator.of(context).pop(false),
-          child: const Text('Cancelar', style: TextStyle(color: AppColors.textSecondary)),
+          onPressed: _verificando
+              ? null
+              : () => Navigator.of(context).pop(false),
+          child: const Text(
+            'Cancelar',
+            style: TextStyle(color: AppColors.textSecondary),
+          ),
         ),
         ElevatedButton(
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.button,
             foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(4),
+            ),
           ),
           onPressed: _verificando ? null : _verificar,
           child: _verificando
-              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
+                )
               : const Text('Ya he pagado'),
         ),
       ],

@@ -1,15 +1,10 @@
-# ARCHIVO DEPRECADO — ELIMINAR
+# COMPATIBILIDAD LEGADA: expone la app desde main.py
 #
-# Este archivo es una versión antigua de main.py que duplica las rutas /registro y /login
-# sin validación de contraseña ni verificación por correo.
+# Este archivo se mantiene solo para que comandos antiguos como
+#   py -m uvicorn servidor:app --reload
+# sigan funcionando.
 #
-# Toda la lógica ha sido consolidada en:
-#   - backend/main.py          (configuración de la app FastAPI)
-#   - backend/routes/auth.py   (endpoints /registro y /login)
-#
-# Acción requerida: eliminar este archivo del repositorio.
-#   git rm backend/servidor.py
+# Todo el desarrollo nuevo debe usar:
+#   py -m uvicorn main:app --reload
 
-raise ImportError(
-    "servidor.py está deprecado. Usa main.py como punto de entrada del backend."
-)
+from main import app  # noqa: F401

@@ -72,18 +72,53 @@ class ApiService {
   static Future<bool> eliminarCuenta({required String userId}) =>
       AuthService.eliminarCuenta(userId: userId);
 
-  // ─── PRODUCTOS ───────────────────────────────────────────────
+  // ─── CATEGORÍAS ──────────────────────────────────────────────
 
   static Future<List<String>> obtenerCategorias() =>
       ProductoService.obtenerCategorias();
 
+  static Future<void> crearCategoria(String nombre) =>
+      ProductoService.crearCategoria(nombre);
+
+  static Future<void> renombrarCategoria(
+    String nombreActual,
+    String nuevoNombre,
+  ) =>
+      ProductoService.renombrarCategoria(nombreActual, nuevoNombre);
+
+  static Future<void> reordenarCategorias(List<String> nuevoOrden) =>
+      ProductoService.reordenarCategorias(nuevoOrden);
+
+  static Future<void> eliminarCategoria(String nombre) =>
+      ProductoService.eliminarCategoria(nombre);
+
+  // ─── PRODUCTOS ───────────────────────────────────────────────
+
   static Future<List<Producto>> obtenerProductos({String? categoria}) =>
       ProductoService.obtenerProductos(categoria: categoria);
+
+  static Future<Producto> crearProducto(Map<String, dynamic> datos) =>
+      ProductoService.crearProducto(datos);
+
+  static Future<Producto> actualizarProducto(
+    String id,
+    Map<String, dynamic> datos,
+  ) =>
+      ProductoService.actualizarProducto(id, datos);
+
+  static Future<void> reordenarProductos(List<String> ids) =>
+      ProductoService.reordenarProductos(ids);
+
+  static Future<void> eliminarProducto(String id) =>
+      ProductoService.eliminarProducto(id);
+
+  // ─── INGREDIENTES ────────────────────────────────────────────
 
   static Future<List<Ingrediente>> obtenerIngredientes() =>
       IngredienteService.obtenerIngredientes();
 
-  static Future<Map<String, List<Ingrediente>>> obtenerIngredientesPorCategoria() =>
+  static Future<Map<String, List<Ingrediente>>>
+  obtenerIngredientesPorCategoria() =>
       IngredienteService.obtenerIngredientesPorCategoria();
 
   // ─── PEDIDOS ─────────────────────────────────────────────────
@@ -132,6 +167,14 @@ class ApiService {
   static Future<List<Pedido>> obtenerHistorialPedidos({
     required String userId,
   }) => PedidoService.obtenerHistorialPedidos(userId: userId);
+
+  static Future<List<Pedido>> obtenerTodosLosPedidos() =>
+      PedidoService.obtenerTodosLosPedidos();
+
+  static Future<void> actualizarEstadoPedido({
+    required String pedidoId,
+    required String estado,
+  }) => PedidoService.actualizarEstadoPedido(pedidoId: pedidoId, estado: estado);
 
   // ─── PAGOS TARJETA / STRIPE ──────────────────────────────────
 
@@ -322,19 +365,38 @@ class ApiService {
   static Future<Map<String, dynamic>> crearOrdenPaypal({
     required double total,
     String currency = 'EUR',
+    String? successUrl,
+    String? cancelUrl,
   }) async {
+    final payload = {'total': total, 'currency': currency};
+    if (successUrl != null) {
+      payload['success_url'] = successUrl;
+      payload['return_url'] = successUrl;
+    }
+    if (cancelUrl != null) {
+      payload['cancel_url'] = cancelUrl;
+    }
+
     final response = await httpWithRetry(
       () => http.post(
         Uri.parse('$baseUrl/payments/paypal/create-order'),
         headers: _jsonHeaders(),
-        body: jsonEncode({'total': total, 'currency': currency}),
+        body: jsonEncode(payload),
       ),
       retry: false,
     );
     if (response.statusCode >= 400) {
+      print(
+        'DEBUG PayPal create-order error: '
+        'status=${response.statusCode} body=${response.body}',
+      );
       throw toApiException(response.statusCode, decodeBody(response));
     }
-    return Map<String, dynamic>.from(decodeBody(response));
+    final body = Map<String, dynamic>.from(decodeBody(response));
+    print(
+      'DEBUG PayPal create-order success: status=${response.statusCode} body=$body',
+    );
+    return body;
   }
 
   static Future<Map<String, dynamic>> capturarOrdenPaypal({
@@ -480,29 +542,28 @@ class ApiService {
   }
 
   static Future<void> agregarItemTicket({
-  required String mesaId,
-  required Producto producto,
-  required int cantidad,
-}) async {
-  final body = {
-    "producto_id": producto.id,
-    "nombre": producto.nombre,
-    "cantidad": cantidad,
-    "precio": producto.precio,
-  };
+    required String mesaId,
+    required Producto producto,
+    required int cantidad,
+  }) async {
+    final body = {
+      "producto_id": producto.id,
+      "nombre": producto.nombre,
+      "cantidad": cantidad,
+      "precio": producto.precio,
+    };
 
-  final response = await httpWithRetry(
-    () => http.post(
-      Uri.parse("$baseUrl/tickets/mesa/$mesaId"),
-      headers: _jsonHeaders(),
-      body: jsonEncode(body),
-    ),
-    retry: false,
-  );
+    final response = await httpWithRetry(
+      () => http.post(
+        Uri.parse("$baseUrl/tickets/mesa/$mesaId"),
+        headers: _jsonHeaders(),
+        body: jsonEncode(body),
+      ),
+      retry: false,
+    );
 
-  if (response.statusCode >= 400) {
-    throw Exception("Error al enviar item al ticket: ${response.body}");
+    if (response.statusCode >= 400) {
+      throw Exception("Error al enviar item al ticket: ${response.body}");
+    }
   }
-}
-
 }

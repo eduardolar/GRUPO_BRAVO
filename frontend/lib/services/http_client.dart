@@ -22,29 +22,59 @@ class ApiException implements Exception {
 
 /// Maps an HTTP [statusCode] + response [body] to a user-facing [ApiException].
 ApiException toApiException(int statusCode, Map<String, dynamic> body) {
-  final raw = body['detail'];
-  final String? detail = raw is String && raw.isNotEmpty ? raw : null;
+  String? extractDetail(dynamic value) {
+    if (value is String && value.isNotEmpty) return value;
+    if (value is List && value.isNotEmpty) {
+      return value.map((item) => item.toString()).join(', ');
+    }
+    if (value is Map<String, dynamic>) {
+      return extractDetail(
+        value['detail'] ?? value['message'] ?? value['error'],
+      );
+    }
+    return null;
+  }
+
+  final String? detail =
+      extractDetail(body['detail']) ??
+      extractDetail(body['message']) ??
+      extractDetail(body['error']) ??
+      extractDetail(body['title']) ??
+      extractDetail(body['errors']);
+
   return switch (statusCode) {
     400 => ApiException(400, detail ?? 'Solicitud incorrecta'),
     401 => const ApiException(401, 'Sesión expirada. Vuelve a iniciar sesión'),
-    403 => const ApiException(403, 'No tienes permiso para realizar esta acción'),
+    403 => const ApiException(
+      403,
+      'No tienes permiso para realizar esta acción',
+    ),
     404 => ApiException(404, detail ?? 'Recurso no encontrado'),
     409 => ApiException(409, detail ?? 'Ya existe un registro con estos datos'),
     422 => ApiException(422, detail ?? 'Los datos enviados no son válidos'),
     429 => const ApiException(429, 'Demasiadas solicitudes. Espera un momento'),
-    >= 500 => const ApiException(500, 'Error del servidor. Inténtalo más tarde'),
+    >= 500 => ApiException(
+      statusCode,
+      detail ?? 'Error del servidor ($statusCode). Inténtalo más tarde',
+    ),
     _ => ApiException(statusCode, detail ?? 'Error inesperado ($statusCode)'),
   };
 }
 
-/// Decodes a JSON response body to a Map. Returns {} on empty or parse error.
+/// Decodes a JSON response body to a Map.
+/// Returns a fallback detail when the response is not valid JSON.
 Map<String, dynamic> decodeBody(http.Response response) {
   if (response.body.isEmpty) return {};
   try {
     final decoded = jsonDecode(response.body);
     return decoded is Map<String, dynamic> ? decoded : {'data': decoded};
   } on FormatException {
-    return {};
+    // PayPal / backend puede devolver texto o HTML en errores 500.
+    print(
+      'DEBUG: HTTP response body no es JSON. '
+      'status=${response.statusCode} body=${response.body}',
+    );
+    return {'detail': response.body.trim()};
   }
 }
 
@@ -70,12 +100,18 @@ Future<http.Response> httpWithRetry(
       await Future.delayed(Duration(seconds: attempt));
     } on SocketException {
       if (!retry || attempt >= maxAttempts) {
-        throw const ApiException(0, 'Sin conexión a internet. Comprueba tu red');
+        throw const ApiException(
+          0,
+          'Sin conexión a internet. Comprueba tu red',
+        );
       }
       await Future.delayed(Duration(seconds: attempt));
     } on TimeoutException {
       if (!retry || attempt >= maxAttempts) {
-        throw const ApiException(0, 'El servidor tardó demasiado. Inténtalo de nuevo');
+        throw const ApiException(
+          0,
+          'El servidor tardó demasiado. Inténtalo de nuevo',
+        );
       }
       await Future.delayed(Duration(seconds: attempt));
     }

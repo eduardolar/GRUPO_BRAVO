@@ -155,6 +155,32 @@ class PedidoService {
       return false;
     }
   }
+  static Future<void> actualizarEstadoPedido({
+    required String pedidoId,
+    required String estado,
+  }) async {
+    if (!usarApiReal) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      return;
+    }
+
+    final response = await httpWithRetry(
+      () => http.patch(
+        Uri.parse('$baseUrl/pedidos/$pedidoId/estado'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({'estado': estado}),
+      ),
+      retry: false,
+    );
+
+    if (response.statusCode >= 400) {
+      throw toApiException(response.statusCode, decodeBody(response));
+    }
+  }
+
   static Future<List<Pedido>> obtenerTodosLosPedidos() async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 400));

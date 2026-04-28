@@ -2,6 +2,9 @@ import os
 import random
 import string
 import bcrypt
+import pyotp
+from bson import ObjectId
+from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import APIRouter, HTTPException
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
@@ -10,9 +13,14 @@ from pydantic import BaseModel, EmailStr
 from database import coleccion_usuarios
 from models import UsuarioRegistro, UsuarioLogin
 
-load_dotenv(override=True)
+# Cargar el archivo de entorno local llamado 'env'
+dotenv_path = Path(__file__).resolve().parents[1] / "env"
+load_dotenv(dotenv_path=dotenv_path, override=True)
 
 router = APIRouter()
+
+def normalizar_correo(correo: str) -> str:
+    return correo.strip().lower()
 
 conf = ConnectionConfig(
     MAIL_USERNAME=os.getenv("MAIL_USERNAME", "no-reply@bravo.com"), # Valor por defecto
@@ -35,6 +43,16 @@ class ResetPassword(BaseModel):
     correo: EmailStr
     codigo: str
     nueva_password: str
+
+class Verificar2FA(BaseModel):
+    user_id: str
+    codigo: str
+
+class Activar2FA(BaseModel):
+    codigo: str
+
+class Desactivar2FA(BaseModel):
+    codigo: str
 
 # --- 2. FUNCIÓN PARA ENVIAR EL EMAIL ---
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
@@ -85,8 +103,10 @@ async def enviar_correo_verificacion(email_destino: str, codigo: str):
 @router.post("/registro")
 async def registrar_usuario(usuario: UsuarioRegistro):
     try:
+        correo_normalizado = normalizar_correo(usuario.correo)
+
         # Validar si el correo ya existe
-        if coleccion_usuarios.find_one({"correo": usuario.correo}):
+        if coleccion_usuarios.find_one({"correo": correo_normalizado}):
             raise HTTPException(status_code=400, detail="El correo ya está registrado")
 
         # Regla Senior: Validar restaurante_id para empleados
@@ -106,7 +126,7 @@ async def registrar_usuario(usuario: UsuarioRegistro):
         # Preparar documento para MongoDB (DB usa snake_case internamente)
         usuario_dict = {
             "nombre": usuario.nombre,
-            "correo": usuario.correo,
+            "correo": correo_normalizado,
             "telefono": usuario.telefono,
             "direccion": usuario.direccion,
             "rol": usuario.rol,
@@ -133,7 +153,8 @@ async def registrar_usuario(usuario: UsuarioRegistro):
 # --- 4. ENDPOINT: VERIFICAR CÓDIGO ---
 @router.post("/verificar-codigo")
 async def verificar_codigo(datos: VerificacionCodigo):
-    usuario_db = coleccion_usuarios.find_one({"correo": datos.correo})
+    correo_normalizado = normalizar_correo(datos.correo)
+    usuario_db = coleccion_usuarios.find_one({"correo": correo_normalizado})
     if not usuario_db:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
@@ -156,7 +177,7 @@ async def verificar_codigo(datos: VerificacionCodigo):
         campos["reset_code"] = None
 
     resultado = coleccion_usuarios.update_one(
-        {"correo": datos.correo},
+        {"correo": correo_normalizado},
         {"$set": campos}
     )
 
@@ -166,7 +187,8 @@ async def verificar_codigo(datos: VerificacionCodigo):
 # --- 5. ENDPOINT: LOGIN ---
 @router.post("/login")
 def iniciar_sesion(credenciales: UsuarioLogin):
-    usuario_db = coleccion_usuarios.find_one({"correo": credenciales.correo})
+    correo_normalizado = normalizar_correo(credenciales.correo)
+    usuario_db = coleccion_usuarios.find_one({"correo": correo_normalizado})
 
     if usuario_db:
         # Bloquear si no está verificado
@@ -180,12 +202,18 @@ def iniciar_sesion(credenciales: UsuarioLogin):
         hash_almacenado = usuario_db["password_hash"].encode('utf-8')
 
         if bcrypt.checkpw(password_escrita, hash_almacenado):
+            if usuario_db.get("totp_enabled"):
+                return {
+                    "requires_2fa": True,
+                    "user_id": str(usuario_db["_id"]),
+                }
             return {
                 "id": str(usuario_db["_id"]),
                 "nombre": usuario_db["nombre"],
                 "correo": usuario_db["correo"],
                 "rol": usuario_db.get("rol", "cliente"),
-                "restauranteId": usuario_db.get("restaurante_id", "")
+                "restauranteId": usuario_db.get("restaurante_id", ""),
+                "totp_enabled": usuario_db.get("totp_enabled", False),
             }
    
     raise HTTPException(status_code=401, detail="Credenciales incorrectas")
@@ -194,7 +222,8 @@ def iniciar_sesion(credenciales: UsuarioLogin):
 @router.post("/recuperar-password")
 async def recuperar_password(datos: dict):
     correo = datos.get("correo")
-    usuario_db = coleccion_usuarios.find_one({"correo": correo})
+    correo_normalizado = normalizar_correo(correo) if correo else None
+    usuario_db = coleccion_usuarios.find_one({"correo": correo_normalizado})
 
     if not usuario_db:
         # Nota: En apps de alta seguridad se devuelve 200 aunque no exista, 
@@ -204,7 +233,7 @@ async def recuperar_password(datos: dict):
     codigo_recuperacion = ''.join(random.choices(string.digits, k=6))
 
     coleccion_usuarios.update_one(
-        {"correo": correo},
+        {"correo": correo_normalizado},
         {"$set": {"reset_code": codigo_recuperacion}}
     )
 
@@ -294,3 +323,111 @@ async def reset_password(datos: ResetPassword):
     )
 
     return {"mensaje": "Contraseña actualizada correctamente"}
+
+
+# --- 9. ENDPOINT: SETUP 2FA ---
+@router.post("/usuarios/{user_id}/2fa/setup")
+def setup_2fa(user_id: str):
+    try:
+        usuario_db = coleccion_usuarios.find_one({"_id": ObjectId(user_id)})
+    except Exception:
+        raise HTTPException(status_code=400, detail="ID de usuario inválido")
+    if not usuario_db:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    secret = pyotp.random_base32()
+    correo = usuario_db["correo"]
+    uri = pyotp.totp.TOTP(secret).provisioning_uri(
+        name=correo,
+        issuer_name="Restaurante Bravo"
+    )
+
+    coleccion_usuarios.update_one(
+        {"_id": ObjectId(user_id)},
+        {"$set": {"totp_secret_temp": secret}}
+    )
+
+    return {"secret": secret, "otpauth_uri": uri}
+
+
+# --- 10. ENDPOINT: ACTIVAR 2FA ---
+@router.post("/usuarios/{user_id}/2fa/activar")
+def activar_2fa(user_id: str, datos: Activar2FA):
+    try:
+        usuario_db = coleccion_usuarios.find_one({"_id": ObjectId(user_id)})
+    except Exception:
+        raise HTTPException(status_code=400, detail="ID de usuario inválido")
+    if not usuario_db:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    secret_temp = usuario_db.get("totp_secret_temp")
+    if not secret_temp:
+        raise HTTPException(status_code=400, detail="Primero inicia el proceso de configuración")
+
+    totp = pyotp.TOTP(secret_temp)
+    if not totp.verify(datos.codigo.strip(), valid_window=1):
+        raise HTTPException(status_code=400, detail="Código incorrecto")
+
+    coleccion_usuarios.update_one(
+        {"_id": ObjectId(user_id)},
+        {"$set": {"totp_secret": secret_temp, "totp_enabled": True}, "$unset": {"totp_secret_temp": ""}}
+    )
+
+    return {"mensaje": "Autenticación de dos factores activada correctamente"}
+
+
+# --- 11. ENDPOINT: DESACTIVAR 2FA ---
+@router.post("/usuarios/{user_id}/2fa/desactivar")
+def desactivar_2fa(user_id: str, datos: Desactivar2FA):
+    try:
+        usuario_db = coleccion_usuarios.find_one({"_id": ObjectId(user_id)})
+    except Exception:
+        raise HTTPException(status_code=400, detail="ID de usuario inválido")
+    if not usuario_db:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    if not usuario_db.get("totp_enabled"):
+        raise HTTPException(status_code=400, detail="El 2FA no está activado")
+
+    secret = usuario_db.get("totp_secret")
+    if not secret:
+        raise HTTPException(status_code=400, detail="Configuración 2FA no encontrada")
+
+    totp = pyotp.TOTP(secret)
+    if not totp.verify(datos.codigo.strip(), valid_window=1):
+        raise HTTPException(status_code=400, detail="Código incorrecto")
+
+    coleccion_usuarios.update_one(
+        {"_id": ObjectId(user_id)},
+        {"$set": {"totp_enabled": False}, "$unset": {"totp_secret": ""}}
+    )
+
+    return {"mensaje": "Autenticación de dos factores desactivada"}
+
+
+# --- 12. ENDPOINT: VERIFICAR CÓDIGO 2FA EN LOGIN ---
+@router.post("/verificar-2fa")
+def verificar_2fa(datos: Verificar2FA):
+    try:
+        usuario_db = coleccion_usuarios.find_one({"_id": ObjectId(datos.user_id)})
+    except Exception:
+        raise HTTPException(status_code=400, detail="ID de usuario inválido")
+    if not usuario_db:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    secret = usuario_db.get("totp_secret")
+    if not secret:
+        raise HTTPException(status_code=400, detail="2FA no configurado")
+
+    totp = pyotp.TOTP(secret)
+    if not totp.verify(datos.codigo.strip(), valid_window=1):
+        raise HTTPException(status_code=400, detail="Código incorrecto. Verifica tu Google Authenticator")
+
+    return {
+        "id": str(usuario_db["_id"]),
+        "nombre": usuario_db["nombre"],
+        "correo": usuario_db["correo"],
+        "rol": usuario_db.get("rol", "cliente"),
+        "restauranteId": usuario_db.get("restaurante_id", ""),
+        "totp_enabled": True,
+    }

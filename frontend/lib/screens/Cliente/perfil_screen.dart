@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:frontend/screens/cliente/login_screen.dart';
 import 'package:provider/provider.dart';
 import '../../core/colors_style.dart';
+import '../../models/usuario_model.dart';
 import '../../providers/auth_provider.dart';
 import 'home_screen.dart';
 import 'historial_pedidos_screen.dart';
 import 'direccion_screen.dart';
+import 'totp_setup_screen.dart';
 
 class PerfilScreen extends StatefulWidget {
   const PerfilScreen({super.key});
@@ -188,6 +190,121 @@ class _PerfilScreenState extends State<PerfilScreen> {
         ),
       );
     }
+  }
+
+  Future<void> _mostrarActivar2FA() async {
+    final activado = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => const TotpSetupScreen()),
+    );
+    if (activado == true && mounted) setState(() {});
+  }
+
+  void _mostrarDesactivar2FA() {
+    final formKey = GlobalKey<FormState>();
+    final codigoCtrl = TextEditingController();
+    bool cargando = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) => Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          child: Container(
+            decoration: const BoxDecoration(
+              color: AppColors.gold,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40, height: 4,
+                      decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Desactivar 2FA',
+                    style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, fontFamily: 'Playfair Display'),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Introduce el código de Google Authenticator para confirmar.',
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13),
+                  ),
+                  const SizedBox(height: 20),
+                  _campoSheet(
+                    ctrl: codigoCtrl,
+                    label: 'Código de 6 dígitos',
+                    oculto: false,
+                    onToggle: () {},
+                    validator: (v) {
+                      if (v == null || v.trim().length != 6) return 'Introduce el código de 6 dígitos';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.redAccent,
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor: Colors.white12,
+                        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                        elevation: 0,
+                      ),
+                      onPressed: cargando ? null : () async {
+                        if (!formKey.currentState!.validate()) return;
+                        setSheet(() => cargando = true);
+                        try {
+                          final auth = Provider.of<AuthProvider>(context, listen: false);
+                          await auth.desactivar2fa(codigoCtrl.text.trim());
+                          if (ctx.mounted) Navigator.pop(ctx);
+                          if (mounted) {
+                            setState(() {});
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('2FA desactivado correctamente'),
+                                backgroundColor: Colors.green,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          if (ctx.mounted) setSheet(() => cargando = false);
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(e.toString().replaceAll('Exception: ', '')),
+                                backgroundColor: AppColors.error,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                        }
+                      },
+                      child: cargando
+                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          : const Text('DESACTIVAR 2FA', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.5, fontSize: 13)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   void _mostrarCambioContrasena() {
@@ -489,12 +606,21 @@ class _PerfilScreenState extends State<PerfilScreen> {
                             onTap: _mostrarCambioContrasena,
                           ),
                           const SizedBox(height: 10),
-                          _buildAccion(
-                            icono: Icons.receipt_long_outlined,
-                            label: 'Historial de pedidos',
-                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HistorialPedidosScreen())),
+                          Consumer<AuthProvider>(
+                            builder: (_, auth, _) {
+                              final totp2fa = auth.usuarioActual?.totpEnabled ?? false;
+                              return _buildAccion2fa(habilitado: totp2fa);
+                            },
                           ),
                           const SizedBox(height: 10),
+                          if (usuario?.rol == RolUsuario.cliente) ...[
+                            _buildAccion(
+                              icono: Icons.receipt_long_outlined,
+                              label: 'Historial de pedidos',
+                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HistorialPedidosScreen())),
+                            ),
+                            const SizedBox(height: 10),
+                          ],
                           _buildAccion(
                             icono: Icons.logout,
                             label: 'Cerrar sesión',
@@ -661,6 +787,50 @@ class _PerfilScreenState extends State<PerfilScreen> {
         ),
         errorStyle: const TextStyle(color: AppColors.error),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      ),
+    );
+  }
+
+  Widget _buildAccion2fa({required bool habilitado}) {
+    return GestureDetector(
+      onTap: habilitado ? _mostrarDesactivar2FA : _mostrarActivar2FA,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white12),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              habilitado ? Icons.verified_user_outlined : Icons.security_outlined,
+              color: habilitado ? Colors.greenAccent : Colors.white70,
+              size: 20,
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Autenticación de dos factores',
+                    style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    habilitado ? 'Activada — toca para desactivar' : 'No activada — toca para activar',
+                    style: TextStyle(
+                      color: habilitado ? Colors.greenAccent.withValues(alpha: 0.8) : Colors.white38,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right, color: Colors.white24, size: 20),
+          ],
+        ),
       ),
     );
   }
