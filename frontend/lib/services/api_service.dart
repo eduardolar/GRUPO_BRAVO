@@ -72,13 +72,47 @@ class ApiService {
   static Future<bool> eliminarCuenta({required String userId}) =>
       AuthService.eliminarCuenta(userId: userId);
 
-  // ─── PRODUCTOS ───────────────────────────────────────────────
+  // ─── CATEGORÍAS ──────────────────────────────────────────────
 
   static Future<List<String>> obtenerCategorias() =>
       ProductoService.obtenerCategorias();
 
+  static Future<void> crearCategoria(String nombre) =>
+      ProductoService.crearCategoria(nombre);
+
+  static Future<void> renombrarCategoria(
+    String nombreActual,
+    String nuevoNombre,
+  ) =>
+      ProductoService.renombrarCategoria(nombreActual, nuevoNombre);
+
+  static Future<void> reordenarCategorias(List<String> nuevoOrden) =>
+      ProductoService.reordenarCategorias(nuevoOrden);
+
+  static Future<void> eliminarCategoria(String nombre) =>
+      ProductoService.eliminarCategoria(nombre);
+
+  // ─── PRODUCTOS ───────────────────────────────────────────────
+
   static Future<List<Producto>> obtenerProductos({String? categoria}) =>
       ProductoService.obtenerProductos(categoria: categoria);
+
+  static Future<Producto> crearProducto(Map<String, dynamic> datos) =>
+      ProductoService.crearProducto(datos);
+
+  static Future<Producto> actualizarProducto(
+    String id,
+    Map<String, dynamic> datos,
+  ) =>
+      ProductoService.actualizarProducto(id, datos);
+
+  static Future<void> reordenarProductos(List<String> ids) =>
+      ProductoService.reordenarProductos(ids);
+
+  static Future<void> eliminarProducto(String id) =>
+      ProductoService.eliminarProducto(id);
+
+  // ─── INGREDIENTES ────────────────────────────────────────────
 
   static Future<List<Ingrediente>> obtenerIngredientes() =>
       IngredienteService.obtenerIngredientes();
