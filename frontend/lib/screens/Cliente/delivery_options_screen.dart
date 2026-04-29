@@ -1121,8 +1121,8 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
               Expanded(
                 child: Text(
                   _googlePayAutorizado
-                      ? 'Google Pay listo. El usuario verÃ¡ su tarjeta predeterminada y podrÃ¡ validar con huella, PIN o desbloqueo del dispositivo.'
-                      : 'Se mostrarÃ¡ una experiencia mÃ¡s realista de cartera digital: tarjeta guardada, autenticaciÃ³n del dispositivo y confirmaciÃ³n rÃ¡pida.',
+                      ? 'Google Pay listo. El usuario verá su tarjeta predeterminada y podrÃ¡ validar con huella, PIN o desbloqueo del dispositivo.'
+                      : 'Se mostrará una experiencia más realista de cartera digital: tarjeta guardada, autenticaciÃ³n del dispositivo y confirmaciÃ³n rÃ¡pida.',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.82),
                     fontSize: 12,
@@ -1415,7 +1415,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       }
 
       if (approvalUrl == null || approvalUrl.isEmpty) {
-        throw Exception('No se recibio URL de aprobaciÃ³n de PayPal');
+        throw Exception('No se recibio URL de aprobación de PayPal');
       }
 
       final approvalUri = Uri.parse(approvalUrl);
@@ -2058,7 +2058,7 @@ class _StripeCheckoutDialogState extends State<_StripeCheckoutDialog> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Se ha abierto la pÃ¡gina de pago de Stripe en una nueva pestaÃ±a. Completa el pago y pulsa el botÃ³n de abajo.',
+            'Se ha abierto la página de pago de Stripe en una nueva pestaña. Completa el pago y pulsa el botón de abajo.',
             style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
           ),
           if (_error != null) ...[
