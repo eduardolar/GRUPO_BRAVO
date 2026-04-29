@@ -1277,7 +1277,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       }
 
       if (!pagado) {
-        throw Exception('El pago con Apple Pay no se completÃ³');
+        throw Exception('El pago con Apple Pay no se completó');
       }
 
       await _crearPedidoFinal(
@@ -1298,7 +1298,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
   Future<void> _autorizarGooglePayFrontend() async {
     if (_estaCargando || _googlePayProcesando) return;
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
-      _mostrarError('Google Pay solo estÃ¡ disponible en Android.');
+      _mostrarError('Google Pay solo está disponible en Android.');
       return;
     }
 
@@ -1327,7 +1327,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
         const IsGooglePaySupportedParams(),
       );
       if (!googlePaySupported) {
-        throw Exception('Google Pay no estÃ¡ disponible en este dispositivo.');
+        throw Exception('Google Pay no está disponible en este dispositivo.');
       }
 
       await Stripe.instance.initPaymentSheet(
@@ -1415,7 +1415,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       }
 
       if (approvalUrl == null || approvalUrl.isEmpty) {
-        throw Exception('No se recibiÃ³ URL de aprobaciÃ³n de PayPal');
+        throw Exception('No se recibio URL de aprobaciÃ³n de PayPal');
       }
 
       final approvalUri = Uri.parse(approvalUrl);
@@ -2026,7 +2026,7 @@ class _StripeCheckoutDialogState extends State<_StripeCheckoutDialog> {
         setState(() {
           _verificando = false;
           _error =
-              'El pago aÃºn no se ha completado. Completa el pago en la pestaÃ±a de Stripe y vuelve a intentarlo.';
+              'El pago aún no se ha completado. Completa el pago en la pestaÃ±a de Stripe y vuelve a intentarlo.';
         });
       }
     } catch (e) {
