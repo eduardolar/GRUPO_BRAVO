@@ -31,6 +31,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
   bool _estaCargando = false;
 
   bool _googlePayAutorizado = false;
+  bool _googlePayProcesando = false;
   bool _paypalAutorizado = false;
   bool _applePayAutorizado = false;
   String? _paypalOrderId;
@@ -261,7 +262,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
                     icono: Icons.delivery_dining,
                     titulo: 'A domicilio',
                     subtitulo: 'En la puerta de tu casa',
-                    coste: '+3,99 €',
+                    coste: '+3,99 â‚¬',
                     seleccionada:
                         _entregaSeleccionada == OpcionEntrega.domicilio,
                     onTap: () => setState(
@@ -347,7 +348,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
               _PagoCard(
                 icono: Icons.android,
                 titulo: 'Google Pay',
-                subtitulo: 'Pago rápido con Google',
+                subtitulo: 'Pago rpido con Google',
                 seleccionada: _pagoSeleccionado == MetodoPago.googlePay,
                 onTap: () {
                   setState(() {
@@ -412,12 +413,12 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
   Widget _seccionDireccion() {
     return Consumer<AuthProvider>(
       builder: (context, auth, _) {
-        // Obtenemos la dirección directamente del perfil del usuario (MongoDB)
+        // Obtenemos la direcciÃ³n directamente del perfil del usuario (MongoDB)
         final dir = auth.usuarioActual?.direccion ?? '';
 
         return Column(
           children: [
-            // Opción 1: La dirección que ya está en la Base de Datos
+            // OpciÃ³n 1: La direcciÃ³n que ya estÃ¡ en la Base de Datos
             _DireccionOption(
               icono: Icons.home_outlined,
               titulo: 'Dirección registrada',
@@ -430,11 +431,11 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
             ),
             const SizedBox(height: 8),
 
-            // Opción 2: El botón que activa nuestra nueva pantalla de GPS/Mapa
+            // OpciÃ³n 2: El botÃ³n que activa nuestra nueva pantalla de GPS/Mapa
             _DireccionOption(
               icono: Icons.map_outlined,
               titulo: 'Cambiar o usar mapa / GPS',
-              subtitulo: 'Selecciona tu ubicación exacta en el mapa',
+              subtitulo: 'Selecciona tu ubicaciÃ³n exacta en el mapa',
               seleccionada:
                   _direccionSeleccionada == OpcionDireccion.alternativa,
               onTap: () async {
@@ -446,8 +447,8 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
                   ),
                 );
 
-                // Al volver, forzamos la selección a "registrada" porque
-                // la pantalla de mapa ya actualiza la dirección en el perfil del usuario
+                // Al volver, forzamos la selecciÃ³n a "registrada" porque
+                // la pantalla de mapa ya actualiza la direcciÃ³n en el perfil del usuario
                 setState(() {
                   _direccionSeleccionada = OpcionDireccion.registrada;
                 });
@@ -468,7 +469,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
     if (_entregaSeleccionada == OpcionEntrega.domicilio) {
       final usuario = auth.usuarioActual;
 
-      // Validación de dirección: Si no hay dirección en el perfil, no pasa al pago
+      // ValidaciÃ³n de direcciÃ³n: Si no hay direcciÃ³n en el perfil, no pasa al pago
       if (usuario == null || usuario.direccion.isEmpty) {
         _mostrarError('Por favor, selecciona una ubicación en el mapa.');
         return;
@@ -608,7 +609,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
                 : _controladorDireccion.text.trim())
           : null;
 
-      // 1. Crear sesión Stripe — la URL de éxito lleva entrega y total
+      // 1. Crear sesiÃ³n Stripe â€” la URL de Ã©xito lleva entrega y total
       final totalStr = total.toStringAsFixed(2);
       final session = await ApiService.crearCheckoutSession(
         total: total,
@@ -624,7 +625,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       final sessionId = session['session_id']?.toString();
 
       if (checkoutUrl == null || sessionId == null) {
-        throw Exception('No se pudo iniciar la sesión de pago');
+        throw Exception('No se pudo iniciar la sesiÃ³n de pago');
       }
 
       // 2. Crear el pedido ANTES de abrir Stripe para que quede en BD
@@ -656,12 +657,12 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       cart.clearCart();
       setState(() => _estaCargando = false);
 
-      // 3. Abrir Stripe (nueva pestaña si el navegador lo permite)
+      // 3. Abrir Stripe (nueva pestaÃ±a si el navegador lo permite)
       await launchUrl(Uri.parse(checkoutUrl), webOnlyWindowName: '_blank');
 
       if (!mounted) return;
 
-      // 4. Diálogo para quien vuelve a esta misma pestaña
+      // 4. DiÃ¡logo para quien vuelve a esta misma pestaÃ±a
       final confirmado = await showDialog<bool>(
         context: context,
         barrierDismissible: false,
@@ -713,14 +714,26 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       );
     } on StripeException catch (e) {
       if (mounted) {
-        setState(() => _estaCargando = false);
+        setState(() {
+          _estaCargando = false;
+          _googlePayAutorizado = false;
+          _googlePayProcesando = false;
+          _googlePayClientSecret = null;
+          _googlePayPaymentIntentId = null;
+        });
         _mostrarError(
           'Pago de Google Pay cancelado o fallido: ${e.error.localizedMessage ?? e.error.message}',
         );
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _estaCargando = false);
+        setState(() {
+          _estaCargando = false;
+          _googlePayAutorizado = false;
+          _googlePayProcesando = false;
+          _googlePayClientSecret = null;
+          _googlePayPaymentIntentId = null;
+        });
         _mostrarError('Error en Google Pay: $e');
       }
     }
@@ -745,7 +758,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
           captura['approved'] == true;
 
       if (!completado) {
-        throw Exception('PayPal no devolvió un pago completado');
+        throw Exception('PayPal no devolviÃ³ un pago completado');
       }
 
       await _crearPedidoFinal(
@@ -877,43 +890,249 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
 
   Widget _buildGooglePayButton() {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(
+        Container(
           width: double.infinity,
-          child: OutlinedButton(
-            style: OutlinedButton.styleFrom(
-              backgroundColor: Colors.white,
-              side: BorderSide.none,
-              padding: const EdgeInsets.symmetric(vertical: 15),
-              shape: const RoundedRectangleBorder(
-                borderRadius: BorderRadius.zero,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x33000000),
+                blurRadius: 18,
+                offset: Offset(0, 10),
               ),
-            ),
-            onPressed: _autorizarGooglePayFrontend,
-            child: const Text(
-              'AUTORIZAR GOOGLE PAY',
-              style: TextStyle(
-                color: Colors.black,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1,
+            ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(18),
+              onTap: (_estaCargando || _googlePayProcesando)
+                  ? null
+                  : _autorizarGooglePayFrontend,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 16,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF5F5F5),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          alignment: Alignment.center,
+                          child: const Text(
+                            'G',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 24,
+                              fontWeight: FontWeight.w700,
+                              height: 1,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Google Pay',
+                                style: TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                'Paga al instante con tu tarjeta guardada',
+                                style: TextStyle(
+                                  color: Color(0xFF5F6368),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(
+                          _googlePayAutorizado
+                              ? Icons.verified_rounded
+                              : Icons.chevron_right_rounded,
+                          color: _googlePayAutorizado
+                              ? const Color(0xFF1A8E3E)
+                              : Colors.black54,
+                          size: 22,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 220),
+                      width: double.infinity,
+                      height: 54,
+                      decoration: BoxDecoration(
+                        color: Colors.black,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Center(
+                        child: _googlePayProcesando
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2.2,
+                                ),
+                              )
+                            : Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Text(
+                                    'Buy with',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  RichText(
+                                    text: const TextSpan(
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                      children: [
+                                        TextSpan(
+                                          text: 'G',
+                                          style: TextStyle(
+                                            color: Color(0xFF4285F4),
+                                          ),
+                                        ),
+                                        TextSpan(
+                                          text: 'o',
+                                          style: TextStyle(
+                                            color: Color(0xFFEA4335),
+                                          ),
+                                        ),
+                                        TextSpan(
+                                          text: 'o',
+                                          style: TextStyle(
+                                            color: Color(0xFFFBBC05),
+                                          ),
+                                        ),
+                                        TextSpan(
+                                          text: 'g',
+                                          style: TextStyle(
+                                            color: Color(0xFF4285F4),
+                                          ),
+                                        ),
+                                        TextSpan(
+                                          text: 'l',
+                                          style: TextStyle(
+                                            color: Color(0xFF34A853),
+                                          ),
+                                        ),
+                                        TextSpan(
+                                          text: 'e',
+                                          style: TextStyle(
+                                            color: Color(0xFFEA4335),
+                                          ),
+                                        ),
+                                        TextSpan(
+                                          text: ' Pay',
+                                          style: TextStyle(color: Colors.white),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Icon(
+                          _googlePayAutorizado
+                              ? Icons.lock_clock_outlined
+                              : Icons.lock_outline_rounded,
+                          size: 16,
+                          color: _googlePayAutorizado
+                              ? const Color(0xFF1A8E3E)
+                              : const Color(0xFF5F6368),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _googlePayAutorizado
+                                ? 'MÃ©todo autenticado. Pulsa CONFIRMAR PEDIDO para abrir la hoja de pago segura.'
+                                : 'Tus datos se tokenizan y se procesan en una hoja segura de Google Pay.',
+                            style: const TextStyle(
+                              color: Color(0xFF5F6368),
+                              fontSize: 11.5,
+                              height: 1.35,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
         ),
-        if (_googlePayAutorizado)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Row(
-              children: const [
-                Icon(Icons.check_circle, color: Colors.greenAccent, size: 18),
-                SizedBox(width: 8),
-                Text(
-                  'Google Pay autorizado',
-                  style: TextStyle(color: Colors.white70, fontSize: 12),
-                ),
-              ],
-            ),
+        const SizedBox(height: 10),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
           ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                _googlePayAutorizado
+                    ? Icons.check_circle
+                    : Icons.info_outline_rounded,
+                color: _googlePayAutorizado
+                    ? Colors.greenAccent
+                    : Colors.white70,
+                size: 18,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  _googlePayAutorizado
+                      ? 'Google Pay listo. El usuario verÃ¡ su tarjeta predeterminada y podrÃ¡ validar con huella, PIN o desbloqueo del dispositivo.'
+                      : 'Se mostrarÃ¡ una experiencia mÃ¡s realista de cartera digital: tarjeta guardada, autenticaciÃ³n del dispositivo y confirmaciÃ³n rÃ¡pida.',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.82),
+                    fontSize: 12,
+                    height: 1.35,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -1058,7 +1277,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       }
 
       if (!pagado) {
-        throw Exception('El pago con Apple Pay no se completó');
+        throw Exception('El pago con Apple Pay no se completÃ³');
       }
 
       await _crearPedidoFinal(
@@ -1077,13 +1296,16 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
   }
 
   Future<void> _autorizarGooglePayFrontend() async {
-    if (_estaCargando) return;
+    if (_estaCargando || _googlePayProcesando) return;
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
-      _mostrarError('Google Pay solo está disponible en Android.');
+      _mostrarError('Google Pay solo estÃ¡ disponible en Android.');
       return;
     }
 
-    setState(() => _estaCargando = true);
+    setState(() {
+      _estaCargando = true;
+      _googlePayProcesando = true;
+    });
 
     try {
       final cart = Provider.of<CartProvider>(context, listen: false);
@@ -1105,13 +1327,13 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
         const IsGooglePaySupportedParams(),
       );
       if (!googlePaySupported) {
-        throw Exception('Google Pay no está disponible en este dispositivo.');
+        throw Exception('Google Pay no estÃ¡ disponible en este dispositivo.');
       }
 
       await Stripe.instance.initPaymentSheet(
         paymentSheetParameters: SetupPaymentSheetParameters(
           paymentIntentClientSecret: clientSecret,
-          merchantDisplayName: 'Bravo',
+          merchantDisplayName: 'Bravo Restaurante',
           googlePay: const PaymentSheetGooglePay(
             merchantCountryCode: 'ES',
             currencyCode: 'EUR',
@@ -1120,9 +1342,12 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
         ),
       );
 
+      await Future.delayed(const Duration(milliseconds: 900));
+
       if (mounted) {
         setState(() {
           _googlePayAutorizado = true;
+          _googlePayProcesando = false;
           _googlePayClientSecret = clientSecret;
           _googlePayPaymentIntentId = paymentIntentId;
           _paypalAutorizado = false;
@@ -1132,14 +1357,20 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       }
     } on StripeException catch (e) {
       if (mounted) {
-        setState(() => _estaCargando = false);
+        setState(() {
+          _estaCargando = false;
+          _googlePayProcesando = false;
+        });
         _mostrarError(
           'No se pudo autorizar Google Pay: ${e.error.localizedMessage ?? e.error.message}',
         );
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _estaCargando = false);
+        setState(() {
+          _estaCargando = false;
+          _googlePayProcesando = false;
+        });
         _mostrarError('No se pudo autorizar Google Pay: $e');
       }
     }
@@ -1184,7 +1415,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       }
 
       if (approvalUrl == null || approvalUrl.isEmpty) {
-        throw Exception('No se recibió URL de aprobación de PayPal');
+        throw Exception('No se recibiÃ³ URL de aprobaciÃ³n de PayPal');
       }
 
       final approvalUri = Uri.parse(approvalUrl);
@@ -1214,7 +1445,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
 
       if (mounted) {
         _mostrarInfo(
-          'PayPal abierto. Completa el pago en la ventana que se abrió y luego confirma el pedido.',
+          'PayPal abierto. Completa el pago en la ventana que se abriÃ³ y luego confirma el pedido.',
         );
       }
     } catch (e) {
@@ -1416,7 +1647,7 @@ class _BottomBar extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '${total.toStringAsFixed(2).replaceAll('.', ',')} €',
+                    '${total.toStringAsFixed(2).replaceAll('.', ',')} â‚¬',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 20,
@@ -1426,7 +1657,7 @@ class _BottomBar extends StatelessWidget {
                   ),
                   if (envio > 0)
                     Text(
-                      'incl. 3,99 € envío',
+                      'incl. 3,99 â‚¬ envÃ­o',
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.40),
                         fontSize: 10,
@@ -1765,7 +1996,7 @@ class _DireccionOption extends StatelessWidget {
   }
 }
 
-// ── Diálogo de confirmación Stripe Checkout ───────────────────────────────────
+// â”€â”€ DiÃ¡logo de confirmaciÃ³n Stripe Checkout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _StripeCheckoutDialog extends StatefulWidget {
   final String sessionId;
@@ -1795,7 +2026,7 @@ class _StripeCheckoutDialogState extends State<_StripeCheckoutDialog> {
         setState(() {
           _verificando = false;
           _error =
-              'El pago aún no se ha completado. Completa el pago en la pestaña de Stripe y vuelve a intentarlo.';
+              'El pago aÃºn no se ha completado. Completa el pago en la pestaÃ±a de Stripe y vuelve a intentarlo.';
         });
       }
     } catch (e) {
@@ -1827,7 +2058,7 @@ class _StripeCheckoutDialogState extends State<_StripeCheckoutDialog> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Se ha abierto la página de pago de Stripe en una nueva pestaña. Completa el pago y pulsa el botón de abajo.',
+            'Se ha abierto la pÃ¡gina de pago de Stripe en una nueva pestaÃ±a. Completa el pago y pulsa el botÃ³n de abajo.',
             style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
           ),
           if (_error != null) ...[
@@ -1969,7 +2200,7 @@ class _ArticuloCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Text(
-                      '${item.producto.precio.toStringAsFixed(2).replaceAll('.', ',')} € / ud',
+                      '${item.producto.precio.toStringAsFixed(2).replaceAll('.', ',')} â‚¬ / ud',
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.60),
                         fontSize: 11,
@@ -1979,7 +2210,7 @@ class _ArticuloCard extends StatelessWidget {
                     _StepperCard(item: item, cart: cart),
                     const SizedBox(width: 14),
                     Text(
-                      '${item.subtotal.toStringAsFixed(2).replaceAll('.', ',')} €',
+                      '${item.subtotal.toStringAsFixed(2).replaceAll('.', ',')} â‚¬',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 16,
