@@ -4,7 +4,7 @@ import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/models/mesa_model.dart';
 import 'package:frontend/services/mesa_service.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'crear_pedidos.dart';
+import 'crear_comanda.dart';
 
 class SeleccionMesa extends StatefulWidget {
   const SeleccionMesa({super.key});
@@ -104,7 +104,7 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => CrearPedidos(mesaId: mesa.id)),
+        MaterialPageRoute(builder: (_) => CrearComanda(mesaId: mesa.id)),
       );
     } catch (_) {
       if (!mounted) return;
@@ -130,7 +130,7 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
   Widget build(BuildContext context) {
     if (_cargando) {
       return Scaffold(
-        backgroundColor: Colors.black,
+        backgroundColor: AppColors.shadow,
         body: Stack(
           children: [
             Positioned.fill(
@@ -142,7 +142,7 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
             Positioned.fill(
               child: DecoratedBox(
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.65),
+                  color: AppColors.shadow.withValues(alpha: 0.65),
                 ),
               ),
             ),
@@ -154,13 +154,13 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
                     width: 22,
                     height: 22,
                     child: CircularProgressIndicator(
-                        color: Colors.white, strokeWidth: 1.5),
+                        color: AppColors.background, strokeWidth: 1.5),
                   ),
                   SizedBox(height: 18),
                   Text(
                     'CARGANDO MESAS',
                     style: TextStyle(
-                      color: Colors.white60,
+                      color: AppColors.panel,
                       fontSize: 10,
                       letterSpacing: 3.0,
                       fontWeight: FontWeight.w600,
@@ -180,11 +180,11 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
         .toList();
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppColors.shadow,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _mostrarFormCrearMesa,
         backgroundColor: AppColors.button,
-        foregroundColor: Colors.white,
+        foregroundColor: AppColors.background,
         elevation: 4,
         icon: const Icon(Icons.add, size: 20),
         label: const Text(
@@ -211,8 +211,8 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Colors.black.withValues(alpha: 0.50),
-                    Colors.black.withValues(alpha: 0.75),
+                    AppColors.shadow.withValues(alpha: 0.50),
+                    AppColors.shadow.withValues(alpha: 0.75),
                   ],
                 ),
               ),
@@ -245,7 +245,7 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
                                 fontWeight: FontWeight.w700,
                                 letterSpacing: 1.5,
                                 shadows: const [
-                                  Shadow(color: Colors.black54, blurRadius: 8),
+                                  Shadow(color: AppColors.shadow, blurRadius: 8),
                                 ],
                               ),
                             ),
@@ -461,7 +461,7 @@ class _MesaPainter extends CustomPainter {
 
     // Sombra de la mesa
     final shadowPaint = Paint()
-      ..color = Colors.black.withValues(alpha: 0.35)
+      ..color = AppColors.shadow.withValues(alpha: 0.35)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
     canvas.drawCircle(center + const Offset(2, 3), tableRadius, shadowPaint);
 
@@ -507,7 +507,7 @@ class _MesaPainter extends CustomPainter {
     final textSpan = TextSpan(
       text: '$numero',
       style: TextStyle(
-        color: Colors.white.withValues(alpha: disponible ? 1.0 : 0.6),
+        color: AppColors.background.withValues(alpha: disponible ? 1.0 : 0.6),
         fontSize: tableRadius * 0.82,
         fontWeight: FontWeight.bold,
       ),
@@ -633,7 +633,7 @@ class _DialogConfirmacion extends StatelessWidget {
                     onPressed: () => Navigator.pop(context, true),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.button,
-                      foregroundColor: Colors.white,
+                      foregroundColor: AppColors.background,
                       padding: const EdgeInsets.symmetric(vertical: 13),
                       elevation: 0,
                       shape: RoundedRectangleBorder(
@@ -835,7 +835,7 @@ class _DialogCrearMesaState extends State<_DialogCrearMesa> {
                       onPressed: _confirmar,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.button,
-                        foregroundColor: Colors.white,
+                        foregroundColor: AppColors.background,
                         padding: const EdgeInsets.symmetric(vertical: 13),
                         elevation: 0,
                         shape: RoundedRectangleBorder(
@@ -967,7 +967,7 @@ class _ChipUbicacion extends StatelessWidget {
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? Colors.white : AppColors.textSecondary,
+            color: selected ? AppColors.background : AppColors.textSecondary,
             fontSize: 11,
             fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
           ),

@@ -20,12 +20,12 @@ import 'http_client.dart';
 class ApiService {
   static String get baseUrl {
     if (kIsWeb) {
-      return 'http://localhost:8000';
+      return 'http://localhost:8000/api/v1';
     }
     if (Platform.isAndroid) {
-      return 'http://10.0.2.2:8000';
+      return 'http://10.0.2.2:8000/api/v1';
     }
-    return 'http://127.0.0.1:8000';
+    return 'http://127.0.0.1:8000/api/v1';
   }
 
   // ─── AUTH ────────────────────────────────────────────────────
@@ -114,12 +114,14 @@ class ApiService {
 
   // ─── INGREDIENTES ────────────────────────────────────────────
 
-  static Future<List<Ingrediente>> obtenerIngredientes() =>
-      IngredienteService.obtenerIngredientes();
+  static Future<List<Ingrediente>> obtenerIngredientes({String? restauranteId}) =>
+      IngredienteService.obtenerIngredientes(restauranteId: restauranteId);
 
-  static Future<Map<String, List<Ingrediente>>>
-  obtenerIngredientesPorCategoria() =>
-      IngredienteService.obtenerIngredientesPorCategoria();
+  static Future<Map<String, List<Ingrediente>>> obtenerIngredientesPorCategoria({String? restauranteId}) =>
+      IngredienteService.obtenerIngredientesPorCategoria(restauranteId: restauranteId);
+
+  static Future<List<Ingrediente>> obtenerIngredientesStockBajo({String? restauranteId}) =>
+      IngredienteService.obtenerIngredientesStockBajo(restauranteId: restauranteId);
 
   // ─── PEDIDOS ─────────────────────────────────────────────────
 
@@ -175,6 +177,18 @@ class ApiService {
     required String pedidoId,
     required String estado,
   }) => PedidoService.actualizarEstadoPedido(pedidoId: pedidoId, estado: estado);
+
+  static Future<Map<String, dynamic>?> obtenerPedidoActivoPorMesa(
+          String mesaId) =>
+      PedidoService.obtenerPedidoActivoPorMesa(mesaId);
+
+  static Future<void> cerrarPedido({
+    required String pedidoId,
+    required String metodoPago,
+  }) => PedidoService.cerrarPedido(pedidoId: pedidoId, metodoPago: metodoPago);
+
+  static Future<void> marcarMesaLibre(String mesaId) =>
+      MesaService.marcarMesaLibre(mesaId);
 
   // ─── PAGOS TARJETA / STRIPE ──────────────────────────────────
 
@@ -527,19 +541,6 @@ class ApiService {
     return {'Content-Type': 'application/json', 'Accept': 'application/json'};
   }
 
-  static Map<String, dynamic> _decodeBody(http.Response response) {
-    if (response.body.isEmpty) {
-      return <String, dynamic>{};
-    }
-
-    final decoded = jsonDecode(response.body);
-
-    if (decoded is Map<String, dynamic>) {
-      return decoded;
-    }
-
-    return {'data': decoded};
-  }
 
   static Future<void> agregarItemTicket({
     required String mesaId,

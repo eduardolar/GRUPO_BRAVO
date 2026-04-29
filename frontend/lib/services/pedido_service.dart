@@ -52,7 +52,6 @@ class PedidoService {
           'items': items,
           'tipoEntrega': tipoEntrega,
           'metodoPago': metodoPago,
-          'total': total,
           'direccionEntrega': direccionEntrega,
           'mesaId': mesaId,
           'numeroMesa': numeroMesa,
@@ -115,6 +114,62 @@ class PedidoService {
         body: jsonEncode({
           'items': items,
           'total': totalExtra,
+        }),
+      ),
+      retry: false,
+    );
+
+    if (response.statusCode >= 400) {
+      throw toApiException(response.statusCode, decodeBody(response));
+    }
+  }
+
+  static Future<Map<String, dynamic>?> obtenerPedidoActivoPorMesa(
+      String mesaId) async {
+    if (!usarApiReal) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      return null;
+    }
+
+    final response = await httpWithRetry(
+      () => http.get(
+        Uri.parse('$baseUrl/pedidos?mesaId=$mesaId'),
+        headers: {'Accept': 'application/json'},
+      ),
+    );
+
+    if (response.statusCode == 200) {
+      final raw = jsonDecode(response.body);
+      if (raw is List && raw.isNotEmpty) {
+        return Map<String, dynamic>.from(raw.first as Map);
+      }
+      if (raw is Map<String, dynamic>) return raw;
+      return null;
+    }
+    if (response.statusCode == 404) return null;
+    throw toApiException(response.statusCode, decodeBody(response));
+  }
+
+  static Future<void> cerrarPedido({
+    required String pedidoId,
+    required String metodoPago,
+  }) async {
+    if (!usarApiReal) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      return;
+    }
+
+    final response = await httpWithRetry(
+      () => http.patch(
+        Uri.parse('$baseUrl/pedidos/$pedidoId'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({
+          'estadoPago': 'pagado',
+          'estado': 'completado',
+          'metodoPago': metodoPago,
         }),
       ),
       retry: false,

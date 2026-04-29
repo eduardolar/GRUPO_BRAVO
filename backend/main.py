@@ -2,16 +2,22 @@ import os
 import logging
 import traceback
 from pathlib import Path
-from fastapi import FastAPI, Request
+from fastapi import APIRouter, FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from limiter import limiter
+from exceptions import AppError
 
 # Cargar variables de entorno del archivo .env
 load_dotenv()
 
 # Puerto y host configurables desde .env o variables de entorno
-PORT = int(os.getenv("PORT", 8001))
+PORT = int(os.getenv("PORT", 8000))
 HOST = os.getenv("HOST", "127.0.0.1")
 # Cargar variables de entorno desde el archivo local 'env'
 dotenv_path = Path(__file__).with_name("env")
@@ -21,10 +27,15 @@ MONGO_URI = os.getenv("MONGO_URI")
 from routes import auth, usuarios, categorias, productos, pedidos, mesas, reservas, ingredientes
 from routes import restaurantes
 import pagos
+from tickets import router as tickets_router
 
 logger = logging.getLogger("uvicorn")
 
 app = FastAPI(title="API Restaurante Bravo")
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 # --- CONFIGURACIÓN DE CORS CORREGIDA (PARA EVITAR 400 OPTIONS) ---
 # Al usar allow_origins=["*"], permitimos que cualquier origen conecte.
@@ -38,28 +49,45 @@ app.add_middleware(
 )
 # ----------------------------------------------------------------
 
+@app.exception_handler(AppError)
+async def app_error_handler(request: Request, exc: AppError):
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_error_handler(request: Request, exc: RequestValidationError):
+    msgs = []
+    for e in exc.errors():
+        loc = " → ".join(str(l) for l in e["loc"] if l != "body")
+        msgs.append(f"{loc}: {e['msg']}" if loc else e["msg"])
+    return JSONResponse(status_code=422, content={"detail": "; ".join(msgs)})
+
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
+    from fastapi import HTTPException
+    if isinstance(exc, HTTPException):
+        return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
     logger.error("Error no controlado en %s %s:\n%s", request.method, request.url.path, traceback.format_exc())
     return JSONResponse(
         status_code=500,
         content={"detail": "Error interno del servidor. Por favor, inténtalo de nuevo más tarde."},
     )
 
-# Registrar routers
-app.include_router(auth.router)
-app.include_router(usuarios.router)
-app.include_router(restaurantes.router) 
-app.include_router(categorias.router)
-app.include_router(productos.router)
-app.include_router(pedidos.router)
-app.include_router(mesas.router)
-app.include_router(reservas.router)
-app.include_router(ingredientes.router)
-app.include_router(pagos.router)
-
-from tickets import router as tickets_router
-app.include_router(tickets_router)
+# Registrar routers bajo /api/v1
+v1 = APIRouter(prefix="/api/v1")
+v1.include_router(auth.router)
+v1.include_router(usuarios.router)
+v1.include_router(restaurantes.router)
+v1.include_router(categorias.router)
+v1.include_router(productos.router)
+v1.include_router(pedidos.router)
+v1.include_router(mesas.router)
+v1.include_router(reservas.router)
+v1.include_router(ingredientes.router)
+v1.include_router(pagos.router)
+v1.include_router(tickets_router)
+app.include_router(v1)
 
 @app.get("/")
 def inicio():

@@ -52,21 +52,21 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  /// Devuelve `true` si el login fue completo.
-  /// Devuelve `false` si se requiere 2FA (consultar [pendingUserId2fa]).
-  Future<bool> iniciarSesion(String email, String contrasena) async {
+  /// Devuelve un Map con la respuesta si requiere 2FA, o null si el login fue exitoso.
+  /// Si devuelve un Map, contiene 'requires_2fa': true y 'correo' del usuario.
+  Future<Map<String, dynamic>?> iniciarSesion(String email, String contrasena) async {
     try {
       final response = await AuthService.iniciarSesion(correo: email, contrasena: contrasena);
       if (response['requires_2fa'] == true) {
         _pendingUserId2fa = response['user_id'] as String?;
         notifyListeners();
-        return false;
+        return response; // Devolver la respuesta completa para acceder a 'correo'
       }
       _pendingUserId2fa = null;
       _usuarioActual = Usuario.fromJson(response);
       notifyListeners();
       await _guardarSesion();
-      return true;
+      return null; // Login exitoso, no requiere 2FA
     } catch (e) {
       rethrow;
     }
@@ -210,12 +210,33 @@ class AuthProvider with ChangeNotifier {
     return AuthService.setup2fa(userId: _usuarioActual!.id);
   }
 
-  Future<void> activar2fa(String codigo) async {
+  Future<List<String>> activar2fa(String codigo) async {
     if (_usuarioActual == null) throw Exception('No hay usuario autenticado');
-    await AuthService.activar2fa(userId: _usuarioActual!.id, codigo: codigo);
+    final data = await AuthService.activar2fa(userId: _usuarioActual!.id, codigo: codigo);
     _usuarioActual = _usuarioActual!.copyWith(totpEnabled: true);
     notifyListeners();
     await _guardarSesion();
+    return List<String>.from(data['codigosRecuperacion'] as List);
+  }
+
+  Future<void> completarLogin2faRecovery(String codigo) async {
+    if (_pendingUserId2fa == null) throw Exception('No hay login pendiente');
+    final response = await AuthService.verificar2faRecovery(
+      userId: _pendingUserId2fa!,
+      codigo: codigo,
+    );
+    _pendingUserId2fa = null;
+    _usuarioActual = Usuario.fromJson(response);
+    notifyListeners();
+    await _guardarSesion();
+  }
+
+  Future<List<String>> regenerarCodigosRecuperacion(String codigo) async {
+    if (_usuarioActual == null) throw Exception('No hay usuario autenticado');
+    return AuthService.regenerarCodigosRecuperacion(
+      userId: _usuarioActual!.id,
+      codigo: codigo,
+    );
   }
 
   Future<void> desactivar2fa(String codigo) async {
@@ -224,5 +245,22 @@ class AuthProvider with ChangeNotifier {
     _usuarioActual = _usuarioActual!.copyWith(totpEnabled: false);
     notifyListeners();
     await _guardarSesion();
+  }
+  Future<bool> verificarLogin2FA(String correo, String codigo) async {
+    try {
+      final userData = await AuthService.verificarLogin2FA(correo, codigo);
+      _usuarioActual = Usuario.fromJson(userData);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      rethrow;
+    }
+  }
+  Future<void> reenviarLogin2FA(String correo) async {
+    try {
+      await AuthService.reenviarLogin2FA(correo: correo);
+    } catch (e) {
+      rethrow;
+    }
   }
 }

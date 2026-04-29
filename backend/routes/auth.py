@@ -1,23 +1,49 @@
+import hashlib
 import os
 import random
+import secrets
 import string
 import bcrypt
 import pyotp
 from bson import ObjectId
 from pathlib import Path
 from dotenv import load_dotenv
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
 from pydantic import BaseModel, EmailStr
 
 from database import coleccion_usuarios
-from models import UsuarioRegistro, UsuarioLogin
+from models import UsuarioRegistro, UsuarioLogin, VerificarRecuperacion
+from limiter import limiter
+from exceptions import (
+    AppError, NotFoundError, ConflictError, ValidacionError,
+    AutenticacionError, AutorizacionError,
+)
 
 # Cargar el archivo de entorno local llamado 'env'
-dotenv_path = Path(__file__).resolve().parents[1] / "env"
+dotenv_path = Path(__file__).resolve().parents[2] / ".env"
 load_dotenv(dotenv_path=dotenv_path, override=True)
 
 router = APIRouter()
+
+
+# ── Códigos de recuperación 2FA ───────────────────────────────────────────────
+
+def _generar_codigos_recuperacion(n: int = 8) -> tuple[list[str], list[str]]:
+    """Devuelve (codigos_en_claro, hashes_sha256)."""
+    codigos, hashes = [], []
+    for _ in range(n):
+        raw = secrets.token_hex(8)  # 16 hex chars → 64 bits de entropía
+        codigos.append(f"{raw[:8].upper()}-{raw[8:].upper()}")
+        hashes.append(hashlib.sha256(raw.encode()).hexdigest())
+    return codigos, hashes
+
+
+def _buscar_codigo_recuperacion(codigo: str, hashes: list[str]) -> str | None:
+    """Devuelve el hash coincidente o None. Acepta código con o sin guión."""
+    normalizado = codigo.lower().replace("-", "").strip()
+    h = hashlib.sha256(normalizado.encode()).hexdigest()
+    return h if h in hashes else None
 
 def normalizar_correo(correo: str) -> str:
     return correo.strip().lower()
@@ -101,20 +127,18 @@ async def enviar_correo_verificacion(email_destino: str, codigo: str):
 
 # --- 3. ENDPOINT: REGISTRO ---
 @router.post("/registro")
-async def registrar_usuario(usuario: UsuarioRegistro):
+@limiter.limit("3/minute")
+async def registrar_usuario(request: Request, usuario: UsuarioRegistro):
     try:
         correo_normalizado = normalizar_correo(usuario.correo)
 
         # Validar si el correo ya existe
         if coleccion_usuarios.find_one({"correo": correo_normalizado}):
-            raise HTTPException(status_code=400, detail="El correo ya está registrado")
+            raise ConflictError("El correo ya está registrado")
 
         # Regla Senior: Validar restaurante_id para empleados
         if usuario.rol != "cliente" and not usuario.restauranteId:
-            raise HTTPException(
-                status_code=400,
-                detail="Los empleados deben estar vinculados a un restauranteId"
-            )
+            raise ValidacionError("Los empleados deben estar vinculados a un restauranteId")
 
         # Generar OTP de 6 dígitos
         codigo_otp = ''.join(random.choices(string.digits, k=6))
@@ -144,19 +168,20 @@ async def registrar_usuario(usuario: UsuarioRegistro):
 
         return {"mensaje": "Registro exitoso. Revisa tu bandeja de entrada.", "correo": usuario.correo}
 
-    except HTTPException:
+    except AppError:
         raise
     except Exception:
         logger.error("Error inesperado en /registro", exc_info=True)
-        raise HTTPException(status_code=500, detail="Error interno al registrar el usuario")
+        raise
 
 # --- 4. ENDPOINT: VERIFICAR CÓDIGO ---
 @router.post("/verificar-codigo")
-async def verificar_codigo(datos: VerificacionCodigo):
+@limiter.limit("10/minute")
+async def verificar_codigo(request: Request, datos: VerificacionCodigo):
     correo_normalizado = normalizar_correo(datos.correo)
     usuario_db = coleccion_usuarios.find_one({"correo": correo_normalizado})
     if not usuario_db:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        raise NotFoundError("Usuario no encontrado")
 
     codigo_recibido = str(datos.codigo).strip()
 
@@ -168,7 +193,7 @@ async def verificar_codigo(datos: VerificacionCodigo):
     coincide_reset = codigo_recibido == codigo_reset and codigo_reset != ""
 
     if not coincide_verificacion and not coincide_reset:
-        raise HTTPException(status_code=400, detail="Código incorrecto o expirado")
+        raise AutenticacionError("Código incorrecto o expirado")
 
     campos = {"is_verified": True}
     if coincide_verificacion:
@@ -184,43 +209,125 @@ async def verificar_codigo(datos: VerificacionCodigo):
     if resultado.modified_count > 0:
         return {"mensaje": "¡Cuenta verificada con éxito! Ya puedes hacer login."}
     return {"mensaje": "La cuenta ya estaba verificada."}
-# --- 5. ENDPOINT: LOGIN ---
+# --- NUEVA FUNCIÓN PARA EL CORREO 2FA ---
+async def enviar_correo_2fa(email_destino: str, codigo: str):
+    html = f"""
+    <div style="font-family: Arial, sans-serif; background-color: #FBF9F6; padding: 40px 20px; text-align: center;">
+        <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; padding: 30px; border: 1px solid #E0DBD3; border-radius: 10px;">
+            <h2 style="color: #800020; margin-top: 0;">Restaurante Bravo - Seguridad</h2>
+            <hr style="border: 0; border-top: 1px solid #E0DBD3; margin: 20px 0;">
+            <p style="color: #2D2D2D; font-size: 16px; line-height: 1.5;">
+                Hemos detectado un intento de inicio de sesión. Usa este código para confirmar que eres tú:
+            </p>
+            <div style="background-color: #800020; color: #ffffff; padding: 15px 25px; font-size: 32px; font-weight: bold; letter-spacing: 8px; margin: 25px 0; display: inline-block; border-radius: 5px;">
+                {codigo}
+            </div>
+            <p style="color: #6B6B6B; font-size: 12px; margin-top: 25px; border-top: 1px solid #EEE; padding-top: 15px;">
+                Si no estás intentando iniciar sesión, por favor cambia tu contraseña inmediatamente.
+            </p>
+        </div>
+    </div>
+    """
+    mensaje = MessageSchema(
+        subject="Código de Acceso - Restaurante Bravo",
+        recipients=[email_destino],
+        body=html,
+        subtype=MessageType.html
+    )
+    try:
+        fm = FastMail(conf)
+        await fm.send_message(mensaje)
+    except Exception as e:
+        logger.error(f"Error enviando 2FA a {email_destino}: {str(e)}")
+
+
+# --- 5. ENDPOINT: LOGIN (SOLO CLIENTES TENDRAN 2FA) ---
 @router.post("/login")
-def iniciar_sesion(credenciales: UsuarioLogin):
+@limiter.limit("5/minute")
+async def iniciar_sesion(request: Request, credenciales: UsuarioLogin):
+    correo_normalizado = normalizar_correo(credenciales.correo)
+    usuario_db = coleccion_usuarios.find_one({"correo": correo_normalizado})
     correo_normalizado = normalizar_correo(credenciales.correo)
     usuario_db = coleccion_usuarios.find_one({"correo": correo_normalizado})
 
     if usuario_db:
-        # Bloquear si no está verificado
         if not usuario_db.get("is_verified", False):
-            raise HTTPException(
-                status_code=403, 
-                detail="Cuenta no verificada. Por favor, revisa tu correo."
-            )
+            raise AutorizacionError("Cuenta no verificada. Por favor, revisa tu correo.")
 
         password_escrita = credenciales.password.encode('utf-8')
         hash_almacenado = usuario_db["password_hash"].encode('utf-8')
 
         if bcrypt.checkpw(password_escrita, hash_almacenado):
-            if usuario_db.get("totp_enabled"):
+            
+            # --- LEEMOS EL ROL ---
+            rol = usuario_db.get("rol", "cliente")
+            
+            # CAMINO A: Es un cliente normal, le pedimos 2FA por correo
+            if rol == "cliente":
+                codigo_2fa = ''.join(random.choices(string.digits, k=6))
+                
+                coleccion_usuarios.update_one(
+                    {"_id": usuario_db["_id"]},
+                    {"$set": {"login_code_2fa": codigo_2fa}}
+                )
+                
+                await enviar_correo_2fa(usuario_db["correo"], codigo_2fa)
+                
                 return {
                     "requires_2fa": True,
-                    "user_id": str(usuario_db["_id"]),
+                    "correo": usuario_db["correo"],
+                    "mensaje": "Se ha enviado un código de seguridad a tu correo."
                 }
-            return {
-                "id": str(usuario_db["_id"]),
-                "nombre": usuario_db["nombre"],
-                "correo": usuario_db["correo"],
-                "rol": usuario_db.get("rol", "cliente"),
-                "restauranteId": usuario_db.get("restaurante_id", ""),
-                "totp_enabled": usuario_db.get("totp_enabled", False),
-            }
+            
+            # CAMINO B: Es trabajador, admin, superadmin o cocinero. No 2FA, acceso directo.
+            else:
+                return {
+                    "id": str(usuario_db["_id"]),
+                    "nombre": usuario_db["nombre"],
+                    "correo": usuario_db["correo"],
+                    "rol": rol,
+                    "restauranteId": usuario_db.get("restaurante_id", ""),
+                }
    
-    raise HTTPException(status_code=401, detail="Credenciales incorrectas")
+    raise AutenticacionError("Credenciales incorrectas")
+
+
+# --- NUEVO ENDPOINT: VERIFICAR 2FA DEL LOGIN ---
+class VerificarLogin2FA(BaseModel):
+    correo: EmailStr
+    codigo: str
+
+@router.post("/verificar-login-2fa")
+def verificar_login_2fa(datos: VerificarLogin2FA):
+    correo_normalizado = normalizar_correo(datos.correo)
+    usuario_db = coleccion_usuarios.find_one({"correo": correo_normalizado})
+
+    if not usuario_db:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    codigo_guardado = str(usuario_db.get("login_code_2fa") or "").strip()
+    
+    if not codigo_guardado or datos.codigo.strip() != codigo_guardado:
+        raise HTTPException(status_code=400, detail="Código incorrecto o expirado")
+
+    # Si es correcto, borramos el código para que no se pueda reusar y damos el acceso
+    coleccion_usuarios.update_one(
+        {"_id": usuario_db["_id"]},
+        {"$unset": {"login_code_2fa": ""}}
+    )
+
+    return {
+        "id": str(usuario_db["_id"]),
+        "nombre": usuario_db["nombre"],
+        "correo": usuario_db["correo"],
+        "rol": usuario_db.get("rol", "cliente"),
+        "restauranteId": usuario_db.get("restaurante_id", ""),
+    }
 
 # ---6. ENDPOINT: SOLICITAR RECUPERACIÓN ---
 @router.post("/recuperar-password")
-async def recuperar_password(datos: dict):
+@limiter.limit("3/minute")
+async def recuperar_password(request: Request, datos: dict):
     correo = datos.get("correo")
     correo_normalizado = normalizar_correo(correo) if correo else None
     usuario_db = coleccion_usuarios.find_one({"correo": correo_normalizado})
@@ -228,7 +335,7 @@ async def recuperar_password(datos: dict):
     if not usuario_db:
         # Nota: En apps de alta seguridad se devuelve 200 aunque no exista, 
         # pero si prefieres el 404 para desarrollo, está perfecto.
-        raise HTTPException(status_code=404, detail="No existe un usuario con ese correo")
+        raise NotFoundError("No existe un usuario con ese correo")
 
     codigo_recuperacion = ''.join(random.choices(string.digits, k=6))
 
@@ -271,21 +378,23 @@ async def recuperar_password(datos: dict):
         fm = FastMail(conf)
         await fm.send_message(mensaje)
     except Exception as e:
-        raise HTTPException(status_code=500, detail="Error al enviar el correo")
+        logger.error(f"Error enviando correo de recuperación a {correo}: {e}")
+        raise
 
     return {"mensaje": "Código de recuperación enviado"}
 
 # --- 7. ENDPOINT: REENVIAR CÓDIGO DE VERIFICACIÓN ---
 @router.post("/reenviar-codigo")
-async def reenviar_codigo(datos: dict):
+@limiter.limit("3/minute")
+async def reenviar_codigo(request: Request, datos: dict):
     correo = datos.get("correo")
     usuario_db = coleccion_usuarios.find_one({"correo": correo})
 
     if not usuario_db:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        raise NotFoundError("Usuario no encontrado")
 
     if usuario_db.get("is_verified", False):
-        raise HTTPException(status_code=400, detail="La cuenta ya está verificada")
+        raise ConflictError("La cuenta ya está verificada")
 
     codigo_otp = ''.join(random.choices(string.digits, k=6))
 
@@ -300,15 +409,16 @@ async def reenviar_codigo(datos: dict):
 
 # --- 8. ENDPOINT: RESTABLECER CONTRASEÑA ---
 @router.post("/reset-password")
-async def reset_password(datos: ResetPassword):
+@limiter.limit("10/minute")
+async def reset_password(request: Request, datos: ResetPassword):
     usuario_db = coleccion_usuarios.find_one({"correo": datos.correo})
 
     if not usuario_db:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        raise NotFoundError("Usuario no encontrado")
 
     codigo_guardado = str(usuario_db.get("reset_code") or "").strip()
     if not codigo_guardado or datos.codigo.strip() != codigo_guardado:
-        raise HTTPException(status_code=400, detail="Código inválido o expirado")
+        raise AutenticacionError("Código inválido o expirado")
 
     password_bytes = datos.nueva_password.encode('utf-8')
     hashed_password = bcrypt.hashpw(password_bytes, bcrypt.gensalt())
@@ -331,9 +441,9 @@ def setup_2fa(user_id: str):
     try:
         usuario_db = coleccion_usuarios.find_one({"_id": ObjectId(user_id)})
     except Exception:
-        raise HTTPException(status_code=400, detail="ID de usuario inválido")
+        raise ValidacionError("ID de usuario inválido")
     if not usuario_db:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        raise NotFoundError("Usuario no encontrado")
 
     secret = pyotp.random_base32()
     correo = usuario_db["correo"]
@@ -356,24 +466,31 @@ def activar_2fa(user_id: str, datos: Activar2FA):
     try:
         usuario_db = coleccion_usuarios.find_one({"_id": ObjectId(user_id)})
     except Exception:
-        raise HTTPException(status_code=400, detail="ID de usuario inválido")
+        raise ValidacionError("ID de usuario inválido")
     if not usuario_db:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        raise NotFoundError("Usuario no encontrado")
 
     secret_temp = usuario_db.get("totp_secret_temp")
     if not secret_temp:
-        raise HTTPException(status_code=400, detail="Primero inicia el proceso de configuración")
+        raise ValidacionError("Primero inicia el proceso de configuración 2FA")
 
     totp = pyotp.TOTP(secret_temp)
     if not totp.verify(datos.codigo.strip(), valid_window=1):
-        raise HTTPException(status_code=400, detail="Código incorrecto")
+        raise AutenticacionError("Código incorrecto")
 
+    codigos, hashes = _generar_codigos_recuperacion()
     coleccion_usuarios.update_one(
         {"_id": ObjectId(user_id)},
-        {"$set": {"totp_secret": secret_temp, "totp_enabled": True}, "$unset": {"totp_secret_temp": ""}}
+        {
+            "$set": {"totp_secret": secret_temp, "totp_enabled": True, "recovery_codes": hashes},
+            "$unset": {"totp_secret_temp": ""},
+        },
     )
 
-    return {"mensaje": "Autenticación de dos factores activada correctamente"}
+    return {
+        "mensaje": "Autenticación de dos factores activada correctamente",
+        "codigosRecuperacion": codigos,
+    }
 
 
 # --- 11. ENDPOINT: DESACTIVAR 2FA ---
@@ -382,20 +499,20 @@ def desactivar_2fa(user_id: str, datos: Desactivar2FA):
     try:
         usuario_db = coleccion_usuarios.find_one({"_id": ObjectId(user_id)})
     except Exception:
-        raise HTTPException(status_code=400, detail="ID de usuario inválido")
+        raise ValidacionError("ID de usuario inválido")
     if not usuario_db:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        raise NotFoundError("Usuario no encontrado")
 
     if not usuario_db.get("totp_enabled"):
-        raise HTTPException(status_code=400, detail="El 2FA no está activado")
+        raise ValidacionError("El 2FA no está activado")
 
     secret = usuario_db.get("totp_secret")
     if not secret:
-        raise HTTPException(status_code=400, detail="Configuración 2FA no encontrada")
+        raise NotFoundError("Configuración 2FA no encontrada")
 
     totp = pyotp.TOTP(secret)
     if not totp.verify(datos.codigo.strip(), valid_window=1):
-        raise HTTPException(status_code=400, detail="Código incorrecto")
+        raise AutenticacionError("Código incorrecto")
 
     coleccion_usuarios.update_one(
         {"_id": ObjectId(user_id)},
@@ -407,21 +524,22 @@ def desactivar_2fa(user_id: str, datos: Desactivar2FA):
 
 # --- 12. ENDPOINT: VERIFICAR CÓDIGO 2FA EN LOGIN ---
 @router.post("/verificar-2fa")
-def verificar_2fa(datos: Verificar2FA):
+@limiter.limit("5/minute")
+def verificar_2fa(request: Request, datos: Verificar2FA):
     try:
         usuario_db = coleccion_usuarios.find_one({"_id": ObjectId(datos.user_id)})
     except Exception:
-        raise HTTPException(status_code=400, detail="ID de usuario inválido")
+        raise ValidacionError("ID de usuario inválido")
     if not usuario_db:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        raise NotFoundError("Usuario no encontrado")
 
     secret = usuario_db.get("totp_secret")
     if not secret:
-        raise HTTPException(status_code=400, detail="2FA no configurado")
+        raise ValidacionError("2FA no configurado")
 
     totp = pyotp.TOTP(secret)
     if not totp.verify(datos.codigo.strip(), valid_window=1):
-        raise HTTPException(status_code=400, detail="Código incorrecto. Verifica tu Google Authenticator")
+        raise AutenticacionError("Código incorrecto. Verifica tu Google Authenticator")
 
     return {
         "id": str(usuario_db["_id"]),
@@ -431,3 +549,92 @@ def verificar_2fa(datos: Verificar2FA):
         "restauranteId": usuario_db.get("restaurante_id", ""),
         "totp_enabled": True,
     }
+
+class Reenviar2FA(BaseModel):
+    correo: EmailStr
+
+@router.post("/reenviar-login-2fa")
+async def reenviar_login_2fa(datos: Reenviar2FA):
+    correo_normalizado = normalizar_correo(datos.correo)
+    usuario_db = coleccion_usuarios.find_one({"correo": correo_normalizado})
+    
+    if not usuario_db:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        
+    # Generamos un código nuevo
+    codigo_2fa = ''.join(random.choices(string.digits, k=6))
+    
+    # Lo actualizamos en la base de datos
+    coleccion_usuarios.update_one(
+        {"_id": usuario_db["_id"]},
+        {"$set": {"login_code_2fa": codigo_2fa}}
+    )
+    
+    # Forzamos el envío del correo
+    await enviar_correo_2fa(usuario_db["correo"], codigo_2fa)
+    
+    return {"mensaje": "Nuevo código de seguridad enviado"}
+
+# --- 13. ENDPOINT: LOGIN CON CÓDIGO DE RECUPERACIÓN ---
+@router.post("/verificar-2fa-recovery")
+@limiter.limit("5/minute")
+def verificar_2fa_recovery(request: Request, datos: VerificarRecuperacion):
+    try:
+        usuario_db = coleccion_usuarios.find_one({"_id": ObjectId(datos.user_id)})
+    except Exception:
+        raise ValidacionError("ID de usuario inválido")
+    if not usuario_db:
+        raise NotFoundError("Usuario no encontrado")
+
+    hashes = usuario_db.get("recovery_codes") or []
+    if not hashes:
+        raise ValidacionError("No hay códigos de recuperación configurados")
+
+    hash_usado = _buscar_codigo_recuperacion(datos.codigo, hashes)
+    if not hash_usado:
+        raise AutenticacionError("Código de recuperación inválido")
+
+    coleccion_usuarios.update_one(
+        {"_id": ObjectId(datos.user_id)},
+        {"$pull": {"recovery_codes": hash_usado}},
+    )
+
+    codigos_restantes = len(hashes) - 1
+    return {
+        "id": str(usuario_db["_id"]),
+        "nombre": usuario_db["nombre"],
+        "correo": usuario_db["correo"],
+        "rol": usuario_db.get("rol", "cliente"),
+        "restauranteId": usuario_db.get("restaurante_id", ""),
+        "totp_enabled": True,
+        "codigosRestantes": codigos_restantes,
+    }
+
+
+# --- 14. ENDPOINT: REGENERAR CÓDIGOS DE RECUPERACIÓN ---
+@router.post("/usuarios/{user_id}/2fa/regenerar-codigos")
+@limiter.limit("3/minute")
+def regenerar_codigos_recuperacion(request: Request, user_id: str, datos: Activar2FA):
+    try:
+        usuario_db = coleccion_usuarios.find_one({"_id": ObjectId(user_id)})
+    except Exception:
+        raise ValidacionError("ID de usuario inválido")
+    if not usuario_db:
+        raise NotFoundError("Usuario no encontrado")
+    if not usuario_db.get("totp_enabled"):
+        raise ValidacionError("El 2FA no está activado")
+
+    secret = usuario_db.get("totp_secret")
+    if not secret:
+        raise NotFoundError("Configuración 2FA no encontrada")
+
+    totp = pyotp.TOTP(secret)
+    if not totp.verify(datos.codigo.strip(), valid_window=1):
+        raise AutenticacionError("Código TOTP incorrecto")
+
+    codigos, hashes = _generar_codigos_recuperacion()
+    coleccion_usuarios.update_one(
+        {"_id": ObjectId(user_id)},
+        {"$set": {"recovery_codes": hashes}},
+    )
+    return {"codigosRecuperacion": codigos}

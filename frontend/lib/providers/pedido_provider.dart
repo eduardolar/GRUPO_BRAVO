@@ -1,75 +1,80 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
 import '../services/api_service.dart';
-import 'auth_provider.dart';
 import 'cart_provider.dart';
 
 class PedidoProvider extends ChangeNotifier {
-  String _mesaId = ''; // Aquí guardamos el ID escaneado
-  List<Map<String, dynamic>> _carrito = [];
+  String _mesaId = '';
+  int? _numeroMesa;
+  bool _cargando = false;
+  String? _error;
 
   String get mesaId => _mesaId;
+  int? get numeroMesa => _numeroMesa;
+  bool get cargando => _cargando;
+  String? get error => _error;
 
-  // Método para guardar la mesa cuando el QRScanner termine
-  void setMesa(String id) {
+  void setMesa(String id, {int? numero}) {
     _mesaId = id;
-    notifyListeners(); // Notifica a la app que ya tenemos mesa
-  }
-
-  // Método para enviar el pedido final
-  void limpiarPedido() {
-    _mesaId = '';
-    _carrito = [];
+    _numeroMesa = numero;
     notifyListeners();
   }
 
-  // Dentro del método build o del botón de confirmar
-  void _finalizarOrden(BuildContext context) async {
-    final cartProv = Provider.of<CartProvider>(context, listen: false);
-    final pedidoProv = Provider.of<PedidoProvider>(context, listen: false);
-    final authProv = Provider.of<AuthProvider>(context, listen: false);
+  void limpiarPedido() {
+    _mesaId = '';
+    _numeroMesa = null;
+    _error = null;
+    notifyListeners();
+  }
 
-    if (pedidoProv.mesaId.isEmpty) {
-      // Si intentan pagar sin haber escaneado el QR
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Por favor, escanea el QR de tu mesa primero"),
-        ),
+  /// Envía el pedido al servidor y limpia el carrito si tiene éxito.
+  /// Devuelve `true` si el pedido se creó correctamente.
+  /// La UI es responsable de la navegación y los SnackBars según el resultado.
+  Future<bool> finalizarOrden({
+    required CartProvider cart,
+    required String userId,
+    String metodoPago = 'efectivo',
+    String? notas,
+  }) async {
+    _cargando = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final items = cart.items.values
+          .map((item) => {
+                'producto_id': item.producto.id,
+                'nombre': item.producto.nombre,
+                'cantidad': item.cantidad,
+                'precio': item.producto.precio,
+                'sin': item.ingredientesExcluidos,
+              })
+          .toList();
+
+      final resultado = await ApiService.crearPedido(
+        userId: userId,
+        items: items,
+        tipoEntrega: 'local',
+        metodoPago: metodoPago,
+        total: cart.totalPrice,
+        mesaId: _mesaId.isNotEmpty ? _mesaId : cart.mesaId,
+        numeroMesa: _numeroMesa ?? cart.numeroMesa,
+        notas: notas,
+        estadoPago: 'pendiente',
       );
-      Navigator.pushNamed(context, '/scanner');
-      return;
-    }
 
-    // Llamamos al servicio para enviar a Python
-    final items = cartProv.items.values
-        .map(
-          (item) => {
-            'producto_id': item.producto.id,
-            'nombre': item.producto.nombre,
-            'cantidad': item.cantidad,
-            'precio': item.producto.precio,
-          },
-        )
-        .toList();
-
-    final resultado = await ApiService.crearPedido(
-      userId: authProv.usuarioActual?.id ?? '',
-      items: items,
-      tipoEntrega: 'MESA',
-      metodoPago: 'EFECTIVO',
-      total: cartProv.totalPrice,
-      mesaId: pedidoProv.mesaId,
-      numeroMesa: int.tryParse(pedidoProv.mesaId),
-      estadoPago: 'pendiente',
-    );
-
-    final exito = resultado['id'] != null || resultado['pedido_id'] != null;
-
-    if (exito) {
-      cartProv.clearCart();
-      pedidoProv.limpiarPedido(); // Limpiamos mesa tras pagar
-      Navigator.pushNamed(context, '/exito_screen');
+      final exito = resultado['id'] != null || resultado['pedido_id'] != null;
+      if (exito) {
+        cart.clearCart();
+        limpiarPedido();
+      }
+      return exito;
+    } catch (e) {
+      _error = e.toString();
+      return false;
+    } finally {
+      _cargando = false;
+      notifyListeners();
     }
   }
 }

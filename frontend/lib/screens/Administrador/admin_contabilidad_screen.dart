@@ -12,232 +12,160 @@ class AdminContabilidadScreen extends StatefulWidget {
 }
 
 class _AdminContabilidadScreenState extends State<AdminContabilidadScreen> {
-  DateTime _fechaInicio = DateTime.now().subtract(const Duration(days: 7));
+  DateTime _fechaInicio = DateTime.now();
   DateTime _fechaFin = DateTime.now();
   
-  // Formateador para mostrar las fechas bonitas
   final DateFormat _dateFormat = DateFormat('dd/MM/yyyy');
 
-  Future<void> _seleccionarRangoFechas(BuildContext context) async {
-    final DateTimeRange? picked = await showDateRangePicker(
+  // Función única que abre el calendario pequeño para Desde o Hasta
+  Future<void> _seleccionarFecha(BuildContext context, bool esInicio) async {
+    final DateTime? picked = await showDatePicker(
       context: context,
+      helpText: esInicio ? 'SELECCIONA FECHA DE INICIO' : 'SELECCIONA FECHA DE FIN',
+      initialDate: esInicio ? _fechaInicio : _fechaFin,
       firstDate: DateTime(2023),
-      lastDate: DateTime.now().add(const Duration(days: 1)),
-      initialDateRange: DateTimeRange(start: _fechaInicio, end: _fechaFin),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: AppColors.button,
-              onPrimary: Colors.white,
-              onSurface: AppColors.textPrimary,
-            ),
-          ),
-          child: child!,
-        );
-      },
+      lastDate: DateTime.now(),
+      builder: (context, child) => _pickerTheme(context, child!),
     );
 
     if (picked != null) {
       setState(() {
-        _fechaInicio = picked.start;
-        _fechaFin = picked.end;
+        if (esInicio) {
+          _fechaInicio = picked;
+          // Si el inicio es después del fin, actualizamos el fin automáticamente
+          if (_fechaInicio.isAfter(_fechaFin)) {
+            _fechaFin = _fechaInicio;
+          }
+        } else {
+          _fechaFin = picked;
+          // Si el fin es antes del inicio, actualizamos el inicio automáticamente
+          if (_fechaFin.isBefore(_fechaInicio)) {
+            _fechaInicio = _fechaFin;
+          }
+        }
       });
     }
+  }
+
+  // Tematizamos el calendario pequeño con los colores corporativos
+  Widget _pickerTheme(BuildContext context, Widget child) {
+    return Theme(
+      data: Theme.of(context).copyWith(
+        colorScheme: const ColorScheme.light(
+          primary: AppColors.button,
+          onPrimary: Colors.white,
+          onSurface: AppColors.textPrimary,
+        ),
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(foregroundColor: AppColors.button),
+        ),
+      ),
+      child: child,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey.shade100, // Fondo ligeramente más gris para contrastar con las tarjetas blancas
+      backgroundColor: Colors.black,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Contabilidad y Ventas'),
-        backgroundColor: AppColors.backgroundButton,
+        title: const Text('CONTABILIDAD Y VENTAS', 
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 1.2, fontSize: 16)),
+        backgroundColor: Colors.transparent,
         elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.calendar_month),
-            onPressed: () => _seleccionarRangoFechas(context),
-          ),
-        ],
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: Column(
+      body: Stack(
         children: [
-          // Selector de fechas visual (Ahora es una tarjeta definida)
           Container(
-            margin: const EdgeInsets.all(16),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey.shade300),
-              boxShadow: const [
-                BoxShadow(
-                  color: Colors.black12,
-                  blurRadius: 8,
-                  offset: Offset(0, 2),
-                )
-              ],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Rango seleccionado:', 
-                      style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${_dateFormat.format(_fechaInicio)} - ${_dateFormat.format(_fechaFin)}',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87),
-                    ),
-                  ],
-                ),
-                ElevatedButton.icon(
-                  onPressed: () => _seleccionarRangoFechas(context),
-                  icon: const Icon(Icons.filter_list, size: 18),
-                  label: const Text('Filtrar'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.button,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                )
-              ],
+            width: double.infinity, height: double.infinity,
+            decoration: const BoxDecoration(
+              image: DecorationImage(image: AssetImage('assets/images/Bravo restaurante.jpg'), fit: BoxFit.cover),
             ),
           ),
+          Container(
+            width: double.infinity, height: double.infinity,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                colors: [Colors.black.withOpacity(0.7), Colors.black.withOpacity(0.9)]),
+            ),
+          ),
+          SafeArea(
+            child: Column(
+              children: [
+                // NUEVA TARJETA DE FILTRO (Estilo "Desde" / "Hasta")
+                _buildFilterCard(),
 
-          Expanded(
-            child: FutureBuilder<List<Pedido>>(
-              future: PedidoService.obtenerTodosLosPedidos(), // Conexión al Backend
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+                Expanded(
+                  child: FutureBuilder<List<Pedido>>(
+                    future: PedidoService.obtenerTodosLosPedidos(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator(color: AppColors.button));
+                      }
+                      
+                      final pedidos = (snapshot.data ?? []).where((p) {
+                        DateTime f = DateTime.tryParse(p.fecha.toString()) ?? DateTime.now();
+                        
+                        // Normalizamos las fechas para que coja todo el día desde las 00:00 hasta las 23:59
+                        DateTime inicioFiltro = DateTime(_fechaInicio.year, _fechaInicio.month, _fechaInicio.day);
+                        DateTime finFiltro = DateTime(_fechaFin.year, _fechaFin.month, _fechaFin.day, 23, 59, 59);
 
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Text(
-                      'Error: ${snapshot.error}',
-                      style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-                    ),
-                  );
-                }
+                        return f.isAfter(inicioFiltro.subtract(const Duration(seconds: 1))) &&
+                               f.isBefore(finFiltro.add(const Duration(seconds: 1)));
+                      }).toList();
 
-                if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return Center(
-                    child: Text(
-                      'No hay pedidos registrados en el sistema.',
-                      style: TextStyle(color: Colors.grey.shade800, fontSize: 16),
-                    ),
-                  );
-                }
+                      double totalIngresos = pedidos.fold(0, (sum, p) => sum + p.total);
+                      double ticketMedio = pedidos.isEmpty ? 0 : totalIngresos / pedidos.length;
 
-                // Filtrar pedidos por el rango de fechas seleccionado
-                final pedidos = snapshot.data!.where((p) {
-                  DateTime fechaPedido;
-                  try {
-                    fechaPedido = DateTime.parse(p.fecha.toString());
-                  } catch (e) {
-                    fechaPedido = DateTime.now(); 
-                  }
-
-                  return fechaPedido.isAfter(_fechaInicio.subtract(const Duration(seconds: 1))) &&
-                         fechaPedido.isBefore(_fechaFin.add(const Duration(days: 1)));
-                }).toList();
-
-                if (pedidos.isEmpty) {
-                  return Center(
-                    child: Text(
-                      'No hay pedidos en este rango de fechas.',
-                      style: TextStyle(color: Colors.grey.shade800, fontSize: 16),
-                    ),
-                  );
-                }
-
-                // CÁLCULO DE MÉTRICAS 
-                double totalIngresos = pedidos.fold(0, (sum, p) => sum + p.total);
-                double ticketMedio = totalIngresos / pedidos.length;
-
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Dashboard de Resumen con alto contraste
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      child: Row(
+                      return Column(
                         children: [
-                          _buildMetricCard('Ingresos', '${totalIngresos.toStringAsFixed(2)}€', Icons.euro, Colors.green.shade600),
-                          const SizedBox(width: 12),
-                          _buildMetricCard('Pedidos', '${pedidos.length}', Icons.shopping_bag, Colors.blue.shade600),
-                          const SizedBox(width: 12),
-                          _buildMetricCard('Ticket Medio', '${ticketMedio.toStringAsFixed(2)}€', Icons.analytics, Colors.orange.shade700),
-                        ],
-                      ),
-                    ),
-                    
-                    const Padding(
-                      padding: EdgeInsets.all(16.0),
-                      child: Text(
-                        'Detalle de Ventas',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
-                      ),
-                    ),
-
-                    // Lista de Pedidos rediseñada
-                    Expanded(
-                      child: ListView.builder(
-                        itemCount: pedidos.length,
-                        itemBuilder: (context, index) {
-                          final pedido = pedidos[index];
-                          
-                          DateTime fechaMostrar;
-                          try {
-                            fechaMostrar = DateTime.parse(pedido.fecha.toString());
-                          } catch (e) {
-                            fechaMostrar = DateTime.now();
-                          }
-
-                          return Card(
-                            elevation: 2, // Sombra más definida
-                            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              side: BorderSide(color: Colors.grey.shade200), // Borde sutil
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                            child: Row(
+                              children: [
+                                _buildMetricCard('Ingresos', '${totalIngresos.toStringAsFixed(2)}€', Icons.euro, Colors.greenAccent),
+                                const SizedBox(width: 10),
+                                _buildMetricCard('Pedidos', '${pedidos.length}', Icons.shopping_bag, Colors.blueAccent),
+                                const SizedBox(width: 10),
+                                _buildMetricCard('Ticket Medio', '${ticketMedio.toStringAsFixed(2)}€', Icons.analytics, Colors.orangeAccent),
+                              ],
                             ),
-                            child: ListTile(
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                              leading: CircleAvatar(
-                                radius: 24,
-                                backgroundColor: AppColors.button.withOpacity(0.1),
-                                child: const Icon(Icons.receipt_long, color: AppColors.button),
-                              ),
-                              title: Text(
-                                'Pedido #${pedido.id.substring(pedido.id.length - 5)}',
-                                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
-                              ),
-                              subtitle: Padding(
-                                padding: const EdgeInsets.only(top: 4.0),
-                                child: Text(
-                                  '${_dateFormat.format(fechaMostrar)} - ${pedido.tipoEntrega}',
-                                  style: TextStyle(color: Colors.grey.shade800, fontWeight: FontWeight.w500),
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.all(20.0),
+                            child: Align(alignment: Alignment.centerLeft,
+                              child: Text('HISTORIAL DE VENTAS', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
+                          ),
+                          Expanded(
+                            child: pedidos.isEmpty 
+                              ? const Center(child: Text("No hay datos para esta selección", style: TextStyle(color: Colors.white54)))
+                              : ListView.builder(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                                  itemCount: pedidos.length,
+                                  itemBuilder: (context, index) {
+                                    final pedido = pedidos[index];
+                                    DateTime f = DateTime.tryParse(pedido.fecha.toString()) ?? DateTime.now();
+                                    return Card(
+                                      color: Colors.white.withOpacity(0.95),
+                                      margin: const EdgeInsets.only(bottom: 12),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                      child: ListTile(
+                                        title: Text('Pedido #${pedido.id.substring(pedido.id.length - 5)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                        subtitle: Text('${_dateFormat.format(f)} - ${pedido.tipoEntrega}'),
+                                        trailing: Text('${pedido.total.toStringAsFixed(2)}€', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.w900)),
+                                      ),
+                                    );
+                                  },
                                 ),
-                              ),
-                              trailing: Text(
-                                '${pedido.total.toStringAsFixed(2)}€',
-                                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: Colors.green.shade700),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                );
-              },
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -245,46 +173,104 @@ class _AdminContabilidadScreenState extends State<AdminContabilidadScreen> {
     );
   }
 
-  // Widget auxiliar rediseñado con alto contraste
-  Widget _buildMetricCard(String label, String value, IconData icon, Color color) {
+  Widget _buildFilterCard() {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 10)],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('FILTRAR POR FECHAS', style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              // BOTÓN DESDE
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => _seleccionarFecha(context, true),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Desde', style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            const Icon(Icons.calendar_today, size: 14, color: AppColors.button),
+                            const SizedBox(width: 6),
+                            Text(_dateFormat.format(_fechaInicio), style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87)),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 10),
+                child: Icon(Icons.arrow_forward_ios, color: Colors.grey, size: 14),
+              ),
+              // BOTÓN HASTA
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => _seleccionarFecha(context, false),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Hasta', style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            const Icon(Icons.calendar_today, size: 14, color: AppColors.button),
+                            const SizedBox(width: 6),
+                            Text(_dateFormat.format(_fechaFin), style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87)),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMetricCard(String label, String value, IconData icon, Color accentColor) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.3), width: 1.5), // Borde de color
-          boxShadow: [
-            BoxShadow(
-              color: color.withOpacity(0.1), // Sombra coloreada sutil
-              blurRadius: 10, 
-              offset: const Offset(0, 4),
-            )
-          ],
+          color: Colors.white.withOpacity(0.9),
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: accentColor.withOpacity(0.5), width: 2),
         ),
         child: Column(
           children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: color, size: 28), // Icono más grande y saturado
-            ),
-            const SizedBox(height: 12),
-            Text(
-              value, 
-              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Colors.black87), // Valor oscuro y grueso
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label, 
-              style: TextStyle(fontSize: 11, color: Colors.grey.shade700, fontWeight: FontWeight.w600),
-              textAlign: TextAlign.center,
-            ),
+            Icon(icon, color: accentColor.withOpacity(0.8), size: 22),
+            const SizedBox(height: 8),
+            Text(value, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: Colors.black87)),
+            Text(label, style: const TextStyle(fontSize: 9, color: Colors.black54, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
           ],
         ),
       ),

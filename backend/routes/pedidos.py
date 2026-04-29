@@ -1,12 +1,14 @@
 from fastapi import APIRouter, HTTPException, Query
+from exceptions import AppError, NotFoundError, ConflictError, ValidacionError
 from datetime import datetime
 from bson import ObjectId
 from fastapi_mail import FastMail, MessageSchema, MessageType
 from pydantic import BaseModel
 from typing import Optional
 import logging
+from pymongo.errors import OperationFailure
 
-from database import coleccion_pedidos, coleccion_productos, coleccion_ingredientes, coleccion_usuarios
+from database import coleccion_pedidos, coleccion_productos, coleccion_ingredientes, coleccion_usuarios, cliente
 from models import PedidoCrear
 from routes.auth import conf
 
@@ -16,7 +18,7 @@ logger = logging.getLogger("uvicorn")
 
 # ── Helpers de stock ──────────────────────────────────────────────────────────
 
-def _descontar_stock(items: list):
+def _descontar_stock(items: list, session=None):
     for item in items:
         producto_id = item.get("producto_id", "")
         cantidad_pedida = item.get("cantidad", 1)
@@ -26,7 +28,7 @@ def _descontar_stock(items: list):
             continue
 
         try:
-            producto_db = coleccion_productos.find_one({"_id": ObjectId(producto_id)})
+            producto_db = coleccion_productos.find_one({"_id": ObjectId(producto_id)}, session=session)
         except Exception:
             producto_db = None
 
@@ -47,10 +49,16 @@ def _descontar_stock(items: list):
                 continue
 
             descuento = cantidad_pedida * cantidad_receta
-            coleccion_ingredientes.update_one(
-                {"nombre": {"$regex": f"^{nombre_ing}$", "$options": "i"}},
+            result = coleccion_ingredientes.update_one(
+                {
+                    "nombre": {"$regex": f"^{nombre_ing}$", "$options": "i"},
+                    "cantidad_actual": {"$gte": descuento},
+                },
                 {"$inc": {"cantidad_actual": -descuento}},
+                session=session,
             )
+            if result.matched_count == 0:
+                raise ConflictError(f"Stock insuficiente para el ingrediente '{nombre_ing}'")
 
 
 VALORES_ENTREGA_VALIDOS = {"local", "domicilio", "recoger"}
@@ -193,8 +201,11 @@ class ActualizarEstadoPago(BaseModel):
 
 
 class ActualizarItemsPedido(BaseModel):
-    items: list[dict]
+    items: Optional[list[dict]] = None
     total: Optional[float] = None
+    estadoPago: Optional[str] = None
+    estado: Optional[str] = None
+    metodoPago: Optional[str] = None
 
 
 class ActualizarEstado(BaseModel):
@@ -207,12 +218,28 @@ _ESTADOS_VALIDOS = {"pendiente", "preparando", "listo", "entregado", "cancelado"
 
 @router.post("")
 async def crear_pedido(pedido: PedidoCrear):
+    items_dict = [item.model_dump() for item in pedido.items]
+
+    # Compute total from authoritative DB prices — never trust client-supplied totals
+    total_calculado = 0.0
+    for item in items_dict:
+        pid = item.get("producto_id", "")
+        try:
+            producto_db = coleccion_productos.find_one({"_id": ObjectId(pid)}) if pid else None
+        except Exception:
+            producto_db = None
+        if not producto_db:
+            raise NotFoundError(f"Producto no encontrado: {pid}")
+        precio_real = float(producto_db.get("precio", 0))
+        item["precio"] = precio_real
+        total_calculado += precio_real * item["cantidad"]
+
     pedido_dict = {
         "usuario_id": pedido.userId,
-        "items": pedido.items,
+        "items": items_dict,
         "tipo_entrega": _normalizar_tipo_entrega(pedido.tipoEntrega),
         "metodo_pago": pedido.metodoPago,
-        "total": pedido.total,
+        "total": total_calculado,
         "notas": pedido.notas,
         "fecha": datetime.now().isoformat(),
         "estado": "pendiente",
@@ -227,9 +254,26 @@ async def crear_pedido(pedido: PedidoCrear):
     if pedido.numeroMesa is not None:
         pedido_dict["numero_mesa"] = pedido.numeroMesa
 
-    _descontar_stock(pedido.items)
+    resultado = None
+    try:
+        with cliente.start_session() as session:
+            with session.start_transaction():
+                _descontar_stock(items_dict, session=session)
+                resultado = coleccion_pedidos.insert_one(pedido_dict, session=session)
+    except AppError:
+        raise
+    except OperationFailure as e:
+        # MongoDB standalone no soporta transacciones: fallback a operaciones atómicas por documento
+        if "Transaction numbers are only allowed" in str(e) or e.code == 20:
+            logger.warning("MongoDB standalone detectado: usando actualizaciones atómicas sin transacción")
+            _descontar_stock(items_dict)
+            resultado = coleccion_pedidos.insert_one(pedido_dict)
+        else:
+            logger.error(f"Error de base de datos creando pedido: {e}")
+            raise  # deja que el handler global lo capture como 500
+    except Exception:
+        raise  # deja que el handler global lo capture como 500
 
-    resultado = coleccion_pedidos.insert_one(pedido_dict)
     pedido_id = str(resultado.inserted_id)
 
     # Enviar factura al correo del usuario (sin bloquear la respuesta si falla)
@@ -253,7 +297,7 @@ async def crear_pedido(pedido: PedidoCrear):
     return {
         "id": pedido_id,
         "fecha": pedido_dict["fecha"],
-        "total": pedido.total,
+        "total": total_calculado,
         "estado": "pendiente",
         "estadoPago": pedido_dict["estado_pago"],
         "items": len(pedido.items),
@@ -269,44 +313,71 @@ def actualizar_estado_pago(payload: ActualizarEstadoPago):
         {"$set": {"estado_pago": payload.estadoPago}},
     )
     if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Pedido no encontrado con esa referencia de pago")
+        raise NotFoundError("Pedido no encontrado con esa referencia de pago")
     return {"updated": result.modified_count > 0}
 
 
 @router.patch("/{pedido_id}/estado")
 def actualizar_estado_pedido(pedido_id: str, payload: ActualizarEstado):
     if not ObjectId.is_valid(pedido_id):
-        raise HTTPException(status_code=400, detail="ID de pedido inválido")
+        raise ValidacionError("ID de pedido inválido")
     if payload.estado not in _ESTADOS_VALIDOS:
-        raise HTTPException(status_code=400, detail=f"Estado inválido. Válidos: {_ESTADOS_VALIDOS}")
+        raise ValidacionError(f"Estado inválido. Válidos: {_ESTADOS_VALIDOS}")
     result = coleccion_pedidos.update_one(
         {"_id": ObjectId(pedido_id)},
         {"$set": {"estado": payload.estado}},
     )
     if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Pedido no encontrado")
+        raise NotFoundError("Pedido no encontrado")
     return {"updated": result.modified_count > 0, "estado": payload.estado}
 
 
 @router.patch("/{pedido_id}")
 def actualizar_pedido(pedido_id: str, payload: ActualizarItemsPedido):
+def actualizar_pedido(pedido_id: str, payload: ActualizarItemsPedido):
     if not ObjectId.is_valid(pedido_id):
-        raise HTTPException(status_code=400, detail="ID de pedido inválido")
+        raise ValidacionError("ID de pedido inválido")
 
-    campos = {"items": payload.items}
+    campos = {}
+    if payload.items is not None:
+        campos["items"] = payload.items
     if payload.total is not None:
         campos["total"] = payload.total
+    if payload.estadoPago is not None:
+        campos["estado_pago"] = payload.estadoPago
+    if payload.estado is not None:
+        campos["estado"] = payload.estado
+    if payload.metodoPago is not None:
+        campos["metodo_pago"] = payload.metodoPago
+
+    if not campos:
+        return {"updated": False}
 
     result = coleccion_pedidos.update_one(
         {"_id": ObjectId(pedido_id)},
         {"$set": campos},
     )
     if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Pedido no encontrado")
+        raise NotFoundError("Pedido no encontrado")
     return {"updated": result.modified_count > 0}
 
 
 @router.get("")
+def obtener_pedidos(
+    userId: Optional[str] = Query(None),
+    mesaId: Optional[str] = Query(None),
+    estadoPago: Optional[str] = Query(None),
+):
+    filtro = {}
+    if userId:
+        filtro["usuario_id"] = userId
+    if mesaId:
+        filtro["mesa_id"] = mesaId
+    if estadoPago:
+        filtro["estado_pago"] = estadoPago
+    if not filtro:
+        raise HTTPException(status_code=400, detail="Se requiere al menos un filtro (userId o mesaId)")
+    pedidos = coleccion_pedidos.find(filtro)
 def obtener_pedidos(userId: Optional[str] = Query(None)):
     filtro = {}
     if userId:
@@ -334,14 +405,15 @@ def obtener_pedidos(userId: Optional[str] = Query(None)):
     return resultado
 
 
+
 @router.patch("/{pedido_id}/items")
 def actualizar_items_pedido(pedido_id: str, payload: ActualizarItemsPedido):
     if not ObjectId.is_valid(pedido_id):
-        raise HTTPException(status_code=400, detail="ID de pedido inválido")
+        raise ValidacionError("ID de pedido inválido")
 
     pedido = coleccion_pedidos.find_one({"_id": ObjectId(pedido_id)})
     if not pedido:
-        raise HTTPException(status_code=404, detail="Pedido no encontrado")
+        raise NotFoundError("Pedido no encontrado")
 
     total = payload.total if payload.total is not None else sum(
         it.get("cantidad", 1) * it.get("precio", 0) for it in payload.items
