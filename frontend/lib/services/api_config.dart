@@ -12,9 +12,9 @@ const bool usarApiReal = true;
 /// - Resto → localhost
 String get baseUrl {
   const port = 8000;
-  if (kIsWeb) return 'http://localhost:$port';
-  if (isAndroid) return 'http://10.0.2.2:$port';
-  return 'http://localhost:$port';
+  if (kIsWeb) return 'http://localhost:$port/api/v1';
+  if (isAndroid) return 'http://10.0.2.2:$port/api/v1';
+  return 'http://localhost:$port/api/v1';
 }
 
 /// Stripe publishable key.

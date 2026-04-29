@@ -7,6 +7,102 @@ import '../../core/colors_style.dart';
 import '../../providers/auth_provider.dart';
 import '../../components/Cliente/otp_fields.dart';
 
+class _RecoveryCodesDialog extends StatelessWidget {
+  final List<String> codigos;
+  const _RecoveryCodesDialog({required this.codigos});
+
+  @override
+  Widget build(BuildContext context) {
+    final todosJuntos = codigos.join('\n');
+    return AlertDialog(
+      backgroundColor: const Color(0xFF1A1A1A),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: const Row(
+        children: [
+          Icon(Icons.health_and_safety_outlined, color: AppColors.button, size: 22),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Códigos de recuperación',
+              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Guárdalos en un lugar seguro. Cada código solo puede usarse una vez si pierdes acceso a tu dispositivo.',
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13, height: 1.5),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: Colors.black38,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.white12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: codigos
+                    .map((c) => Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 3),
+                          child: Text(
+                            c,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontFamily: 'monospace',
+                              fontSize: 14,
+                              letterSpacing: 1.5,
+                            ),
+                          ),
+                        ))
+                    .toList(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.copy_outlined, size: 16),
+                label: const Text('Copiar todos'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white70,
+                  side: const BorderSide(color: Colors.white24),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: todosJuntos));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Códigos copiados al portapapeles'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text(
+            'HE GUARDADO MIS CÓDIGOS',
+            style: TextStyle(color: AppColors.button, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class TotpSetupScreen extends StatefulWidget {
   const TotpSetupScreen({super.key});
 
@@ -76,16 +172,16 @@ class _TotpSetupScreenState extends State<TotpSetupScreen> {
     setState(() => _activando = true);
     try {
       final auth = Provider.of<AuthProvider>(context, listen: false);
-      await auth.activar2fa(codigo);
+      final codigos = await auth.activar2fa(codigo);
+      if (!mounted) return;
+      setState(() => _activando = false);
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => _RecoveryCodesDialog(codigos: codigos),
+      );
       if (!mounted) return;
       Navigator.pop(context, true);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Autenticación de dos factores activada'),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
     } catch (e) {
       if (!mounted) return;
       setState(() => _activando = false);
