@@ -12,6 +12,7 @@ from models import (
 )
 
 
+
 # ── ItemPedido ────────────────────────────────────────────────────────────────
 
 class TestItemPedido:
@@ -58,27 +59,18 @@ class TestPedidoCrear:
             "items": [ITEM_BASE],
             "tipoEntrega": "local",
             "metodoPago": "efectivo",
-            "total": 10.0,
         }
         base.update(kwargs)
         return PedidoCrear(**base)
 
     def test_pedido_valido(self):
         p = self._pedido()
-        assert p.total == 10.0
         assert p.estadoPago == EstadoPago.pendiente
+        assert p.metodoPago == MetodoPago.efectivo
 
     def test_items_vacios_rechazados(self):
         with pytest.raises(ValidationError):
             self._pedido(items=[])
-
-    def test_total_negativo_rechazado(self):
-        with pytest.raises(ValidationError):
-            self._pedido(total=-5.0)
-
-    def test_total_cero_permitido(self):
-        p = self._pedido(total=0.0)
-        assert p.total == 0.0
 
     def test_metodo_pago_invalido_rechazado(self):
         with pytest.raises(ValidationError):
@@ -104,6 +96,30 @@ class TestPedidoCrear:
         p = self._pedido(tipoEntrega="Recoger en tienda")
         assert p.tipoEntrega == TipoEntrega.recoger
 
+    # ── Normalización metodoPago (variantes display de Flutter) ──────────────
+
+    def test_metodo_pago_tarjeta_capitalizado(self):
+        p = self._pedido(metodoPago="Tarjeta")
+        assert p.metodoPago == MetodoPago.tarjeta
+
+    def test_metodo_pago_efectivo_capitalizado(self):
+        p = self._pedido(metodoPago="Efectivo")
+        assert p.metodoPago == MetodoPago.efectivo
+
+    def test_metodo_pago_google_pay_con_espacio(self):
+        p = self._pedido(metodoPago="Google Pay")
+        assert p.metodoPago == MetodoPago.google_pay
+
+    def test_metodo_pago_apple_pay_con_espacio(self):
+        p = self._pedido(metodoPago="Apple Pay")
+        assert p.metodoPago == MetodoPago.apple_pay
+
+    def test_metodo_pago_paypal_capitalizado(self):
+        p = self._pedido(metodoPago="PayPal")
+        assert p.metodoPago == MetodoPago.paypal
+
+    # ── Normalización estadoPago ──────────────────────────────────────────────
+
     def test_estado_pago_enum(self):
         p = self._pedido(estadoPago="pagado")
         assert p.estadoPago == EstadoPago.pagado
@@ -111,6 +127,16 @@ class TestPedidoCrear:
     def test_estado_pago_fallido(self):
         p = self._pedido(estadoPago="fallido")
         assert p.estadoPago == EstadoPago.fallido
+
+    def test_estado_pago_pendiente_stripe_normaliza(self):
+        p = self._pedido(estadoPago="pendiente_stripe")
+        assert p.estadoPago == EstadoPago.pendiente
+
+    def test_estado_pago_pendiente_paypal_normaliza(self):
+        p = self._pedido(estadoPago="pendiente_paypal")
+        assert p.estadoPago == EstadoPago.pendiente
+
+    # ── Campos opcionales ─────────────────────────────────────────────────────
 
     def test_campos_opcionales_son_none_por_defecto(self):
         p = self._pedido()

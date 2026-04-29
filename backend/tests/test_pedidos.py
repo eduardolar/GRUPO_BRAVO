@@ -9,7 +9,6 @@ PEDIDO_VALIDO = {
     "items": [ITEM_VALIDO],
     "tipoEntrega": "local",
     "metodoPago": "efectivo",
-    "total": 25.00,
 }
 
 
@@ -20,9 +19,29 @@ def test_items_vacios_devuelven_422(client):
     assert resp.status_code == 422
 
 
-def test_total_negativo_devuelve_422(client):
-    resp = client.post("/api/v1/pedidos", json={**PEDIDO_VALIDO, "total": -5})
-    assert resp.status_code == 422
+def test_total_del_cliente_es_ignorado(client):
+    """El campo total enviado por el cliente nunca debe persistirse — el backend lo calcula."""
+    pedido_id = ObjectId()
+    mock_insert = MagicMock()
+    mock_insert.inserted_id = pedido_id
+
+    with patch("routes.pedidos.cliente") as mock_cliente, \
+         patch("routes.pedidos.coleccion_pedidos") as mock_pedidos, \
+         patch("routes.pedidos.coleccion_productos") as mock_productos, \
+         patch("routes.pedidos.coleccion_ingredientes"), \
+         patch("routes.pedidos.coleccion_usuarios") as mock_usuarios, \
+         patch("routes.pedidos._enviar_factura", new_callable=AsyncMock):
+
+        mock_pedidos.insert_one.return_value = mock_insert
+        mock_productos.find_one.return_value = {"precio": 12.50, "ingredientes": []}
+        mock_usuarios.find_one.return_value = None
+        mock_session = MagicMock()
+        mock_cliente.start_session.return_value.__enter__.return_value = mock_session
+
+        resp = client.post("/api/v1/pedidos", json={**PEDIDO_VALIDO, "total": 0.01})
+
+    assert resp.status_code == 200
+    assert resp.json()["total"] == 25.0
 
 
 def test_metodo_pago_invalido_devuelve_422(client):
@@ -62,7 +81,7 @@ def test_crear_pedido_ok(client):
          patch("routes.pedidos._enviar_factura", new_callable=AsyncMock):
 
         mock_pedidos.insert_one.return_value = mock_insert
-        mock_productos.find_one.return_value = {"ingredientes": []}
+        mock_productos.find_one.return_value = {"precio": 12.50, "ingredientes": []}
         mock_usuarios.find_one.return_value = None  # evita envío de correo
 
         # MagicMock soporta context managers por defecto (__exit__ retorna False)
@@ -75,7 +94,7 @@ def test_crear_pedido_ok(client):
     data = resp.json()
     assert data["id"] == str(pedido_id)
     assert data["estado"] == "pendiente"
-    assert data["total"] == PEDIDO_VALIDO["total"]
+    assert data["total"] == 25.0  # 12.50 (DB price) × 2 (cantidad)
 
 
 def test_tipo_entrega_mesa_normaliza_a_local(client):
@@ -91,7 +110,7 @@ def test_tipo_entrega_mesa_normaliza_a_local(client):
          patch("routes.pedidos._enviar_factura", new_callable=AsyncMock):
 
         mock_pedidos.insert_one.return_value = mock_insert
-        mock_productos.find_one.return_value = {"ingredientes": []}
+        mock_productos.find_one.return_value = {"precio": 12.50, "ingredientes": []}
         mock_usuarios.find_one.return_value = None
 
         resp = client.post("/api/v1/pedidos", json={**PEDIDO_VALIDO, "tipoEntrega": "mesa"})
@@ -112,7 +131,8 @@ def test_stock_insuficiente_devuelve_409(client):
          patch("routes.pedidos.coleccion_usuarios"):
 
         mock_productos.find_one.return_value = {
-            "ingredientes": [{"nombre": "harina", "cantidad_receta": 2}]
+            "precio": 12.50,
+            "ingredientes": [{"nombre": "harina", "cantidad_receta": 2}],
         }
         mock_ing.update_one.return_value = mock_update
         mock_session = MagicMock()

@@ -52,7 +52,6 @@ class PedidoService {
           'items': items,
           'tipoEntrega': tipoEntrega,
           'metodoPago': metodoPago,
-          'total': total,
           'direccionEntrega': direccionEntrega,
           'mesaId': mesaId,
           'numeroMesa': numeroMesa,

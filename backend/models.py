@@ -17,6 +17,7 @@ class MetodoPago(str, Enum):
     tarjeta = "tarjeta"
     paypal = "paypal"
     google_pay = "google_pay"
+    apple_pay = "apple_pay"
 
 
 class EstadoPago(str, Enum):
@@ -80,7 +81,6 @@ class PedidoCrear(BaseModel):
     items: list[ItemPedido] = Field(min_length=1)
     tipoEntrega: TipoEntrega
     metodoPago: MetodoPago
-    total: float = Field(ge=0)
     direccionEntrega: Optional[str] = None
     mesaId: Optional[str] = None
     numeroMesa: Optional[int] = None
@@ -100,6 +100,37 @@ class PedidoCrear(BaseModel):
             return "domicilio"
         if "recoger" in texto:
             return "recoger"
+        return texto
+
+    @field_validator("metodoPago", mode="before")
+    @classmethod
+    def _normalizar_metodo_pago(cls, v: object) -> str:
+        if not isinstance(v, str):
+            return v
+        texto = v.strip().lower().replace(" ", "_")
+        # Variantes en español y display strings de Flutter
+        _ALIAS = {
+            "efectivo": "efectivo",
+            "tarjeta": "tarjeta",
+            "crédito": "tarjeta", "credito": "tarjeta",
+            "débito": "tarjeta",  "debito": "tarjeta",
+            "paypal": "paypal",
+            "google_pay": "google_pay",
+            "googlepay": "google_pay",
+            "apple_pay": "apple_pay",
+            "applepay": "apple_pay",
+        }
+        return _ALIAS.get(texto, texto)
+
+    @field_validator("estadoPago", mode="before")
+    @classmethod
+    def _normalizar_estado_pago(cls, v: object) -> str:
+        if not isinstance(v, str):
+            return v
+        texto = v.strip().lower()
+        # 'pendiente_stripe', 'pendiente_paypal', etc. → 'pendiente'
+        if texto.startswith("pendiente"):
+            return "pendiente"
         return texto
 
 class VerificarRecuperacion(BaseModel):

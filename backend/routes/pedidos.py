@@ -217,12 +217,26 @@ _ESTADOS_VALIDOS = {"pendiente", "preparando", "listo", "entregado", "cancelado"
 async def crear_pedido(pedido: PedidoCrear):
     items_dict = [item.model_dump() for item in pedido.items]
 
+    # Compute total from authoritative DB prices — never trust client-supplied totals
+    total_calculado = 0.0
+    for item in items_dict:
+        pid = item.get("producto_id", "")
+        try:
+            producto_db = coleccion_productos.find_one({"_id": ObjectId(pid)}) if pid else None
+        except Exception:
+            producto_db = None
+        if not producto_db:
+            raise NotFoundError(f"Producto no encontrado: {pid}")
+        precio_real = float(producto_db.get("precio", 0))
+        item["precio"] = precio_real
+        total_calculado += precio_real * item["cantidad"]
+
     pedido_dict = {
         "usuario_id": pedido.userId,
         "items": items_dict,
         "tipo_entrega": _normalizar_tipo_entrega(pedido.tipoEntrega),
         "metodo_pago": pedido.metodoPago,
-        "total": pedido.total,
+        "total": total_calculado,
         "notas": pedido.notas,
         "fecha": datetime.now().isoformat(),
         "estado": "pendiente",
@@ -280,7 +294,7 @@ async def crear_pedido(pedido: PedidoCrear):
     return {
         "id": pedido_id,
         "fecha": pedido_dict["fecha"],
-        "total": pedido.total,
+        "total": total_calculado,
         "estado": "pendiente",
         "estadoPago": pedido_dict["estado_pago"],
         "items": len(pedido.items),
