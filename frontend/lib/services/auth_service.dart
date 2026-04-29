@@ -394,6 +394,53 @@ static Future<void> reenviarLogin2FA({required String correo}) async {
     }
   }
 
+  static Future<void> solicitarCodigoEmail2FA({required String userId}) async {
+    final response = await httpWithRetry(
+      () => http.post(
+        Uri.parse('$baseUrl/usuarios/$userId/2fa-email/solicitar'),
+        headers: {'Content-Type': 'application/json'},
+      ),
+      retry: false,
+    );
+    if (response.statusCode != 200) {
+      throw toApiException(response.statusCode, decodeBody(response));
+    }
+  }
+
+  static Future<void> activarEmail2FA({
+    required String userId,
+    required String codigo,
+  }) async {
+    final response = await httpWithRetry(
+      () => http.post(
+        Uri.parse('$baseUrl/usuarios/$userId/2fa-email/activar'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'codigo': codigo}),
+      ),
+      retry: false,
+    );
+    if (response.statusCode != 200) {
+      throw toApiException(response.statusCode, decodeBody(response));
+    }
+  }
+
+  static Future<void> desactivarEmail2FA({
+    required String userId,
+    required String codigo,
+  }) async {
+    final response = await httpWithRetry(
+      () => http.post(
+        Uri.parse('$baseUrl/usuarios/$userId/2fa-email/desactivar'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'codigo': codigo}),
+      ),
+      retry: false,
+    );
+    if (response.statusCode != 200) {
+      throw toApiException(response.statusCode, decodeBody(response));
+    }
+  }
+
   static Future<Map<String, dynamic>> verificar2fa({
     required String userId,
     required String codigo,
