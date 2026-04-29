@@ -2,23 +2,26 @@ class ProductoPedido {
   final String nombre;
   final int cantidad;
   final double precio;
+  final List<String> sin;
 
   ProductoPedido({
     required this.nombre,
     required this.cantidad,
     required this.precio,
+    this.sin = const [],
   });
 
   factory ProductoPedido.fromMap(Map<String, dynamic> mapa) {
     return ProductoPedido(
-      nombre: mapa['nombre'] ?? '',
+      nombre: mapa['nombre'] ?? mapa['producto_nombre'] ?? '',
       cantidad: mapa['cantidad'] ?? 1,
       precio: (mapa['precio'] ?? 0.0).toDouble(),
+      sin: (mapa['sin'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
     );
   }
 
   Map<String, dynamic> toMap() {
-    return {'nombre': nombre, 'cantidad': cantidad, 'precio': precio};
+    return {'nombre': nombre, 'cantidad': cantidad, 'precio': precio, 'sin': sin};
   }
 
   double get subtotal => cantidad * precio;
@@ -36,6 +39,7 @@ class Pedido {
   final String? mesaId;
   final int? numeroMesa;
   final List<ProductoPedido> productos;
+  final String? notas;
 
   Pedido({
     required this.id,
@@ -49,6 +53,7 @@ class Pedido {
     this.mesaId,
     this.numeroMesa,
     required this.productos,
+    this.notas,
   });
 
   factory Pedido.fromMap(Map<String, dynamic> mapa) {
@@ -69,6 +74,7 @@ class Pedido {
       mesaId: mapa['mesaId'],
       numeroMesa: mapa['numeroMesa'],
       productos: productosList,
+      notas: mapa['notas'] as String?,
     );
   }
 
@@ -85,6 +91,7 @@ class Pedido {
       'mesaId': mesaId,
       'numeroMesa': numeroMesa,
       'productos': productos.map((p) => p.toMap()).toList(),
+      'notas': notas,
     };
   }
 }

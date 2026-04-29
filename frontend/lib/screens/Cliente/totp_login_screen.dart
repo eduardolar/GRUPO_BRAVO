@@ -1,0 +1,286 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../../core/app_routes.dart';
+import '../../core/colors_style.dart';
+import '../../models/usuario_model.dart';
+import '../../models/destino_login.dart';
+import '../../providers/auth_provider.dart';
+import '../../components/Cliente/otp_fields.dart';
+import '../../components/Cliente/auth_scaffold.dart';
+import '../../components/Cliente/auth_header.dart';
+
+import 'menu_screen.dart';
+import 'reservar_mesa_screen.dart';
+import '../home_screen_trabajador.dart';
+import '../cocinero/home_screen_cocinero.dart';
+import '../Administrador/admin_home_screen.dart';
+import '../super_admin/seleccionar_restaurante_screen.dart';
+
+class TotpLoginScreen extends StatefulWidget {
+  final DestinoLogin destino;
+
+  const TotpLoginScreen({super.key, this.destino = DestinoLogin.menu});
+
+  @override
+  State<TotpLoginScreen> createState() => _TotpLoginScreenState();
+}
+
+class _TotpLoginScreenState extends State<TotpLoginScreen> {
+  final List<TextEditingController> _controllers =
+      List.generate(6, (_) => TextEditingController());
+  final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
+  bool _isLoading = false;
+  final _recoveryController = TextEditingController();
+
+  @override
+  void dispose() {
+    for (final c in _controllers) { c.dispose(); }
+    for (final f in _focusNodes) { f.dispose(); }
+    _recoveryController.dispose();
+    super.dispose();
+  }
+
+  String get _codigo => _controllers.map((c) => c.text).join();
+
+  Future<void> _verificar() async {
+    final codigo = _codigo;
+    if (codigo.length < 6) {
+      _showError('Introduce el código de 6 dígitos');
+      return;
+    }
+    setState(() => _isLoading = true);
+    try {
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      await auth.completarLogin2fa(codigo);
+      if (mounted) _navigateToRoleHome(auth.usuarioActual!);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      for (final c in _controllers) { c.clear(); }
+      _focusNodes[0].requestFocus();
+      _showError(e.toString().replaceAll('Exception: ', ''));
+    }
+  }
+
+  void _navigateToRoleHome(Usuario usuario) {
+    Widget destino;
+    switch (usuario.rol) {
+      case RolUsuario.trabajador:
+        destino = const HomeTrabajador();
+        break;
+      case RolUsuario.administrador:
+        destino = const MenuAdministrador();
+        break;
+      case RolUsuario.superadministrador:
+        destino = const SeleccionarRestauranteScreen();
+        break;
+      case RolUsuario.cocinero:
+        destino = const HomeCocinero();
+        break;
+      case RolUsuario.cliente:
+        destino = widget.destino == DestinoLogin.reservar
+            ? const ReservarMesaScreen()
+            : const MenuScreen();
+        break;
+    }
+    Navigator.pushAndRemoveUntil(
+      context,
+      AppRoute.reveal(destino),
+      (route) => false,
+    );
+  }
+
+  void _showError(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), backgroundColor: AppColors.error),
+    );
+  }
+
+  void _mostrarRecovery() {
+    _recoveryController.clear();
+    bool enviando = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF1A1A1A),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) {
+          Future<void> verificar() async {
+            final codigo = _recoveryController.text.trim();
+            if (codigo.isEmpty) return;
+            setSheetState(() => enviando = true);
+            try {
+              final auth = Provider.of<AuthProvider>(context, listen: false);
+              await auth.completarLogin2faRecovery(codigo);
+              if (!mounted) return;
+              Navigator.of(ctx).pop();
+              _navigateToRoleHome(auth.usuarioActual!);
+            } catch (e) {
+              setSheetState(() => enviando = false);
+              if (!ctx.mounted) return;
+              ScaffoldMessenger.of(ctx).showSnackBar(
+                SnackBar(
+                  content: Text(e.toString().replaceAll('Exception: ', '')),
+                  backgroundColor: AppColors.error,
+                ),
+              );
+            }
+          }
+
+          return Padding(
+            padding: EdgeInsets.only(
+              left: 24, right: 24, top: 28,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 28,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Código de recuperación',
+                  style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Introduce uno de los 8 códigos que guardaste al activar el 2FA.',
+                  style: TextStyle(color: Colors.white.withValues(alpha: 0.55), fontSize: 13, height: 1.5),
+                ),
+                const SizedBox(height: 20),
+                TextField(
+                  controller: _recoveryController,
+                  autofocus: true,
+                  style: const TextStyle(color: Colors.white, fontFamily: 'monospace', letterSpacing: 1.5),
+                  decoration: InputDecoration(
+                    hintText: 'XXXXXXXX-XXXXXXXX',
+                    hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontFamily: 'monospace'),
+                    filled: true,
+                    fillColor: Colors.white.withValues(alpha: 0.07),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide.none,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: AppColors.button),
+                    ),
+                  ),
+                  onSubmitted: (_) => verificar(),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: enviando ? null : verificar,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.button,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: Colors.white12,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      elevation: 0,
+                    ),
+                    child: enviando
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : const Text('VERIFICAR', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ClienteAuthScaffold(
+      maxWidth: 450,
+      padding: const EdgeInsets.symmetric(horizontal: 30),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const SizedBox(height: 60),
+          const AuthHeader(
+            titulo: 'Verificación 2FA',
+            subtitulo: 'Introduce el código de Google Authenticator',
+          ),
+          const SizedBox(height: 40),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white12),
+            ),
+            child: Column(
+              children: [
+                const Icon(Icons.shield_outlined, color: AppColors.button, size: 36),
+                const SizedBox(height: 12),
+                Text(
+                  'Abre Google Authenticator y copia el código de 6 dígitos de Restaurante Bravo.',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.65),
+                    fontSize: 13,
+                    height: 1.5,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 32),
+          OtpFields(
+            controllers: _controllers,
+            focusNodes: _focusNodes,
+            onComplete: _verificar,
+          ),
+          const SizedBox(height: 32),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton(
+              onPressed: _isLoading ? null : _verificar,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.button,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: Colors.white12,
+                shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                elevation: 0,
+              ),
+              child: _isLoading
+                  ? const SizedBox(
+                      width: 20, height: 20,
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                    )
+                  : const Text(
+                      'VERIFICAR',
+                      style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 2, fontSize: 13),
+                    ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Volver al inicio de sesión',
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 13),
+            ),
+          ),
+          TextButton(
+            onPressed: _mostrarRecovery,
+            child: Text(
+              '¿Sin acceso a tu dispositivo?',
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.35), fontSize: 12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

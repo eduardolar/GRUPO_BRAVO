@@ -7,16 +7,16 @@ import 'package:frontend/services/api_service.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 
-class CrearPedidos extends StatefulWidget {
+class CrearComanda extends StatefulWidget {
   final String mesaId;
 
-  const CrearPedidos({super.key, required this.mesaId});
+  const CrearComanda({super.key, required this.mesaId});
 
   @override
-  State<CrearPedidos> createState() => _CrearPedidosState();
+  State<CrearComanda> createState() => _CrearPedidosState();
 }
 
-class _CrearPedidosState extends State<CrearPedidos> {
+class _CrearPedidosState extends State<CrearComanda> {
   int _selectedCategory = 0;
   List<String> _categorias = [];
   List<Producto> _productos = [];

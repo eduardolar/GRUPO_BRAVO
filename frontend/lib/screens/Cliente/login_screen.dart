@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:frontend/screens/Administrador/admin_home_screen.dart';
-import 'package:frontend/screens/Administrador/admin_menu_screen.dart';
-import 'package:frontend/screens/super_admin/activar_cuenta_screen.dart';
 import 'package:provider/provider.dart';
 
+import 'package:frontend/core/app_routes.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/models/usuario_model.dart';
@@ -13,13 +11,19 @@ import 'package:frontend/screens/cliente/forgotten_password.dart';
 import 'package:frontend/screens/cliente/menu_screen.dart';
 import 'package:frontend/screens/cliente/register_screen.dart';
 import 'package:frontend/screens/cliente/reservar_mesa_screen.dart';
+import 'package:frontend/screens/cocinero/home_screen_cocinero.dart';
 import 'package:frontend/screens/home_screen_trabajador.dart';
 import 'package:frontend/screens/super_admin/seleccionar_restaurante_screen.dart';
+import 'package:frontend/screens/Administrador/admin_home_screen.dart';
+import 'package:frontend/screens/super_admin/activar_cuenta_screen.dart';
 
 import 'package:frontend/components/Cliente/entrada_texto.dart';
 import 'package:frontend/components/Cliente/auth_scaffold.dart';
 import 'package:frontend/components/Cliente/auth_header.dart';
 import 'package:frontend/components/Cliente/primary_button.dart';
+
+// Import para la verificación del 2FA
+import 'package:frontend/screens/cliente/verificacion_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   final DestinoLogin destino;
@@ -100,12 +104,12 @@ class _LoginScreenState extends State<LoginScreen> {
       child: TextButton(
         onPressed: () => Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => const ForgottenPassword()),
+          AppRoute.slide(const ForgottenPassword()),
         ),
         child: Text(
           '¿Olvidaste tu contraseña?',
           style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.8),
+            color: Colors.white.withOpacity(0.8),
             fontWeight: FontWeight.w400,
             fontSize: 13,
           ),
@@ -131,10 +135,9 @@ class _LoginScreenState extends State<LoginScreen> {
             TextButton(
               onPressed: () => Navigator.push(
                 context,
-                MaterialPageRoute(
-                    builder: (_) => RegisterScreen(destino: widget.destino)),
+                AppRoute.slide(RegisterScreen(destino: widget.destino)),
               ),
-              child: Text(
+              child: const Text(
                 'Regístrate',
                 style: TextStyle(
                     color: AppColors.button, fontWeight: FontWeight.bold),
@@ -142,27 +145,12 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ],
         ),
-        // Acceso oculto al panel de administrador
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.transparent,
-            foregroundColor: Colors.transparent,
-            elevation: 0,
-            shape:
-                const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-          ),
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const MenuAdministrador()),
-          ),
-          child: null,
-        ),
         if (widget.mostrarActivarCuenta) ...[
           const SizedBox(height: 16),
           TextButton.icon(
             onPressed: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const ActivarCuentaScreen()),
+              AppRoute.slide(const ActivarCuentaScreen()),
             ),
             icon: const Icon(Icons.vpn_key_outlined,
                 size: 16, color: Colors.white54),
@@ -176,20 +164,46 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  // --- FUNCIÓN DE LOGICA DE INICIO DE SESIÓN CON 2FA ---
   Future<void> _iniciarSesion() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
+
     if (email.isEmpty || password.isEmpty) {
       _showSnackBar('Por favor, completa todos los campos');
       return;
     }
+
     setState(() => _isLoading = true);
+
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final success = await authProvider.iniciarSesion(email, password);
-      if (success && mounted) {
+      
+      // 1. Intentamos el login
+      final respuesta = await authProvider.iniciarSesion(email, password);
+
+      if (!mounted) return;
+
+      // 2. CASO 2FA: Si la respuesta indica que requiere verificación por correo
+      if (respuesta != null && respuesta['requires_2fa'] == true) {
+        final emailParaVerificar = respuesta['correo'] ?? email; // Usar el email del formulario si no viene en la respuesta
+        _showSnackBar('¡Revisa tu bandeja de entrada! Te hemos enviado un código.', isError: false);
+
+        Navigator.push(
+          context,
+          AppRoute.slide(VerificacionScreen(
+            email: emailParaVerificar,
+            esModo2FA: true, // Bandera para que la pantalla sepa que es LOGIN y no registro
+          )),
+        );
+        return;
+      }
+
+      // 3. CASO ÉXITO: Si no hay 2FA y el login es directo
+      if (authProvider.usuarioActual != null) {
         _navigateToRoleHome(authProvider.usuarioActual!);
       }
+
     } catch (e) {
       if (mounted) _showSnackBar('Error: ${e.toString()}');
     } finally {
@@ -214,17 +228,32 @@ class _LoginScreenState extends State<LoginScreen> {
             ? const ReservarMesaScreen()
             : const MenuScreen();
         break;
+      case RolUsuario.cocinero:
+        destino = const HomeCocinero();
+        break;
     }
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(builder: (_) => destino),
+      AppRoute.reveal(destino),
       (route) => false,
     );
   }
 
-  void _showSnackBar(String message) {
+void _showSnackBar(String message, {bool isError = true}) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: AppColors.error),
+      SnackBar(
+        content: Text(
+          message, 
+          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)
+        ),
+        // Si isError es true pinta tu AppColors.error, si es false pinta el verde
+        backgroundColor: isError ? AppColors.error : const Color.fromARGB(255, 16, 230, 27),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        margin: const EdgeInsets.all(16),
+      ),
     );
   }
 }

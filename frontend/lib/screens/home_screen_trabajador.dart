@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/components/bravo_app_bar.dart';
 import 'package:frontend/core/colors_style.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:frontend/screens/trabajador/Pedidos/gestion_pedidos.dart';
 import 'package:frontend/screens/trabajador/Reservas/gestion_reservas.dart';
 import 'package:frontend/screens/trabajador/Stock/gestion_stock.dart';
-import 'package:frontend/screens/trabajador/servicio.dart';
+import 'package:frontend/screens/trabajador/servicio_trabajador/servicio.dart';
 
 class HomeTrabajador extends StatefulWidget {
   const HomeTrabajador({super.key});
@@ -71,7 +71,7 @@ class _HomeContent extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       extendBodyBehindAppBar: true,
-      appBar: const _CustomAppBar(),
+      appBar: const BravoAppBar(title: "RESTAURANTE BRAVO"),
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
         child: Column(
@@ -85,51 +85,6 @@ class _HomeContent extends StatelessWidget {
   }
 }
 
-// ── APPBAR CON BOTÓN DE PERFIL ────────────────────────────────────
-class _CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
-  const _CustomAppBar();
-
-  @override
-  Widget build(BuildContext context) {
-    return AppBar(
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      centerTitle: true,
-      title: const Text(
-        "RESTAURANTE BRAVO",
-        style: TextStyle(
-          fontFamily: 'Playfair Display',
-          color: AppColors.textAppBar,
-          fontSize: 18,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 2.0,
-        ),
-      ),
-      actions: [
-        Padding(
-          padding: const EdgeInsets.only(right: 16.0),
-          child: IconButton(
-            icon: CircleAvatar(
-              backgroundColor: Colors.white24,
-              radius: 18,
-              child: Icon(
-                Icons.admin_panel_settings,
-                color: Colors.white,
-                size: 20,
-              ),
-            ),
-            onPressed: () {
-              // Acción de perfil/logout
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
-}
 
 // ── SECCIÓN HERO (CENTRADA Y RESPONSIVA) ──────────────────────────
 class _HeroSection extends StatelessWidget {

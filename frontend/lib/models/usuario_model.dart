@@ -1,4 +1,4 @@
-enum RolUsuario { cliente, trabajador, administrador, superadministrador }
+enum RolUsuario { cliente, trabajador, cocinero, administrador, superadministrador }
 
 class Usuario {
   final String id;
@@ -7,10 +7,11 @@ class Usuario {
   final String contrasena;
   final String telefono;
   final String direccion;
-  final double? latitud;  //nuevas propiedades para geolocalización
+  final double? latitud;
   final double? longitud;
   final RolUsuario rol;
-  final String? restauranteId; // Para trabajadores, el restaurante al que pertenecen
+  final String? restauranteId;
+  final bool totpEnabled;
 
   String get rolRaw => rol.name;
 
@@ -26,6 +27,7 @@ class Usuario {
     RolUsuario? rol,
     String? restauranteId,
     String? rolRaw,
+    bool? totpEnabled,
   }) {
     return Usuario(
       id: id ?? this.id,
@@ -38,8 +40,10 @@ class Usuario {
       longitud: longitud ?? this.longitud,
       rol: rol ?? this.rol,
       restauranteId: restauranteId ?? this.restauranteId,
+      totpEnabled: totpEnabled ?? this.totpEnabled,
     );
   }
+
   Usuario({
     required this.id,
     required this.nombre,
@@ -51,10 +55,9 @@ class Usuario {
     this.longitud,
     this.rol = RolUsuario.cliente,
     this.restauranteId,
-
+    this.totpEnabled = false,
   });
 
-  // Factory para crear desde JSON (útil para API real)
   factory Usuario.fromJson(Map<String, dynamic> json) {
     return Usuario(
       id: json['id'] ?? json['_id'] ?? '',
@@ -63,38 +66,35 @@ class Usuario {
       contrasena: json['password_hash'] ?? json['contrasena'] ?? '',
       telefono: json['telefono'] ?? '',
       direccion: json['direccion'] ?? '',
-      // Mapeamos los nuevos campos desde el JSON de Python
       latitud: json['latitud'] != null ? double.parse(json['latitud'].toString()) : null,
       longitud: json['longitud'] != null ? double.parse(json['longitud'].toString()) : null,
       rol: _parseRol(json['rol']),
-      restauranteId: json['restaurante_id'] ?.toString(),
+      restauranteId: (json['restauranteId'] ?? json['restaurante_id'])?.toString(),
+      totpEnabled: json['totp_enabled'] == true,
     );
   }
 
-static RolUsuario _parseRol(dynamic rol) {
-  if (rol == null) return RolUsuario.cliente;
-  
-  final String rolStr = rol.toString().toLowerCase().trim();
-  
-  switch (rolStr) {
-    case 'superadministrador':
-    case 'superadmin':
-      return RolUsuario.superadministrador;
-    case 'cocinero':      // añadimos casos comunes para trabajadores
-    case 'camarero':
-    case 'mesero':
-    case 'trabajador':
-      return RolUsuario.trabajador;
-    case 'administrador':
-    case 'admin':
-      return RolUsuario.administrador;
-    default:
-      return RolUsuario.cliente;
+  static RolUsuario _parseRol(dynamic rol) {
+    if (rol == null) return RolUsuario.cliente;
+    final String rolStr = rol.toString().toLowerCase().trim();
+    switch (rolStr) {
+      case 'superadministrador':
+      case 'superadmin':
+        return RolUsuario.superadministrador;
+      case 'cocinero':
+        return RolUsuario.cocinero;
+      case 'camarero':
+      case 'mesero':
+      case 'trabajador':
+        return RolUsuario.trabajador;
+      case 'administrador':
+      case 'admin':
+        return RolUsuario.administrador;
+      default:
+        return RolUsuario.cliente;
+    }
   }
-}
 
-
-  // Convertir a JSON
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -104,6 +104,7 @@ static RolUsuario _parseRol(dynamic rol) {
       'telefono': telefono,
       'direccion': direccion,
       'rol': rol.name,
+      'totp_enabled': totpEnabled,
       if (restauranteId != null) 'restaurante_id': restauranteId,
     };
   }

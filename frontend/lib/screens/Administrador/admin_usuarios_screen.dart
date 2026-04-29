@@ -1,8 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:frontend/core/colors_style.dart';
-import 'package:frontend/models/usuario_model.dart';
-import 'package:frontend/services/usuario_service.dart';
+import '../../core/colors_style.dart'; // Ajusta la ruta si es necesario
+import '../../models/usuario_model.dart';
+import '../../services/usuario_service.dart';
 
 class AdminUsuariosScreen extends StatefulWidget {
   const AdminUsuariosScreen({super.key});
@@ -12,29 +12,27 @@ class AdminUsuariosScreen extends StatefulWidget {
 }
 
 class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
-  String? _sucursalSeleccionada;
   List<Usuario> _usuarios = [];
-  bool _cargando = false;
+  bool _cargando = true; // Empieza en true para mostrar la carga inicial
 
   final UsuarioService _usuarioService = UsuarioService();
 
-  final Map<String, String> _idsSucursales = {
-    'MADRID': '69de6289c4e3ea3a8c771e6d',
-    'ZARAGOZA': '69de62a5c4e3ea3a8c771e6f',
-  };
+  @override
+  void initState() {
+    super.initState();
+    // Cargamos todos los usuarios automáticamente al abrir la pantalla
+    _cargarUsuarios();
+  }
 
-  Future<void> _cargarUsuarios(String idRestauranteMongo) async {
+  Future<void> _cargarUsuarios() async {
     setState(() {
       _cargando = true;
-      _usuarios = [];
     });
     try {
       final todos = await _usuarioService.obtenerTodos();
       setState(() {
-        _usuarios = todos.where((u) => 
-          u.restauranteId == idRestauranteMongo && 
-          u.rol != RolUsuario.superadministrador
-        ).toList();
+        // Mostramos todos los usuarios, ocultando solo a los superadmins por seguridad
+        _usuarios = todos.where((u) => u.rol != RolUsuario.superadministrador).toList();
       });
     } catch (e) {
       _showSnackBar("Error al conectar con la base de datos");
@@ -43,21 +41,17 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
     }
   }
 
-  // AHORA RECIBE EL STRING EXACTO (ej: 'cocinero', 'mesero')
   Future<void> _cambiarRol(Usuario usuario, String nuevoRolRaw) async {
     try {
       final exito = await _usuarioService.cambiarRol(usuario.id, nuevoRolRaw);
       if (exito) {
         setState(() {
-          // Buscamos al usuario en la lista
           final index = _usuarios.indexWhere((u) => u.id == usuario.id);
           if (index != -1) {
-            // Asignamos el Enum general correcto para que no desaparezca de las pestañas
             RolUsuario nuevoRolEnum = (nuevoRolRaw == 'administrador' || nuevoRolRaw == 'admin') 
                 ? RolUsuario.administrador 
                 : RolUsuario.trabajador;
             
-            // MAGIA: Usamos el copyWith de tu modelo para reemplazarlo sin romper el "final"
             _usuarios[index] = usuario.copyWith(
               rolRaw: nuevoRolRaw,
               rol: nuevoRolEnum,
@@ -117,9 +111,9 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
-        title: Text(
-          _sucursalSeleccionada == null ? "GESTIÓN DE EQUIPO" : "EQUIPO $_sucursalSeleccionada",
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 1.5, fontSize: 18),
+        title: const Text(
+          "GESTIÓN DE EQUIPO",
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 1.5, fontSize: 18),
         ),
         centerTitle: true,
       ),
@@ -137,56 +131,7 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
             ),
           ),
           child: SafeArea(
-            child: _sucursalSeleccionada == null 
-                ? _buildSeleccionSucursal() 
-                : _buildListadoUsuarios(),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSeleccionSucursal() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Text("SELECCIONA SUCURSAL", 
-            style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 3)),
-          const SizedBox(height: 40),
-          _sucursalCard("MADRID", Icons.location_city),
-          const SizedBox(height: 20),
-          _sucursalCard("ZARAGOZA", Icons.account_balance),
-        ],
-      ),
-    );
-  }
-
-  Widget _sucursalCard(String nombre, IconData icono) {
-    return GestureDetector(
-      onTap: () {
-        setState(() => _sucursalSeleccionada = nombre);
-        _cargarUsuarios(_idsSucursales[nombre]!);
-      },
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Container(
-            width: 280,
-            padding: const EdgeInsets.symmetric(vertical: 30),
-            decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.5),
-              border: Border.all(color: Colors.white24, width: 1.5),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Column(
-              children: [
-                Icon(icono, color: AppColors.button, size: 50),
-                const SizedBox(height: 15),
-                Text(nombre, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 4)),
-              ],
-            ),
+            child: _buildListadoUsuarios(), // Cargamos directamente la lista
           ),
         ),
       ),
@@ -221,16 +166,6 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
                 _seccionLista(clientes, esTrabajador: false),
               ],
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20),
-            child: TextButton.icon(
-              onPressed: () => setState(() => _sucursalSeleccionada = null),
-              icon: const Icon(Icons.swap_horiz, color: Colors.white),
-              label: const Text("CAMBIAR SUCURSAL", 
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 1)),
-              style: TextButton.styleFrom(backgroundColor: Colors.white10),
-            ),
           )
         ],
       ),
@@ -240,7 +175,7 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
   Widget _seccionLista(List<Usuario> lista, {required bool esTrabajador}) {
     if (lista.isEmpty) {
       return const Center(
-        child: Text("Sin registros en esta zona", style: TextStyle(color: Colors.white38, fontSize: 16))
+        child: Text("Sin registros disponibles", style: TextStyle(color: Colors.white38, fontSize: 16))
       );
     }
     return ListView.builder(
@@ -265,7 +200,6 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
             style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
         ),
         title: Text(usuario.nombre, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-        // AHORA SE MUESTRA EL PUESTO EXACTO (COCINERO, MESERO...)
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -278,7 +212,7 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
             Text(usuario.email.isNotEmpty ? usuario.email : 'Sin correo', style: const TextStyle(color: Colors.white70, fontSize: 12)),
           ],
         ),
-        isThreeLine: true, // Deja espacio extra para las 3 líneas
+        isThreeLine: true, 
         trailing: esTrabajador 
             ? _botonCambiarRol(usuario)
             : IconButton(
@@ -289,10 +223,9 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
     );
   }
 
-  // LOS 5 ROLES DEFINIDOS
   Widget _botonCambiarRol(Usuario usuario) {
     return PopupMenuButton<String>(
-      icon: const Icon(Icons.manage_accounts, color: Color.fromARGB(255, 255, 255, 255), size: 28),
+      icon: const Icon(Icons.manage_accounts, color: Colors.white, size: 28),
       color: const Color(0xFF222222),
       onSelected: (nuevoRolRaw) => _cambiarRol(usuario, nuevoRolRaw),
       itemBuilder: (ctx) => [
@@ -300,7 +233,7 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
         const PopupMenuItem(value: 'cocinero', child: Text("Cocinero", style: TextStyle(color: Colors.white))),
         const PopupMenuItem(value: 'mesero', child: Text("Mesero", style: TextStyle(color: Colors.white))),
         const PopupMenuItem(value: 'camarero', child: Text("Camarero", style: TextStyle(color: Colors.white))),
-        const PopupMenuItem(value: 'trabajador', child: Text("Trabajadores", style: TextStyle(color: Colors.white))),
+        const PopupMenuItem(value: 'trabajador', child: Text("Trabajador Genérico", style: TextStyle(color: Colors.white))),
       ],
     );
   }

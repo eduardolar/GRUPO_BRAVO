@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/screens/trabajador/Pedidos/comanda_domicilio.dart';
-import 'package:frontend/screens/trabajador/Pedidos/crear_pedidos.dart';
+import 'package:frontend/screens/trabajador/servicio_trabajador/crear_comanda.dart';
 
 class GestionPedidos extends StatefulWidget {
   const GestionPedidos({super.key});

@@ -8,11 +8,12 @@ import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/services/api_service.dart';
 import 'package:frontend/screens/cliente/scanner_qr.dart';
 import 'package:frontend/screens/cliente/login_screen.dart';
-import 'package:frontend/screens/cliente/perfil_screen.dart';
 import 'package:frontend/models/destino_login.dart';
 import 'package:frontend/screens/cliente/menu_screen.dart';
 import 'package:frontend/screens/cliente/reservar_mesa_screen.dart';
 import 'package:frontend/screens/cliente/pedido_confirmado_screen.dart';
+import 'package:frontend/components/bravo_app_bar.dart';
+import 'package:frontend/core/app_routes.dart';
 import 'package:frontend/core/colors_style.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -61,14 +62,12 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!mounted) return;
       Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (_) => PedidoConfirmadoScreen(
-            tipoEntrega: _stripeEntrega,
-            tipoPago: 'Tarjeta',
-            total: _stripeTotal,
-            pedidoId: sessionId,
-          ),
-        ),
+        AppRoute.reveal(PedidoConfirmadoScreen(
+          tipoEntrega: _stripeEntrega,
+          tipoPago: 'Tarjeta',
+          total: _stripeTotal,
+          pedidoId: sessionId,
+        )),
       );
     } catch (_) {}
   }
@@ -128,7 +127,7 @@ class _HomeContent extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       extendBodyBehindAppBar: true, 
-      appBar: const _CustomAppBar(),
+      appBar: const BravoAppBar(title: "RESTAURANTE BRAVO", isRoot: true),
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
         child: Column(
@@ -142,68 +141,6 @@ class _HomeContent extends StatelessWidget {
   }
 }
 
-// ── APPBAR CON BOTÓN DE PERFIL ────────────────────────────────────
-class _CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
-  const _CustomAppBar();
-
-  @override
-  Widget build(BuildContext context) {
-    final auth = context.watch<AuthProvider>();
-
-    return AppBar(
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      centerTitle: true,
-      title: const Text(
-        "RESTAURANTE BRAVO",
-        style: TextStyle(
-          fontFamily: 'Playfair Display',
-          color: AppColors.textAppBar,
-          fontSize: 18,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 2.0,
-        ),
-      ),
-      actions: [
-        Padding(
-          padding: EdgeInsets.only(right: auth.estaAutenticado ? 0 : 16.0),
-          child: IconButton(
-            icon: CircleAvatar(
-              backgroundColor: Colors.white24,
-              radius: 18,
-              child: Icon(
-                auth.estaAutenticado ? Icons.person : Icons.person_outline,
-                color: Colors.white,
-                size: 20,
-              ),
-            ),
-            onPressed: () {
-              if (auth.estaAutenticado) {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const PerfilScreen()));
-              } else {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen(mostrarActivarCuenta: true)));
-              }
-            },
-          ),
-        ),
-        if (auth.estaAutenticado)
-          Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: IconButton(
-              icon: const Icon(Icons.logout, color: Colors.white, size: 22),
-              tooltip: 'Cerrar sesión',
-              onPressed: () async {
-                await context.read<AuthProvider>().cerrarSesion();
-              },
-            ),
-          ),
-      ],
-    );
-  }
-
-  @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
-}
 
 // ── SECCIÓN HERO (CENTRADA Y RESPONSIVA) ──────────────────────────
 class _HeroSection extends StatelessWidget {
@@ -287,12 +224,12 @@ class _HeroSection extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.white70, width: 1.5),
+        border: Border.all(color: AppColors.button, width: 1.5),
       ),
       child: const Text(
         "EST. 2024",
         style: TextStyle(
-          color: Colors.white, 
+          color:  AppColors.line, 
           fontSize: 10, 
           letterSpacing: 4,
           fontWeight: FontWeight.w600,
@@ -324,11 +261,9 @@ class _ActionButtonsGroup extends StatelessWidget {
           label: "Pedido a domicilio",
           onPressed: () => Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (_) => auth.estaAutenticado
-                  ? const MenuScreen()
-                  : const LoginScreen(),
-            ),
+            auth.estaAutenticado
+                ? AppRoute.slide(const MenuScreen())
+                : AppRoute.slideUp(const LoginScreen()),
           ),
         ),
         _MainButton(
@@ -336,11 +271,9 @@ class _ActionButtonsGroup extends StatelessWidget {
           label: "Reservar mesa",
           onPressed: () => Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (_) => auth.estaAutenticado
-                  ? const ReservarMesaScreen()
-                  : const LoginScreen(destino: DestinoLogin.reservar),
-            ),
+            auth.estaAutenticado
+                ? AppRoute.slide(const ReservarMesaScreen())
+                : AppRoute.slideUp(const LoginScreen(destino: DestinoLogin.reservar)),
           ),
         ),
       ],
@@ -349,7 +282,7 @@ class _ActionButtonsGroup extends StatelessWidget {
 
   Future<void> _handleQrScan(BuildContext context) async {
     final cart = context.read<CartProvider>();
-    final codigoQr = await Navigator.push<String>(context, MaterialPageRoute(builder: (context) => const QRScanner()));
+    final codigoQr = await Navigator.push<String>(context, AppRoute.slideUp(const QRScanner()));
     if (codigoQr == null) return;
 
     try {
@@ -361,7 +294,12 @@ class _ActionButtonsGroup extends StatelessWidget {
       if (!context.mounted) return;
 
       final auth = context.read<AuthProvider>();
-      Navigator.push(context, MaterialPageRoute(builder: (_) => auth.estaAutenticado ? const MenuScreen() : const LoginScreen(destino: DestinoLogin.menu)));
+      Navigator.push(
+        context,
+        auth.estaAutenticado
+            ? AppRoute.slide(const MenuScreen())
+            : AppRoute.slideUp(const LoginScreen(destino: DestinoLogin.menu)),
+      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error));
     }

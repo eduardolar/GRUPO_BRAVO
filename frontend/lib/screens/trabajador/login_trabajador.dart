@@ -1,216 +1,176 @@
 import 'package:flutter/material.dart';
-import 'package:frontend/components/Cliente/entrada_texto.dart';
-import 'package:frontend/core/colors_style.dart';
-import 'package:frontend/providers/auth_provider.dart';
-import 'package:frontend/screens/home_screen_trabajador.dart';
 import 'package:provider/provider.dart';
 
-class LoginTrabajador extends StatefulWidget {
-  const LoginTrabajador({super.key});
+import 'package:frontend/core/app_routes.dart';
+import 'package:frontend/core/colors_style.dart';
+import 'package:frontend/providers/auth_provider.dart';
+import 'package:frontend/models/usuario_model.dart';
+import 'package:frontend/models/destino_login.dart';
+
+import 'package:frontend/screens/cliente/forgotten_password.dart';
+import 'package:frontend/screens/cliente/menu_screen.dart';
+import 'package:frontend/screens/cliente/register_screen.dart';
+import 'package:frontend/screens/cliente/reservar_mesa_screen.dart';
+import 'package:frontend/screens/cocinero/home_screen_cocinero.dart';
+import 'package:frontend/screens/home_screen_trabajador.dart';
+import 'package:frontend/screens/super_admin/seleccionar_restaurante_screen.dart';
+import 'package:frontend/screens/Administrador/admin_home_screen.dart';
+import 'package:frontend/screens/super_admin/activar_cuenta_screen.dart';
+
+import 'package:frontend/components/Cliente/entrada_texto.dart';
+import 'package:frontend/components/Cliente/auth_scaffold.dart';
+import 'package:frontend/components/Cliente/auth_header.dart';
+import 'package:frontend/components/Cliente/primary_button.dart';
+
+// IMPORTANTE: Asegúrate de tener este import para la verificación del 2FA
+import 'package:frontend/screens/cliente/verificacion_screen.dart';
+
+class LoginScreen extends StatefulWidget {
+  final DestinoLogin destino;
+  final bool mostrarActivarCuenta;
+
+  const LoginScreen({
+    super.key,
+    this.destino = DestinoLogin.menu,
+    this.mostrarActivarCuenta = false,
+  });
 
   @override
-  State<LoginTrabajador> createState() => _LoginTrabajadorState();
+  State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginTrabajadorState extends State<LoginTrabajador> {
+class _LoginScreenState extends State<LoginScreen> {
   bool _oscurecerContrasena = true;
-
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-
   bool _isLoading = false;
 
   @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: _appBarLogin(),
-      body: SingleChildScrollView(
-        child: SizedBox(
-          height: MediaQuery.of(context).size.height - 100,
-          child: _bodyLogin(),
-        ),
-      ),
-    );
-  }
-
-  Widget _bodyLogin() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+    return ClienteAuthScaffold(
+      maxWidth: 450,
+      padding: const EdgeInsets.symmetric(horizontal: 30),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Spacer(flex: 2),
-
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.gold, width: 1.5),
-            ),
-            child: const Icon(
-              Icons.restaurant,
-              color: AppColors.gold,
-              size: 28,
-            ),
+          const SizedBox(height: 60),
+          const AuthHeader(
+            titulo: 'Iniciar Sesión',
+            subtitulo: 'Bienvenido a Restaurante Bravo',
           ),
-
-          const SizedBox(height: 20),
-
-          const Text(
-            "Iniciar Sesión",
-            style: TextStyle(
-              fontFamily: 'Playfair Display',
-              color: AppColors.textPrimary,
-              fontSize: 30,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.5,
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          Text(
-            "BIENVENIDO A NOMBRERESTAURANTE",
-            style: TextStyle(
-              color: AppColors.gold.withOpacity(0.7),
-              fontSize: 10,
-              letterSpacing: 2.5,
-              fontWeight: FontWeight.w400,
-            ),
-          ),
-
-          const SizedBox(height: 20),
-
-          Row(
-            children: [
-              const Expanded(child: Divider(color: AppColors.line)),
-              Container(
-                width: 60,
-                height: 1.5,
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.transparent,
-                      AppColors.gold,
-                      Colors.transparent,
-                    ],
-                  ),
-                ),
-              ),
-              const Expanded(child: Divider(color: AppColors.line)),
-            ],
-          ),
-
-          const Spacer(flex: 2),
-
-          _inputWrapper(
-            child: EntradaTexto(
-              etiqueta: "Correo electrónico",
-              icono: Icons.mail_outline,
-              tipoTeclado: TextInputType.emailAddress,
-              controlador: _emailController,
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          _inputWrapper(
-            child: EntradaTexto(
-              etiqueta: 'Contraseña',
-              icono: Icons.lock_outline,
-              esContrasena: true,
-              mostrarTexto: _oscurecerContrasena,
-              alPresionarIcono: () {
-                setState(() {
-                  _oscurecerContrasena = !_oscurecerContrasena;
-                });
-              },
-              controlador: _passwordController,
-            ),
-          ),
-
-          const Spacer(flex: 1),
-
-          _botonLogin(),
-
-          const Spacer(flex: 3),
+          const SizedBox(height: 40),
+          _buildForm(),
+          _buildForgotPassword(),
+          const SizedBox(height: 40),
+          _buildActionButtons(),
         ],
       ),
     );
   }
 
-  Widget _inputWrapper({required Widget child}) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.panel,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.line),
-      ),
-      child: child,
-    );
-  }
-
-  Widget _botonLogin() {
-    return Container(
-      width: double.infinity,
-      height: 55,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
-        // Borde dorado sutil — 10%
-        border: Border.all(color: AppColors.gold, width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.gold.withOpacity(0.15),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.button,
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(13),
-          ),
-          elevation: 0,
+  Widget _buildForm() {
+    return Column(
+      children: [
+        EntradaTexto(
+          etiqueta: 'Correo electrónico',
+          icono: Icons.mail_outline,
+          tipoTeclado: TextInputType.emailAddress,
+          controlador: _emailController,
         ),
-        onPressed: _isLoading ? null : _iniciarSesion,
-        child: _isLoading
-            ? const CircularProgressIndicator(
-                color: AppColors.gold,
-                strokeWidth: 2,
-              )
-            : const Text(
-                "ENTRAR",
-                style: TextStyle(
-                  fontFamily: 'Playfair Display',
-                  fontWeight: FontWeight.w700,
-                  fontSize: 15,
-                  letterSpacing: 3,
-                ),
-              ),
+        const SizedBox(height: 15),
+        EntradaTexto(
+          etiqueta: 'Contraseña',
+          icono: Icons.lock_outline,
+          esContrasena: true,
+          mostrarTexto: _oscurecerContrasena,
+          alPresionarIcono: () =>
+              setState(() => _oscurecerContrasena = !_oscurecerContrasena),
+          controlador: _passwordController,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildForgotPassword() {
+    return Align(
+      alignment: Alignment.centerRight,
+      child: TextButton(
+        onPressed: () => Navigator.push(
+          context,
+          AppRoute.slide(const ForgottenPassword()),
+        ),
+        child: Text(
+          '¿Olvidaste tu contraseña?',
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.8),
+            fontWeight: FontWeight.w400,
+            fontSize: 13,
+          ),
+        ),
       ),
     );
   }
 
-  AppBar _appBarLogin() {
-    return AppBar(
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      centerTitle: true,
+  Widget _buildActionButtons() {
+    return Column(
+      children: [
+        PrimaryButton(
+          label: 'ENTRAR',
+          isLoading: _isLoading,
+          onPressed: _iniciarSesion,
+        ),
+        const SizedBox(height: 30),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text('¿Aún no tienes cuenta?',
+                style: TextStyle(color: Colors.white60)),
+            TextButton(
+              onPressed: () => Navigator.push(
+                context,
+                AppRoute.slide(RegisterScreen(destino: widget.destino)),
+              ),
+              child: const Text(
+                'Regístrate',
+                style: TextStyle(
+                    color: AppColors.button, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        if (widget.mostrarActivarCuenta) ...[
+          const SizedBox(height: 16),
+          TextButton.icon(
+            onPressed: () => Navigator.push(
+              context,
+              AppRoute.slide(const ActivarCuentaScreen()),
+            ),
+            icon: const Icon(Icons.vpn_key_outlined,
+                size: 16, color: Colors.white54),
+            label: const Text(
+              '¿Eres nuevo empleado? Activa tu cuenta',
+              style: TextStyle(color: Colors.white54, fontSize: 13),
+            ),
+          ),
+        ],
+      ],
     );
   }
 
+  // --- FUNCIÓN DE LOGICA DE INICIO DE SESIÓN CON 2FA ---
   Future<void> _iniciarSesion() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
     if (email.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Por favor, completa todos los campos')),
-      );
+      _showSnackBar('Por favor, completa todos los campos');
       return;
     }
 
@@ -218,24 +178,69 @@ class _LoginTrabajadorState extends State<LoginTrabajador> {
 
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final success = await authProvider.iniciarSesion(email, password);
+      
+      // 1. Intentamos el login
+      final respuesta = await authProvider.iniciarSesion(email, password);
 
-      if (success && mounted) {
-        Navigator.pushReplacement(
+      if (!mounted) return;
+
+      // 2. CASO 2FA: Si la respuesta indica que requiere verificación por correo
+      if (respuesta != null && respuesta['requires_2fa'] == true) {
+        _showSnackBar('Código de seguridad enviado al correo');
+
+        Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => const HomeTrabajador()),
+          AppRoute.slide(VerificacionScreen(
+            email: respuesta['correo'],
+            esModo2FA: true, // Bandera para que la pantalla sepa que es LOGIN y no registro
+          )),
         );
+        return;
       }
+
+      // 3. CASO ÉXITO: Si no hay 2FA y el login es directo
+      if (authProvider.usuarioActual != null) {
+        _navigateToRoleHome(authProvider.usuarioActual!);
+      }
+
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
-      }
+      if (mounted) _showSnackBar('Error: ${e.toString()}');
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _navigateToRoleHome(Usuario usuario) {
+    Widget destino;
+    switch (usuario.rol) {
+      case RolUsuario.trabajador:
+        destino = const HomeTrabajador();
+        break;
+      case RolUsuario.administrador:
+        destino = const MenuAdministrador();
+        break;
+      case RolUsuario.superadministrador:
+        destino = const SeleccionarRestauranteScreen();
+        break;
+      case RolUsuario.cliente:
+        destino = widget.destino == DestinoLogin.reservar
+            ? const ReservarMesaScreen()
+            : const MenuScreen();
+        break;
+      case RolUsuario.cocinero:
+        destino = const HomeCocinero();
+        break;
+    }
+    Navigator.pushAndRemoveUntil(
+      context,
+      AppRoute.reveal(destino),
+      (route) => false,
+    );
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: AppColors.error),
+    );
   }
 }
