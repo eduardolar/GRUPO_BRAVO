@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/core/colors_style.dart';
+import 'package:frontend/screens/trabajador/servicio_trabajador/sacar_cuenta.dart';
+import 'package:frontend/screens/trabajador/servicio_trabajador/seleccion_mesa.dart';
 
 class ServicioTrabajador extends StatefulWidget {
   const ServicioTrabajador({super.key});
@@ -242,12 +244,29 @@ class _ActionButtonsServicio extends StatelessWidget {
         _MainButton(
           icon: Icons.restaurant_menu_outlined,
           label: "Comanda",
-          onPressed: () {},
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const SeleccionMesa()),
+            );
+          },
+        ),
+        _MainButton(
+          icon: Icons.attach_money_outlined,
+          label: "Añadir a la cuenta",
+          onPressed: () {
+            
+          },
         ),
         _MainButton(
           icon: Icons.calculate_outlined,
           label: "Sacar la cuenta",
-          onPressed: () {},
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const SacarCuenta()),
+            );
+          },
         ),
       ],
     );

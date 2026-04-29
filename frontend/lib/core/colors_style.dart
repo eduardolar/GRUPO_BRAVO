@@ -44,4 +44,6 @@ class AppColors {
   // Ingredientes excluidos (rosa claro)
   static const Color excludedIngredient = Color(0xFFFFB3B3);
 
+  // Seleccion de mesas naranja
+  static const Color mesaSeleccionada = Colors.orange;
 }

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/core/colors_style.dart';
-import 'package:frontend/screens/trabajador/Pedidos/crear_pedidos.dart';
+import 'package:frontend/screens/trabajador/servicio_trabajador/crear_comanda.dart';
 import 'package:frontend/screens/trabajador/Pedidos/pedido_domicilio.dart';
-import 'package:frontend/screens/trabajador/Pedidos/seleccion_mesa.dart';
+import 'package:frontend/screens/trabajador/servicio_trabajador/seleccion_mesa.dart';
 import 'package:frontend/screens/trabajador/Stock/avisar_falta.dart';
 import 'package:frontend/screens/trabajador/Stock/bloquear_producto.dart';
 

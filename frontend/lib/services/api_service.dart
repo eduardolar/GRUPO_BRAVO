@@ -178,6 +178,18 @@ class ApiService {
     required String estado,
   }) => PedidoService.actualizarEstadoPedido(pedidoId: pedidoId, estado: estado);
 
+  static Future<Map<String, dynamic>?> obtenerPedidoActivoPorMesa(
+          String mesaId) =>
+      PedidoService.obtenerPedidoActivoPorMesa(mesaId);
+
+  static Future<void> cerrarPedido({
+    required String pedidoId,
+    required String metodoPago,
+  }) => PedidoService.cerrarPedido(pedidoId: pedidoId, metodoPago: metodoPago);
+
+  static Future<void> marcarMesaLibre(String mesaId) =>
+      MesaService.marcarMesaLibre(mesaId);
+
   // ─── PAGOS TARJETA / STRIPE ──────────────────────────────────
 
   static Future<Map<String, dynamic>> crearIntentoTarjeta({
