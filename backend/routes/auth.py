@@ -272,24 +272,32 @@ async def iniciar_sesion(request: Request, credenciales: UsuarioLogin):
             # --- LEEMOS EL ROL ---
             rol = usuario_db.get("rol", "cliente")
             
-            # CAMINO A: Es un cliente normal, le pedimos 2FA por correo
+            # CAMINO A: Cliente — comprueba si tiene email 2FA habilitado
             if rol == "cliente":
-                codigo_2fa = ''.join(random.choices(string.digits, k=6))
-                
-                coleccion_usuarios.update_one(
-                    {"_id": usuario_db["_id"]},
-                    {"$set": {"login_code_2fa": codigo_2fa}}
-                )
-                
-                await enviar_correo_2fa(usuario_db["correo"], codigo_2fa)
-                
+                email_2fa_habilitado = usuario_db.get("email_2fa_enabled", False)
+                if email_2fa_habilitado:
+                    codigo_2fa = ''.join(random.choices(string.digits, k=6))
+                    coleccion_usuarios.update_one(
+                        {"_id": usuario_db["_id"]},
+                        {"$set": {"login_code_2fa": codigo_2fa}}
+                    )
+                    await enviar_correo_2fa(usuario_db["correo"], codigo_2fa)
+                    return {
+                        "requires_2fa": True,
+                        "correo": usuario_db["correo"],
+                        "mensaje": "Se ha enviado un código de seguridad a tu correo.",
+                    }
+                # Email 2FA desactivado: acceso directo
                 return {
-                    "requires_2fa": True,
+                    "id": str(usuario_db["_id"]),
+                    "nombre": usuario_db["nombre"],
                     "correo": usuario_db["correo"],
-                    "mensaje": "Se ha enviado un código de seguridad a tu correo."
+                    "rol": rol,
+                    "restauranteId": usuario_db.get("restaurante_id", ""),
+                    "email_2fa_enabled": False,
                 }
-            
-            # CAMINO B: Es trabajador, admin, superadmin o cocinero. No 2FA, acceso directo.
+
+            # CAMINO B: Trabajador, admin, cocinero. Acceso directo sin 2FA.
             else:
                 return {
                     "id": str(usuario_db["_id"]),
@@ -332,6 +340,7 @@ def verificar_login_2fa(datos: VerificarLogin2FA):
         "correo": usuario_db["correo"],
         "rol": usuario_db.get("rol", "cliente"),
         "restauranteId": usuario_db.get("restaurante_id", ""),
+        "email_2fa_enabled": usuario_db.get("email_2fa_enabled", False),
     }
 
 # ---6. ENDPOINT: SOLICITAR RECUPERACIÓN ---
@@ -560,6 +569,9 @@ def verificar_2fa(request: Request, datos: Verificar2FA):
         "totp_enabled": True,
     }
 
+class ConfirmarEmail2FA(BaseModel):
+    codigo: str
+
 class Reenviar2FA(BaseModel):
     correo: EmailStr
 
@@ -648,3 +660,66 @@ def regenerar_codigos_recuperacion(request: Request, user_id: str, datos: Activa
         {"$set": {"recovery_codes": hashes}},
     )
     return {"codigosRecuperacion": codigos}
+
+
+# ── Email 2FA (opción en perfil) ───────────────────────────────────────────────
+
+@router.post("/usuarios/{user_id}/2fa-email/solicitar")
+@limiter.limit("3/minute")
+async def solicitar_codigo_email_2fa(request: Request, user_id: str):
+    try:
+        usuario_db = coleccion_usuarios.find_one({"_id": ObjectId(user_id)})
+    except Exception:
+        raise ValidacionError("ID de usuario inválido")
+    if not usuario_db:
+        raise NotFoundError("Usuario no encontrado")
+
+    codigo = ''.join(random.choices(string.digits, k=6))
+    coleccion_usuarios.update_one(
+        {"_id": ObjectId(user_id)},
+        {"$set": {"email_2fa_code_temp": codigo}},
+    )
+    await enviar_correo_2fa(usuario_db["correo"], codigo)
+    return {"mensaje": "Código enviado a tu correo"}
+
+
+@router.post("/usuarios/{user_id}/2fa-email/activar")
+@limiter.limit("5/minute")
+def activar_email_2fa(request: Request, user_id: str, datos: ConfirmarEmail2FA):
+    try:
+        usuario_db = coleccion_usuarios.find_one({"_id": ObjectId(user_id)})
+    except Exception:
+        raise ValidacionError("ID de usuario inválido")
+    if not usuario_db:
+        raise NotFoundError("Usuario no encontrado")
+
+    codigo_guardado = str(usuario_db.get("email_2fa_code_temp") or "").strip()
+    if not codigo_guardado or datos.codigo.strip() != codigo_guardado:
+        raise AutenticacionError("Código incorrecto o expirado")
+
+    coleccion_usuarios.update_one(
+        {"_id": ObjectId(user_id)},
+        {"$set": {"email_2fa_enabled": True}, "$unset": {"email_2fa_code_temp": ""}},
+    )
+    return {"mensaje": "Verificación por correo activada correctamente"}
+
+
+@router.post("/usuarios/{user_id}/2fa-email/desactivar")
+@limiter.limit("5/minute")
+def desactivar_email_2fa(request: Request, user_id: str, datos: ConfirmarEmail2FA):
+    try:
+        usuario_db = coleccion_usuarios.find_one({"_id": ObjectId(user_id)})
+    except Exception:
+        raise ValidacionError("ID de usuario inválido")
+    if not usuario_db:
+        raise NotFoundError("Usuario no encontrado")
+
+    codigo_guardado = str(usuario_db.get("email_2fa_code_temp") or "").strip()
+    if not codigo_guardado or datos.codigo.strip() != codigo_guardado:
+        raise AutenticacionError("Código incorrecto o expirado")
+
+    coleccion_usuarios.update_one(
+        {"_id": ObjectId(user_id)},
+        {"$set": {"email_2fa_enabled": False}, "$unset": {"email_2fa_code_temp": ""}},
+    )
+    return {"mensaje": "Verificación por correo desactivada"}
