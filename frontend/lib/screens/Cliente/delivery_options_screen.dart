@@ -348,7 +348,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
               _PagoCard(
                 icono: Icons.android,
                 titulo: 'Google Pay',
-                subtitulo: 'Pago rpido con Google',
+                subtitulo: 'Pago rápido con Google',
                 seleccionada: _pagoSeleccionado == MetodoPago.googlePay,
                 onTap: () {
                   setState(() {
@@ -435,7 +435,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
             _DireccionOption(
               icono: Icons.map_outlined,
               titulo: 'Cambiar o usar mapa / GPS',
-              subtitulo: 'Selecciona tu ubicaciÃ³n exacta en el mapa',
+              subtitulo: 'Selecciona tu ubicación exacta en el mapa',
               seleccionada:
                   _direccionSeleccionada == OpcionDireccion.alternativa,
               onTap: () async {
@@ -625,7 +625,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       final sessionId = session['session_id']?.toString();
 
       if (checkoutUrl == null || sessionId == null) {
-        throw Exception('No se pudo iniciar la sesiÃ³n de pago');
+        throw Exception('No se pudo iniciar la sesión de pago');
       }
 
       // 2. Crear el pedido ANTES de abrir Stripe para que quede en BD
@@ -758,7 +758,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
           captura['approved'] == true;
 
       if (!completado) {
-        throw Exception('PayPal no devolviÃ³ un pago completado');
+        throw Exception('PayPal no devolvió un pago completado');
       }
 
       await _crearPedidoFinal(
