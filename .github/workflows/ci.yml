@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ── Backend (pytest) ──────────────────────────────────────────────────────
+  backend:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        run: pytest tests/ -v --tb=short
+        env:
+          PYTHONPATH: .
+          MONGO_URI: mongodb://localhost:27017/test_db
+          MAIL_USERNAME: ci@test.com
+          MAIL_PASSWORD: fake-password
+          MAIL_FROM: ci@test.com
+          MAIL_SERVER: smtp.test.com
+          MAIL_PORT: "587"
+          STRIPE_SECRET_KEY: sk_test_fake
+          PAYPAL_CLIENT_ID: fake
+          PAYPAL_CLIENT_SECRET: fake
+
+  # ── Frontend (Flutter) ────────────────────────────────────────────────────
+  flutter:
+    name: Flutter Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.x"
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze --no-pub
+
+      - name: Run tests
+        run: flutter test test/ --reporter compact

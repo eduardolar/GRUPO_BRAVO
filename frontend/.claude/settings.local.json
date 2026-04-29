@@ -1,10 +1,18 @@
 {
   "permissions": {
-    "additionalDirectories": [
-      "c:\\Users\\Usuario\\Desktop\\Grupo Bravo\\GRUPO_BRAVO\\backend\\routes"
-    ],
     "allow": [
-      "Read(//c/Users/Usuario/Desktop/Grupo Bravo/GRUPO_BRAVO/backend/**)"
+      "Read(//c/Users/Usuario/Desktop/Grupo Bravo/GRUPO_BRAVO/backend/**)",
+      "Read(//c/Users/Usuario/Desktop/Grupo Bravo/GRUPO_BRAVO/**)",
+      "Bash(grep -E \"\\\\.dart$\")",
+      "Bash(pip install *)",
+      "Bash(python generar_doc.py)",
+      "Bash(grep -E \"\\\\.\\(py|js\\)$\")",
+      "Bash(python -c \"import httpx; print\\(httpx.__version__\\)\")",
+      "Bash(python -c \"import pagos; print\\('pagos OK'\\); import main; print\\('main OK'\\)\")"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\Usuario\\Desktop\\Grupo Bravo\\GRUPO_BRAVO\\backend\\routes",
+      "c:\\Users\\Usuario\\Desktop\\Grupo Bravo\\GRUPO_BRAVO"
     ]
   }
 }

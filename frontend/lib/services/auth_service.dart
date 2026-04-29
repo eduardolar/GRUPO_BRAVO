@@ -282,7 +282,7 @@ class AuthService {
     throw toApiException(response.statusCode, decodeBody(response));
   }
 
-  static Future<void> activar2fa({
+  static Future<Map<String, dynamic>> activar2fa({
     required String userId,
     required String codigo,
   }) async {
@@ -294,9 +294,43 @@ class AuthService {
       ),
       retry: false,
     );
-    if (response.statusCode != 200) {
-      throw toApiException(response.statusCode, decodeBody(response));
+    if (response.statusCode == 200) return jsonDecode(response.body) as Map<String, dynamic>;
+    throw toApiException(response.statusCode, decodeBody(response));
+  }
+
+  static Future<Map<String, dynamic>> verificar2faRecovery({
+    required String userId,
+    required String codigo,
+  }) async {
+    final response = await httpWithRetry(
+      () => http.post(
+        Uri.parse('$baseUrl/verificar-2fa-recovery'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'user_id': userId, 'codigo': codigo}),
+      ),
+      retry: false,
+    );
+    if (response.statusCode == 200) return jsonDecode(response.body) as Map<String, dynamic>;
+    throw toApiException(response.statusCode, decodeBody(response));
+  }
+
+  static Future<List<String>> regenerarCodigosRecuperacion({
+    required String userId,
+    required String codigo,
+  }) async {
+    final response = await httpWithRetry(
+      () => http.post(
+        Uri.parse('$baseUrl/usuarios/$userId/2fa/regenerar-codigos'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'codigo': codigo}),
+      ),
+      retry: false,
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      return List<String>.from(data['codigosRecuperacion'] as List);
     }
+    throw toApiException(response.statusCode, decodeBody(response));
   }
 
   static Future<void> desactivar2fa({

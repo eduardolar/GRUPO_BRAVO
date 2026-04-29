@@ -31,11 +31,13 @@ class _TotpLoginScreenState extends State<TotpLoginScreen> {
       List.generate(6, (_) => TextEditingController());
   final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
   bool _isLoading = false;
+  final _recoveryController = TextEditingController();
 
   @override
   void dispose() {
     for (final c in _controllers) { c.dispose(); }
     for (final f in _focusNodes) { f.dispose(); }
+    _recoveryController.dispose();
     super.dispose();
   }
 
@@ -92,6 +94,106 @@ class _TotpLoginScreenState extends State<TotpLoginScreen> {
   void _showError(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(msg), backgroundColor: AppColors.error),
+    );
+  }
+
+  void _mostrarRecovery() {
+    _recoveryController.clear();
+    bool enviando = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF1A1A1A),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) {
+          Future<void> verificar() async {
+            final codigo = _recoveryController.text.trim();
+            if (codigo.isEmpty) return;
+            setSheetState(() => enviando = true);
+            try {
+              final auth = Provider.of<AuthProvider>(context, listen: false);
+              await auth.completarLogin2faRecovery(codigo);
+              if (!mounted) return;
+              Navigator.of(ctx).pop();
+              _navigateToRoleHome(auth.usuarioActual!);
+            } catch (e) {
+              setSheetState(() => enviando = false);
+              if (!ctx.mounted) return;
+              ScaffoldMessenger.of(ctx).showSnackBar(
+                SnackBar(
+                  content: Text(e.toString().replaceAll('Exception: ', '')),
+                  backgroundColor: AppColors.error,
+                ),
+              );
+            }
+          }
+
+          return Padding(
+            padding: EdgeInsets.only(
+              left: 24, right: 24, top: 28,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 28,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Código de recuperación',
+                  style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Introduce uno de los 8 códigos que guardaste al activar el 2FA.',
+                  style: TextStyle(color: Colors.white.withValues(alpha: 0.55), fontSize: 13, height: 1.5),
+                ),
+                const SizedBox(height: 20),
+                TextField(
+                  controller: _recoveryController,
+                  autofocus: true,
+                  style: const TextStyle(color: Colors.white, fontFamily: 'monospace', letterSpacing: 1.5),
+                  decoration: InputDecoration(
+                    hintText: 'XXXXXXXX-XXXXXXXX',
+                    hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontFamily: 'monospace'),
+                    filled: true,
+                    fillColor: Colors.white.withValues(alpha: 0.07),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide.none,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: AppColors.button),
+                    ),
+                  ),
+                  onSubmitted: (_) => verificar(),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: enviando ? null : verificar,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.button,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: Colors.white12,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      elevation: 0,
+                    ),
+                    child: enviando
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : const Text('VERIFICAR', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -167,10 +269,14 @@ class _TotpLoginScreenState extends State<TotpLoginScreen> {
             onPressed: () => Navigator.pop(context),
             child: Text(
               'Volver al inicio de sesión',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.5),
-                fontSize: 13,
-              ),
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 13),
+            ),
+          ),
+          TextButton(
+            onPressed: _mostrarRecovery,
+            child: Text(
+              '¿Sin acceso a tu dispositivo?',
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.35), fontSize: 12),
             ),
           ),
         ],
