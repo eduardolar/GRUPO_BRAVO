@@ -11,7 +11,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from audit import registrar_pago
-from database import coleccion_auditoria_pagos
+from database import coleccion_auditoria_pagos, coleccion_pedidos
 
 load_dotenv()
 
@@ -26,7 +26,7 @@ router = APIRouter(prefix="/payments", tags=["Pagos"])
 # ── Modelos ────────────────────────────────────────────────────────────────────
 
 class PaymentIntentCreate(BaseModel):
-    amount: float = Field(gt=0)
+    pedido_id: str
     currency: str = "eur"
 
 class CardConfirmRequest(BaseModel):
@@ -37,12 +37,12 @@ class CardConfirmRequest(BaseModel):
     nombreTitular: str
 
 class ApplePayInitRequest(BaseModel):
-    total: float = Field(gt=0)
+    pedido_id: str
     currency: str = "EUR"
     country: str = "ES"
 
 class GooglePayInitRequest(BaseModel):
-    total: float = Field(gt=0)
+    pedido_id: str
     currency: str = "EUR"
 
 class ConfirmPaymentIntentRequest(BaseModel):
@@ -56,17 +56,30 @@ class GooglePayVerifyRequest(BaseModel):
     purchaseToken: Optional[str] = None
 
 class CheckoutSessionCreate(BaseModel):
-    total: float = Field(gt=0)
+    pedido_id: Optional[str] = None   # si se envía, el total se lee de BD
+    total: Optional[float] = Field(default=None, ge=0)  # fallback cuando el pedido aún no existe
     currency: str = "eur"
     success_url: str
     cancel_url: str
 
 class PayPalOrderCreate(BaseModel):
-    total: float = Field(gt=0)
+    pedido_id: str
     currency: str = "EUR"
 
 class PayPalCaptureRequest(BaseModel):
     orderId: str
+
+# ── Helpers ────────────────────────────────────────────────────────────────────
+
+def _total_pedido(pedido_id: str) -> float:
+    """Return the server-calculated total for a pedido; never trust client amounts."""
+    if not ObjectId.is_valid(pedido_id):
+        raise HTTPException(status_code=400, detail="pedido_id inválido")
+    pedido = coleccion_pedidos.find_one({"_id": ObjectId(pedido_id)}, {"total": 1})
+    if not pedido:
+        raise HTTPException(status_code=404, detail="Pedido no encontrado")
+    return float(pedido["total"])
+
 
 # ── Stripe ─────────────────────────────────────────────────────────────────────
 
@@ -75,14 +88,15 @@ class PayPalCaptureRequest(BaseModel):
 def crear_payment_intent(request: Request, payload: PaymentIntentCreate):
     if not stripe.api_key:
         raise HTTPException(status_code=500, detail="Falta STRIPE_SECRET_KEY")
+    total = _total_pedido(payload.pedido_id)
     try:
         intent = stripe.PaymentIntent.create(
-            amount=int(round(payload.amount * 100)),
+            amount=int(round(total * 100)),
             currency=payload.currency.lower(),
             automatic_payment_methods={"enabled": True},
         )
         registrar_pago(request, "stripe.intent_created", "stripe",
-                       importe=payload.amount, moneda=payload.currency,
+                       importe=total, moneda=payload.currency,
                        referencia=intent["id"], estado=intent["status"])
         return {
             "payment_intent_id": intent["id"],
@@ -91,7 +105,7 @@ def crear_payment_intent(request: Request, payload: PaymentIntentCreate):
         }
     except Exception as e:
         registrar_pago(request, "stripe.intent_created", "stripe",
-                       importe=payload.amount, moneda=payload.currency,
+                       importe=total, moneda=payload.currency,
                        estado="error", detalle=str(e))
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -119,15 +133,16 @@ def confirmar_payment_intent(request: Request, payload: CardConfirmRequest):
 async def iniciar_apple_pay(request: Request, payload: ApplePayInitRequest):
     if not stripe.api_key:
         raise HTTPException(status_code=500, detail="Falta STRIPE_SECRET_KEY")
+    total = _total_pedido(payload.pedido_id)
     try:
         intent = stripe.PaymentIntent.create(
-            amount=int(round(payload.total * 100)),
+            amount=int(round(total * 100)),
             currency=payload.currency.lower(),
             automatic_payment_methods={"enabled": True},
             metadata={"platform": "apple_pay", "country": payload.country},
         )
         registrar_pago(request, "apple_pay.intent_created", "apple_pay",
-                       importe=payload.total, moneda=payload.currency,
+                       importe=total, moneda=payload.currency,
                        referencia=intent["id"], estado=intent["status"])
         return {
             "payment_intent_id": intent["id"],
@@ -136,7 +151,7 @@ async def iniciar_apple_pay(request: Request, payload: ApplePayInitRequest):
         }
     except Exception as e:
         registrar_pago(request, "apple_pay.intent_created", "apple_pay",
-                       importe=payload.total, moneda=payload.currency,
+                       importe=total, moneda=payload.currency,
                        estado="error", detalle=str(e))
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -193,15 +208,16 @@ def verificar_apple_pay(request: Request, payment_intent_id: str):
 async def iniciar_google_pay(request: Request, payload: GooglePayInitRequest):
     if not stripe.api_key:
         raise HTTPException(status_code=500, detail="Falta STRIPE_SECRET_KEY")
+    total = _total_pedido(payload.pedido_id)
     try:
         intent = stripe.PaymentIntent.create(
-            amount=int(round(payload.total * 100)),
+            amount=int(round(total * 100)),
             currency=payload.currency.lower(),
             automatic_payment_methods={"enabled": True},
             metadata={"platform": "google_pay"},
         )
         registrar_pago(request, "google_pay.intent_created", "google_pay",
-                       importe=payload.total, moneda=payload.currency,
+                       importe=total, moneda=payload.currency,
                        referencia=intent["id"], estado=intent["status"])
         return {
             "payment_intent_id": intent["id"],
@@ -210,7 +226,7 @@ async def iniciar_google_pay(request: Request, payload: GooglePayInitRequest):
         }
     except Exception as e:
         registrar_pago(request, "google_pay.intent_created", "google_pay",
-                       importe=payload.total, moneda=payload.currency,
+                       importe=total, moneda=payload.currency,
                        estado="error", detalle=str(e))
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -291,6 +307,12 @@ def verificar_payment_intent(request: Request, payment_intent_id: str):
 def crear_checkout_session(request: Request, payload: CheckoutSessionCreate):
     if not stripe.api_key:
         raise HTTPException(status_code=500, detail="Falta STRIPE_SECRET_KEY")
+    if payload.pedido_id:
+        total = _total_pedido(payload.pedido_id)
+    elif payload.total is not None and payload.total > 0:
+        total = payload.total
+    else:
+        raise HTTPException(status_code=400, detail="Proporciona pedido_id o un total válido")
     try:
         session = stripe.checkout.Session.create(
             payment_method_types=["card"],
@@ -298,7 +320,7 @@ def crear_checkout_session(request: Request, payload: CheckoutSessionCreate):
                 "price_data": {
                     "currency": payload.currency.lower(),
                     "product_data": {"name": "Pedido Restaurante Bravo"},
-                    "unit_amount": int(round(payload.total * 100)),
+                    "unit_amount": int(round(total * 100)),
                 },
                 "quantity": 1,
             }],
@@ -307,12 +329,12 @@ def crear_checkout_session(request: Request, payload: CheckoutSessionCreate):
             cancel_url=payload.cancel_url,
         )
         registrar_pago(request, "stripe.checkout_created", "stripe",
-                       importe=payload.total, moneda=payload.currency,
+                       importe=total, moneda=payload.currency,
                        referencia=session.id, estado="created")
         return {"session_id": session.id, "checkout_url": session.url}
     except Exception as e:
         registrar_pago(request, "stripe.checkout_created", "stripe",
-                       importe=payload.total, moneda=payload.currency,
+                       importe=total, moneda=payload.currency,
                        estado="error", detalle=str(e))
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -377,15 +399,16 @@ def _paypal_simulado_capture_response(order_id: str, total: float = 0.0, currenc
 
 @router.post("/paypal/create-order")
 async def crear_orden_paypal(request: Request, payload: PayPalOrderCreate):
+    total = _total_pedido(payload.pedido_id)
     if _PAYPAL_SIMULADO:
         order_id = str(uuid.uuid4())
         registrar_pago(request, "paypal.order_created", "paypal",
-                       importe=payload.total, moneda=payload.currency,
+                       importe=total, moneda=payload.currency,
                        referencia=order_id, estado="CREATED_SIMULADO")
-        return _paypal_simulado_order_response(order_id, payload.total, payload.currency)
+        return _paypal_simulado_order_response(order_id, total, payload.currency)
 
     token = await _paypal_access_token()
-    body = {"intent": "CAPTURE", "purchase_units": [{"amount": {"currency_code": payload.currency, "value": f"{payload.total:.2f}"}}]}
+    body = {"intent": "CAPTURE", "purchase_units": [{"amount": {"currency_code": payload.currency, "value": f"{total:.2f}"}}]}
 
     async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.post(
@@ -396,13 +419,13 @@ async def crear_orden_paypal(request: Request, payload: PayPalOrderCreate):
 
     if response.status_code >= 400:
         registrar_pago(request, "paypal.order_created", "paypal",
-                       importe=payload.total, moneda=payload.currency,
+                       importe=total, moneda=payload.currency,
                        estado="error", detalle=response.text)
         raise HTTPException(status_code=400, detail=response.text)
 
     data = response.json()
     registrar_pago(request, "paypal.order_created", "paypal",
-                   importe=payload.total, moneda=payload.currency,
+                   importe=total, moneda=payload.currency,
                    referencia=data.get("id"), estado=data.get("status", "CREATED"))
     return data
 
