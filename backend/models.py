@@ -89,3 +89,8 @@ class ProductoCrear(BaseModel):
     imagen: Optional[str] = None
     disponible: bool = True
     ingredientes: list = []
+
+    #Validacion para verficar login 2 FA.
+class VerificarLogin2FA(BaseModel):
+    correo: EmailStr
+    codigo: str

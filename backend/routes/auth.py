@@ -14,7 +14,7 @@ from database import coleccion_usuarios
 from models import UsuarioRegistro, UsuarioLogin
 
 # Cargar el archivo de entorno local llamado 'env'
-dotenv_path = Path(__file__).resolve().parents[1] / "env"
+dotenv_path = Path(__file__).resolve().parents[2] / ".env"
 load_dotenv(dotenv_path=dotenv_path, override=True)
 
 router = APIRouter()
@@ -184,39 +184,117 @@ async def verificar_codigo(datos: VerificacionCodigo):
     if resultado.modified_count > 0:
         return {"mensaje": "¡Cuenta verificada con éxito! Ya puedes hacer login."}
     return {"mensaje": "La cuenta ya estaba verificada."}
-# --- 5. ENDPOINT: LOGIN ---
+# --- NUEVA FUNCIÓN PARA EL CORREO 2FA ---
+async def enviar_correo_2fa(email_destino: str, codigo: str):
+    html = f"""
+    <div style="font-family: Arial, sans-serif; background-color: #FBF9F6; padding: 40px 20px; text-align: center;">
+        <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; padding: 30px; border: 1px solid #E0DBD3; border-radius: 10px;">
+            <h2 style="color: #800020; margin-top: 0;">Restaurante Bravo - Seguridad</h2>
+            <hr style="border: 0; border-top: 1px solid #E0DBD3; margin: 20px 0;">
+            <p style="color: #2D2D2D; font-size: 16px; line-height: 1.5;">
+                Hemos detectado un intento de inicio de sesión. Usa este código para confirmar que eres tú:
+            </p>
+            <div style="background-color: #800020; color: #ffffff; padding: 15px 25px; font-size: 32px; font-weight: bold; letter-spacing: 8px; margin: 25px 0; display: inline-block; border-radius: 5px;">
+                {codigo}
+            </div>
+            <p style="color: #6B6B6B; font-size: 12px; margin-top: 25px; border-top: 1px solid #EEE; padding-top: 15px;">
+                Si no estás intentando iniciar sesión, por favor cambia tu contraseña inmediatamente.
+            </p>
+        </div>
+    </div>
+    """
+    mensaje = MessageSchema(
+        subject="Código de Acceso - Restaurante Bravo",
+        recipients=[email_destino],
+        body=html,
+        subtype=MessageType.html
+    )
+    try:
+        fm = FastMail(conf)
+        await fm.send_message(mensaje)
+    except Exception as e:
+        logger.error(f"Error enviando 2FA a {email_destino}: {str(e)}")
+
+
+# --- 5. ENDPOINT: LOGIN (SOLO CLIENTES TENDRAN 2FA) ---
 @router.post("/login")
-def iniciar_sesion(credenciales: UsuarioLogin):
+async def iniciar_sesion(credenciales: UsuarioLogin):
     correo_normalizado = normalizar_correo(credenciales.correo)
     usuario_db = coleccion_usuarios.find_one({"correo": correo_normalizado})
 
     if usuario_db:
-        # Bloquear si no está verificado
         if not usuario_db.get("is_verified", False):
-            raise HTTPException(
-                status_code=403, 
-                detail="Cuenta no verificada. Por favor, revisa tu correo."
-            )
+            raise HTTPException(status_code=403, detail="Cuenta no verificada. Por favor, revisa tu correo.")
 
         password_escrita = credenciales.password.encode('utf-8')
         hash_almacenado = usuario_db["password_hash"].encode('utf-8')
 
         if bcrypt.checkpw(password_escrita, hash_almacenado):
-            if usuario_db.get("totp_enabled"):
+            
+            # --- LEEMOS EL ROL ---
+            rol = usuario_db.get("rol", "cliente")
+            
+            # CAMINO A: Es un cliente normal, le pedimos 2FA por correo
+            if rol == "cliente":
+                codigo_2fa = ''.join(random.choices(string.digits, k=6))
+                
+                coleccion_usuarios.update_one(
+                    {"_id": usuario_db["_id"]},
+                    {"$set": {"login_code_2fa": codigo_2fa}}
+                )
+                
+                await enviar_correo_2fa(usuario_db["correo"], codigo_2fa)
+                
                 return {
                     "requires_2fa": True,
-                    "user_id": str(usuario_db["_id"]),
+                    "correo": usuario_db["correo"],
+                    "mensaje": "Se ha enviado un código de seguridad a tu correo."
                 }
-            return {
-                "id": str(usuario_db["_id"]),
-                "nombre": usuario_db["nombre"],
-                "correo": usuario_db["correo"],
-                "rol": usuario_db.get("rol", "cliente"),
-                "restauranteId": usuario_db.get("restaurante_id", ""),
-                "totp_enabled": usuario_db.get("totp_enabled", False),
-            }
+            
+            # CAMINO B: Es trabajador, admin, superadmin o cocinero. No 2FA, acceso directo.
+            else:
+                return {
+                    "id": str(usuario_db["_id"]),
+                    "nombre": usuario_db["nombre"],
+                    "correo": usuario_db["correo"],
+                    "rol": rol,
+                    "restauranteId": usuario_db.get("restaurante_id", ""),
+                }
    
     raise HTTPException(status_code=401, detail="Credenciales incorrectas")
+
+
+# --- NUEVO ENDPOINT: VERIFICAR 2FA DEL LOGIN ---
+class VerificarLogin2FA(BaseModel):
+    correo: EmailStr
+    codigo: str
+
+@router.post("/verificar-login-2fa")
+def verificar_login_2fa(datos: VerificarLogin2FA):
+    correo_normalizado = normalizar_correo(datos.correo)
+    usuario_db = coleccion_usuarios.find_one({"correo": correo_normalizado})
+
+    if not usuario_db:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    codigo_guardado = str(usuario_db.get("login_code_2fa") or "").strip()
+    
+    if not codigo_guardado or datos.codigo.strip() != codigo_guardado:
+        raise HTTPException(status_code=400, detail="Código incorrecto o expirado")
+
+    # Si es correcto, borramos el código para que no se pueda reusar y damos el acceso
+    coleccion_usuarios.update_one(
+        {"_id": usuario_db["_id"]},
+        {"$unset": {"login_code_2fa": ""}}
+    )
+
+    return {
+        "id": str(usuario_db["_id"]),
+        "nombre": usuario_db["nombre"],
+        "correo": usuario_db["correo"],
+        "rol": usuario_db.get("rol", "cliente"),
+        "restauranteId": usuario_db.get("restaurante_id", ""),
+    }
 
 # ---6. ENDPOINT: SOLICITAR RECUPERACIÓN ---
 @router.post("/recuperar-password")
@@ -431,3 +509,28 @@ def verificar_2fa(datos: Verificar2FA):
         "restauranteId": usuario_db.get("restaurante_id", ""),
         "totp_enabled": True,
     }
+
+class Reenviar2FA(BaseModel):
+    correo: EmailStr
+
+@router.post("/reenviar-login-2fa")
+async def reenviar_login_2fa(datos: Reenviar2FA):
+    correo_normalizado = normalizar_correo(datos.correo)
+    usuario_db = coleccion_usuarios.find_one({"correo": correo_normalizado})
+    
+    if not usuario_db:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        
+    # Generamos un código nuevo
+    codigo_2fa = ''.join(random.choices(string.digits, k=6))
+    
+    # Lo actualizamos en la base de datos
+    coleccion_usuarios.update_one(
+        {"_id": usuario_db["_id"]},
+        {"$set": {"login_code_2fa": codigo_2fa}}
+    )
+    
+    # Forzamos el envío del correo
+    await enviar_correo_2fa(usuario_db["correo"], codigo_2fa)
+    
+    return {"mensaje": "Nuevo código de seguridad enviado"}

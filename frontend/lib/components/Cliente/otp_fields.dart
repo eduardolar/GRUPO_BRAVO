@@ -35,7 +35,7 @@ class OtpFields extends StatelessWidget {
                 textAlign: TextAlign.center,
                 maxLength: 1,
                 style: TextStyle(
-                  color: Colors.white,
+                  color: const Color.fromARGB(255, 0, 0, 0),
                   fontSize: (fieldWidth * 0.48).clamp(18.0, 24.0),
                   fontWeight: FontWeight.bold,
                 ),
