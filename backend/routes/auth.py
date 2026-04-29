@@ -11,9 +11,16 @@ from pydantic import BaseModel, EmailStr
 from database import coleccion_usuarios
 from models import UsuarioRegistro, UsuarioLogin
 
-# Cargar el archivo de entorno local llamado 'env'
-dotenv_path = Path(__file__).resolve().parents[1] / "env"
-load_dotenv(dotenv_path=dotenv_path, override=True)
+# Cargar el archivo de entorno local llamado 'env' o 'env.local'
+dotenv_dir = Path(__file__).resolve().parents[1]
+dotenv_path = dotenv_dir / "env"
+dotenv_local_path = dotenv_dir / "env.local"
+if dotenv_path.exists():
+    load_dotenv(dotenv_path=dotenv_path, override=True)
+elif dotenv_local_path.exists():
+    load_dotenv(dotenv_path=dotenv_local_path, override=True)
+else:
+    load_dotenv(override=True)
 
 router = APIRouter()
 
