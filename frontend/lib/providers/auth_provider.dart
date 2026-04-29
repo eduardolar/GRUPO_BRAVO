@@ -210,12 +210,33 @@ class AuthProvider with ChangeNotifier {
     return AuthService.setup2fa(userId: _usuarioActual!.id);
   }
 
-  Future<void> activar2fa(String codigo) async {
+  Future<List<String>> activar2fa(String codigo) async {
     if (_usuarioActual == null) throw Exception('No hay usuario autenticado');
-    await AuthService.activar2fa(userId: _usuarioActual!.id, codigo: codigo);
+    final data = await AuthService.activar2fa(userId: _usuarioActual!.id, codigo: codigo);
     _usuarioActual = _usuarioActual!.copyWith(totpEnabled: true);
     notifyListeners();
     await _guardarSesion();
+    return List<String>.from(data['codigosRecuperacion'] as List);
+  }
+
+  Future<void> completarLogin2faRecovery(String codigo) async {
+    if (_pendingUserId2fa == null) throw Exception('No hay login pendiente');
+    final response = await AuthService.verificar2faRecovery(
+      userId: _pendingUserId2fa!,
+      codigo: codigo,
+    );
+    _pendingUserId2fa = null;
+    _usuarioActual = Usuario.fromJson(response);
+    notifyListeners();
+    await _guardarSesion();
+  }
+
+  Future<List<String>> regenerarCodigosRecuperacion(String codigo) async {
+    if (_usuarioActual == null) throw Exception('No hay usuario autenticado');
+    return AuthService.regenerarCodigosRecuperacion(
+      userId: _usuarioActual!.id,
+      codigo: codigo,
+    );
   }
 
   Future<void> desactivar2fa(String codigo) async {

@@ -30,9 +30,11 @@ class _AdminEditarStockScreenState extends State<AdminEditarStockScreen> {
   void initState() {
     super.initState();
     _nombreCtrl = TextEditingController(text: widget.ingrediente.nombre);
-    _cantidadCtrl = TextEditingController(text: widget.ingrediente.cantidadActual.toString());
-    _minimoCtrl = TextEditingController(text: widget.ingrediente.stockMinimo.toString());
-    
+    _cantidadCtrl = TextEditingController(
+        text: widget.ingrediente.cantidadActual.toString());
+    _minimoCtrl =
+        TextEditingController(text: widget.ingrediente.stockMinimo.toString());
+
     _categoriaSeleccionada = _categorias.contains(widget.ingrediente.categoria)
         ? widget.ingrediente.categoria
         : 'Otros';
@@ -49,30 +51,90 @@ class _AdminEditarStockScreenState extends State<AdminEditarStockScreen> {
     super.dispose();
   }
 
-  void _guardarCambios() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() => _estaGuardando = true);
-      try {
-        await IngredienteService.actualizarIngrediente(
-          widget.ingrediente.id,
-          {
-            'nombre': _nombreCtrl.text.trim(),
-            'cantidad_actual': double.parse(_cantidadCtrl.text),
-            'unidad': _unidadSeleccionada,
-            'stock_minimo': double.parse(_minimoCtrl.text),
-          },
+  String? _validarNumero(String? v) {
+    if (v == null || v.trim().isEmpty) return 'Requerido';
+    if (double.tryParse(v.trim()) == null) return 'Debe ser un número';
+    return null;
+  }
+
+  Future<void> _guardarCambios() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _estaGuardando = true);
+    try {
+      await IngredienteService.actualizarIngrediente(
+        widget.ingrediente.id,
+        {
+          'nombre': _nombreCtrl.text.trim(),
+          'cantidadActual': double.parse(_cantidadCtrl.text.trim()),
+          'unidad': _unidadSeleccionada,
+          'stockMinimo': double.parse(_minimoCtrl.text.trim()),
+          'categoria': _categoriaSeleccionada,
+        },
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Stock actualizado')),
         );
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Stock actualizado')));
-          Navigator.pop(context); 
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
-        }
-      } finally {
-        if (mounted) setState(() => _estaGuardando = false);
+        Navigator.pop(context, true);
       }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _estaGuardando = false);
+    }
+  }
+
+  Future<void> _eliminarIngrediente() async {
+    final confirmado = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Eliminar ingrediente'),
+        content: Text(
+            '¿Seguro que quieres eliminar "${widget.ingrediente.nombre}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmado != true) return;
+
+    setState(() => _estaGuardando = true);
+    try {
+      await IngredienteService.eliminarIngrediente(widget.ingrediente.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ingrediente eliminado')),
+        );
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al eliminar: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _estaGuardando = false);
     }
   }
 
@@ -80,77 +142,84 @@ class _AdminEditarStockScreenState extends State<AdminEditarStockScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('Editar Stock'), backgroundColor: AppColors.backgroundButton),
-      body: _estaGuardando
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  children: [
-                    EntradaTexto(
-                      icono: Icons.abc,
-                      controlador: _nombreCtrl,
-                      etiqueta:'Nombre del Ingrediente',
-                      validador: (v) => v!.isEmpty ? 'Requerido' : null,
-                    ),
-                    const SizedBox(height: 16),
-
-
-                    Row(
-                      children: [
-                        Expanded(
-                          flex: 2,
-                          child: EntradaTexto(
-                            icono: Icons.filter_9_plus,
-                            controlador: _cantidadCtrl,
-                            etiqueta:  'Cantidad Actual',
-                            tipoTeclado: TextInputType.number,
-                            validador: (v) => v!.isEmpty ? 'Requerido' : null,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          flex: 1,
-                          child: DropdownButtonFormField<String>(
-                            value: _unidadSeleccionada,
-                            decoration: const InputDecoration(labelText: 'Unidad'),
-                            items: _unidades.map((u) => DropdownMenuItem(value: u, child: Text(u))).toList(),
-                            onChanged: (val) => setState(() => _unidadSeleccionada = val!),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    EntradaTexto(
-                      icono: Icons.warning,
-                      controlador: _minimoCtrl,
-                      etiqueta:  'Stock Mínimo',
-                      tipoTeclado: TextInputType.number,
-                      validador: (v) => v!.isEmpty ? 'Requerido' : null,
-                    ),
-                    const SizedBox(height: 32),
-                    botonEliminar(),
-                    const SizedBox(height: 16),
-                    botonGuardar(),
-                    
-                    /*SizedBox(
-                      width: double.infinity, height: 50,
-                      child: ElevatedButton(
-                        onPressed: _guardarCambios,
-                        style: ElevatedButton.styleFrom(backgroundColor: AppColors.button),
-                        child: const Text('GUARDAR CAMBIOS', style: TextStyle(color: Colors.white)),
-                      ),
-                    ),*/
-                  ],
-                ),
+      appBar: AppBar(
+        title: const Text('Editar Stock'),
+        backgroundColor: AppColors.backgroundButton,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              EntradaTexto(
+                icono: Icons.abc,
+                controlador: _nombreCtrl,
+                etiqueta: 'Nombre del Ingrediente',
+                validador: (v) =>
+                    (v == null || v.trim().isEmpty) ? 'Requerido' : null,
               ),
-            ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: EntradaTexto(
+                      icono: Icons.filter_9_plus,
+                      controlador: _cantidadCtrl,
+                      etiqueta: 'Cantidad Actual',
+                      tipoTeclado: TextInputType.number,
+                      validador: _validarNumero,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    flex: 1,
+                    child: DropdownButtonFormField<String>(
+                      initialValue: _unidadSeleccionada,
+                      decoration:
+                          const InputDecoration(labelText: 'Unidad'),
+                      items: _unidades
+                          .map((u) =>
+                              DropdownMenuItem(value: u, child: Text(u)))
+                          .toList(),
+                      onChanged: (val) =>
+                          setState(() => _unidadSeleccionada = val!),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              EntradaTexto(
+                icono: Icons.warning,
+                controlador: _minimoCtrl,
+                etiqueta: 'Stock Mínimo',
+                tipoTeclado: TextInputType.number,
+                validador: _validarNumero,
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                initialValue: _categoriaSeleccionada,
+                decoration: const InputDecoration(labelText: 'Categoría'),
+                items: _categorias
+                    .map((c) =>
+                        DropdownMenuItem(value: c, child: Text(c)))
+                    .toList(),
+                onChanged: (val) =>
+                    setState(() => _categoriaSeleccionada = val!),
+              ),
+              const SizedBox(height: 32),
+              _botonEliminar(),
+              const SizedBox(height: 16),
+              _botonGuardar(),
+            ],
+          ),
+        ),
+      ),
     );
   }
-  
-  Widget botonGuardar() {
+
+  Widget _botonGuardar() {
     return Container(
       width: double.infinity,
       height: 55,
@@ -165,16 +234,7 @@ class _AdminEditarStockScreenState extends State<AdminEditarStockScreen> {
         ],
       ),
       child: ElevatedButton(
-        onPressed: () {
-          if (_formKey.currentState!.validate()) {
-            _guardarCambios();
-            // Añadir lógica para enviar este nuevo ingrediente al servidor
-            print("guardando nuevo plato...");
-            Navigator.pop(context);
-          } else {
-            print("Formulario no válido");
-          }
-        },
+        onPressed: _estaGuardando ? null : _guardarCambios,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.button,
           foregroundColor: Colors.white,
@@ -183,12 +243,19 @@ class _AdminEditarStockScreenState extends State<AdminEditarStockScreen> {
           ),
           elevation: 0,
         ),
-        child: Text("GUARDAR CAMBIOS"),
+        child: _estaGuardando
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                    strokeWidth: 2, color: Colors.white),
+              )
+            : const Text("GUARDAR CAMBIOS"),
       ),
     );
   }
 
-  Widget botonEliminar() {
+  Widget _botonEliminar() {
     return Container(
       width: double.infinity,
       height: 55,
@@ -203,19 +270,16 @@ class _AdminEditarStockScreenState extends State<AdminEditarStockScreen> {
         ],
       ),
       child: ElevatedButton(
-        onPressed: () {
-          // Añadir logica para borrar registro en el servidor
-          Navigator.pop(context);
-        },
+        onPressed: _estaGuardando ? null : _eliminarIngrediente,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.backgroundButton,
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadiusGeometry.circular(15),
+            borderRadius: BorderRadius.circular(15),
           ),
           elevation: 0,
         ),
-        child: Text("ELIMINAR INGREDIENTE"),
+        child: const Text("ELIMINAR INGREDIENTE"),
       ),
     );
   }

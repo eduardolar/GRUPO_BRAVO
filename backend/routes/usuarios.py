@@ -2,6 +2,7 @@ import random
 import string
 import bcrypt
 from fastapi import APIRouter, HTTPException
+from exceptions import NotFoundError, ConflictError, ValidacionError, AutenticacionError
 from bson import ObjectId
 from database import coleccion_usuarios
 from models import UsuarioActualizar
@@ -100,7 +101,7 @@ def listar_usuarios(rol: str | None = None):
 def ver_perfil(user_id: str):
     usuario = coleccion_usuarios.find_one({"_id": ObjectId(user_id)})
     if not usuario:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        raise NotFoundError("Usuario no encontrado")
     return {
         "id": str(usuario["_id"]),
         "nombre": usuario.get("nombre", ""),
@@ -122,7 +123,7 @@ def actualizar_perfil(user_id: str, datos: UsuarioActualizar):
 
     # Si por algún motivo el diccionario queda vacío, avisamos
     if not actualizacion:
-        raise HTTPException(status_code=400, detail="No se enviaron datos válidos para actualizar")
+        raise ValidacionError("No se enviaron datos válidos para actualizar")
 
     # 3. Ejecutamos la actualización en MongoDB usando solo los campos filtrados
     resultado = coleccion_usuarios.update_one(
@@ -131,7 +132,7 @@ def actualizar_perfil(user_id: str, datos: UsuarioActualizar):
     )
 
     if resultado.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        raise NotFoundError("Usuario no encontrado")
 
     return {"mensaje": "Perfil actualizado correctamente"}
 
@@ -139,11 +140,11 @@ def actualizar_perfil(user_id: str, datos: UsuarioActualizar):
 def cambiar_password(user_id: str, datos: CambiarPassword):
     usuario = coleccion_usuarios.find_one({"_id": ObjectId(user_id)})
     if not usuario:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        raise NotFoundError("Usuario no encontrado")
 
     hash_almacenado = usuario.get("password_hash", "").encode("utf-8")
     if not bcrypt.checkpw(datos.password_actual.encode("utf-8"), hash_almacenado):
-        raise HTTPException(status_code=400, detail="La contraseña actual es incorrecta")
+        raise AutenticacionError("La contraseña actual es incorrecta")
 
     nueva_hash = bcrypt.hashpw(datos.nueva_password.encode("utf-8"), bcrypt.gensalt())
     coleccion_usuarios.update_one(
@@ -161,7 +162,7 @@ def actualizar_rol(user_id: str, datos: UsuarioActualizarRol):
     roles_permitidos = ["cliente", "cocinero", "camarero", "mesero", "trabajador", "admin", "administrador", "super_admin", "superadministrador"]
     
     if rol_limpio not in roles_permitidos:
-        raise HTTPException(status_code=400, detail=f"Rol '{rol_limpio}' no válido")
+        raise ValidacionError(f"Rol '{rol_limpio}' no válido")
 
     resultado = coleccion_usuarios.update_one(
         {"_id": ObjectId(user_id)},
@@ -169,7 +170,7 @@ def actualizar_rol(user_id: str, datos: UsuarioActualizarRol):
     )
     
     if resultado.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        raise NotFoundError("Usuario no encontrado")
     return {"mensaje": f"Rol actualizado exitosamente a {rol_limpio}"}
 
 # Ruta para eliminar un usuario, es buena tenerla para administración futura.
@@ -177,7 +178,7 @@ def actualizar_rol(user_id: str, datos: UsuarioActualizarRol):
 def eliminar_usuario(user_id: str):
     resultado = coleccion_usuarios.delete_one({"_id": ObjectId(user_id)})
     if resultado.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        raise NotFoundError("Usuario no encontrado")
     return {"mensaje": "Usuario eliminado"}
 
 # --- NUEVA RUTA PARA QUE EL ADMIN CREE USUARIOS ---
@@ -186,7 +187,7 @@ async def crear_usuario(datos: UsuarioCrear):
     correo_limpio = datos.correo.lower().strip()
 
     if coleccion_usuarios.find_one({"correo": correo_limpio}):
-        raise HTTPException(status_code=400, detail="Este correo ya está registrado")
+        raise ConflictError("Este correo ya está registrado")
 
     # Si no viene contraseña (creación desde panel admin), se genera una aleatoria.
     # El empleado la reemplazará al activar su cuenta con el código de correo.
@@ -221,4 +222,4 @@ async def crear_usuario(datos: UsuarioCrear):
             "id": str(resultado.inserted_id)
         }
 
-    raise HTTPException(status_code=500, detail="No se pudo crear el usuario")
+    raise RuntimeError("No se pudo crear el usuario")

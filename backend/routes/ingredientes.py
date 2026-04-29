@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
+from typing import Optional
 from bson import ObjectId
 from database import coleccion_ingredientes
 from models import IngredienteCrear, IngredienteActualizar
@@ -15,22 +16,28 @@ def _formato(i: dict) -> dict:
         "categoria": i.get("categoria", "Otros"),
     }
 
+def _filtro_restaurante(restaurante_id: Optional[str]) -> dict:
+    return {"restaurante_id": restaurante_id} if restaurante_id else {}
+
 @router.get("")
-def obtener_ingredientes():
-    return [_formato(i) for i in coleccion_ingredientes.find()]
+def obtener_ingredientes(restaurante_id: Optional[str] = Query(None)):
+    filtro = _filtro_restaurante(restaurante_id)
+    return [_formato(i) for i in coleccion_ingredientes.find(filtro)]
 
 @router.get("/por-categoria")
-def ingredientes_por_categoria():
+def ingredientes_por_categoria(restaurante_id: Optional[str] = Query(None)):
+    filtro = _filtro_restaurante(restaurante_id)
     agrupados: dict = {}
-    for i in coleccion_ingredientes.find():
+    for i in coleccion_ingredientes.find(filtro):
         cat = i.get("categoria", "Otros")
         agrupados.setdefault(cat, []).append(_formato(i))
     return agrupados
 
 @router.get("/stock-bajo")
-def ingredientes_stock_bajo():
+def ingredientes_stock_bajo(restaurante_id: Optional[str] = Query(None)):
+    filtro = _filtro_restaurante(restaurante_id)
     resultado = []
-    for i in coleccion_ingredientes.find():
+    for i in coleccion_ingredientes.find(filtro):
         if i.get("cantidad_actual", 0) <= i.get("stock_minimo", 0):
             resultado.append(_formato(i))
     return resultado
@@ -44,6 +51,8 @@ def crear_ingrediente(ingrediente: IngredienteCrear):
         "stock_minimo": ingrediente.stockMinimo,
         "categoria": ingrediente.categoria,
     }
+    if ingrediente.restauranteId:
+        doc["restaurante_id"] = ingrediente.restauranteId
     resultado = coleccion_ingredientes.insert_one(doc)
     return {"id": str(resultado.inserted_id), "mensaje": "Ingrediente creado"}
 
