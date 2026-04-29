@@ -4,7 +4,7 @@ import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/screens/trabajador/Pedidos/gestion_pedidos.dart';
 import 'package:frontend/screens/trabajador/Reservas/gestion_reservas.dart';
 import 'package:frontend/screens/trabajador/Stock/gestion_stock.dart';
-import 'package:frontend/screens/trabajador/servicio.dart';
+import 'package:frontend/screens/trabajador/servicio_trabajador/servicio.dart';
 
 class HomeTrabajador extends StatefulWidget {
   const HomeTrabajador({super.key});

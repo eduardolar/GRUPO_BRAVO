@@ -201,8 +201,11 @@ class ActualizarEstadoPago(BaseModel):
 
 
 class ActualizarItemsPedido(BaseModel):
-    items: list[dict]
+    items: Optional[list[dict]] = None
     total: Optional[float] = None
+    estadoPago: Optional[str] = None
+    estado: Optional[str] = None
+    metodoPago: Optional[str] = None
 
 
 class ActualizarEstado(BaseModel):
@@ -331,12 +334,24 @@ def actualizar_estado_pedido(pedido_id: str, payload: ActualizarEstado):
 
 @router.patch("/{pedido_id}")
 def actualizar_pedido(pedido_id: str, payload: ActualizarItemsPedido):
+def actualizar_pedido(pedido_id: str, payload: ActualizarItemsPedido):
     if not ObjectId.is_valid(pedido_id):
         raise ValidacionError("ID de pedido inválido")
 
-    campos = {"items": payload.items}
+    campos = {}
+    if payload.items is not None:
+        campos["items"] = payload.items
     if payload.total is not None:
         campos["total"] = payload.total
+    if payload.estadoPago is not None:
+        campos["estado_pago"] = payload.estadoPago
+    if payload.estado is not None:
+        campos["estado"] = payload.estado
+    if payload.metodoPago is not None:
+        campos["metodo_pago"] = payload.metodoPago
+
+    if not campos:
+        return {"updated": False}
 
     result = coleccion_pedidos.update_one(
         {"_id": ObjectId(pedido_id)},
@@ -348,6 +363,21 @@ def actualizar_pedido(pedido_id: str, payload: ActualizarItemsPedido):
 
 
 @router.get("")
+def obtener_pedidos(
+    userId: Optional[str] = Query(None),
+    mesaId: Optional[str] = Query(None),
+    estadoPago: Optional[str] = Query(None),
+):
+    filtro = {}
+    if userId:
+        filtro["usuario_id"] = userId
+    if mesaId:
+        filtro["mesa_id"] = mesaId
+    if estadoPago:
+        filtro["estado_pago"] = estadoPago
+    if not filtro:
+        raise HTTPException(status_code=400, detail="Se requiere al menos un filtro (userId o mesaId)")
+    pedidos = coleccion_pedidos.find(filtro)
 def obtener_pedidos(userId: Optional[str] = Query(None)):
     filtro = {}
     if userId:
@@ -373,6 +403,7 @@ def obtener_pedidos(userId: Optional[str] = Query(None)):
             "notas": p.get("notas", ""),
         })
     return resultado
+
 
 
 @router.patch("/{pedido_id}/items")

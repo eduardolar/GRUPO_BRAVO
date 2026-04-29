@@ -117,4 +117,29 @@ class MesaService {
       throw toApiException(response.statusCode, decodeBody(response));
     }
   }
+
+  static Future<void> marcarMesaLibre(String mesaId) async {
+    if (!usarApiReal) {
+      await Future.delayed(const Duration(milliseconds: 200));
+      final index = MockData.mesas.indexWhere((m) => m.id == mesaId);
+      if (index != -1) {
+        MockData.mesas[index] =
+            MockData.mesas[index].copyWith(disponible: true);
+      }
+      return;
+    }
+
+    final response = await httpWithRetry(
+      () => http.patch(
+        Uri.parse('$baseUrl/mesas/$mesaId'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'disponible': true}),
+      ),
+      retry: false,
+    );
+
+    if (response.statusCode != 200) {
+      throw toApiException(response.statusCode, decodeBody(response));
+    }
+  }
 }
