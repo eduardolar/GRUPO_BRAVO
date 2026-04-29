@@ -5,6 +5,7 @@ import 'api_config.dart';
 import 'http_client.dart';
 
 class AuthService {
+  // MODIFICADO: Ahora el login puede devolver un aviso de "requires_2fa"
   static Future<Map<String, dynamic>> iniciarSesion({
     required String correo,
     required String contrasena,
@@ -27,8 +28,33 @@ class AuthService {
       retry: false,
     );
 
-    if (response.statusCode == 200) return jsonDecode(response.body);
+    // Si el status es 200, devolvemos el map (que puede incluir el aviso 2FA)
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } 
+    
     throw toApiException(response.statusCode, decodeBody(response));
+  }
+
+  // Para enviar el código que el usuario recibe en su correo
+  static Future<Map<String, dynamic>> verificarLogin2FA(String correo, String codigo) async {
+    if (!usarApiReal) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      return {'success': true, 'message': 'Código login verificado en Mock'};
+    }
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/verificar-login-2fa'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'correo': correo, 'codigo': codigo}),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body); 
+    } else {
+      final error = jsonDecode(response.body);
+      throw Exception(error['detail'] ?? 'Código incorrecto o caducado');
+    }
   }
 
   static Future<Map<String, dynamic>> registrarUsuario({
@@ -160,6 +186,24 @@ class AuthService {
 
     if (response.statusCode != 200) {
       throw toApiException(response.statusCode, decodeBody(response));
+    }
+  }
+static Future<void> reenviarLogin2FA({required String correo}) async {
+    // Si estás usando los datos de prueba sin backend
+    if (!usarApiReal) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      return;
+    }
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/reenviar-login-2fa'), // Endpoint específico para reenviar código de login 2FA
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'correo': correo}),
+    );
+
+    if (response.statusCode != 200) {
+      final error = jsonDecode(response.body);
+      throw Exception(error['detail'] ?? 'Error al reenviar el código de seguridad');
     }
   }
 

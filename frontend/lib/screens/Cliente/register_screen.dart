@@ -207,7 +207,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           context,
           MaterialPageRoute(
             builder: (_) =>
-                VerificationScreen(email: _emailController.text.trim()),
+                VerificacionScreen(email: _emailController.text.trim()),
           ),
         );
       }
