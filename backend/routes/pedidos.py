@@ -334,7 +334,6 @@ def actualizar_estado_pedido(pedido_id: str, payload: ActualizarEstado):
 
 @router.patch("/{pedido_id}")
 def actualizar_pedido(pedido_id: str, payload: ActualizarItemsPedido):
-def actualizar_pedido(pedido_id: str, payload: ActualizarItemsPedido):
     if not ObjectId.is_valid(pedido_id):
         raise ValidacionError("ID de pedido inválido")
 
@@ -357,9 +356,12 @@ def actualizar_pedido(pedido_id: str, payload: ActualizarItemsPedido):
         {"_id": ObjectId(pedido_id)},
         {"$set": campos},
     )
+
     if result.matched_count == 0:
         raise NotFoundError("Pedido no encontrado")
+
     return {"updated": result.modified_count > 0}
+
 
 
 @router.get("")

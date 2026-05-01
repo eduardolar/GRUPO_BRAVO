@@ -246,11 +246,33 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
     await _guardarSesion();
   }
+
+  Future<void> solicitarCodigoEmail2FA() async {
+    if (_usuarioActual == null) throw Exception('No hay usuario autenticado');
+    await AuthService.solicitarCodigoEmail2FA(userId: _usuarioActual!.id);
+  }
+
+  Future<void> activarEmail2FA(String codigo) async {
+    if (_usuarioActual == null) throw Exception('No hay usuario autenticado');
+    await AuthService.activarEmail2FA(userId: _usuarioActual!.id, codigo: codigo);
+    _usuarioActual = _usuarioActual!.copyWith(emailDosFactoresEnabled: true);
+    notifyListeners();
+    await _guardarSesion();
+  }
+
+  Future<void> desactivarEmail2FA(String codigo) async {
+    if (_usuarioActual == null) throw Exception('No hay usuario autenticado');
+    await AuthService.desactivarEmail2FA(userId: _usuarioActual!.id, codigo: codigo);
+    _usuarioActual = _usuarioActual!.copyWith(emailDosFactoresEnabled: false);
+    notifyListeners();
+    await _guardarSesion();
+  }
   Future<bool> verificarLogin2FA(String correo, String codigo) async {
     try {
       final userData = await AuthService.verificarLogin2FA(correo, codigo);
       _usuarioActual = Usuario.fromJson(userData);
       notifyListeners();
+      await _guardarSesion();
       return true;
     } catch (e) {
       rethrow;

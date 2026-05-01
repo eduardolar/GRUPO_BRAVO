@@ -307,6 +307,210 @@ class _PerfilScreenState extends State<PerfilScreen> {
     );
   }
 
+  void _mostrarGestionEmail2FA({required bool activar}) {
+    final formKey = GlobalKey<FormState>();
+    final codigoCtrl = TextEditingController();
+    bool codigoEnviado = false;
+    bool cargando = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) => Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          child: Container(
+            decoration: const BoxDecoration(
+              color: AppColors.gold,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    activar
+                        ? 'Activar verificación por correo'
+                        : 'Desactivar verificación por correo',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'Playfair Display',
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    activar
+                        ? 'Al activarla, cada vez que inicies sesión recibirás un código de seguridad en tu correo.'
+                        : 'Al desactivarla, podrás iniciar sesión directamente sin código adicional.',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.6),
+                      fontSize: 13,
+                      height: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  if (!codigoEnviado) ...[
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.email_outlined, size: 18),
+                        label: const Text('Enviar código a mi correo'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.button,
+                          foregroundColor: Colors.white,
+                          disabledBackgroundColor: Colors.white12,
+                          shape: const RoundedRectangleBorder(
+                              borderRadius: BorderRadius.zero),
+                          elevation: 0,
+                        ),
+                        onPressed: cargando
+                            ? null
+                            : () async {
+                                setSheet(() => cargando = true);
+                                try {
+                                  final auth = Provider.of<AuthProvider>(
+                                      context,
+                                      listen: false);
+                                  await auth.solicitarCodigoEmail2FA();
+                                  setSheet(() {
+                                    codigoEnviado = true;
+                                    cargando = false;
+                                  });
+                                } catch (e) {
+                                  setSheet(() => cargando = false);
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(e
+                                            .toString()
+                                            .replaceAll('Exception: ', '')),
+                                        backgroundColor: AppColors.error,
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                        ),
+                      ),
+                  ] else ...[
+                    _campoSheet(
+                      ctrl: codigoCtrl,
+                      label: 'Código de 6 dígitos',
+                      oculto: false,
+                      onToggle: () {},
+                      validator: (v) {
+                        if (v == null || v.trim().length != 6) {
+                          return 'Introduce el código de 6 dígitos';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor:
+                              activar ? AppColors.button : Colors.redAccent,
+                          foregroundColor: Colors.white,
+                          disabledBackgroundColor: Colors.white12,
+                          shape: const RoundedRectangleBorder(
+                              borderRadius: BorderRadius.zero),
+                          elevation: 0,
+                        ),
+                        onPressed: cargando
+                            ? null
+                            : () async {
+                                if (!formKey.currentState!.validate()) return;
+                                setSheet(() => cargando = true);
+                                try {
+                                  final auth = Provider.of<AuthProvider>(
+                                      context,
+                                      listen: false);
+                                  if (activar) {
+                                    await auth.activarEmail2FA(
+                                        codigoCtrl.text.trim());
+                                  } else {
+                                    await auth.desactivarEmail2FA(
+                                        codigoCtrl.text.trim());
+                                  }
+                                  if (ctx.mounted) Navigator.pop(ctx);
+                                  if (mounted) {
+                                    setState(() {});
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(activar
+                                            ? 'Verificación por correo activada'
+                                            : 'Verificación por correo desactivada'),
+                                        backgroundColor: Colors.green,
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                  }
+                                } catch (e) {
+                                  setSheet(() => cargando = false);
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(e
+                                            .toString()
+                                            .replaceAll('Exception: ', '')),
+                                        backgroundColor: AppColors.error,
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                        child: cargando
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                    color: Colors.white, strokeWidth: 2),
+                              )
+                            : Text(
+                                activar
+                                    ? 'ACTIVAR VERIFICACIÓN'
+                                    : 'DESACTIVAR VERIFICACIÓN',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1.5,
+                                  fontSize: 13,
+                                ),
+                              ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   void _mostrarCambioContrasena() {
     final formKey = GlobalKey<FormState>();
     final actualCtrl = TextEditingController();
@@ -613,6 +817,13 @@ class _PerfilScreenState extends State<PerfilScreen> {
                             },
                           ),
                           const SizedBox(height: 10),
+                          Consumer<AuthProvider>(
+                            builder: (_, auth, _) {
+                              final email2fa = auth.usuarioActual?.emailDosFactoresEnabled ?? true;
+                              return _buildAccionEmail2fa(habilitado: email2fa);
+                            },
+                          ),
+                          const SizedBox(height: 10),
                           if (usuario?.rol == RolUsuario.cliente) ...[
                             _buildAccion(
                               icono: Icons.receipt_long_outlined,
@@ -787,6 +998,50 @@ class _PerfilScreenState extends State<PerfilScreen> {
         ),
         errorStyle: const TextStyle(color: AppColors.error),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      ),
+    );
+  }
+
+  Widget _buildAccionEmail2fa({required bool habilitado}) {
+    return GestureDetector(
+      onTap: () => _mostrarGestionEmail2FA(activar: !habilitado),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white12),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              habilitado ? Icons.mark_email_read_outlined : Icons.email_outlined,
+              color: habilitado ? Colors.blueAccent : Colors.white70,
+              size: 20,
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Verificación por correo',
+                    style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    habilitado ? 'Activada — toca para desactivar' : 'No activada — toca para activar',
+                    style: TextStyle(
+                      color: habilitado ? Colors.blueAccent.withValues(alpha: 0.8) : Colors.white38,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right, color: Colors.white24, size: 20),
+          ],
+        ),
       ),
     );
   }

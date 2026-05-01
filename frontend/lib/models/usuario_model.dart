@@ -12,6 +12,7 @@ class Usuario {
   final RolUsuario rol;
   final String? restauranteId;
   final bool totpEnabled;
+  final bool emailDosFactoresEnabled;
 
   String get rolRaw => rol.name;
 
@@ -28,6 +29,7 @@ class Usuario {
     String? restauranteId,
     String? rolRaw,
     bool? totpEnabled,
+    bool? emailDosFactoresEnabled,
   }) {
     return Usuario(
       id: id ?? this.id,
@@ -41,6 +43,7 @@ class Usuario {
       rol: rol ?? this.rol,
       restauranteId: restauranteId ?? this.restauranteId,
       totpEnabled: totpEnabled ?? this.totpEnabled,
+      emailDosFactoresEnabled: emailDosFactoresEnabled ?? this.emailDosFactoresEnabled,
     );
   }
 
@@ -56,6 +59,7 @@ class Usuario {
     this.rol = RolUsuario.cliente,
     this.restauranteId,
     this.totpEnabled = false,
+    this.emailDosFactoresEnabled = false,
   });
 
   factory Usuario.fromJson(Map<String, dynamic> json) {
@@ -71,6 +75,7 @@ class Usuario {
       rol: _parseRol(json['rol']),
       restauranteId: (json['restauranteId'] ?? json['restaurante_id'])?.toString(),
       totpEnabled: json['totp_enabled'] == true,
+      emailDosFactoresEnabled: json['email_2fa_enabled'] == true,
     );
   }
 
@@ -105,6 +110,7 @@ class Usuario {
       'direccion': direccion,
       'rol': rol.name,
       'totp_enabled': totpEnabled,
+      'email_2fa_enabled': emailDosFactoresEnabled,
       if (restauranteId != null) 'restaurante_id': restauranteId,
     };
   }
