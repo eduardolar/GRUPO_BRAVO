@@ -10,6 +10,7 @@ class EntradaTexto extends StatelessWidget {
   final TextInputType tipoTeclado; // Si es email, números, etc.
   final String? Function(String?)? validador;
   final TextEditingController? controlador;
+  final bool readOnly;
 
   const EntradaTexto({
     super.key,
@@ -21,6 +22,7 @@ class EntradaTexto extends StatelessWidget {
     this.tipoTeclado = TextInputType.text,
     this.validador,
     this.controlador,
+    this.readOnly = false,
   });
 
   @override
@@ -34,6 +36,7 @@ class EntradaTexto extends StatelessWidget {
         obscureText: esContrasena ? (mostrarTexto ?? true) : false,
         keyboardType: tipoTeclado,
         style: const TextStyle(color: AppColors.textPrimary),
+        readOnly: readOnly,
         decoration: InputDecoration(
           prefixIcon: Icon(icono, color: AppColors.gold),
           // Solo muestra el botón del ojo si el campo se marcó como contraseña

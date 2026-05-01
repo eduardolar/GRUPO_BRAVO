@@ -10,6 +10,11 @@ import 'package:provider/provider.dart';
 import '../../services/usuario_service.dart'; // Para 'UsuarioService' y actualizar la dirección del usuario
 import '../../providers/auth_provider.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
+import 'dart:async'; // Para 'Timer' y evitar llamadas excesivas a la API
+import '../../components/Cliente/auth_scaffold.dart';
+import '../../components/Cliente/auth_header.dart';
+import '../../components/Cliente/entrada_texto.dart';
+import '../../components/Cliente/primary_button.dart';
 
 class DireccionScreen extends StatefulWidget {
   final bool soloSeleccionar;
@@ -25,9 +30,12 @@ class _DireccionScreenState extends State<DireccionScreen> {
   LatLng _puntoActual = const LatLng(40.416775, -3.703790); // Madrid
   String _direccionTexto = "Cargando...";
   bool _cargando = false;
+  Timer? _debounceTimer;
+
   final MapController _mapController = MapController();
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _pisoPuertaController = TextEditingController();
+  final TextEditingController _direccionController = TextEditingController();
 
   @override
   void initState() {
@@ -35,15 +43,20 @@ class _DireccionScreenState extends State<DireccionScreen> {
     _obtenerDireccionDesdeCoords(_puntoActual);
   }
 
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    _pisoPuertaController.dispose();
+    _direccionController.dispose();
+    super.dispose();
+  }
+
   // 1. TRADUCIR COORDENADAS A TEXTO
   Future<void> _obtenerDireccionDesdeCoords(LatLng coords) async {
-    setState(() {
-      _cargando = true;
-      _puntoActual = coords;
-    });
+    setState(() => _cargando = true);
 
     final url = Uri.parse(
-      'https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.latitude}&lon=${coords.longitude}&zoom=18',
+      'https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.latitude}&lon=${coords.longitude}&zoom=18&addressdetails=1',
     );
 
     try {
@@ -52,22 +65,29 @@ class _DireccionScreenState extends State<DireccionScreen> {
         final data = json.decode(response.body);
         final addr = data['address'];
 
-        setState(() {
-          // ordenar los componentes de la dirección de forma lógica
-          String calle =
-              addr['road'] ??
-              addr['pedestrian'] ??
-              addr['path'] ??
-              "Calle desconocida";
-          String numero = addr['house_number'] ?? "s/n";
-          String ciudad = addr['city'] ?? addr['town'] ?? addr['village'] ?? "";
-          String cp = addr['postcode'] ?? "";
-          // orden lógico: calle + número...
-          _direccionTexto = "$calle $numero, $cp $ciudad";
-        });
+        // validacion CLAVE
+        if (addr != null) {
+          setState(() {
+            // ordenar los componentes de la dirección de forma lógica
+            String calle =
+                addr['road'] ??
+                addr['pedestrian'] ??
+                addr['path'] ??
+                "Calle sin nombre";
+            String numero = addr['house_number'] ?? "s/n";
+            String ciudad =
+                addr['city'] ?? addr['town'] ?? addr['village'] ?? "";
+            String cp = addr['postcode'] ?? "";
+            // orden lógico: calle + número...
+            _direccionTexto = "$calle $numero, $cp $ciudad";
+            _direccionController.text = _direccionTexto;
+          });
+        }
+      } else {
+        setState(() => _direccionController.text = "Ubicación no disponible");
       }
     } catch (e) {
-      setState(() => _direccionTexto = "Error al obtener dirección");
+      setState(() => _direccionController.text = "Ubicación no disponible");
     } finally {
       setState(() => _cargando = false);
     }
@@ -125,18 +145,90 @@ class _DireccionScreenState extends State<DireccionScreen> {
     return [];
   }
 
+  // --- LÓGICA 2: GPS
+  Future<void> _obtenerUbicacionGPS() async {
+    final locationService = LocationService();
+    try {
+      Position? position = await locationService.obtenerUbicacionActual();
+      if (position != null) {
+        _moverMapa(LatLng(position.latitude, position.longitude));
+      }
+    } catch (e) {
+      _mostrarError("Error de GPS: $e");
+    }
+  }
+
+  // --- LÓGICA 3: GUARDADO (Protección MongoDB contra errores) ---
+  Future<void> _confirmarYGuardar() async {
+    // Bloqueo de seguridad: No guardamos basura en la BD
+    if (_direccionTexto.contains("no disponible") ||
+        _direccionTexto == "Cargando...") {
+      _mostrarError("Selecciona una ubicación válida antes de guardar.");
+      return;
+    }
+
+    setState(() => _cargando = true);
+    try {
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      final usuarioService = UsuarioService();
+
+      String detalles = _pisoPuertaController.text.trim();
+      String direccionFinal = detalles.isNotEmpty
+          ? "$_direccionTexto, $detalles"
+          : _direccionTexto;
+
+      if (widget.soloSeleccionar) {
+        Navigator.pop(context, {
+          'direccion': direccionFinal,
+          'lat': _puntoActual.latitude,
+          'lng': _puntoActual.longitude,
+        });
+        return;
+      }
+
+      final userId = auth.usuarioActual?.id;
+      if (userId == null) throw "Sesión expirada";
+
+      bool exito = await usuarioService.actualizarDireccion(
+        userId: userId,
+        direccion: direccionFinal,
+        latitud: _puntoActual.latitude,
+        longitud: _puntoActual.longitude,
+      );
+
+      if (exito && mounted) {
+        auth.actualizarDireccionLocal(
+          nuevaDir: direccionFinal,
+          nuevaLat: _puntoActual.latitude,
+          nuevaLon: _puntoActual.longitude,
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      _mostrarError("Error al guardar: $e");
+    } finally {
+      if (mounted) setState(() => _cargando = false);
+    }
+  }
+
+  void _mostrarError(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), backgroundColor: AppColors.error),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Selecciona Ubicación"),
-        backgroundColor: AppColors.backgroundButton,
-      ),
-      body: Column(
+    final size = MediaQuery.of(context).size;
+
+    return ClienteAuthScaffold(
+      maxWidth: double.infinity,
+      padding: EdgeInsets.zero,
+      child: Column(
         children: [
-          // PARTE SUPERIOR: EL MAPA
-          Expanded(
-            flex: 1,
+          // SECCIÓN MAPA (Tamaño fijo para evitar errores de renderizado)
+          SizedBox(
+            height: size.height * 0.45,
             child: Stack(
               children: [
                 FlutterMap(
@@ -144,9 +236,20 @@ class _DireccionScreenState extends State<DireccionScreen> {
                   options: MapOptions(
                     initialCenter: _puntoActual,
                     initialZoom: 17,
-                    onPositionChanged: (position, hasGesture) {
+                    onPositionChanged: (pos, hasGesture) {
+                      setState(
+                        () => _puntoActual = pos.center!,
+                      ); // Movimiento visual fluido
                       if (hasGesture) {
-                        _obtenerDireccionDesdeCoords(position.center!);
+                        _debounceTimer?.cancel();
+                        _debounceTimer = Timer(
+                          const Duration(milliseconds: 500),
+                          () {
+                            _obtenerDireccionDesdeCoords(
+                              pos.center!,
+                            ); // Llamada a API con retraso
+                          },
+                        );
                       }
                     },
                   ),
@@ -159,219 +262,87 @@ class _DireccionScreenState extends State<DireccionScreen> {
                       markers: [
                         Marker(
                           point: _puntoActual,
-                          width: 80,
-                          height: 80,
+                          width: 50,
+                          height: 50,
                           child: const Icon(
                             Icons.location_on,
                             color: Colors.red,
-                            size: 45,
+                            size: 40,
                           ),
                         ),
                       ],
                     ),
                   ],
                 ),
+                // Barra de búsqueda (Estilo Login)
                 Positioned(
                   top: 10,
-                  left: 15,
-                  right: 15,
+                  left: 10,
+                  right: 10,
                   child: _buildBarraBusqueda(),
                 ),
               ],
             ),
           ),
 
-          // PARTE INFERIOR: INFO Y ACCIONES
-          // 2. PARTE INFERIOR: INFO Y ACCIONES
-          Expanded(
-            flex: 1,
-            child: Container(
-              color: Colors.white,
-              child: SingleChildScrollView(
-                // <--- Agregamos scroll para que el teclado no moleste
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 20,
+          // SECCIÓN FORMULARIO (Diseño idéntico al Login)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 20),
+            child: Column(
+              children: [
+                const AuthHeader(
+                  titulo: 'Tu dirección de entrega es:',
+                  // subtitulo: 'Confirma dónde enviaremos tu pedido',
                 ),
-                child: Column(
-                  children: [
-                    const Icon(
-                      Icons.location_searching_rounded,
-                      size: 40,
-                      color: Colors.grey,
-                    ),
-                    const SizedBox(height: 10),
+                const SizedBox(height: 20),
 
-                    if (_cargando) const LinearProgressIndicator(),
-
-                    // DIRECCIÓN DEL MAPA (Ya formateada en el paso anterior)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      child: Text(
-                        _direccionTexto,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // --- CAMPO NUEVO: PISO, PUERTA, ESCALERA ---
-                    TextField(
-                      controller: _pisoPuertaController,
-                      decoration: InputDecoration(
-                        labelText: "Piso, Puerta, Escalera, Bloque...",
-                        hintText: "Ej: 3º B, Escalera Derecha",
-                        prefixIcon: const Icon(Icons.apartment),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        filled: true,
-                        fillColor: Colors.grey[50],
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // BOTÓN GPS
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: OutlinedButton.icon(
-                        icon: const Icon(Icons.my_location),
-                        label: const Text("USAR MI UBICACIÓN ACTUAL"),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.blueAccent,
-                          side: const BorderSide(color: Colors.blueAccent),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                        ),
-                        onPressed: _cargando
-                            ? null
-                            : () async {
-                                final LocationService locationService =
-                                    LocationService();
-                                try {
-                                  Position? position = await locationService
-                                      .obtenerUbicacionActual();
-                                  if (position != null) {
-                                    _moverMapa(
-                                      LatLng(
-                                        position.latitude,
-                                        position.longitude,
-                                      ),
-                                    );
-                                  }
-                                } catch (e) {
-                                  if (!mounted) return;
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text("Error de GPS: $e")),
-                                  );
-                                }
-                              },
-                      ),
-                    ),
-
-                    const SizedBox(height: 15),
-
-                    // BOTÓN GUARDAR (Con tu lógica original + la dirección combinada)
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.backgroundButton,
-                        minimumSize: const Size(double.infinity, 55),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                      ),
-                      onPressed: _cargando
-                          ? null
-                          : () async {
-                              // 1. COMBINAMOS LAS DOS PARTES
-                              String detallesExtra = _pisoPuertaController.text
-                                  .trim();
-                              String direccionFinal = detallesExtra.isNotEmpty
-                                  ? "$_direccionTexto, $detallesExtra" // Formato: Calle, Nº, CP, Ciudad, 3ºB
-                                  : _direccionTexto;
-
-                              // Lógica de "Solo Seleccionar" (para cuando vienes de otro lado)
-                              if (widget.soloSeleccionar) {
-                                Navigator.pop(context, {
-                                  'direccion': direccionFinal,
-                                  'latitud': _puntoActual.latitude,
-                                  'longitud': _puntoActual.longitude,
-                                });
-                                return;
-                              }
-
-                              setState(() => _cargando = true);
-
-                              final auth = Provider.of<AuthProvider>(
-                                context,
-                                listen: false,
-                              );
-                              final usuarioService = UsuarioService();
-                              final userId = auth.usuarioActual?.id;
-
-                              if (userId == null) {
-                                _mostrarError(
-                                  "Sesión no válida. Vuelve a loguearte.",
-                                );
-                                return;
-                              }
-
-                              try {
-                                // 2. ENVIAMOS LA DIRECCIÓN FINAL AL SERVIDOR
-                                bool exito = await usuarioService
-                                    .actualizarDireccion(
-                                      userId: userId,
-                                      direccion: direccionFinal,
-                                      latitud: _puntoActual.latitude,
-                                      longitud: _puntoActual.longitude,
-                                    );
-
-                                if (exito) {
-                                  auth.actualizarDireccionLocal(
-                                    nuevaDir: direccionFinal,
-                                    nuevaLat: _puntoActual.latitude,
-                                    nuevaLon: _puntoActual.longitude,
-                                  );
-
-                                  if (!mounted) return;
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        "¡Ubicación guardada con éxito!",
-                                      ),
-                                      backgroundColor: Colors.green,
-                                    ),
-                                  );
-                                  Navigator.pop(context);
-                                } else {
-                                  _mostrarError(
-                                    "El servidor no pudo guardar la dirección.",
-                                  );
-                                }
-                              } catch (e) {
-                                _mostrarError("Error de conexión: $e");
-                              } finally {
-                                if (mounted) setState(() => _cargando = false);
-                              }
-                            },
-                      child: const Text(
-                        "CONFIRMAR Y GUARDAR",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
+                EntradaTexto(
+                  etiqueta: 'Dirección detectada',
+                  icono: Icons.map_outlined,
+                  controlador: _direccionController,
+                  readOnly: true,
                 ),
-              ),
+                const SizedBox(height: 15),
+
+                EntradaTexto(
+                  etiqueta: 'Piso, Puerta, Bloque...',
+                  icono: Icons.apartment,
+                  controlador: _pisoPuertaController,
+                ),
+
+                const SizedBox(height: 15),
+
+                // Botón GPS sutil
+                TextButton.icon(
+                  onPressed: _cargando ? null : _obtenerUbicacionGPS,
+                  icon: const Icon(
+                    Icons.my_location,
+                    color: AppColors.button,
+                    size: 18,
+                  ),
+                  label: const Text(
+                    "USAR MI UBICACIÓN ACTUAL",
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 30),
+
+                PrimaryButton(
+                  label: 'CONFIRMAR Y GUARDAR',
+                  isLoading: _cargando,
+                  // El botón se desactiva solo si la dirección es inválida
+                  onPressed:
+                      (_direccionTexto.contains("no disponible") ||
+                          _direccionTexto == "Cargando...")
+                      ? null
+                      : _confirmarYGuardar,
+                ),
+              ],
             ),
           ),
         ],
@@ -381,11 +352,7 @@ class _DireccionScreenState extends State<DireccionScreen> {
 
   Widget _buildBarraBusqueda() {
     return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(30),
-        boxShadow: const [BoxShadow(blurRadius: 10, color: Colors.black26)],
-      ),
+      margin: const EdgeInsets.symmetric(horizontal: 5),
       child: TypeAheadField(
         // --- NUEVO: TypeAheadField para autocompletar direcciones
         builder: (context, controller, focusNode) {
@@ -395,12 +362,21 @@ class _DireccionScreenState extends State<DireccionScreen> {
             autofocus: false,
             decoration: InputDecoration(
               hintText: "Escribe tu calle...",
+              prefixIcon: const Icon(Icons.search, color: Colors.grey),
+              filled: true,
+              fillColor: Colors.white,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 20,
                 vertical: 15,
               ),
-              border: InputBorder.none,
-              suffixIcon: const Icon(Icons.search),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(15),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(15),
+                borderSide: BorderSide(color: Colors.grey.withOpacity(0.2)),
+              ),
             ),
           );
         },
@@ -432,13 +408,6 @@ class _DireccionScreenState extends State<DireccionScreen> {
           child: Text("No se encontraron direcciones"),
         ),
       ),
-    );
-  }
-
-  void _mostrarError(String mensaje) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(mensaje), backgroundColor: Colors.redAccent),
     );
   }
 }
