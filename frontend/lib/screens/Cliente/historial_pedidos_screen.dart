@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/colors_style.dart';
 import '../../models/pedido_model.dart';
+import '../../screens/cliente/pedido_confirmado_screen.dart';
 import '../../services/api_service.dart';
 import '../../providers/auth_provider.dart';
 
@@ -57,14 +58,16 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
 
   Color _colorEstado(String estado) {
     switch (estado) {
+      case 'pendiente':
+        return const Color(0xFFB45309);
+      case 'preparando':
+        return Colors.deepOrange;
+      case 'listo':
+        return const Color(0xFF2563EB);
       case 'entregado':
         return Colors.green;
       case 'cancelado':
         return Colors.redAccent;
-      case 'preparando':
-        return Colors.deepOrange;
-      case 'listo':
-        return Colors.blue;
       default:
         return AppColors.gold;
     }
@@ -72,33 +75,39 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
 
   IconData _iconoEstado(String estado) {
     switch (estado) {
-      case 'entregado':
-        return Icons.check_circle_outline;
-      case 'cancelado':
-        return Icons.cancel_outlined;
+      case 'pendiente':
+        return Icons.pending_outlined;
       case 'preparando':
         return Icons.local_fire_department_outlined;
       case 'listo':
         return Icons.done_all;
+      case 'entregado':
+        return Icons.check_circle_outline;
+      case 'cancelado':
+        return Icons.cancel_outlined;
       default:
         return Icons.receipt_long;
     }
   }
 
-  String _etiquetaEstado(String estado) {
-    switch (estado) {
+  String _etiquetaEstado(Pedido pedido) {
+    switch (pedido.estado) {
       case 'pendiente':
         return 'Pendiente';
       case 'preparando':
         return 'En cocina';
       case 'listo':
-        return 'Listo para recoger';
+        switch (pedido.tipoEntrega) {
+          case 'domicilio': return 'Listo para envío';
+          case 'recoger':   return 'Listo para recoger';
+          default:          return 'Listo para servir';
+        }
       case 'entregado':
         return 'Entregado';
       case 'cancelado':
         return 'Cancelado';
       default:
-        return estado;
+        return pedido.estado;
     }
   }
 
@@ -204,7 +213,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    '${pedido.items} artículos · ${_etiquetaEstado(pedido.estado)}',
+                                    '${pedido.items} artículos · ${_etiquetaEstado(pedido)}',
                                     style: TextStyle(
                                       color: AppColors.textSecondary
                                           .withValues(alpha: 0.7),
@@ -236,7 +245,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
-                                    _etiquetaEstado(pedido.estado),
+                                    _etiquetaEstado(pedido),
                                     style: TextStyle(
                                       color: colorEstado,
                                       fontSize: 11,
@@ -277,7 +286,10 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
     );
   }
 
+  static const _estadosActivos = {'pendiente', 'preparando', 'listo'};
+
   Widget _buildDetalle(Pedido pedido, Color colorEstado) {
+    final esActivo = _estadosActivos.contains(pedido.estado);
     return Padding(
       padding: const EdgeInsets.only(top: 14),
       child: Column(
@@ -294,7 +306,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
                 children: [
                   Text(
                     '${p.cantidad}x',
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: AppColors.gold,
                       fontWeight: FontWeight.bold,
                       fontSize: 13,
@@ -333,6 +345,54 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
           if (pedido.direccion != null) ...[
             const SizedBox(height: 6),
             _buildInfoRow(Icons.location_on_outlined, pedido.direccion!),
+          ],
+
+          // ── Seguir pedido (solo activos) ──
+          if (esActivo) ...[
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              height: 40,
+              child: ElevatedButton.icon(
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => PedidoConfirmadoScreen(
+                      pedidoId: pedido.id,
+                      tipoEntrega: pedido.tipoEntrega,
+                      tipoPago: pedido.metodoPago,
+                      total: pedido.total,
+                      items: pedido.productos
+                          .map((p) => {
+                                'nombre': p.nombre,
+                                'cantidad': p.cantidad,
+                                'precio': p.precio,
+                                'sin': p.sin,
+                              })
+                          .toList(),
+                    ),
+                  ),
+                ),
+                icon: const Icon(Icons.radar, size: 16),
+                label: const Text(
+                  'SEGUIR PEDIDO',
+                  style: TextStyle(
+                    fontFamily: 'Playfair Display',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.button,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ),
           ],
         ],
       ),

@@ -216,7 +216,22 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
                   ...cart.items.values.map(
                     (item) => Padding(
                       padding: const EdgeInsets.only(bottom: 10),
-                      child: _ArticuloCard(item: item, cart: cart),
+                      child: Dismissible(
+                        key: Key(item.key),
+                        direction: DismissDirection.endToStart,
+                        background: Container(
+                          alignment: Alignment.centerRight,
+                          padding: const EdgeInsets.only(right: 20),
+                          color: AppColors.error.withValues(alpha: 0.85),
+                          child: const Icon(
+                            Icons.delete_outline,
+                            color: Colors.white,
+                            size: 22,
+                          ),
+                        ),
+                        onDismissed: (_) => cart.removeProduct(item.key),
+                        child: _ArticuloCard(item: item, cart: cart),
+                      ),
                     ),
                   ),
                 ],
@@ -247,7 +262,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
                     _EntregaCard(
                       icono: Icons.restaurant,
                       titulo: 'Mesa ${cart.numeroMesa}',
-                      subtitulo: 'Te lo servimos directamente',
+                      subtitulo: 'Te lo servimos directamente · ~15-20 min',
                       coste: 'Gratis',
                       seleccionada:
                           _entregaSeleccionada == OpcionEntrega.enMesa,
@@ -260,7 +275,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
                   _EntregaCard(
                     icono: Icons.delivery_dining,
                     titulo: 'A domicilio',
-                    subtitulo: 'En la puerta de tu casa',
+                    subtitulo: 'En la puerta de tu casa · ~35-50 min',
                     coste: '+3,99 €',
                     seleccionada:
                         _entregaSeleccionada == OpcionEntrega.domicilio,
@@ -276,7 +291,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
                   _EntregaCard(
                     icono: Icons.store_outlined,
                     titulo: 'Recoger en local',
-                    subtitulo: 'Listo cuando llegues',
+                    subtitulo: 'Listo cuando llegues · ~20-30 min',
                     coste: 'Gratis',
                     seleccionada: _entregaSeleccionada == OpcionEntrega.recoger,
                     onTap: () => setState(
@@ -837,6 +852,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
         estadoPago:
             estadoPago ??
             (_pagoSeleccionado == MetodoPago.efectivo ? 'pendiente' : 'pagado'),
+        restauranteId: cart.restauranteId,
       );
 
       final pedidoId =
@@ -2019,7 +2035,7 @@ class _StepperCard extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         GestureDetector(
-          onTap: () => cart.removeItem(item.producto.id),
+          onTap: () => cart.removeItem(item.key),
           child: Container(
             width: 30,
             height: 30,
@@ -2043,7 +2059,10 @@ class _StepperCard extends StatelessWidget {
           ),
         ),
         GestureDetector(
-          onTap: () => cart.addItem(item.producto),
+          onTap: () => cart.addItem(
+            item.producto,
+            ingredientesExcluidos: item.ingredientesExcluidos,
+          ),
           child: Container(
             width: 30,
             height: 30,

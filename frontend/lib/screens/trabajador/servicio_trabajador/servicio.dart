@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/core/colors_style.dart';
+import 'package:frontend/screens/trabajador/Pedidos/pedidos_listos_screen.dart';
 import 'package:frontend/screens/trabajador/servicio_trabajador/sacar_cuenta.dart';
 import 'package:frontend/screens/trabajador/servicio_trabajador/seleccion_mesa.dart';
 
@@ -241,6 +242,14 @@ class _ActionButtonsServicio extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
+        _MainButton(
+          icon: Icons.check_circle_outline,
+          label: "Pedidos listos",
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const PedidosListosScreen()),
+          ),
+        ),
         _MainButton(
           icon: Icons.restaurant_menu_outlined,
           label: "Comanda",

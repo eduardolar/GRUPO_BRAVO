@@ -1,10 +1,12 @@
 class ProductoPedido {
+  final String? productoId;
   final String nombre;
   final int cantidad;
   final double precio;
   final List<String> sin;
 
   ProductoPedido({
+    this.productoId,
     required this.nombre,
     required this.cantidad,
     required this.precio,
@@ -13,6 +15,7 @@ class ProductoPedido {
 
   factory ProductoPedido.fromMap(Map<String, dynamic> mapa) {
     return ProductoPedido(
+      productoId: mapa['producto_id'] as String?,
       nombre: mapa['nombre'] ?? mapa['producto_nombre'] ?? '',
       cantidad: mapa['cantidad'] ?? 1,
       precio: (mapa['precio'] ?? 0.0).toDouble(),

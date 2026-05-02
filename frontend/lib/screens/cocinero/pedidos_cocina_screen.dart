@@ -3,7 +3,9 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/models/pedido_model.dart';
+import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/services/api_service.dart';
+import 'package:provider/provider.dart';
 
 const _kEstados = ['pendiente', 'preparando', 'listo'];
 
@@ -63,7 +65,8 @@ class _PedidosCocinaScreenState extends State<PedidosCocinaScreen> {
 
   Future<void> _cargarPedidos() async {
     try {
-      final todos = await ApiService.obtenerTodosLosPedidos();
+      final restauranteId = context.read<AuthProvider>().usuarioActual?.restauranteId;
+      final todos = await ApiService.obtenerTodosLosPedidos(restauranteId: restauranteId);
       final activos = todos
           .where((p) => _kEstados.contains(p.estado))
           .toList()

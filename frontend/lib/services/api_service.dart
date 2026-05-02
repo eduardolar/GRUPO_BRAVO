@@ -142,6 +142,7 @@ class ApiService {
     String? notas,
     String? referenciaPago,
     required String estadoPago,
+    String? restauranteId,
   }) => PedidoService.crearPedido(
     userId: userId,
     items: items,
@@ -154,6 +155,7 @@ class ApiService {
     notas: notas,
     referenciaPago: referenciaPago,
     estadoPago: estadoPago,
+    restauranteId: restauranteId,
   );
 
   static Future<void> agregarItemsPedido({
@@ -170,8 +172,11 @@ class ApiService {
     required String userId,
   }) => PedidoService.obtenerHistorialPedidos(userId: userId);
 
-  static Future<List<Pedido>> obtenerTodosLosPedidos() =>
-      PedidoService.obtenerTodosLosPedidos();
+  static Future<Pedido> obtenerPedido(String pedidoId) =>
+      PedidoService.obtenerPedido(pedidoId);
+
+  static Future<List<Pedido>> obtenerTodosLosPedidos({String? restauranteId}) =>
+      PedidoService.obtenerTodosLosPedidos(restauranteId: restauranteId);
 
   static Future<void> actualizarEstadoPedido({
     required String pedidoId,

@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/colors_style.dart';
+import '../../services/api_service.dart';
 
 class PedidoConfirmadoScreen extends StatefulWidget {
   final String tipoEntrega;
@@ -28,6 +30,9 @@ class _PedidoConfirmadoScreenState extends State<PedidoConfirmadoScreen>
   late Animation<double> _scaleAnim;
   late Animation<double> _fadeAnim;
 
+  String _estadoActual = 'pendiente';
+  Timer? _pollTimer;
+
   @override
   void initState() {
     super.initState();
@@ -38,10 +43,34 @@ class _PedidoConfirmadoScreenState extends State<PedidoConfirmadoScreen>
     _scaleAnim = CurvedAnimation(parent: _ctrl, curve: Curves.elasticOut);
     _fadeAnim = CurvedAnimation(parent: _ctrl, curve: Curves.easeIn);
     _ctrl.forward();
+
+    if (widget.pedidoId != null) {
+      _pollEstado();
+      _pollTimer = Timer.periodic(
+        const Duration(seconds: 15),
+        (_) => _pollEstado(),
+      );
+    }
+  }
+
+  Future<void> _pollEstado() async {
+    if (widget.pedidoId == null) return;
+    try {
+      final pedido = await ApiService.obtenerPedido(widget.pedidoId!);
+      if (!mounted) return;
+      setState(() => _estadoActual = pedido.estado);
+      // Dejar de hacer polling cuando el pedido ya está cerrado
+      if (pedido.estado == 'entregado' || pedido.estado == 'cancelado') {
+        _pollTimer?.cancel();
+      }
+    } catch (_) {
+      // Fallo silencioso — se reintentará en el siguiente tick
+    }
   }
 
   @override
   void dispose() {
+    _pollTimer?.cancel();
     _ctrl.dispose();
     super.dispose();
   }
@@ -61,31 +90,41 @@ class _PedidoConfirmadoScreenState extends State<PedidoConfirmadoScreen>
     return Icons.store_outlined;
   }
 
+  // Mapea el estado real del backend a qué paso del tracking está activo
   List<_TrackingStep> get _pasosSeguimiento {
     final esDomicilio = widget.tipoEntrega.contains('domicilio');
-    return [
-      _TrackingStep(
-        icono: Icons.receipt_long_outlined,
-        label: 'Recibido',
-        hecho: true,
-      ),
-      _TrackingStep(
-        icono: Icons.restaurant_outlined,
-        label: 'En preparación',
-        hecho: false,
-        actual: true,
-      ),
-      _TrackingStep(
+    // índice del paso actual según el estado:
+    // pendiente=0, preparando=1, listo=2, entregado=3
+    final int activo = switch (_estadoActual) {
+      'preparando' => 1,
+      'listo'      => 2,
+      'entregado'  => 3,
+      _            => 0,
+    };
+
+    List<({IconData icono, String label})> definicion = [
+      (icono: Icons.receipt_long_outlined,  label: 'Recibido'),
+      (icono: Icons.restaurant_outlined,    label: 'En preparación'),
+      (
         icono: esDomicilio ? Icons.delivery_dining : Icons.storefront_outlined,
-        label: esDomicilio ? 'En camino' : 'Listo para recoger',
-        hecho: false,
+        label: esDomicilio ? 'En camino' : 'Listo',
       ),
-      _TrackingStep(
+      (
         icono: esDomicilio ? Icons.home_outlined : Icons.check_circle_outline,
         label: esDomicilio ? 'Entregado' : 'Servido',
-        hecho: false,
       ),
     ];
+
+    return definicion.indexed.map((entry) {
+      final i = entry.$1;
+      final d = entry.$2;
+      return _TrackingStep(
+        icono: d.icono,
+        label: d.label,
+        hecho: i < activo,
+        actual: i == activo,
+      );
+    }).toList();
   }
 
   @override

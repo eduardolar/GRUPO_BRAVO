@@ -253,6 +253,8 @@ async def crear_pedido(pedido: PedidoCrear):
         pedido_dict["mesa_id"] = pedido.mesaId
     if pedido.numeroMesa is not None:
         pedido_dict["numero_mesa"] = pedido.numeroMesa
+    if pedido.restauranteId:
+        pedido_dict["restaurante_id"] = pedido.restauranteId
 
     resultado = None
     try:
@@ -369,6 +371,7 @@ def obtener_pedidos(
     userId: Optional[str] = Query(None),
     mesaId: Optional[str] = Query(None),
     estadoPago: Optional[str] = Query(None),
+    restauranteId: Optional[str] = Query(None),
 ):
     filtro = {}
     if userId:
@@ -377,14 +380,9 @@ def obtener_pedidos(
         filtro["mesa_id"] = mesaId
     if estadoPago:
         filtro["estado_pago"] = estadoPago
-    if not filtro:
-        raise HTTPException(status_code=400, detail="Se requiere al menos un filtro (userId o mesaId)")
-    pedidos = coleccion_pedidos.find(filtro)
-def obtener_pedidos(userId: Optional[str] = Query(None)):
-    filtro = {}
-    if userId:
-        filtro["usuario_id"] = userId
-        # Si se proporciona userId, se filtran los pedidos de ese usuario. Si no, se devuelven todos.
+    if restauranteId:
+        filtro["restaurante_id"] = restauranteId
+    # Sin filtros → devolver todos los pedidos (usado por la pantalla de cocina)
     pedidos = coleccion_pedidos.find(filtro)
     resultado = []
     for p in pedidos:
@@ -406,6 +404,31 @@ def obtener_pedidos(userId: Optional[str] = Query(None)):
         })
     return resultado
 
+
+
+@router.get("/{pedido_id}")
+def obtener_pedido(pedido_id: str):
+    if not ObjectId.is_valid(pedido_id):
+        raise ValidacionError("ID de pedido inválido")
+    p = coleccion_pedidos.find_one({"_id": ObjectId(pedido_id)})
+    if not p:
+        raise NotFoundError("Pedido no encontrado")
+    items_raw = p.get("items", [])
+    return {
+        "id": str(p["_id"]),
+        "fecha": p.get("fecha", ""),
+        "total": p.get("total", 0),
+        "estado": p.get("estado", "pendiente"),
+        "estadoPago": p.get("estado_pago", "pendiente"),
+        "items": len(items_raw) if isinstance(items_raw, list) else items_raw,
+        "productos": items_raw if isinstance(items_raw, list) else [],
+        "tipoEntrega": p.get("tipo_entrega", ""),
+        "metodoPago": p.get("metodo_pago", ""),
+        "direccion": p.get("direccion_entrega", ""),
+        "mesaId": p.get("mesa_id"),
+        "numeroMesa": p.get("numero_mesa"),
+        "notas": p.get("notas", ""),
+    }
 
 
 @router.patch("/{pedido_id}/items")
