@@ -22,10 +22,24 @@ class _SeleccionarRestauranteScreenState extends State<SeleccionarRestauranteScr
     });
   }
 
+  static String? _validarHora(String? v) {
+    if (v == null || v.trim().isEmpty) return null;
+    final parts = v.trim().split(':');
+    if (parts.length != 2) return 'Usa el formato HH:MM';
+    final h = int.tryParse(parts[0]);
+    final m = int.tryParse(parts[1]);
+    if (h == null || m == null || h < 0 || h > 23 || m < 0 || m > 59) {
+      return 'Hora inválida (00:00 – 23:59)';
+    }
+    return null;
+  }
+
   // ── DIÁLOGO CREAR / EDITAR ────────────────────────────────────────
   Future<void> _mostrarFormulario({Restaurante? restaurante}) async {
     final nombreCtrl = TextEditingController(text: restaurante?.nombre ?? '');
     final direccionCtrl = TextEditingController(text: restaurante?.direccion ?? '');
+    final aperturaCtrl = TextEditingController(text: restaurante?.horarioApertura ?? '');
+    final cierreCtrl = TextEditingController(text: restaurante?.horarioCierre ?? '');
     final formKey = GlobalKey<FormState>();
     final esEdicion = restaurante != null;
 
@@ -86,6 +100,64 @@ class _SeleccionarRestauranteScreenState extends State<SeleccionarRestauranteScr
                 ),
                 validator: (v) => v == null || v.trim().isEmpty ? 'Campo obligatorio' : null,
               ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: aperturaCtrl,
+                      style: GoogleFonts.manrope(color: AppColors.textPrimary),
+                      keyboardType: TextInputType.datetime,
+                      decoration: InputDecoration(
+                        labelText: 'Apertura (HH:MM)',
+                        labelStyle: GoogleFonts.manrope(fontSize: 12, color: AppColors.textSecondary),
+                        hintText: '09:00',
+                        hintStyle: GoogleFonts.manrope(fontSize: 12, color: AppColors.line),
+                        prefixIcon: const Icon(Icons.schedule_outlined, color: AppColors.button, size: 18),
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: const OutlineInputBorder(borderRadius: BorderRadius.zero),
+                        enabledBorder: const OutlineInputBorder(
+                          borderRadius: BorderRadius.zero,
+                          borderSide: BorderSide(color: AppColors.line),
+                        ),
+                        focusedBorder: const OutlineInputBorder(
+                          borderRadius: BorderRadius.zero,
+                          borderSide: BorderSide(color: AppColors.button, width: 1.5),
+                        ),
+                      ),
+                      validator: _validarHora,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TextFormField(
+                      controller: cierreCtrl,
+                      style: GoogleFonts.manrope(color: AppColors.textPrimary),
+                      keyboardType: TextInputType.datetime,
+                      decoration: InputDecoration(
+                        labelText: 'Cierre (HH:MM)',
+                        labelStyle: GoogleFonts.manrope(fontSize: 12, color: AppColors.textSecondary),
+                        hintText: '23:00',
+                        hintStyle: GoogleFonts.manrope(fontSize: 12, color: AppColors.line),
+                        prefixIcon: const Icon(Icons.schedule_outlined, color: AppColors.button, size: 18),
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: const OutlineInputBorder(borderRadius: BorderRadius.zero),
+                        enabledBorder: const OutlineInputBorder(
+                          borderRadius: BorderRadius.zero,
+                          borderSide: BorderSide(color: AppColors.line),
+                        ),
+                        focusedBorder: const OutlineInputBorder(
+                          borderRadius: BorderRadius.zero,
+                          borderSide: BorderSide(color: AppColors.button, width: 1.5),
+                        ),
+                      ),
+                      validator: _validarHora,
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
@@ -111,10 +183,18 @@ class _SeleccionarRestauranteScreenState extends State<SeleccionarRestauranteScr
 
     final nombre = nombreCtrl.text.trim();
     final direccion = direccionCtrl.text.trim();
+    final apertura = aperturaCtrl.text.trim();
+    final cierre = cierreCtrl.text.trim();
     final provider = context.read<RestauranteProvider>();
 
     if (esEdicion) {
-      final ok = await provider.editar(id: restaurante.id, nombre: nombre, direccion: direccion);
+      final ok = await provider.editar(
+        id: restaurante.id,
+        nombre: nombre,
+        direccion: direccion,
+        horarioApertura: apertura,
+        horarioCierre: cierre,
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(ok ? 'Sucursal actualizada' : 'Error al actualizar', style: GoogleFonts.manrope()),

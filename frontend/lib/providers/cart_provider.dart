@@ -98,6 +98,15 @@ class CartProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  void limpiarRestaurante() {
+    _restauranteId = null;
+    _restauranteNombre = null;
+    _items.clear();
+    _mesaId = null;
+    _numeroMesa = null;
+    notifyListeners();
+  }
+
   bool isInCart(String productId) {
     return _items.containsKey(productId);
   }

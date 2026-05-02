@@ -500,6 +500,7 @@ class ApiService {
     required int comensales,
     required String turno,
     String? notas,
+    String? restauranteId,
   }) => ReservaService.crearReserva(
     userId: userId,
     nombreCompleto: nombreCompleto,
@@ -508,6 +509,7 @@ class ApiService {
     comensales: comensales,
     turno: turno,
     notas: notas,
+    restauranteId: restauranteId,
   );
 
   static Future<bool> hayDisponibilidad({

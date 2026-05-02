@@ -17,6 +17,7 @@ class ReservaService {
     required int comensales,
     required String turno,
     String? notas,
+    String? restauranteId,
   }) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 500));
@@ -68,6 +69,7 @@ class ReservaService {
           'comensales': comensales,
           'turno': turno,
           'notas': notas,
+          'restauranteId': restauranteId,
         }),
       ),
       retry: false,

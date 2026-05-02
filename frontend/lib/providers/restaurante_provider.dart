@@ -37,12 +37,35 @@ class RestauranteProvider with ChangeNotifier {
     return false;
   }
 
-  Future<bool> editar({required String id, required String nombre, required String direccion}) async {
-    final ok = await _service.editarRestaurante(id: id, nombre: nombre, direccion: direccion);
+  Future<bool> editar({
+    required String id,
+    required String nombre,
+    required String direccion,
+    String? horarioApertura,
+    String? horarioCierre,
+  }) async {
+    final ok = await _service.editarRestaurante(
+      id: id,
+      nombre: nombre,
+      direccion: direccion,
+      horarioApertura: horarioApertura,
+      horarioCierre: horarioCierre,
+    );
     if (ok) {
       _restaurantes = _restaurantes.map((r) {
         if (r.id != id) return r;
-        return Restaurante(id: r.id, nombre: nombre, direccion: direccion, codigo: r.codigo);
+        return Restaurante(
+          id: r.id,
+          nombre: nombre,
+          direccion: direccion,
+          codigo: r.codigo,
+          horarioApertura: horarioApertura == null
+              ? r.horarioApertura
+              : (horarioApertura.isEmpty ? null : horarioApertura),
+          horarioCierre: horarioCierre == null
+              ? r.horarioCierre
+              : (horarioCierre.isEmpty ? null : horarioCierre),
+        );
       }).toList();
       notifyListeners();
     }

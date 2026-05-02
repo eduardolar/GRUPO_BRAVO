@@ -12,6 +12,7 @@ import '../../components/Cliente/otp_fields.dart';
 // Importes para la redirección de roles
 import '../../models/usuario_model.dart';
 import '../cliente/menu_screen.dart';
+import '../cliente/seleccionar_restaurante_screen.dart' as sel_rest_cliente;
 import '../home_screen_trabajador.dart';
 import '../Administrador/admin_home_screen.dart';
 import '../super_admin/seleccionar_restaurante_screen.dart';
@@ -97,7 +98,11 @@ class _VerificacionScreenState extends State<VerificacionScreen> {
           _showSnackBar('¡Cuenta verificada!', isError: false);
           Navigator.pushAndRemoveUntil(
             context,
-            MaterialPageRoute(builder: (_) => const MenuScreen()),
+            MaterialPageRoute(
+              builder: (_) => sel_rest_cliente.SeleccionarRestauranteScreen(
+                siguiente: const MenuScreen(),
+              ),
+            ),
             (route) => false,
           );
         }
@@ -128,8 +133,9 @@ class _VerificacionScreenState extends State<VerificacionScreen> {
         destino = const HomeCocinero();
         break;
       case RolUsuario.cliente:
-      default:
-        destino = const MenuScreen();
+        destino = sel_rest_cliente.SeleccionarRestauranteScreen(
+          siguiente: const MenuScreen(),
+        );
         break;
     }
     

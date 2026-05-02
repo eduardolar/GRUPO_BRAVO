@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/colors_style.dart';
 import '../../models/usuario_model.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/cart_provider.dart';
 import 'home_screen.dart';
 import 'historial_pedidos_screen.dart';
 import 'direccion_screen.dart';
@@ -836,8 +837,11 @@ class _PerfilScreenState extends State<PerfilScreen> {
                             icono: Icons.logout,
                             label: 'Cerrar sesión',
                             onTap: () async {
-                              await Provider.of<AuthProvider>(context, listen: false).cerrarSesion();
+                              final auth = Provider.of<AuthProvider>(context, listen: false);
+                              final cart = Provider.of<CartProvider>(context, listen: false);
+                              await auth.cerrarSesion();
                               if (!context.mounted) return;
+                              cart.limpiarRestaurante();
                               Navigator.of(context).pushAndRemoveUntil(
                                 MaterialPageRoute(builder: (_) => const HomeScreen()),
                                 (route) => false,

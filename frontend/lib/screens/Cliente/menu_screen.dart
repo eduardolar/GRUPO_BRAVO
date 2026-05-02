@@ -10,10 +10,12 @@ import '../../models/producto_model.dart';
 import '../../models/pedido_model.dart';
 import '../../models/restaurante_model.dart';
 import '../../providers/cart_provider.dart';
+import '../../core/app_routes.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/restaurante_provider.dart';
 import 'delivery_options_screen.dart';
 import 'perfil_screen.dart';
+import 'seleccionar_restaurante_screen.dart';
 
 class MenuScreen extends StatefulWidget {
   const MenuScreen({super.key});
@@ -180,6 +182,50 @@ class _MenuScreenState extends State<MenuScreen> {
     }
   }
 
+  void _cambiarRestaurante() {
+    final cart = context.read<CartProvider>();
+    if (cart.totalQuantity > 0) {
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          backgroundColor: AppColors.panel,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text(
+            'Cambiar restaurante',
+            style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold),
+          ),
+          content: const Text(
+            'Al cambiar de restaurante se vaciará tu carrito actual.',
+            style: TextStyle(color: AppColors.textSecondary),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar', style: TextStyle(color: AppColors.textSecondary)),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _irASeleccionarRestaurante();
+              },
+              child: const Text('Cambiar', style: TextStyle(color: AppColors.gold, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      );
+    } else {
+      _irASeleccionarRestaurante();
+    }
+  }
+
+  void _irASeleccionarRestaurante() {
+    context.read<CartProvider>().limpiarRestaurante();
+    Navigator.pushReplacement(
+      context,
+      AppRoute.slide(const SeleccionarRestauranteScreen(siguiente: MenuScreen())),
+    );
+  }
+
   void _showSnack(BuildContext context, String mensaje) {
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
@@ -327,6 +373,28 @@ class _MenuScreenState extends State<MenuScreen> {
                                 fontSize: 11,
                                 letterSpacing: 0.4,
                               ),
+                            ),
+                            const SizedBox(height: 6),
+                            Consumer<CartProvider>(
+                              builder: (_, cart, _) {
+                                if (cart.restauranteNombre == null) return const SizedBox.shrink();
+                                return GestureDetector(
+                                  onTap: _cambiarRestaurante,
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.store_outlined, color: Colors.white38, size: 12),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        cart.restauranteNombre!,
+                                        style: const TextStyle(color: Colors.white38, fontSize: 11),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      const Icon(Icons.sync, color: AppColors.gold, size: 12),
+                                    ],
+                                  ),
+                                );
+                              },
                             ),
                           ],
                         ),

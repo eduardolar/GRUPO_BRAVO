@@ -2,7 +2,7 @@ import logging
 from fastapi import APIRouter, HTTPException, Query
 from bson import ObjectId
 from datetime import date
-from database import coleccion_reservas, coleccion_mesas
+from database import coleccion_reservas, coleccion_mesas, coleccion_restaurantes
 from models import ReservaCrear
 
 logger = logging.getLogger("uvicorn")
@@ -115,8 +115,34 @@ def obtener_reservas(usuarioId: str = Query(...)):
     return resultado
 
 
+def _hora_en_rango(hora: str, apertura: str, cierre: str) -> bool:
+    mins = _hora_a_minutos(hora)
+    a = _hora_a_minutos(apertura)
+    c = _hora_a_minutos(cierre)
+    if c > a:
+        return a <= mins < c
+    else:  # cruza medianoche
+        return mins >= a or mins < c
+
+
 @router.post("")
 def crear_reserva(reserva: ReservaCrear):
+    # Validar horario del restaurante si se proporcionó
+    if reserva.restauranteId:
+        try:
+            rest = coleccion_restaurantes.find_one({"_id": ObjectId(reserva.restauranteId)})
+        except Exception:
+            rest = None
+        if rest:
+            apertura = rest.get("horario_apertura")
+            cierre = rest.get("horario_cierre")
+            if apertura and cierre:
+                if not _hora_en_rango(reserva.hora, apertura, cierre):
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"El restaurante no acepta reservas a las {reserva.hora}. Horario de apertura: {apertura} – {cierre}",
+                    )
+
     ocupadas = _mesas_ocupadas_por_hora(reserva.fecha, reserva.hora)
 
     if reserva.mesaId:
@@ -164,6 +190,7 @@ def crear_reserva(reserva: ReservaCrear):
         "mesa_id": mesa_id,
         "numero_mesa": numero_mesa,
         "estado": "Confirmada",
+        "restaurante_id": reserva.restauranteId,
     }
     if reserva.notas is None:
         reserva_dict.pop("notas")

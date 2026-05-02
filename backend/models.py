@@ -148,6 +148,7 @@ class ReservaCrear(BaseModel):
     turno: str
     mesaId: Optional[str] = None
     notas: Optional[str] = None
+    restauranteId: Optional[str] = None
 
 class ValidarQR(BaseModel):
     codigoQr: str
