@@ -21,12 +21,26 @@ class GestionUsuariosScreen extends StatefulWidget {
 }
 
 class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<UsuarioProvider>().cargar();
     });
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text.trim().toLowerCase();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   // Orden y etiquetas de roles
@@ -98,6 +112,48 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
     );
   }
 
+  List<Usuario> _filtrarPorBusqueda(List<Usuario> lista) {
+    if (_searchQuery.isEmpty) return lista;
+    return lista.where((u) {
+      return u.nombre.toLowerCase().contains(_searchQuery) ||
+          u.email.toLowerCase().contains(_searchQuery);
+    }).toList();
+  }
+
+  Widget _buildBuscador() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 640),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.07),
+              border: Border.all(color: Colors.white12),
+            ),
+            child: TextField(
+              controller: _searchController,
+              style: GoogleFonts.manrope(color: Colors.white, fontSize: 14),
+              decoration: InputDecoration(
+                hintText: 'Buscar por nombre o email...',
+                hintStyle: GoogleFonts.manrope(color: Colors.white38, fontSize: 14),
+                prefixIcon: const Icon(Icons.search, color: Colors.white38, size: 20),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.close, color: Colors.white38, size: 18),
+                        onPressed: () => _searchController.clear(),
+                      )
+                    : null,
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -118,6 +174,7 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildHeader(),
+                _buildBuscador(),
                 Expanded(
                   child: Consumer<UsuarioProvider>(
                     builder: (context, provider, _) {
@@ -135,7 +192,7 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
                         );
                       }
 
-                      final lista = _filtrarPorRestaurante(provider.usuarios);
+                      final lista = _filtrarPorBusqueda(_filtrarPorRestaurante(provider.usuarios));
                       final grupos = _agruparPorRol(lista);
 
                       if (grupos.isEmpty) {
