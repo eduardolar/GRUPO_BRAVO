@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../models/restaurante_model.dart';
 import '../../providers/restaurante_provider.dart';
+import '../../providers/usuario_provider.dart';
 import 'home_screen_super_admin.dart';
 import '../../core/colors_style.dart';
 
@@ -19,6 +20,7 @@ class _SeleccionarRestauranteScreenState extends State<SeleccionarRestauranteScr
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<RestauranteProvider>().cargar();
+      context.read<UsuarioProvider>().cargar();
     });
   }
 
@@ -300,7 +302,9 @@ class _SeleccionarRestauranteScreenState extends State<SeleccionarRestauranteScr
             ),
           ),
 
-          Consumer<RestauranteProvider>(
+          Consumer<UsuarioProvider>(
+            builder: (context, usuarioProvider, _) {
+          return Consumer<RestauranteProvider>(
             builder: (context, provider, _) {
               if (provider.cargando) {
                 return const SliverFillRemaining(
@@ -343,6 +347,12 @@ class _SeleccionarRestauranteScreenState extends State<SeleccionarRestauranteScr
                         child: _RestauranteCard(
                           restaurante: restaurantes[index],
                           numero: index + 1,
+                          personalCount: usuarioProvider.usuarios.where((u) {
+                            final idDB = (u.restauranteId ?? '').toString().trim().toLowerCase();
+                            return idDB == restaurantes[index].id.trim().toLowerCase() &&
+                                u.rolRaw != 'cliente' &&
+                                u.rolRaw != 'superadministrador';
+                          }).length,
                           onEdit: () { _mostrarFormulario(restaurante: restaurantes[index]); },
                           onDelete: () { _confirmarBorrado(restaurantes[index]); },
                         ),
@@ -353,7 +363,9 @@ class _SeleccionarRestauranteScreenState extends State<SeleccionarRestauranteScr
                 ),
               );
             },
-          ),
+          );
+        },
+        ),
         ],
       ),
     );
@@ -442,12 +454,14 @@ class _HeroHeader extends StatelessWidget {
 class _RestauranteCard extends StatelessWidget {
   final Restaurante restaurante;
   final int numero;
+  final int personalCount;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
   const _RestauranteCard({
     required this.restaurante,
     required this.numero,
+    required this.personalCount,
     required this.onEdit,
     required this.onDelete,
   });
@@ -503,33 +517,82 @@ class _RestauranteCard extends StatelessWidget {
                   ),
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 8, 16),
+                  padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        restaurante.nombre,
-                        style: GoogleFonts.manrope(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
-                      ),
-                      const SizedBox(height: 5),
+                      // Nombre + badge abierto/cerrado
                       Row(
                         children: [
-                          const Icon(Icons.location_on_outlined, size: 13, color: AppColors.textSecondary),
+                          Expanded(
+                            child: Text(
+                              restaurante.nombre,
+                              style: GoogleFonts.manrope(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          _BadgeEstado(abierto: restaurante.estaAbierto()),
+                        ],
+                      ),
+                      const SizedBox(height: 5),
+                      // Direccion
+                      Row(
+                        children: [
+                          const Icon(Icons.location_on_outlined,
+                              size: 13, color: AppColors.textSecondary),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
                               restaurante.direccion,
-                              style: GoogleFonts.manrope(fontSize: 12, color: AppColors.textSecondary),
+                              style: GoogleFonts.manrope(
+                                  fontSize: 12, color: AppColors.textSecondary),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 6),
+                      // Horario + Personal
+                      Row(
+                        children: [
+                          if (restaurante.horarioApertura != null &&
+                              restaurante.horarioCierre != null) ...[
+                            const Icon(Icons.schedule_outlined,
+                                size: 13, color: AppColors.textSecondary),
+                            const SizedBox(width: 4),
+                            Text(
+                              restaurante.horarioApertura! +
+                                  ' - ' +
+                                  restaurante.horarioCierre!,
+                              style: GoogleFonts.manrope(
+                                  fontSize: 11, color: AppColors.textSecondary),
+                            ),
+                            const SizedBox(width: 12),
+                          ],
+                          const Icon(Icons.badge_outlined,
+                              size: 13, color: AppColors.textSecondary),
+                          const SizedBox(width: 4),
+                          Text(
+                            personalCount.toString() + ' empleados',
+                            style: GoogleFonts.manrope(
+                                fontSize: 11, color: AppColors.textSecondary),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
                       Text(
-                        'GESTIONAR →',
-                        style: GoogleFonts.manrope(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.button, letterSpacing: 1.5),
+                        'GESTIONAR',
+                        style: GoogleFonts.manrope(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.button,
+                          letterSpacing: 1.5,
+                        ),
                       ),
                     ],
                   ),
@@ -584,6 +647,38 @@ class _EmptyState extends StatelessWidget {
               style: GoogleFonts.manrope(fontSize: 13, color: AppColors.textSecondary, height: 1.6),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── BADGE ABIERTO / CERRADO ──────────────────────────────────────────
+class _BadgeEstado extends StatelessWidget {
+  final bool abierto;
+  const _BadgeEstado({required this.abierto});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: abierto
+            ? const Color(0xFF2E7D32).withValues(alpha: 0.10)
+            : AppColors.error.withValues(alpha: 0.10),
+        border: Border.all(
+          color: abierto
+              ? const Color(0xFF2E7D32).withValues(alpha: 0.40)
+              : AppColors.error.withValues(alpha: 0.40),
+        ),
+      ),
+      child: Text(
+        abierto ? 'ABIERTO' : 'CERRADO',
+        style: GoogleFonts.manrope(
+          fontSize: 8,
+          fontWeight: FontWeight.w800,
+          color: abierto ? const Color(0xFF2E7D32) : AppColors.error,
+          letterSpacing: 1,
         ),
       ),
     );
