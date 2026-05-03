@@ -20,11 +20,8 @@ class _AdminNuevoIngredienteScreenState
   final _cantidadCtrl = TextEditingController();
   final _minimoCtrl = TextEditingController();
 
-  String _categoriaSeleccionada = 'Carnes';
-  String _unidadSeleccionada = 'kg';
-
-  final List<String> _categorias = IngredienteService.categorias;
-  final List<String> _unidades = IngredienteService.unidades;
+  String _categoriaSeleccionada = IngredienteService.categorias.first;
+  String _unidadSeleccionada = IngredienteService.unidades.first;
 
   @override
   void dispose() {
@@ -34,33 +31,71 @@ class _AdminNuevoIngredienteScreenState
     super.dispose();
   }
 
-  void _crearIngrediente() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() => _estaGuardando = true);
-      try {
-        await IngredienteService.crearIngrediente({
-          'nombre': _nombreCtrl.text.trim(),
-          'categoria': _categoriaSeleccionada,
-          'cantidad_actual': double.parse(_cantidadCtrl.text),
-          'unidad': _unidadSeleccionada,
-          'stock_minimo': double.parse(_minimoCtrl.text),
-        });
-        if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Creado con éxito')));
-          Navigator.pop(context);
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-          );
-        }
-      } finally {
-        if (mounted) setState(() => _estaGuardando = false);
-      }
+  Future<void> _crearIngrediente() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _estaGuardando = true);
+    try {
+      await IngredienteService.crearIngrediente({
+        'nombre': _nombreCtrl.text.trim(),
+        'categoria': _categoriaSeleccionada,
+        'cantidad_actual': double.parse(_cantidadCtrl.text.trim()),
+        'unidad': _unidadSeleccionada,
+        'stock_minimo': double.parse(_minimoCtrl.text.trim()),
+      });
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Ingrediente creado con éxito'),
+          backgroundColor: AppColors.disp,
+        ),
+      );
+      Navigator.pop(context, true);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _estaGuardando = false);
     }
+  }
+
+  InputDecoration _dropdownDecoration(String label, IconData icono) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: const TextStyle(color: AppColors.textSecondary),
+      prefixIcon: Icon(icono, color: AppColors.gold),
+      filled: true,
+      fillColor: AppColors.panel,
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(15),
+        borderSide: const BorderSide(color: AppColors.line),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(15),
+        borderSide: const BorderSide(color: AppColors.button, width: 2),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(15),
+        borderSide: const BorderSide(color: AppColors.error),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(15),
+        borderSide: const BorderSide(color: AppColors.error, width: 2),
+      ),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+      errorStyle: const TextStyle(color: AppColors.error),
+    );
+  }
+
+  String? _validarNumero(String? v) {
+    if (v == null || v.trim().isEmpty) return 'Campo requerido';
+    if (double.tryParse(v.trim()) == null) return 'Introduce un número válido';
+    if (double.parse(v.trim()) < 0) return 'Debe ser mayor o igual a 0';
+    return null;
   }
 
   @override
@@ -70,119 +105,126 @@ class _AdminNuevoIngredienteScreenState
       appBar: AppBar(
         title: const Text('Nuevo Ingrediente'),
         backgroundColor: AppColors.backgroundButton,
+        foregroundColor: Colors.white,
+        elevation: 0,
       ),
-      body: _estaGuardando
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  children: [
-                    EntradaTexto(
-                      icono: Icons.abc,
-                      controlador: _nombreCtrl,
-                      etiqueta: 'Nombre del Ingrediente',
-                      validador: (v) => v!.isEmpty ? 'Requerido' : null,
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          flex: 2,
-                          child: EntradaTexto(
-                            icono: Icons.numbers, 
-                            controlador: _cantidadCtrl,
-                            etiqueta:'Cantidad Inicial',
-                            tipoTeclado: TextInputType.number,
-                            validador: (v) => v!.isEmpty ? 'Requerido' : null,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          flex: 1,
-                          child: DropdownButtonFormField<String>(
-                            value: _unidadSeleccionada,
-                            decoration: const InputDecoration(
-                              labelText: 'Unidad',
-                            ),
-                            items: _unidades
-                                .map(
-                                  (u) => DropdownMenuItem(
-                                    value: u,
-                                    child: Text(u),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: (val) =>
-                                setState(() => _unidadSeleccionada = val!),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    EntradaTexto(
-                      icono: Icons.warning,
-                      controlador: _minimoCtrl,
-                      etiqueta: 'Stock Mínimo de Alerta',
-                      tipoTeclado: TextInputType.number,
-                      validador: (v) => v!.isEmpty ? 'Requerido' : null,
-                    ),
-                    const SizedBox(height: 32),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        onPressed: _crearIngrediente,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                        ),
-                        child: const Text(
-                          'CREAR INGREDIENTE',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
-                    ),
-                  ],
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── Nombre ──────────────────────────────────────────────────
+              EntradaTexto(
+                icono: Icons.label_outline,
+                controlador: _nombreCtrl,
+                etiqueta: 'Nombre del ingrediente',
+                validador: (v) =>
+                    (v == null || v.trim().isEmpty) ? 'Campo requerido' : null,
+              ),
+
+              // ── Categoría ────────────────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.only(bottom: 20),
+                child: DropdownButtonFormField<String>(
+                  initialValue: _categoriaSeleccionada,
+                  decoration: _dropdownDecoration('Categoría', Icons.category_outlined),
+                  isExpanded: true,
+                  style: const TextStyle(color: AppColors.textPrimary),
+                  dropdownColor: AppColors.panel,
+                  items: IngredienteService.categorias
+                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                      .toList(),
+                  onChanged: (val) =>
+                      setState(() => _categoriaSeleccionada = val!),
                 ),
               ),
-            ),
-    );
-  }
 
-  Widget botonGuardar() {
-    return Container(
-      width: double.infinity,
-      height: 55,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: const [
-          BoxShadow(
-            color: AppColors.shadow,
-            blurRadius: 10,
-            offset: Offset(0, 5),
+              // ── Cantidad inicial + Unidad ────────────────────────────────
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: EntradaTexto(
+                      icono: Icons.inventory_2_outlined,
+                      controlador: _cantidadCtrl,
+                      etiqueta: 'Cantidad inicial',
+                      tipoTeclado: const TextInputType.numberWithOptions(decimal: true),
+                      validador: _validarNumero,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 20),
+                      child: DropdownButtonFormField<String>(
+                        initialValue: _unidadSeleccionada,
+                        decoration: _dropdownDecoration('Unidad', Icons.scale_outlined),
+                        style: const TextStyle(color: AppColors.textPrimary),
+                        dropdownColor: AppColors.panel,
+                        items: IngredienteService.unidades
+                            .map((u) => DropdownMenuItem(value: u, child: Text(u)))
+                            .toList(),
+                        onChanged: (val) =>
+                            setState(() => _unidadSeleccionada = val!),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              // ── Stock mínimo ─────────────────────────────────────────────
+              EntradaTexto(
+                icono: Icons.warning_amber_outlined,
+                controlador: _minimoCtrl,
+                etiqueta: 'Stock mínimo de alerta',
+                tipoTeclado: const TextInputType.numberWithOptions(decimal: true),
+                validador: _validarNumero,
+              ),
+
+              const SizedBox(height: 12),
+
+              // ── Botón crear ──────────────────────────────────────────────
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton(
+                  onPressed: _estaGuardando ? null : _crearIngrediente,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.button,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor:
+                        AppColors.button.withValues(alpha: 0.5),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    elevation: 2,
+                    shadowColor: AppColors.sombra.withValues(alpha: 0.4),
+                  ),
+                  child: _estaGuardando
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2.5,
+                          ),
+                        )
+                      : const Text(
+                          'CREAR INGREDIENTE',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: ElevatedButton(
-        onPressed: () {
-          if (_formKey.currentState!.validate()) {
-            // Añadir lógica para enviar este nuevo ingrediente al servidor
-            print("guardando nuevo plato...");
-            Navigator.pop(context);
-          } else {
-            print("Formulario no válido");
-          }
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.button,
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
-          ),
-          elevation: 0,
         ),
-        child: Text("CREAR INGREDIENTE"),
       ),
     );
   }

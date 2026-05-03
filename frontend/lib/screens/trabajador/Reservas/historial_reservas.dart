@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:frontend/models/reserva_model.dart';
 import 'package:frontend/services/api_service.dart';
 import 'package:intl/intl.dart';
@@ -23,6 +23,7 @@ class _HistorialReservasState extends State<HistorialReservas> {
   }
 
   Future<void> _cargarReservas() async {
+    final messenger = ScaffoldMessenger.of(context);
     try {
       final reservas = await ApiService.obtenerReservas(userId: '');
       setState(() {
@@ -31,7 +32,7 @@ class _HistorialReservasState extends State<HistorialReservas> {
       });
     } catch (e) {
       setState(() => _cargando = false);
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(content: Text('Error al cargar reservas: $e')),
       );
     }
@@ -51,7 +52,7 @@ class _HistorialReservasState extends State<HistorialReservas> {
             onPrimary: Colors.white,
             surface: AppColors.panel,
             onSurface: Colors.white,
-            surfaceVariant: AppColors.backgroundButton,
+            surfaceContainerHighest: AppColors.backgroundButton,
             onSurfaceVariant: Colors.white70,
             secondaryContainer: AppColors.backgroundButton,
             onSecondaryContainer: Colors.white,
@@ -82,7 +83,7 @@ class _HistorialReservasState extends State<HistorialReservas> {
             }),
             yearForegroundColor: WidgetStateProperty.all(Colors.white),
           ),
-          dialogBackgroundColor: AppColors.background,
+          dialogTheme: const DialogThemeData(backgroundColor: AppColors.background),
         ),
         child: child!,
       );
@@ -171,9 +172,9 @@ List<Reserva> _filtrarReservasPorFecha() {
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                Colors.black.withOpacity(0.4),
-                Colors.black.withOpacity(0.2),
-                AppColors.background.withOpacity(0.9),
+                Colors.black.withValues(alpha:0.4),
+                Colors.black.withValues(alpha:0.2),
+                AppColors.background.withValues(alpha:0.9),
               ],
             ),
           ),
@@ -308,8 +309,8 @@ List<Reserva> _filtrarReservasPorFecha() {
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: esCena
-                        ? Colors.indigo.withOpacity(0.2)
-                        : Colors.orange.withOpacity(0.2),
+                        ? Colors.indigo.withValues(alpha:0.2)
+                        : Colors.orange.withValues(alpha:0.2),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
@@ -337,13 +338,13 @@ List<Reserva> _filtrarReservasPorFecha() {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.15),
+                    color: Colors.green.withValues(alpha:0.15),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     reserva.estado,
                     style: const TextStyle(
-                      color: Colors.green,
+                      color: AppColors.disp,
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
                     ),

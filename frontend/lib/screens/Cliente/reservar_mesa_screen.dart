@@ -1,11 +1,14 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../core/colors_style.dart';
 import '../../models/reserva_model.dart';
+import '../../models/restaurante_model.dart';
 import '../../services/api_service.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/cart_provider.dart';
+import '../../providers/restaurante_provider.dart';
 import 'perfil_screen.dart';
 
 class ReservarMesaScreen extends StatefulWidget {
@@ -70,6 +73,8 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
   List<Reserva> _misReservas = [];
   bool _cargandoReservas = false;
 
+  Restaurante? _restaurante;
+
   static const double _dateItemWidth = 64.0;
 
   // ── Constantes de texto ──
@@ -101,6 +106,7 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
     _cargarDisponibilidad();
     _cargarMaxComensales();
     _cargarReservas();
+    _loadRestaurante();
   }
 
   @override
@@ -112,6 +118,43 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
     _notasController.dispose();
     super.dispose();
   }
+
+  // ── Horario del restaurante ──
+  Future<void> _loadRestaurante() async {
+    final cartRid = context.read<CartProvider>().restauranteId;
+    if (cartRid == null) return;
+    try {
+      final prov = context.read<RestauranteProvider>();
+      if (prov.restaurantes.isEmpty) await prov.cargar();
+      if (!mounted) return;
+      final matches = prov.restaurantes.where((r) => r.id == cartRid);
+      if (matches.isNotEmpty) {
+        setState(() => _restaurante = matches.first);
+        _cargarDisponibilidad();
+      }
+    } catch (e) { debugPrint('$e'); }
+  }
+
+  static int _parseMins(String t) {
+    final parts = t.split(':');
+    return int.parse(parts[0]) * 60 + int.parse(parts[1]);
+  }
+
+  bool _horaEnRango(TimeOfDay t) {
+    final r = _restaurante;
+    if (r?.horarioApertura == null || r?.horarioCierre == null) return true;
+    final mins = t.hour * 60 + t.minute;
+    final apertura = _parseMins(r!.horarioApertura!);
+    final cierre = _parseMins(r.horarioCierre!);
+    if (cierre > apertura) {
+      return mins >= apertura && mins < cierre;
+    } else {
+      return mins >= apertura || mins < cierre;
+    }
+  }
+
+  List<TimeOfDay> _horasFiltradas(String turno) =>
+      _horasPorTurno[turno]!.where(_horaEnRango).toList();
 
   // ── Helpers ──
   String _hora(TimeOfDay t) =>
@@ -151,12 +194,12 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
         setState(() => _maxComensales =
             mesas.map((m) => m.capacidad).reduce((a, b) => a > b ? a : b));
       }
-    } catch (_) {}
+    } catch (e) { debugPrint('$e'); }
   }
 
   Future<void> _cargarDisponibilidad() async {
     setState(() => _cargandoDisponibilidad = true);
-    final horas = _horasPorTurno[_turnoSeleccionado]!;
+    final horas = _horasFiltradas(_turnoSeleccionado);
     final resultado = <String, bool>{};
     for (final h in horas) {
       resultado[_hora(h)] = await ApiService.hayDisponibilidad(
@@ -174,8 +217,11 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
   }
 
   void _autoSeleccionarHoraLibre() {
-    if (!(_disponibilidadHoras[_hora(_horaSeleccionada)] ?? true)) {
-      for (final h in _horasPorTurno[_turnoSeleccionado]!) {
+    final horas = _horasFiltradas(_turnoSeleccionado);
+    if (horas.isEmpty) return;
+    if (!horas.contains(_horaSeleccionada) ||
+        !(_disponibilidadHoras[_hora(_horaSeleccionada)] ?? true)) {
+      for (final h in horas) {
         if (_disponibilidadHoras[_hora(h)] ?? true) {
           _horaSeleccionada = h;
           return;
@@ -196,7 +242,10 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
     HapticFeedback.selectionClick();
     setState(() {
       _turnoSeleccionado = turno;
-      _horaSeleccionada = _horasPorTurno[turno]!.first;
+      final filtradas = _horasFiltradas(turno);
+      _horaSeleccionada = filtradas.isNotEmpty
+          ? filtradas.first
+          : _horasPorTurno[turno]!.first;
     });
     _cargarDisponibilidad();
   }
@@ -215,6 +264,7 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
     setState(() => _isLoading = true);
     try {
       final auth = Provider.of<AuthProvider>(context, listen: false);
+      final restauranteId = context.read<CartProvider>().restauranteId;
       final resultado = await ApiService.crearReserva(
         userId: auth.usuarioActual?.id ?? '',
         nombreCompleto: _nombreController.text.trim(),
@@ -225,6 +275,7 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
         notas: _notasController.text.trim().isNotEmpty
             ? _notasController.text.trim()
             : null,
+        restauranteId: restauranteId,
       );
       if (!mounted) return;
       _mostrarConfirmacion(resultado);
@@ -448,7 +499,7 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
   void _snack(String msg, {bool error = false}) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg),
-      backgroundColor: error ? AppColors.error : Colors.green,
+      backgroundColor: error ? AppColors.error : AppColors.disp,
       behavior: SnackBarBehavior.floating,
     ));
   }
@@ -767,10 +818,37 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
           );
         }
 
+        final slotsFiltrados = _horasFiltradas(_turnoSeleccionado);
+
+        if (slotsFiltrados.isEmpty) {
+          return Container(
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.04),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.white10),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.schedule_outlined, color: Colors.white38, size: 16),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    _restaurante?.horarioApertura != null
+                        ? 'El restaurante no tiene horario de ${_turnoSeleccionado == 'comida' ? 'comida' : 'cena'} · Abre ${_restaurante!.horarioApertura} – ${_restaurante!.horarioCierre}'
+                        : 'No hay horarios disponibles para este turno',
+                    style: const TextStyle(color: Colors.white38, fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
         return Wrap(
           spacing: spacing,
           runSpacing: spacing,
-          children: _horasPorTurno[_turnoSeleccionado]!.map((hora) {
+          children: slotsFiltrados.map((hora) {
             final horaStr = _hora(hora);
             final disponible = _disponibilidadHoras[horaStr] ?? true;
             final sel = hora == _horaSeleccionada && disponible;
@@ -822,7 +900,7 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
                         color: sel
                             ? Colors.white70
                             : disponible
-                                ? Colors.green
+                                ? AppColors.disp
                                 : AppColors.error,
                         fontSize: fontSize,
                         fontWeight: FontWeight.w600,
@@ -1395,10 +1473,10 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
 
   Color _colorEstado(String estado) {
     switch (estado.toLowerCase()) {
-      case 'confirmada': return Colors.green;
+      case 'confirmada': return AppColors.disp;
       case 'pendiente':  return Colors.orange;
       case 'cancelada':  return AppColors.error;
-      default:           return Colors.blueAccent;
+      default:           return const Color(0xFF3B82F6);
     }
   }
 }
@@ -1442,7 +1520,7 @@ class _ConfirmacionSheet extends StatelessWidget {
               shape: BoxShape.circle,
               color: AppColors.successBackground,
             ),
-            child: const Icon(Icons.check, color: Colors.green, size: 36),
+            child: const Icon(Icons.check, color: AppColors.disp, size: 36),
           ),
           const SizedBox(height: 16),
           const Text(

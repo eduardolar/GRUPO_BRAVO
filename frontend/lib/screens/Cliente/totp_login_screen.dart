@@ -117,7 +117,7 @@ class _TotpLoginScreenState extends State<TotpLoginScreen> {
             try {
               final auth = Provider.of<AuthProvider>(context, listen: false);
               await auth.completarLogin2faRecovery(codigo);
-              if (!mounted) return;
+              if (!mounted || !ctx.mounted) return;
               Navigator.of(ctx).pop();
               _navigateToRoleHome(auth.usuarioActual!);
             } catch (e) {

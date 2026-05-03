@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:frontend/screens/cliente/perfil_screen.dart';
 import 'package:frontend/screens/trabajador/Reservas/gestion_reservas.dart';
 import 'package:provider/provider.dart';
@@ -84,7 +84,7 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
         final max = mesas.map((m) => m.capacidad).reduce((a, b) => a > b ? a : b);
         setState(() => _maxComensales = max);
       }
-    } catch (_) {}
+    } catch (e) { debugPrint('$e'); }
   }
 
   Future<void> _seleccionarFecha() async {
@@ -102,7 +102,7 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
               surface: AppColors.panel,
               onSurface: AppColors.textPrimary,
             ),
-            dialogBackgroundColor: AppColors.background,
+            dialogTheme: const DialogThemeData(backgroundColor: AppColors.background),
           ),
           child: child!,
         );
@@ -212,7 +212,7 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
           ),
           title: const Column(
             children: [
-              Icon(Icons.check_circle, color: Colors.green, size: 60),
+              Icon(Icons.check_circle, color: AppColors.disp, size: 60),
               SizedBox(height: 12),
               Text(
                 '¡Reserva Confirmada!',
@@ -294,7 +294,7 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error al reservar: ${e.toString()}'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.error,
         ),
       );
     }
@@ -318,7 +318,7 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error al cargar reservas: ${e.toString()}'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.error,
         ),
       );
     }
@@ -368,7 +368,7 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Reserva cancelada'),
-          backgroundColor: Colors.green,
+          backgroundColor: AppColors.disp,
         ),
       );
       _cargarReservas();
@@ -377,7 +377,7 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error al cancelar: ${e.toString()}'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.error,
         ),
       );
     }
@@ -485,7 +485,7 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
             decoration: InputDecoration(
               hintText: 'Ingresa tu nombre completo',
               hintStyle: TextStyle(
-                color: AppColors.textSecondary.withOpacity(0.5),
+                color: AppColors.textSecondary.withValues(alpha:0.5),
               ),
               filled: true,
               fillColor: AppColors.panel,
@@ -695,7 +695,7 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
             decoration: InputDecoration(
               hintText: 'Alergias, celebración, silla para niños...',
               hintStyle: TextStyle(
-                color: AppColors.textSecondary.withOpacity(0.5),
+                color: AppColors.textSecondary.withValues(alpha:0.5),
               ),
               filled: true,
               fillColor: AppColors.panel,
@@ -754,7 +754,7 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
         padding: const EdgeInsets.symmetric(vertical: 18),
         decoration: BoxDecoration(
           color: seleccionado
-              ? AppColors.button.withOpacity(0.15)
+              ? AppColors.button.withValues(alpha:0.15)
               : AppColors.panel,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
@@ -786,7 +786,7 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
               style: TextStyle(
                 color: seleccionado
                     ? AppColors.textSecondary
-                    : AppColors.textSecondary.withOpacity(0.5),
+                    : AppColors.textSecondary.withValues(alpha:0.5),
                 fontSize: 12,
               ),
             ),
@@ -842,8 +842,8 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
                   ),
                   decoration: BoxDecoration(
                     color: esCena
-                        ? Colors.indigo.withOpacity(0.2)
-                        : Colors.orange.withOpacity(0.2),
+                        ? Colors.indigo.withValues(alpha:0.2)
+                        : Colors.orange.withValues(alpha:0.2),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
@@ -873,13 +873,13 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.15),
+                    color: Colors.green.withValues(alpha:0.15),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     reserva.estado,
                     style: const TextStyle(
-                      color: Colors.green,
+                      color: AppColors.disp,
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
                     ),
@@ -902,7 +902,7 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
                     size: 18, color: AppColors.gold),
                 const SizedBox(width: 8),
                 Text(
-                  _formatearFecha(reserva.fecha as DateTime),
+                  _formatearFecha(reserva.fecha),
                   style: const TextStyle(
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w500,

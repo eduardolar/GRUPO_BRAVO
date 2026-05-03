@@ -1,3 +1,4 @@
+﻿import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -27,7 +28,9 @@ class LocationService {
     }
 
     //si todo está ok, obtenemos la ubicación actual
-    return await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+    return await Geolocator.getCurrentPosition(
+      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+    );
   }
 
   Future<Map<String, dynamic>?> obtenerDireccionDesdeCoordenadas(double latitud, double longitud) async {
@@ -44,7 +47,7 @@ class LocationService {
             return data; //aqui extraemos la dirección del JSON: calle, ciudad, etc.
             } 
              }catch (e) {
-              print('Error al obtener dirección: $e');
+              debugPrint('Error al obtener dirección: $e');
              }
               return null;
              }

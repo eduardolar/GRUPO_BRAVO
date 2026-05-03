@@ -1,4 +1,4 @@
-import 'dart:ui';
+﻿import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:frontend/components/bravo_app_bar.dart';
 import 'package:frontend/core/colors_style.dart';
@@ -36,7 +36,7 @@ class _MenuAdministradorState extends State<MenuAdministrador> {
         restauranteId: restauranteId,
       );
       if (mounted) setState(() => _stockBajoCount = lista.length);
-    } catch (_) {}
+    } catch (e) { debugPrint('$e'); }
   }
 
   @override
@@ -172,20 +172,20 @@ class _MenuAdministradorState extends State<MenuAdministrador> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: Colors.red.shade900.withValues(alpha: 0.55),
+            color: AppColors.error.withValues(alpha: 0.55),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.red.shade400.withValues(alpha: 0.5), width: 1.5),
+            border: Border.all(color: AppColors.error.withValues(alpha: 0.5), width: 1.5),
           ),
           child: Row(
             children: [
-              Icon(Icons.warning_amber_rounded, color: Colors.red.shade200, size: 22),
+              Icon(Icons.warning_amber_rounded, color: AppColors.error, size: 22),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   '$_stockBajoCount ingrediente${_stockBajoCount == 1 ? '' : 's'} '
                   'por debajo del stock mínimo',
                   style: TextStyle(
-                    color: Colors.red.shade100,
+                    color: AppColors.error,
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                   ),
@@ -197,7 +197,7 @@ class _MenuAdministradorState extends State<MenuAdministrador> {
                   MaterialPageRoute(builder: (_) => const AdminStockScreen()),
                 ).then((_) => _cargarStockBajo()),
                 style: TextButton.styleFrom(
-                  foregroundColor: Colors.red.shade200,
+                  foregroundColor: AppColors.error,
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                 ),
                 child: const Text('Ver'),
@@ -319,7 +319,7 @@ class _MenuAdministradorState extends State<MenuAdministrador> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Colors.red.shade700,
+                      color: AppColors.error,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: Colors.white.withValues(alpha: 0.3),

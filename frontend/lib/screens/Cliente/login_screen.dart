@@ -14,6 +14,7 @@ import 'package:frontend/screens/cliente/reservar_mesa_screen.dart';
 import 'package:frontend/screens/cocinero/home_screen_cocinero.dart';
 import 'package:frontend/screens/home_screen_trabajador.dart';
 import 'package:frontend/screens/super_admin/seleccionar_restaurante_screen.dart';
+import 'package:frontend/screens/cliente/seleccionar_restaurante_screen.dart' as sel_rest_cliente;
 import 'package:frontend/screens/Administrador/admin_home_screen.dart';
 import 'package:frontend/screens/super_admin/activar_cuenta_screen.dart';
 
@@ -109,7 +110,7 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Text(
           '¿Olvidaste tu contraseña?',
           style: TextStyle(
-            color: Colors.white.withOpacity(0.8),
+            color: Colors.white.withValues(alpha: 0.8),
             fontWeight: FontWeight.w400,
             fontSize: 13,
           ),
@@ -224,9 +225,11 @@ class _LoginScreenState extends State<LoginScreen> {
         destino = const SeleccionarRestauranteScreen();
         break;
       case RolUsuario.cliente:
-        destino = widget.destino == DestinoLogin.reservar
-            ? const ReservarMesaScreen()
-            : const MenuScreen();
+        destino = sel_rest_cliente.SeleccionarRestauranteScreen(
+          siguiente: widget.destino == DestinoLogin.reservar
+              ? const ReservarMesaScreen()
+              : const MenuScreen(),
+        );
         break;
       case RolUsuario.cocinero:
         destino = const HomeCocinero();

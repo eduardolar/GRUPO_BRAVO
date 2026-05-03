@@ -126,12 +126,15 @@ class _AdminMenuScreenState extends State<AdminMenuScreen>
                             color: Colors.white,
                           ),
                         )
-                      : TabBarView(
-                          controller: _tabController,
-                          children: [
-                            AdminCategoriasTab(onCambio: _cargarDatos),
-                            _buildProductosTab(),
-                          ],
+                      : AnimatedBuilder(
+                          animation: _tabController,
+                          builder: (context, _) => IndexedStack(
+                            index: _tabController.index,
+                            children: [
+                              AdminCategoriasTab(onCambio: _cargarDatos),
+                              _buildProductosTab(),
+                            ],
+                          ),
                         ),
                 ),
               ],
@@ -331,41 +334,43 @@ class _AdminMenuScreenState extends State<AdminMenuScreen>
   Widget _buildCategorySelector() {
     return SizedBox(
       height: 48,
-      child: ListView.builder(
+      child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        itemCount: _categorias.length,
+        physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.symmetric(horizontal: 12),
-        itemBuilder: (_, index) {
-          final isSelected = _selectedCategoryIndex == index;
-          return GestureDetector(
-            onTap: () => setState(() => _selectedCategoryIndex = index),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-              padding: const EdgeInsets.symmetric(horizontal: 18),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? AppColors.button
-                    : Colors.black.withValues(alpha: 0.4),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
+        child: Row(
+          children: List.generate(_categorias.length, (index) {
+            final isSelected = _selectedCategoryIndex == index;
+            return GestureDetector(
+              onTap: () => setState(() => _selectedCategoryIndex = index),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                decoration: BoxDecoration(
                   color: isSelected
                       ? AppColors.button
-                      : Colors.white.withValues(alpha: 0.3),
+                      : Colors.black.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isSelected
+                        ? AppColors.button
+                        : Colors.white.withValues(alpha: 0.3),
+                  ),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  _categorias[index],
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : Colors.white70,
+                    fontWeight:
+                        isSelected ? FontWeight.w700 : FontWeight.w500,
+                  ),
                 ),
               ),
-              alignment: Alignment.center,
-              child: Text(
-                _categorias[index],
-                style: TextStyle(
-                  color: isSelected ? Colors.white : Colors.white70,
-                  fontWeight:
-                      isSelected ? FontWeight.w700 : FontWeight.w500,
-                ),
-              ),
-            ),
-          );
-        },
+            );
+          }),
+        ),
       ),
     );
   }

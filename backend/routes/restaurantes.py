@@ -1,7 +1,8 @@
 import random
 import string
+from typing import Optional
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from database import coleccion_restaurantes
 from bson import ObjectId
 
@@ -14,6 +15,21 @@ class RestauranteCrear(BaseModel):
 class RestauranteEditar(BaseModel):
     nombre: str
     direccion: str
+    horario_apertura: Optional[str] = None
+    horario_cierre: Optional[str] = None
+
+    @field_validator("horario_apertura", "horario_cierre", mode="before")
+    @classmethod
+    def validar_hora(cls, v):
+        if v is None or v == "":
+            return v
+        parts = str(v).split(":")
+        if len(parts) != 2:
+            raise ValueError("Formato inválido. Use HH:MM")
+        h, m = int(parts[0]), int(parts[1])
+        if not (0 <= h <= 23 and 0 <= m <= 59):
+            raise ValueError("Hora fuera de rango")
+        return f"{h:02d}:{m:02d}"
 
 @router.get("")
 def listar_restaurantes():
@@ -53,9 +69,31 @@ def crear_restaurante(datos: RestauranteCrear):
 
 @router.put("/{id}")
 def editar_restaurante(id: str, datos: RestauranteEditar):
+    set_data = {
+        "nombre": datos.nombre.strip(),
+        "direccion": datos.direccion.strip(),
+    }
+    unset_data = {}
+
+    if datos.horario_apertura is not None:
+        if datos.horario_apertura.strip():
+            set_data["horario_apertura"] = datos.horario_apertura.strip()
+        else:
+            unset_data["horario_apertura"] = ""
+
+    if datos.horario_cierre is not None:
+        if datos.horario_cierre.strip():
+            set_data["horario_cierre"] = datos.horario_cierre.strip()
+        else:
+            unset_data["horario_cierre"] = ""
+
+    update_op: dict = {"$set": set_data}
+    if unset_data:
+        update_op["$unset"] = unset_data
+
     resultado = coleccion_restaurantes.update_one(
         {"_id": ObjectId(id)},
-        {"$set": {"nombre": datos.nombre.strip(), "direccion": datos.direccion.strip()}}
+        update_op,
     )
     if resultado.matched_count == 0:
         raise HTTPException(status_code=404, detail="Restaurante no encontrado")

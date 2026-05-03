@@ -1,13 +1,21 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../core/colors_style.dart';
 import '../../services/api_service.dart';
+import '../../services/pedido_service.dart';
 import '../../components/Cliente/producto_card.dart';
+import '../../components/Cliente/producto_detalle_sheet.dart';
 import '../../models/producto_model.dart';
+import '../../models/pedido_model.dart';
+import '../../models/restaurante_model.dart';
 import '../../providers/cart_provider.dart';
+import '../../core/app_routes.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/restaurante_provider.dart';
 import 'delivery_options_screen.dart';
 import 'perfil_screen.dart';
+import 'seleccionar_restaurante_screen.dart';
 
 class MenuScreen extends StatefulWidget {
   const MenuScreen({super.key});
@@ -22,6 +30,9 @@ class _MenuScreenState extends State<MenuScreen> {
   List<Producto> _productos = [];
   bool _cargando = true;
 
+  Restaurante? _restaurante;
+  Pedido? _ultimoPedido;
+
   @override
   void initState() {
     super.initState();
@@ -30,23 +41,189 @@ class _MenuScreenState extends State<MenuScreen> {
 
   Future<void> _cargarDatos() async {
     try {
-      final categorias = await ApiService.obtenerCategorias();
-      final productos = await ApiService.obtenerProductos();
+      final results = await Future.wait([
+        ApiService.obtenerCategorias(),
+        ApiService.obtenerProductos(),
+      ]);
       if (!mounted) return;
       setState(() {
-        _categorias = categorias;
-        _productos = productos;
+        _categorias = results[0] as List<String>;
+        _productos = results[1] as List<Producto>;
         _cargando = false;
       });
+      _cargarExtras();
     } catch (e) {
       if (!mounted) return;
       setState(() => _cargando = false);
     }
   }
 
-  void _addToCart(BuildContext context, Producto product) {
-    Provider.of<CartProvider>(context, listen: false).addItem(product);
-    _showSnack(context, '${product.nombre} añadido al pedido');
+  Future<void> _cargarExtras() async {
+    final cart = context.read<CartProvider>();
+    final auth = context.read<AuthProvider>();
+
+    // Cargar horario del restaurante seleccionado
+    if (cart.restauranteId != null) {
+      try {
+        final provRest = context.read<RestauranteProvider>();
+        if (provRest.restaurantes.isEmpty) await provRest.cargar();
+        if (!mounted) return;
+        final matches =
+            provRest.restaurantes.where((r) => r.id == cart.restauranteId);
+        if (matches.isNotEmpty && mounted) {
+          setState(() => _restaurante = matches.first);
+        }
+      } catch (e) { debugPrint('$e'); }
+    }
+
+    // Cargar último pedido para el botón de re-order
+    if (auth.estaAutenticado && auth.usuarioActual != null) {
+      try {
+        final pedidos = await PedidoService.obtenerHistorialPedidos(
+          userId: auth.usuarioActual!.id,
+        );
+        if (!mounted) return;
+        if (pedidos.isNotEmpty) {
+          setState(() => _ultimoPedido = pedidos.first);
+        }
+      } catch (e) { debugPrint('$e'); }
+    }
+  }
+
+  void _mostrarDetalle(BuildContext context, Producto product) {
+    if (!product.estaDisponible) return;
+
+    // Bloquear si la cocina está cerrada
+    if (_restaurante != null && !_restaurante!.estaAbierto()) {
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.schedule, color: Colors.white, size: 15),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'COCINA CERRADA · REABRE A LAS ${_restaurante!.horarioApertura ?? '—'}'
+                      .toUpperCase(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    letterSpacing: 0.8,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          duration: const Duration(seconds: 3),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: const RoundedRectangleBorder(),
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 112),
+        ),
+      );
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.75,
+        minChildSize: 0.4,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (_, controller) => ProductoDetalleSheet(
+          producto: product,
+          onAgregar: (excluidos, cantidad) {
+            final cart = Provider.of<CartProvider>(context, listen: false);
+            cart.addItem(
+              product,
+              ingredientesExcluidos: excluidos,
+              cantidad: cantidad,
+            );
+            _showSnack(context, '${product.nombre} añadido al pedido');
+          },
+        ),
+      ),
+    );
+  }
+
+  void _reordenar(Pedido pedido) {
+    final cart = context.read<CartProvider>();
+    int agregados = 0;
+    for (final pp in pedido.productos) {
+      if (pp.productoId == null) continue;
+      final matches = _productos.where((p) => p.id == pp.productoId);
+      if (matches.isEmpty) continue;
+      final producto = matches.first;
+      if (!producto.estaDisponible) continue;
+      cart.addItem(
+        producto,
+        ingredientesExcluidos: pp.sin,
+        cantidad: pp.cantidad,
+      );
+      agregados++;
+    }
+    if (agregados > 0) {
+      _showSnack(context, 'Pedido anterior añadido al carrito');
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No se pudo repetir (productos no disponibles)'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(),
+          margin: EdgeInsets.fromLTRB(16, 0, 16, 112),
+        ),
+      );
+    }
+  }
+
+  void _cambiarRestaurante() {
+    final cart = context.read<CartProvider>();
+    if (cart.totalQuantity > 0) {
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          backgroundColor: AppColors.panel,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text(
+            'Cambiar restaurante',
+            style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold),
+          ),
+          content: const Text(
+            'Al cambiar de restaurante se vaciará tu carrito actual.',
+            style: TextStyle(color: AppColors.textSecondary),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar', style: TextStyle(color: AppColors.textSecondary)),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _irASeleccionarRestaurante();
+              },
+              child: const Text('Cambiar', style: TextStyle(color: AppColors.gold, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      );
+    } else {
+      _irASeleccionarRestaurante();
+    }
+  }
+
+  void _irASeleccionarRestaurante() {
+    context.read<CartProvider>().limpiarRestaurante();
+    Navigator.pushReplacement(
+      context,
+      AppRoute.slide(const SeleccionarRestauranteScreen(siguiente: MenuScreen())),
+    );
   }
 
   void _showSnack(BuildContext context, String mensaje) {
@@ -81,7 +258,6 @@ class _MenuScreenState extends State<MenuScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Pantalla de carga — imagen de fondo desde el inicio
     if (_cargando) {
       return Scaffold(
         backgroundColor: Colors.black,
@@ -132,19 +308,20 @@ class _MenuScreenState extends State<MenuScreen> {
         _categorias.isNotEmpty ? _categorias[_selectedCategory] : '';
     final filtered =
         _productos.where((p) => p.categoria == currentCategory).toList();
+    final cocineraCerrada = _restaurante != null && !_restaurante!.estaAbierto();
 
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // ── Imagen del restaurante: fondo permanente de toda la pantalla ──
+          // Imagen de fondo
           Positioned.fill(
             child: Image.asset(
               'assets/images/Bravo restaurante.jpg',
               fit: BoxFit.cover,
             ),
           ),
-          // ── Overlay oscuro degradado ──────────────────────────────────────
+          // Overlay oscuro
           Positioned.fill(
             child: DecoratedBox(
               decoration: BoxDecoration(
@@ -160,12 +337,12 @@ class _MenuScreenState extends State<MenuScreen> {
             ),
           ),
 
-          // ── Contenido principal ───────────────────────────────────────────
+          // Contenido principal
           SafeArea(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ── Cabecera ─────────────────────────────────────────────
+                // Cabecera
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 14, 16, 0),
                   child: Row(
@@ -184,8 +361,7 @@ class _MenuScreenState extends State<MenuScreen> {
                                 letterSpacing: 1.5,
                                 shadows: const [
                                   Shadow(
-                                      color: Colors.black54,
-                                      blurRadius: 8),
+                                      color: Colors.black54, blurRadius: 8),
                                 ],
                               ),
                             ),
@@ -197,6 +373,28 @@ class _MenuScreenState extends State<MenuScreen> {
                                 fontSize: 11,
                                 letterSpacing: 0.4,
                               ),
+                            ),
+                            const SizedBox(height: 6),
+                            Consumer<CartProvider>(
+                              builder: (_, cart, _) {
+                                if (cart.restauranteNombre == null) return const SizedBox.shrink();
+                                return GestureDetector(
+                                  onTap: _cambiarRestaurante,
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.store_outlined, color: Colors.white38, size: 12),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        cart.restauranteNombre!,
+                                        style: const TextStyle(color: Colors.white38, fontSize: 11),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      const Icon(Icons.sync, color: AppColors.gold, size: 12),
+                                    ],
+                                  ),
+                                );
+                              },
                             ),
                           ],
                         ),
@@ -222,9 +420,26 @@ class _MenuScreenState extends State<MenuScreen> {
                   ),
                 ),
 
-                const SizedBox(height: 18),
+                const SizedBox(height: 10),
 
-                // ── Barra de categorías ───────────────────────────────────
+                // Banner cocina cerrada
+                if (cocineraCerrada)
+                  _CerradoBanner(restaurante: _restaurante!),
+
+                // Banner re-order
+                if (_ultimoPedido != null && _ultimoPedido!.productos.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 6),
+                    child: _ReorderBanner(
+                      pedido: _ultimoPedido!,
+                      onReorder: () => _reordenar(_ultimoPedido!),
+                    ),
+                  ),
+
+                const SizedBox(height: 8),
+
+                // Barra de categorías
                 _CategoryBar(
                   categorias: _categorias,
                   selectedIndex: _selectedCategory,
@@ -234,7 +449,7 @@ class _MenuScreenState extends State<MenuScreen> {
 
                 const SizedBox(height: 14),
 
-                // ── Lista de productos ────────────────────────────────────
+                // Lista de productos
                 Expanded(
                   child: filtered.isEmpty
                       ? Center(
@@ -266,8 +481,8 @@ class _MenuScreenState extends State<MenuScreen> {
                                     : 1;
                             return GridView.builder(
                               physics: const BouncingScrollPhysics(),
-                              padding:
-                                  const EdgeInsets.fromLTRB(16, 4, 16, 128),
+                              padding: const EdgeInsets.fromLTRB(
+                                  16, 4, 16, 128),
                               gridDelegate:
                                   SliverGridDelegateWithFixedCrossAxisCount(
                                 crossAxisCount: columns,
@@ -280,7 +495,8 @@ class _MenuScreenState extends State<MenuScreen> {
                                 final p = filtered[index];
                                 return ProductoCard(
                                   product: p,
-                                  onAdd: () => _addToCart(context, p),
+                                  onAdd: () =>
+                                      _mostrarDetalle(context, p),
                                   compactAdd: true,
                                 );
                               },
@@ -305,7 +521,117 @@ class _MenuScreenState extends State<MenuScreen> {
   }
 }
 
-// ─── Barra de categorías (sobre imagen, modo oscuro) ─────────────────────────
+// ─── Banner cocina cerrada ────────────────────────────────────────────────────
+
+class _CerradoBanner extends StatelessWidget {
+  final Restaurante restaurante;
+  const _CerradoBanner({required this.restaurante});
+
+  @override
+  Widget build(BuildContext context) {
+    final reapertura = restaurante.horarioApertura ?? '—';
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 0, 20, 6),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      color: AppColors.error.withValues(alpha: 0.88),
+      child: Row(
+        children: [
+          const Icon(Icons.schedule, color: Colors.white, size: 15),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'COCINA CERRADA · Reabre a las $reapertura',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.3,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Banner re-order ──────────────────────────────────────────────────────────
+
+class _ReorderBanner extends StatelessWidget {
+  final Pedido pedido;
+  final VoidCallback onReorder;
+  const _ReorderBanner({required this.pedido, required this.onReorder});
+
+  @override
+  Widget build(BuildContext context) {
+    final nombres =
+        pedido.productos.take(3).map((p) => p.nombre).join(', ');
+    final extra = pedido.productos.length > 3
+        ? ' +${pedido.productos.length - 3} más'
+        : '';
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.50),
+        border: Border.all(
+            color: AppColors.button.withValues(alpha: 0.55), width: 1),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.history, color: AppColors.button, size: 16),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'PEDIDO ANTERIOR',
+                  style: TextStyle(
+                    color: AppColors.button,
+                    fontSize: 9,
+                    letterSpacing: 2.0,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '$nombres$extra',
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 11,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          GestureDetector(
+            onTap: onReorder,
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              color: AppColors.button,
+              child: const Text(
+                'REPETIR',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.0,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Barra de categorías ──────────────────────────────────────────────────────
 
 class _CategoryBar extends StatefulWidget {
   final List<String> categorias;
@@ -325,7 +651,6 @@ class _CategoryBar extends StatefulWidget {
 class _CategoryBarState extends State<_CategoryBar> {
   final ScrollController _scroll = ScrollController();
 
-  // Ancho estimado por chip para calcular el offset de scroll
   static const double _chipWidth = 110.0;
   static const double _chipSpacing = 8.0;
 
@@ -374,7 +699,8 @@ class _CategoryBarState extends State<_CategoryBar> {
                   onTap: () => widget.onSelected(index),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 180),
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16),
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: isSelected
@@ -406,7 +732,6 @@ class _CategoryBarState extends State<_CategoryBar> {
             },
           ),
 
-          // Degradado derecho — indica que hay más categorías
           Positioned(
             right: 0,
             top: 0,

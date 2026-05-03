@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -12,6 +12,7 @@ import '../../components/Cliente/otp_fields.dart';
 // Importes para la redirección de roles
 import '../../models/usuario_model.dart';
 import '../cliente/menu_screen.dart';
+import '../cliente/seleccionar_restaurante_screen.dart' as sel_rest_cliente;
 import '../home_screen_trabajador.dart';
 import '../Administrador/admin_home_screen.dart';
 import '../super_admin/seleccionar_restaurante_screen.dart';
@@ -97,7 +98,11 @@ class _VerificacionScreenState extends State<VerificacionScreen> {
           _showSnackBar('¡Cuenta verificada!', isError: false);
           Navigator.pushAndRemoveUntil(
             context,
-            MaterialPageRoute(builder: (_) => const MenuScreen()),
+            MaterialPageRoute(
+              builder: (_) => sel_rest_cliente.SeleccionarRestauranteScreen(
+                siguiente: const MenuScreen(),
+              ),
+            ),
             (route) => false,
           );
         }
@@ -128,8 +133,9 @@ class _VerificacionScreenState extends State<VerificacionScreen> {
         destino = const HomeCocinero();
         break;
       case RolUsuario.cliente:
-      default:
-        destino = const MenuScreen();
+        destino = sel_rest_cliente.SeleccionarRestauranteScreen(
+          siguiente: const MenuScreen(),
+        );
         break;
     }
     
@@ -177,7 +183,7 @@ Future<void> _reenviarCodigo() async {
                   widget.esModo2FA 
                     ? 'Escribe el código de seguridad enviado a:' 
                     : 'Hemos enviado un código de activación a:',
-                  style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13),
+                  style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 13),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 5),
@@ -228,7 +234,7 @@ Future<void> _reenviarCodigo() async {
   void _showSnackBar(String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(message, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-      backgroundColor: isError ? AppColors.error : Colors.green.shade700,
+      backgroundColor: isError ? AppColors.error : AppColors.disp,
       behavior: SnackBarBehavior.floating,
     ));
   }

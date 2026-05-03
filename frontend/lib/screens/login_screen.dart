@@ -10,17 +10,15 @@ import 'package:frontend/components/Cliente/entrada_texto.dart';
 import 'package:frontend/providers/auth_provider.dart'; // <-- IMPORTANTE
 import 'package:frontend/models/usuario_model.dart'; // <-- IMPORTANTE: Para los roles
 
-class loginScreen extends StatefulWidget {
-  const loginScreen({super.key});
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
 
   @override
-  State<loginScreen> createState() => _MyWidgetState();
+  State<LoginScreen> createState() => _MyWidgetState();
 }
 
-class _MyWidgetState extends State<loginScreen> {
+class _MyWidgetState extends State<LoginScreen> {
 
-  final TextEditingController _emailCtrl = TextEditingController();
-  final TextEditingController _passCtrl = TextEditingController();
   bool _cargando = false;
 
   @override
@@ -94,7 +92,6 @@ class _MyWidgetState extends State<loginScreen> {
                         borderRadius: BorderRadius.circular(15),
                       ),
                     ),
-                    // TODO: Conectar esta función al botón de login
                     onPressed: _cargando ? null : () async {
                       setState(() => _cargando = true);
 

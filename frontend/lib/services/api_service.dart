@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -142,6 +142,7 @@ class ApiService {
     String? notas,
     String? referenciaPago,
     required String estadoPago,
+    String? restauranteId,
   }) => PedidoService.crearPedido(
     userId: userId,
     items: items,
@@ -154,6 +155,7 @@ class ApiService {
     notas: notas,
     referenciaPago: referenciaPago,
     estadoPago: estadoPago,
+    restauranteId: restauranteId,
   );
 
   static Future<void> agregarItemsPedido({
@@ -170,8 +172,11 @@ class ApiService {
     required String userId,
   }) => PedidoService.obtenerHistorialPedidos(userId: userId);
 
-  static Future<List<Pedido>> obtenerTodosLosPedidos() =>
-      PedidoService.obtenerTodosLosPedidos();
+  static Future<Pedido> obtenerPedido(String pedidoId) =>
+      PedidoService.obtenerPedido(pedidoId);
+
+  static Future<List<Pedido>> obtenerTodosLosPedidos({String? restauranteId}) =>
+      PedidoService.obtenerTodosLosPedidos(restauranteId: restauranteId);
 
   static Future<void> actualizarEstadoPedido({
     required String pedidoId,
@@ -400,14 +405,14 @@ class ApiService {
       retry: false,
     );
     if (response.statusCode >= 400) {
-      print(
+      debugPrint(
         'DEBUG PayPal create-order error: '
         'status=${response.statusCode} body=${response.body}',
       );
       throw toApiException(response.statusCode, decodeBody(response));
     }
     final body = Map<String, dynamic>.from(decodeBody(response));
-    print(
+    debugPrint(
       'DEBUG PayPal create-order success: status=${response.statusCode} body=$body',
     );
     return body;
@@ -495,6 +500,7 @@ class ApiService {
     required int comensales,
     required String turno,
     String? notas,
+    String? restauranteId,
   }) => ReservaService.crearReserva(
     userId: userId,
     nombreCompleto: nombreCompleto,
@@ -503,6 +509,7 @@ class ApiService {
     comensales: comensales,
     turno: turno,
     notas: notas,
+    restauranteId: restauranteId,
   );
 
   static Future<bool> hayDisponibilidad({

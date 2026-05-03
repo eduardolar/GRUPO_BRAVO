@@ -94,6 +94,23 @@ class MesaService {
     throw toApiException(response.statusCode, decodeBody(response));
   }
 
+  static Future<void> eliminarMesa(String mesaId) async {
+    if (!usarApiReal) {
+      await Future.delayed(const Duration(milliseconds: 200));
+      MockData.mesas.removeWhere((m) => m.id == mesaId);
+      return;
+    }
+
+    final response = await httpWithRetry(
+      () => http.delete(Uri.parse('$baseUrl/mesas/$mesaId')),
+      retry: false,
+    );
+
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      throw toApiException(response.statusCode, decodeBody(response));
+    }
+  }
+
   static Future<void> marcarMesaOcupada(String mesaId) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 200));

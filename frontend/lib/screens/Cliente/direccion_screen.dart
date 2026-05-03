@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'dart:convert';
@@ -109,7 +109,7 @@ class _DireccionScreenState extends State<DireccionScreen> {
                     initialZoom: 17,
                     onPositionChanged: (position, hasGesture) {
                       if (hasGesture) {
-                        _obtenerDireccionDesdeCoords(position.center!);
+                        _obtenerDireccionDesdeCoords(position.center);
                       }
                     },
                   ),
@@ -123,7 +123,7 @@ class _DireccionScreenState extends State<DireccionScreen> {
                           point: _puntoActual,
                           width: 80,
                           height: 80,
-                          child: const Icon(Icons.location_on, color: Colors.red, size: 45),
+                          child: const Icon(Icons.location_on, color: AppColors.error, size: 45),
                         ),
                       ],
                     ),
@@ -165,11 +165,12 @@ class _DireccionScreenState extends State<DireccionScreen> {
                       icon: const Icon(Icons.my_location),
                       label: const Text("USAR MI UBICACIÓN ACTUAL"),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.blueAccent,
-                        side: const BorderSide(color: Colors.blueAccent),
+                        foregroundColor: const Color(0xFF3B82F6),
+                        side: const BorderSide(color: Color(0xFF3B82F6)),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                       ),
                       onPressed: _cargando ? null : () async {
+                        final gpsMessenger = ScaffoldMessenger.of(context);
                         final LocationService locationService = LocationService();
                         try {
                           Position? position = await locationService.obtenerUbicacionActual();
@@ -178,7 +179,7 @@ class _DireccionScreenState extends State<DireccionScreen> {
                           }
                         } catch (e) {
                           if (!mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
+                          gpsMessenger.showSnackBar(
                             SnackBar(content: Text("Error de GPS: $e"))
                           );
                         }
@@ -195,8 +196,10 @@ class _DireccionScreenState extends State<DireccionScreen> {
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
   ),
   onPressed: _cargando ? null : () async {
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
     if (widget.soloSeleccionar) {
-      Navigator.pop(context, {
+      navigator.pop({
         'direccion': _direccionTexto,
         'latitud': _puntoActual.latitude,
         'longitud': _puntoActual.longitude,
@@ -231,10 +234,10 @@ class _DireccionScreenState extends State<DireccionScreen> {
         );
 
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("¡Ubicación guardada con éxito!"), backgroundColor: Colors.green),
+        messenger.showSnackBar(
+          const SnackBar(content: Text("¡Ubicación guardada con éxito!"), backgroundColor: AppColors.disp),
         );
-        Navigator.pop(context);
+        navigator.pop();
       } else {
         _mostrarError("El servidor no pudo guardar la dirección.");
       }
@@ -282,7 +285,7 @@ class _DireccionScreenState extends State<DireccionScreen> {
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
       content: Text(mensaje),
-      backgroundColor: Colors.redAccent,
+      backgroundColor: AppColors.error,
     ),
   );
   }

@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform;
+﻿import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -217,7 +217,22 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
                   ...cart.items.values.map(
                     (item) => Padding(
                       padding: const EdgeInsets.only(bottom: 10),
-                      child: _ArticuloCard(item: item, cart: cart),
+                      child: Dismissible(
+                        key: Key(item.key),
+                        direction: DismissDirection.endToStart,
+                        background: Container(
+                          alignment: Alignment.centerRight,
+                          padding: const EdgeInsets.only(right: 20),
+                          color: AppColors.error.withValues(alpha: 0.85),
+                          child: const Icon(
+                            Icons.delete_outline,
+                            color: Colors.white,
+                            size: 22,
+                          ),
+                        ),
+                        onDismissed: (_) => cart.removeProduct(item.key),
+                        child: _ArticuloCard(item: item, cart: cart),
+                      ),
                     ),
                   ),
                 ],
@@ -248,7 +263,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
                     _EntregaCard(
                       icono: Icons.restaurant,
                       titulo: 'Mesa ${cart.numeroMesa}',
-                      subtitulo: 'Te lo servimos directamente',
+                      subtitulo: 'Te lo servimos directamente · ~15-20 min',
                       coste: 'Gratis',
                       seleccionada:
                           _entregaSeleccionada == OpcionEntrega.enMesa,
@@ -261,8 +276,8 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
                   _EntregaCard(
                     icono: Icons.delivery_dining,
                     titulo: 'A domicilio',
-                    subtitulo: 'En la puerta de tu casa',
-                    coste: '+3,99 â‚¬',
+                    subtitulo: 'En la puerta de tu casa · ~35-50 min',
+                    coste: '+3,99 €',
                     seleccionada:
                         _entregaSeleccionada == OpcionEntrega.domicilio,
                     onTap: () => setState(
@@ -277,7 +292,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
                   _EntregaCard(
                     icono: Icons.store_outlined,
                     titulo: 'Recoger en local',
-                    subtitulo: 'Listo cuando llegues',
+                    subtitulo: 'Listo cuando llegues · ~20-30 min',
                     coste: 'Gratis',
                     seleccionada: _entregaSeleccionada == OpcionEntrega.recoger,
                     onTap: () => setState(
@@ -674,7 +689,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       // Marcar el pedido como pagado en la BD
       try {
         await ApiService.actualizarEstadoPago(referenciaPago: sessionId);
-      } catch (_) {}
+      } catch (e) { debugPrint('$e'); }
       if (!mounted) return;
 
       Navigator.pushAndRemoveUntil(
@@ -850,6 +865,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
         estadoPago:
             estadoPago ??
             (_pagoSeleccionado == MetodoPago.efectivo ? 'pendiente' : 'pagado'),
+        restauranteId: cart.restauranteId,
       );
 
       final pedidoId =
@@ -1323,8 +1339,8 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
         throw Exception('No se pudo iniciar el pago de Google Pay');
       }
 
-      final googlePaySupported = await Stripe.instance.isGooglePaySupported(
-        const IsGooglePaySupportedParams(),
+      final googlePaySupported = await Stripe.instance.isPlatformPaySupported(
+        googlePay: const IsGooglePaySupportedParams(),
       );
       if (!googlePaySupported) {
         throw Exception('Google Pay no está disponible en este dispositivo.');
@@ -2030,11 +2046,12 @@ class _StripeCheckoutDialogState extends State<_StripeCheckoutDialog> {
         });
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _verificando = false;
           _error = e.toString();
         });
+      }
     }
   }
 
@@ -2250,7 +2267,7 @@ class _StepperCard extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         GestureDetector(
-          onTap: () => cart.removeItem(item.producto.id),
+          onTap: () => cart.removeItem(item.key),
           child: Container(
             width: 30,
             height: 30,
@@ -2274,7 +2291,10 @@ class _StepperCard extends StatelessWidget {
           ),
         ),
         GestureDetector(
-          onTap: () => cart.addItem(item.producto),
+          onTap: () => cart.addItem(
+            item.producto,
+            ingredientesExcluidos: item.ingredientesExcluidos,
+          ),
           child: Container(
             width: 30,
             height: 30,

@@ -7,6 +7,7 @@ import 'package:frontend/screens/cliente/home_screen.dart';
 import 'gestion_usuarios_screen.dart';
 import 'gestion_rol_screen.dart';
 import 'crear_usuario_screen.dart';
+import 'seleccionar_restaurante_screen.dart';
 
 class HomeScreenSuperAdmin extends StatelessWidget {
   final String restauranteId;
@@ -20,6 +21,14 @@ class HomeScreenSuperAdmin extends StatelessWidget {
 
   void _navigateTo(BuildContext context, Widget screen) {
     Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
+  }
+
+  void _cambiarSucursal(BuildContext context) {
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const SeleccionarRestauranteScreen()),
+      (route) => false,
+    );
   }
 
   @override
@@ -53,6 +62,11 @@ class HomeScreenSuperAdmin extends StatelessWidget {
             automaticallyImplyLeading: false,
             actions: [
               IconButton(
+                icon: const Icon(Icons.store_outlined, color: Colors.white, size: 22),
+                tooltip: 'Cambiar sucursal',
+                onPressed: () => _cambiarSucursal(context),
+              ),
+              IconButton(
                 icon: const Icon(Icons.logout, color: Colors.white, size: 22),
                 tooltip: 'Cerrar sesión',
                 onPressed: () async {
@@ -82,9 +96,86 @@ class HomeScreenSuperAdmin extends StatelessWidget {
             ),
           ),
 
+          // ── Tarjeta sucursal activa ──
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 28, 24, 8),
+              padding: const EdgeInsets.fromLTRB(24, 28, 24, 0),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 640),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border.all(color: AppColors.line),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.shadow.withValues(alpha: 0.10),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          color: AppColors.button.withValues(alpha: 0.08),
+                          child: const Icon(Icons.storefront_outlined,
+                              color: AppColors.button, size: 20),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'SUCURSAL ACTIVA',
+                                style: GoogleFonts.manrope(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.textSecondary,
+                                  letterSpacing: 2,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                restauranteNombre,
+                                style: GoogleFonts.manrope(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        TextButton.icon(
+                          onPressed: () => _cambiarSucursal(context),
+                          icon: const Icon(Icons.swap_horiz_rounded,
+                              size: 16, color: AppColors.button),
+                          label: Text(
+                            'CAMBIAR',
+                            style: GoogleFonts.manrope(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.button,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
               child: Row(
                 children: [
                   Container(width: 3, height: 18, color: AppColors.button),

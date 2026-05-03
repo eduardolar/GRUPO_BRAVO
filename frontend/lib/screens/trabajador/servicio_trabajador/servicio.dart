@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:frontend/core/colors_style.dart';
+import 'package:frontend/screens/trabajador/Pedidos/pedidos_listos_screen.dart';
 import 'package:frontend/screens/trabajador/servicio_trabajador/sacar_cuenta.dart';
 import 'package:frontend/screens/trabajador/servicio_trabajador/seleccion_mesa.dart';
 
@@ -162,9 +163,9 @@ class _HeroSectionServicio extends StatelessWidget {
                 end: Alignment.bottomCenter,
                 stops: const [0.0, 0.3, 0.7, 1.0],
                 colors: [
-                  Colors.black.withOpacity(0.3),
+                  Colors.black.withValues(alpha:0.3),
                   Colors.transparent,
-                  Colors.black.withOpacity(0.75),
+                  Colors.black.withValues(alpha:0.75),
                   AppColors.background,
                 ],
               ),
@@ -241,6 +242,14 @@ class _ActionButtonsServicio extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
+        _MainButton(
+          icon: Icons.check_circle_outline,
+          label: "Pedidos listos",
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const PedidosListosScreen()),
+          ),
+        ),
         _MainButton(
           icon: Icons.restaurant_menu_outlined,
           label: "Comanda",
@@ -346,7 +355,7 @@ class _FooterQuote extends StatelessWidget {
           child: Column(
             children: [
               Icon(Icons.format_quote,
-                  color: AppColors.button.withOpacity(0.4), size: 30),
+                  color: AppColors.button.withValues(alpha:0.4), size: 30),
               const SizedBox(height: 16),
               const Text(
                 "Excelencia en cada mesa.",

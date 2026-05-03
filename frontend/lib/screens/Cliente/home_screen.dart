@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
+﻿import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -14,6 +14,7 @@ import 'package:frontend/screens/cliente/reservar_mesa_screen.dart';
 import 'package:frontend/screens/cliente/pedido_confirmado_screen.dart';
 import 'package:frontend/components/bravo_app_bar.dart';
 import 'package:frontend/core/app_routes.dart';
+import 'package:frontend/screens/cliente/seleccionar_restaurante_screen.dart';
 import 'package:frontend/core/colors_style.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -69,7 +70,7 @@ class _HomeScreenState extends State<HomeScreen> {
           pedidoId: sessionId,
         )),
       );
-    } catch (_) {}
+    } catch (e) { debugPrint('$e'); }
   }
 
   @override
@@ -124,10 +125,12 @@ class _HomeContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cart = context.watch<CartProvider>();
+    final nombreRestaurante = cart.restauranteNombre?.toUpperCase() ?? 'RESTAURANTE BRAVO';
     return Scaffold(
       backgroundColor: AppColors.background,
-      extendBodyBehindAppBar: true, 
-      appBar: const BravoAppBar(title: "RESTAURANTE BRAVO", isRoot: true),
+      extendBodyBehindAppBar: true,
+      appBar: BravoAppBar(title: nombreRestaurante, isRoot: true),
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
         child: Column(
@@ -259,22 +262,32 @@ class _ActionButtonsGroup extends StatelessWidget {
         _MainButton(
           icon: Icons.motorcycle,
           label: "Pedido a domicilio",
-          onPressed: () => Navigator.push(
-            context,
-            auth.estaAutenticado
-                ? AppRoute.slide(const MenuScreen())
-                : AppRoute.slideUp(const LoginScreen()),
-          ),
+          onPressed: () {
+            final destino = auth.estaAutenticado
+                ? const MenuScreen()
+                : const LoginScreen();
+            Navigator.push(
+              context,
+              cart.restauranteId != null
+                  ? AppRoute.slide(destino)
+                  : AppRoute.slide(SeleccionarRestauranteScreen(siguiente: destino)),
+            );
+          },
         ),
         _MainButton(
           icon: Icons.calendar_month,
           label: "Reservar mesa",
-          onPressed: () => Navigator.push(
-            context,
-            auth.estaAutenticado
-                ? AppRoute.slide(const ReservarMesaScreen())
-                : AppRoute.slideUp(const LoginScreen(destino: DestinoLogin.reservar)),
-          ),
+          onPressed: () {
+            final destino = auth.estaAutenticado
+                ? const ReservarMesaScreen()
+                : const LoginScreen(destino: DestinoLogin.reservar);
+            Navigator.push(
+              context,
+              cart.restauranteId != null
+                  ? AppRoute.slide(destino)
+                  : AppRoute.slide(SeleccionarRestauranteScreen(siguiente: destino)),
+            );
+          },
         ),
       ],
     );
@@ -282,6 +295,7 @@ class _ActionButtonsGroup extends StatelessWidget {
 
   Future<void> _handleQrScan(BuildContext context) async {
     final cart = context.read<CartProvider>();
+    final messenger = ScaffoldMessenger.of(context);
     final codigoQr = await Navigator.push<String>(context, AppRoute.slideUp(const QRScanner()));
     if (codigoQr == null) return;
 
@@ -301,7 +315,7 @@ class _ActionButtonsGroup extends StatelessWidget {
             : AppRoute.slideUp(const LoginScreen(destino: DestinoLogin.menu)),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error));
+      messenger.showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error));
     }
   }
 }

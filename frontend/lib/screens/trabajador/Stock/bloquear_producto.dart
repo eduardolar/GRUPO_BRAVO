@@ -1,8 +1,7 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../../../core/colors_style.dart';
 import '../../../services/api_service.dart';
 import '../../../models/ingrediente_model.dart';
-import '../../../components/trabajador/app_layout.dart';
 
 class BloquearProducto extends StatefulWidget {
   const BloquearProducto({super.key});
@@ -24,9 +23,7 @@ class _BloquearProductoState extends State<BloquearProducto> {
 
   Future<void> _cargarDatos() async {
   try {
-    print("Intentando conectar con la API..."); // Debug
     final productos = await ApiService.obtenerIngredientes();
-    print("Productos recibidos: ${productos.length}"); // Debug
     
     if (mounted) {
       setState(() {
@@ -35,7 +32,6 @@ class _BloquearProductoState extends State<BloquearProducto> {
       });
     }
   } catch (e) {
-    print("ERROR AL CARGAR: $e"); // Esto te dirá el error real en la consola
     if (mounted) {
       setState(() => _cargando = false);
       ScaffoldMessenger.of(context).showSnackBar(

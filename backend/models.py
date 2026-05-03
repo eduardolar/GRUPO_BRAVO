@@ -87,6 +87,7 @@ class PedidoCrear(BaseModel):
     notas: Optional[str] = None
     referenciaPago: Optional[str] = None
     estadoPago: Optional[EstadoPago] = EstadoPago.pendiente
+    restauranteId: Optional[str] = None
 
     @field_validator("tipoEntrega", mode="before")
     @classmethod
@@ -147,6 +148,7 @@ class ReservaCrear(BaseModel):
     turno: str
     mesaId: Optional[str] = None
     notas: Optional[str] = None
+    restauranteId: Optional[str] = None
 
 class ValidarQR(BaseModel):
     codigoQr: str

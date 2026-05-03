@@ -1,5 +1,4 @@
-import 'dart:ui';
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../../core/colors_style.dart'; // Ajusta la ruta si es necesario
 import '../../models/usuario_model.dart';
 import '../../services/usuario_service.dart';
@@ -74,7 +73,7 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
         content: Text("Se eliminará a ${usuario.nombre} del sistema.", style: const TextStyle(color: Colors.white70)),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("CANCELAR", style: TextStyle(color: Colors.white54))),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("ELIMINAR", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold))),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("ELIMINAR", style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold))),
         ],
       ),
     );
@@ -96,7 +95,7 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msj, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        backgroundColor: esExito ? Colors.green.shade800 : AppColors.button,
+        backgroundColor: esExito ? AppColors.disp : AppColors.button,
         behavior: SnackBarBehavior.floating,
       )
     );
@@ -127,7 +126,7 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter, end: Alignment.bottomCenter,
-              colors: [Colors.black.withOpacity(0.5), Colors.black.withOpacity(0.95)],
+              colors: [Colors.black.withValues(alpha:0.5), Colors.black.withValues(alpha:0.95)],
             ),
           ),
           child: SafeArea(
@@ -189,7 +188,7 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.6), 
+        color: Colors.black.withValues(alpha:0.6), 
         borderRadius: BorderRadius.circular(15),
         border: Border.all(color: Colors.white10),
       ),
@@ -216,7 +215,7 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
         trailing: esTrabajador 
             ? _botonCambiarRol(usuario)
             : IconButton(
-                icon: const Icon(Icons.delete_forever, color: Colors.redAccent),
+                icon: const Icon(Icons.delete_forever, color: AppColors.error),
                 onPressed: () => _eliminarUsuario(usuario),
               ),
       ),

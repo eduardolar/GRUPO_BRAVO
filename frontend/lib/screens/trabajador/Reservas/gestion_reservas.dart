@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/screens/trabajador/Reservas/borrar_reservas.dart';
 import 'package:frontend/screens/trabajador/Reservas/historial_reservas.dart';
@@ -164,9 +164,9 @@ class _HeroSectionReservas extends StatelessWidget {
                 end: Alignment.bottomCenter,
                 stops: const [0.0, 0.3, 0.7, 1.0],
                 colors: [
-                  Colors.black.withOpacity(0.3),
+                  Colors.black.withValues(alpha:0.3),
                   Colors.transparent,
-                  Colors.black.withOpacity(0.75),
+                  Colors.black.withValues(alpha:0.75),
                   AppColors.background,
                 ],
               ),
@@ -361,7 +361,7 @@ class _FooterQuote extends StatelessWidget {
           child: Column(
             children: [
               Icon(Icons.format_quote,
-                  color: AppColors.button.withOpacity(0.4), size: 30),
+                  color: AppColors.button.withValues(alpha:0.4), size: 30),
               const SizedBox(height: 16),
               const Text(
                 "Organización y excelencia en cada reserva.",
