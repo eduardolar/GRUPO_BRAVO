@@ -1,4 +1,4 @@
-import 'dart:math';
+﻿import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/models/mesa_model.dart';
@@ -37,12 +37,13 @@ class _AdminMesasScreenState extends State<AdminMesasScreen> {
   }
 
   Future<void> _mostrarFormCrearMesa() async {
+    final messenger = ScaffoldMessenger.of(context);
     final mesa = await showGeneralDialog<Mesa>(
       context: context,
       barrierDismissible: true,
       barrierLabel: '',
       transitionDuration: const Duration(milliseconds: 260),
-      pageBuilder: (_, __, ___) => const SizedBox.shrink(),
+      pageBuilder: (_, _, _) => const SizedBox.shrink(),
       transitionBuilder: (context, animation, secondaryAnimation, child) {
         final curved = CurvedAnimation(
           parent: animation,
@@ -69,7 +70,7 @@ class _AdminMesasScreenState extends State<AdminMesasScreen> {
       );
       if (!mounted) return;
       setState(() => _mesas.add(nueva));
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           content: Text('Mesa ${nueva.numero} creada correctamente'),
           backgroundColor: AppColors.button,
@@ -78,7 +79,7 @@ class _AdminMesasScreenState extends State<AdminMesasScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           content: Text(e.toString().replaceFirst('Exception: ', '')),
           backgroundColor: AppColors.error,
@@ -89,53 +90,61 @@ class _AdminMesasScreenState extends State<AdminMesasScreen> {
   }
 
   Future<void> _gestionarMesa(Mesa mesa) async {
+    final messenger = ScaffoldMessenger.of(context);
     final accion = await showDialog<String>(
       context: context,
       barrierDismissible: true,
       builder: (ctx) => _DialogGestionAdmin(mesa: mesa),
     );
-    
+
     if (accion == null || !mounted) return;
 
     if (accion == 'eliminar') {
       try {
-        // En el futuro aquí irá: await MesaService.eliminarMesa(mesa.id);
-        setState(() {
-          _mesas.removeWhere((m) => m.id == mesa.id);
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
+        await MesaService.eliminarMesa(mesa.id);
+        if (!mounted) return;
+        setState(() => _mesas.removeWhere((m) => m.id == mesa.id));
+        messenger.showSnackBar(
           const SnackBar(
             content: Text('Mesa eliminada correctamente'),
-            backgroundColor: Colors.redAccent,
+            backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
           ),
         );
-      } catch (_) {
+      } catch (e) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error al eliminar la mesa'), backgroundColor: AppColors.error),
+        messenger.showSnackBar(
+          SnackBar(content: Text('Error al eliminar la mesa: $e'), backgroundColor: AppColors.error),
         );
       }
     } else if (accion == 'liberar') {
       try {
-        // En el futuro aquí irá: await MesaService.actualizarMesa(mesa.id, {'disponible': true});
+        await MesaService.marcarMesaLibre(mesa.id);
+        if (!mounted) return;
         setState(() {
           final index = _mesas.indexWhere((m) => m.id == mesa.id);
-          if (index != -1) {
-            _mesas[index] = _mesas[index].copyWith(disponible: true);
-          }
+          if (index != -1) _mesas[index] = _mesas[index].copyWith(disponible: true);
         });
-      } catch (_) {}
+      } catch (e) {
+        if (!mounted) return;
+        messenger.showSnackBar(
+          SnackBar(content: Text('Error al liberar la mesa: $e'), backgroundColor: AppColors.error),
+        );
+      }
     } else if (accion == 'ocupar') {
       try {
-        // En el futuro aquí irá: await MesaService.actualizarMesa(mesa.id, {'disponible': false});
+        await MesaService.marcarMesaOcupada(mesa.id);
+        if (!mounted) return;
         setState(() {
           final index = _mesas.indexWhere((m) => m.id == mesa.id);
-          if (index != -1) {
-            _mesas[index] = _mesas[index].copyWith(disponible: false);
-          }
+          if (index != -1) _mesas[index] = _mesas[index].copyWith(disponible: false);
         });
-      } catch (_) {}
+      } catch (e) {
+        if (!mounted) return;
+        messenger.showSnackBar(
+          SnackBar(content: Text('Error al ocupar la mesa: $e'), backgroundColor: AppColors.error),
+        );
+      }
     }
   }
 
@@ -397,7 +406,7 @@ class _DialogGestionAdmin extends StatelessWidget {
                 icon: const Icon(Icons.people_alt_outlined, size: 16),
                 label: const Text('MARCAR COMO OCUPADA', style: TextStyle(letterSpacing: 1.2, fontSize: 11)),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color.fromARGB(255, 255, 0, 0), // Color distintivo
+                  backgroundColor: AppColors.error,
                   foregroundColor: Colors.white,
                   minimumSize: const Size(double.infinity, 45),
                   elevation: 0,
@@ -413,8 +422,8 @@ class _DialogGestionAdmin extends StatelessWidget {
               icon: const Icon(Icons.delete_outline, size: 16),
               label: const Text('ELIMINAR MESA', style: TextStyle(letterSpacing: 1.2, fontSize: 11)),
               style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.redAccent,
-                side: const BorderSide(color: Colors.redAccent),
+                foregroundColor: AppColors.error,
+                side: const BorderSide(color: AppColors.error),
                 minimumSize: const Size(double.infinity, 45),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),

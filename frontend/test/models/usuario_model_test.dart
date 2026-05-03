@@ -96,7 +96,7 @@ void main() {
   });
 
   group('Usuario rol parsing', () {
-    Usuario _parseRol(String rol) => Usuario.fromJson({
+    Usuario parseRol(String rol) => Usuario.fromJson({
           'id': 'u1',
           'nombre': 'Test',
           'correo': 'test@test.com',
@@ -106,35 +106,35 @@ void main() {
         });
 
     test('superadmin → superadministrador', () {
-      expect(_parseRol('superadmin').rol, RolUsuario.superadministrador);
+      expect(parseRol('superadmin').rol, RolUsuario.superadministrador);
     });
 
     test('superadministrador → superadministrador', () {
-      expect(_parseRol('superadministrador').rol, RolUsuario.superadministrador);
+      expect(parseRol('superadministrador').rol, RolUsuario.superadministrador);
     });
 
     test('cocinero → cocinero', () {
-      expect(_parseRol('cocinero').rol, RolUsuario.cocinero);
+      expect(parseRol('cocinero').rol, RolUsuario.cocinero);
     });
 
     test('camarero → trabajador', () {
-      expect(_parseRol('camarero').rol, RolUsuario.trabajador);
+      expect(parseRol('camarero').rol, RolUsuario.trabajador);
     });
 
     test('mesero → trabajador', () {
-      expect(_parseRol('mesero').rol, RolUsuario.trabajador);
+      expect(parseRol('mesero').rol, RolUsuario.trabajador);
     });
 
     test('admin → administrador', () {
-      expect(_parseRol('admin').rol, RolUsuario.administrador);
+      expect(parseRol('admin').rol, RolUsuario.administrador);
     });
 
     test('administrador → administrador', () {
-      expect(_parseRol('administrador').rol, RolUsuario.administrador);
+      expect(parseRol('administrador').rol, RolUsuario.administrador);
     });
 
     test('desconocido → cliente por defecto', () {
-      expect(_parseRol('fantasma').rol, RolUsuario.cliente);
+      expect(parseRol('fantasma').rol, RolUsuario.cliente);
     });
 
     test('null → cliente por defecto', () {

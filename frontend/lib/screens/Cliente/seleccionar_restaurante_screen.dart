@@ -295,8 +295,8 @@ class _RestauranteCard extends StatelessWidget {
                             Icons.schedule_outlined,
                             size: 11,
                             color: abierto
-                                ? Colors.greenAccent.withValues(alpha: 0.75)
-                                : Colors.redAccent.withValues(alpha: 0.75),
+                                ? AppColors.disp.withValues(alpha: 0.75)
+                                : AppColors.error.withValues(alpha: 0.75),
                           ),
                           const SizedBox(width: 4),
                           Text(
@@ -304,8 +304,8 @@ class _RestauranteCard extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 11,
                               color: abierto
-                                  ? Colors.greenAccent.withValues(alpha: 0.80)
-                                  : Colors.redAccent.withValues(alpha: 0.80),
+                                  ? AppColors.disp.withValues(alpha: 0.80)
+                                  : AppColors.error.withValues(alpha: 0.80),
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -314,8 +314,8 @@ class _RestauranteCard extends StatelessWidget {
                                 horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
                               color: abierto
-                                  ? Colors.greenAccent.withValues(alpha: 0.12)
-                                  : Colors.redAccent.withValues(alpha: 0.12),
+                                  ? AppColors.disp.withValues(alpha: 0.12)
+                                  : AppColors.error.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
@@ -325,8 +325,8 @@ class _RestauranteCard extends StatelessWidget {
                                 fontWeight: FontWeight.w700,
                                 letterSpacing: 0.3,
                                 color: abierto
-                                    ? Colors.greenAccent
-                                    : Colors.redAccent,
+                                    ? AppColors.disp
+                                    : AppColors.error,
                               ),
                             ),
                           ),

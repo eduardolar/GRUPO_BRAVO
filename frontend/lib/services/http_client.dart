@@ -1,6 +1,7 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 /// Typed HTTP error. [statusCode] == 0 means a network-level failure
@@ -70,7 +71,7 @@ Map<String, dynamic> decodeBody(http.Response response) {
     return decoded is Map<String, dynamic> ? decoded : {'data': decoded};
   } on FormatException {
     // PayPal / backend puede devolver texto o HTML en errores 500.
-    print(
+    debugPrint(
       'DEBUG: HTTP response body no es JSON. '
       'status=${response.statusCode} body=${response.body}',
     );

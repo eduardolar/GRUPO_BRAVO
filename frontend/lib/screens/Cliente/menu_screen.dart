@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../core/colors_style.dart';
@@ -73,7 +73,7 @@ class _MenuScreenState extends State<MenuScreen> {
         if (matches.isNotEmpty && mounted) {
           setState(() => _restaurante = matches.first);
         }
-      } catch (_) {}
+      } catch (e) { debugPrint('$e'); }
     }
 
     // Cargar último pedido para el botón de re-order
@@ -86,7 +86,7 @@ class _MenuScreenState extends State<MenuScreen> {
         if (pedidos.isNotEmpty) {
           setState(() => _ultimoPedido = pedidos.first);
         }
-      } catch (_) {}
+      } catch (e) { debugPrint('$e'); }
     }
   }
 

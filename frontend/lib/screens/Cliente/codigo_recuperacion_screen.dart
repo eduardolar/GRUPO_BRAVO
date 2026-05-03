@@ -167,7 +167,7 @@ class _CodigoRecuperacionScreenState extends State<CodigoRecuperacionScreen> {
   void _showSnackBar(String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(message),
-      backgroundColor: isError ? AppColors.error : Colors.green,
+      backgroundColor: isError ? AppColors.error : AppColors.disp,
     ));
   }
 }

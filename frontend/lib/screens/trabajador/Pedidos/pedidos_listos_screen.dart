@@ -1,10 +1,12 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/models/pedido_model.dart';
 import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/services/api_service.dart';
 import 'package:provider/provider.dart';
+
+const _kBlue = Color(0xFF2563EB);
 
 class PedidosListosScreen extends StatefulWidget {
   const PedidosListosScreen({super.key});
@@ -107,15 +109,15 @@ class _PedidosListosScreenState extends State<PedidosListosScreen> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF2563EB).withValues(alpha: 0.12),
+                  color: _kBlue.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                      color: const Color(0xFF2563EB).withValues(alpha: 0.4)),
+                      color: _kBlue.withValues(alpha: 0.4)),
                 ),
                 child: Text(
                   '${_pedidos.length}',
                   style: const TextStyle(
-                    color: Color(0xFF2563EB),
+                    color: _kBlue,
                     fontWeight: FontWeight.w700,
                     fontSize: 12,
                   ),
@@ -253,7 +255,7 @@ class _TarjetaPedidoListo extends StatelessWidget {
         color: AppColors.panel,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: const Color(0xFF2563EB).withValues(alpha: 0.3),
+          color: _kBlue.withValues(alpha: 0.3),
         ),
         boxShadow: [
           BoxShadow(
@@ -298,9 +300,9 @@ class _TarjetaPedidoListo extends StatelessWidget {
             height: 38,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: const Color(0xFF2563EB), width: 1.5),
+              border: Border.all(color: _kBlue, width: 1.5),
             ),
-            child: Icon(_icono, color: const Color(0xFF2563EB), size: 18),
+            child: Icon(_icono, color: _kBlue, size: 18),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -329,15 +331,15 @@ class _TarjetaPedidoListo extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: const Color(0xFF2563EB).withValues(alpha: 0.08),
+              color: _kBlue.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
-                  color: const Color(0xFF2563EB).withValues(alpha: 0.3)),
+                  color: _kBlue.withValues(alpha: 0.3)),
             ),
             child: const Text(
               'LISTO',
               style: TextStyle(
-                color: Color(0xFF2563EB),
+                color: _kBlue,
                 fontWeight: FontWeight.w700,
                 fontSize: 10,
                 letterSpacing: 1.2,

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:frontend/core/app_routes.dart';
@@ -109,7 +109,7 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Text(
           '¿Olvidaste tu contraseña?',
           style: TextStyle(
-            color: Colors.white.withOpacity(0.8),
+            color: Colors.white.withValues(alpha:0.8),
             fontWeight: FontWeight.w400,
             fontSize: 13,
           ),

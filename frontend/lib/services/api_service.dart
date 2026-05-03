@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -405,14 +405,14 @@ class ApiService {
       retry: false,
     );
     if (response.statusCode >= 400) {
-      print(
+      debugPrint(
         'DEBUG PayPal create-order error: '
         'status=${response.statusCode} body=${response.body}',
       );
       throw toApiException(response.statusCode, decodeBody(response));
     }
     final body = Map<String, dynamic>.from(decodeBody(response));
-    print(
+    debugPrint(
       'DEBUG PayPal create-order success: status=${response.statusCode} body=$body',
     );
     return body;

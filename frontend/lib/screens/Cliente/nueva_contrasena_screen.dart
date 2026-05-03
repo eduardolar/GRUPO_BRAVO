@@ -53,7 +53,7 @@ class _NuevaContrasenaScreenState extends State<NuevaContrasenaScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('¡Contraseña actualizada!'),
-          backgroundColor: Colors.green,
+          backgroundColor: AppColors.disp,
         ),
       );
       Navigator.pushAndRemoveUntil(

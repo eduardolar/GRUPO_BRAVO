@@ -12,7 +12,7 @@ class ProductoCard extends StatelessWidget {
 
   static DateTime _lastTap = DateTime(2000);
 
-  ProductoCard({
+  const ProductoCard({
     super.key,
     required this.product,
     required this.onAdd,

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../../core/colors_style.dart';
 import '../../models/pedido_model.dart';
 import '../../services/pedido_service.dart';
@@ -88,7 +88,7 @@ class _AdminContabilidadScreenState extends State<AdminContabilidadScreen> {
             width: double.infinity, height: double.infinity,
             decoration: BoxDecoration(
               gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                colors: [Colors.black.withOpacity(0.7), Colors.black.withOpacity(0.9)]),
+                colors: [Colors.black.withValues(alpha:0.7), Colors.black.withValues(alpha:0.9)]),
             ),
           ),
           SafeArea(
@@ -125,9 +125,9 @@ class _AdminContabilidadScreenState extends State<AdminContabilidadScreen> {
                             padding: const EdgeInsets.symmetric(horizontal: 16.0),
                             child: Row(
                               children: [
-                                _buildMetricCard('Ingresos', '${totalIngresos.toStringAsFixed(2)}€', Icons.euro, Colors.greenAccent),
+                                _buildMetricCard('Ingresos', '${totalIngresos.toStringAsFixed(2)}€', Icons.euro, AppColors.disp),
                                 const SizedBox(width: 10),
-                                _buildMetricCard('Pedidos', '${pedidos.length}', Icons.shopping_bag, Colors.blueAccent),
+                                _buildMetricCard('Pedidos', '${pedidos.length}', Icons.shopping_bag, const Color(0xFF3B82F6)),
                                 const SizedBox(width: 10),
                                 _buildMetricCard('Ticket Medio', '${ticketMedio.toStringAsFixed(2)}€', Icons.analytics, Colors.orangeAccent),
                               ],
@@ -148,13 +148,13 @@ class _AdminContabilidadScreenState extends State<AdminContabilidadScreen> {
                                     final pedido = pedidos[index];
                                     DateTime f = DateTime.tryParse(pedido.fecha.toString()) ?? DateTime.now();
                                     return Card(
-                                      color: Colors.white.withOpacity(0.95),
+                                      color: Colors.white.withValues(alpha:0.95),
                                       margin: const EdgeInsets.only(bottom: 12),
                                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                       child: ListTile(
                                         title: Text('Pedido #${pedido.id.substring(pedido.id.length - 5)}', style: const TextStyle(fontWeight: FontWeight.bold)),
                                         subtitle: Text('${_dateFormat.format(f)} - ${pedido.tipoEntrega}'),
-                                        trailing: Text('${pedido.total.toStringAsFixed(2)}€', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.w900)),
+                                        trailing: Text('${pedido.total.toStringAsFixed(2)}€', style: const TextStyle(color: AppColors.disp, fontWeight: FontWeight.w900)),
                                       ),
                                     );
                                   },
@@ -180,7 +180,7 @@ class _AdminContabilidadScreenState extends State<AdminContabilidadScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(15),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 10)],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha:0.3), blurRadius: 10)],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -261,13 +261,13 @@ class _AdminContabilidadScreenState extends State<AdminContabilidadScreen> {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.9),
+          color: Colors.white.withValues(alpha:0.9),
           borderRadius: BorderRadius.circular(15),
-          border: Border.all(color: accentColor.withOpacity(0.5), width: 2),
+          border: Border.all(color: accentColor.withValues(alpha:0.5), width: 2),
         ),
         child: Column(
           children: [
-            Icon(icon, color: accentColor.withOpacity(0.8), size: 22),
+            Icon(icon, color: accentColor.withValues(alpha:0.8), size: 22),
             const SizedBox(height: 8),
             Text(value, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: Colors.black87)),
             Text(label, style: const TextStyle(fontSize: 9, color: Colors.black54, fontWeight: FontWeight.bold), textAlign: TextAlign.center),

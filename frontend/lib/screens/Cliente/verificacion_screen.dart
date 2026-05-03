@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -183,7 +183,7 @@ Future<void> _reenviarCodigo() async {
                   widget.esModo2FA 
                     ? 'Escribe el código de seguridad enviado a:' 
                     : 'Hemos enviado un código de activación a:',
-                  style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13),
+                  style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 13),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 5),
@@ -234,7 +234,7 @@ Future<void> _reenviarCodigo() async {
   void _showSnackBar(String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(message, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-      backgroundColor: isError ? AppColors.error : Colors.green.shade700,
+      backgroundColor: isError ? AppColors.error : AppColors.disp,
       behavior: SnackBarBehavior.floating,
     ));
   }

@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -132,7 +132,7 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
         setState(() => _restaurante = matches.first);
         _cargarDisponibilidad();
       }
-    } catch (_) {}
+    } catch (e) { debugPrint('$e'); }
   }
 
   static int _parseMins(String t) {
@@ -194,7 +194,7 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
         setState(() => _maxComensales =
             mesas.map((m) => m.capacidad).reduce((a, b) => a > b ? a : b));
       }
-    } catch (_) {}
+    } catch (e) { debugPrint('$e'); }
   }
 
   Future<void> _cargarDisponibilidad() async {
@@ -499,7 +499,7 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
   void _snack(String msg, {bool error = false}) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg),
-      backgroundColor: error ? AppColors.error : Colors.green,
+      backgroundColor: error ? AppColors.error : AppColors.disp,
       behavior: SnackBarBehavior.floating,
     ));
   }
@@ -900,7 +900,7 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
                         color: sel
                             ? Colors.white70
                             : disponible
-                                ? Colors.green
+                                ? AppColors.disp
                                 : AppColors.error,
                         fontSize: fontSize,
                         fontWeight: FontWeight.w600,
@@ -1473,10 +1473,10 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
 
   Color _colorEstado(String estado) {
     switch (estado.toLowerCase()) {
-      case 'confirmada': return Colors.green;
+      case 'confirmada': return AppColors.disp;
       case 'pendiente':  return Colors.orange;
       case 'cancelada':  return AppColors.error;
-      default:           return Colors.blueAccent;
+      default:           return const Color(0xFF3B82F6);
     }
   }
 }
@@ -1520,7 +1520,7 @@ class _ConfirmacionSheet extends StatelessWidget {
               shape: BoxShape.circle,
               color: AppColors.successBackground,
             ),
-            child: const Icon(Icons.check, color: Colors.green, size: 36),
+            child: const Icon(Icons.check, color: AppColors.disp, size: 36),
           ),
           const SizedBox(height: 16),
           const Text(

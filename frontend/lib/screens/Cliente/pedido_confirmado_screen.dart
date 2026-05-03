@@ -178,15 +178,15 @@ class _PedidoConfirmadoScreenState extends State<PedidoConfirmadoScreen>
                               height: 88,
                               decoration: BoxDecoration(
                                 color: _esCancelado
-                                    ? Colors.redAccent.withValues(alpha: 0.15)
+                                    ? AppColors.error.withValues(alpha: 0.15)
                                     : _esEntregado
-                                        ? Colors.green.withValues(alpha: 0.15)
+                                        ? AppColors.disp.withValues(alpha: 0.15)
                                         : AppColors.button.withValues(alpha: 0.15),
                                 border: Border.all(
                                   color: _esCancelado
-                                      ? Colors.redAccent
+                                      ? AppColors.error
                                       : _esEntregado
-                                          ? Colors.green
+                                          ? AppColors.disp
                                           : AppColors.button,
                                   width: 1.5,
                                 ),
@@ -198,9 +198,9 @@ class _PedidoConfirmadoScreenState extends State<PedidoConfirmadoScreen>
                                         ? Icons.check_circle_outline
                                         : Icons.check,
                                 color: _esCancelado
-                                    ? Colors.redAccent
+                                    ? AppColors.error
                                     : _esEntregado
-                                        ? Colors.green
+                                        ? AppColors.disp
                                         : AppColors.button,
                                 size: 44,
                               ),
@@ -406,13 +406,13 @@ class _BannerCancelado extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 18),
       decoration: BoxDecoration(
-        color: Colors.redAccent.withValues(alpha: 0.08),
-        border: Border.all(color: Colors.redAccent.withValues(alpha: 0.35)),
+        color: AppColors.error.withValues(alpha: 0.08),
+        border: Border.all(color: AppColors.error.withValues(alpha: 0.35)),
       ),
       child: Row(
         children: [
           Icon(Icons.cancel_outlined,
-              color: Colors.redAccent.withValues(alpha: 0.7), size: 22),
+              color: AppColors.error.withValues(alpha: 0.7), size: 22),
           const SizedBox(width: 12),
           Expanded(
             child: Text(

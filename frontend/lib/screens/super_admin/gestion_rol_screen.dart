@@ -276,7 +276,7 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
               ),
               const SizedBox(height: 20),
               DropdownButtonFormField<String>(
-                value: rolActual,
+                initialValue: rolActual,
                 decoration: InputDecoration(
                   labelText: 'Nuevo rol',
                   labelStyle: GoogleFonts.manrope(fontSize: 13),

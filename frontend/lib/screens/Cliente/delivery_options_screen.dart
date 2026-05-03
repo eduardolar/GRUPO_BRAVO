@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform;
+﻿import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -689,7 +689,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       // Marcar el pedido como pagado en la BD
       try {
         await ApiService.actualizarEstadoPago(referenciaPago: sessionId);
-      } catch (_) {}
+      } catch (e) { debugPrint('$e'); }
       if (!mounted) return;
 
       Navigator.pushAndRemoveUntil(
@@ -1339,8 +1339,8 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
         throw Exception('No se pudo iniciar el pago de Google Pay');
       }
 
-      final googlePaySupported = await Stripe.instance.isGooglePaySupported(
-        const IsGooglePaySupportedParams(),
+      final googlePaySupported = await Stripe.instance.isPlatformPaySupported(
+        googlePay: const IsGooglePaySupportedParams(),
       );
       if (!googlePaySupported) {
         throw Exception('Google Pay no está disponible en este dispositivo.');
@@ -2046,11 +2046,12 @@ class _StripeCheckoutDialogState extends State<_StripeCheckoutDialog> {
         });
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _verificando = false;
           _error = e.toString();
         });
+      }
     }
   }
 

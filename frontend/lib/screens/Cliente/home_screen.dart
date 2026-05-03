@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
+﻿import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -70,7 +70,7 @@ class _HomeScreenState extends State<HomeScreen> {
           pedidoId: sessionId,
         )),
       );
-    } catch (_) {}
+    } catch (e) { debugPrint('$e'); }
   }
 
   @override
@@ -295,6 +295,7 @@ class _ActionButtonsGroup extends StatelessWidget {
 
   Future<void> _handleQrScan(BuildContext context) async {
     final cart = context.read<CartProvider>();
+    final messenger = ScaffoldMessenger.of(context);
     final codigoQr = await Navigator.push<String>(context, AppRoute.slideUp(const QRScanner()));
     if (codigoQr == null) return;
 
@@ -314,7 +315,7 @@ class _ActionButtonsGroup extends StatelessWidget {
             : AppRoute.slideUp(const LoginScreen(destino: DestinoLogin.menu)),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error));
+      messenger.showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error));
     }
   }
 }

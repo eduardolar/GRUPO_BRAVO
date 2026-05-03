@@ -1,4 +1,5 @@
-import 'dart:convert';
+﻿import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../models/usuario_model.dart';
 import 'api_config.dart';
@@ -97,7 +98,7 @@ class UsuarioService {
 
     return response.statusCode == 200 || response.statusCode == 201;
   } catch (e) {
-    print('Error al crear usuario: $e');
+    debugPrint('Error al crear usuario: $e');
     return false;
   } 
 }
@@ -123,11 +124,11 @@ class UsuarioService {
       if (response.statusCode == 200) {
         return true;
       } else {
-        print("Error del servidor: ${response.body}");
+        debugPrint("Error del servidor: ${response.body}");
         return false;
       }
     } catch (e) {
-      print("Error al conectar con el backend: $e");
+      debugPrint("Error al conectar con el backend: $e");
       return false;
     }
   }
