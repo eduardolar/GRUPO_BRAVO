@@ -76,6 +76,7 @@ class _DialogoIngredientesState extends State<_DialogoIngredientes> {
                     ),
                   ),
                   IconButton(
+                    tooltip: 'Cerrar',
                     onPressed: () => Navigator.pop(context, null),
                     icon: const Icon(Icons.close, color: AppColors.textSecondary),
                     splashRadius: 20,

@@ -1,24 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../core/colors_style.dart';
-import '../../providers/auth_provider.dart';
-import '../../components/Cliente/entrada_texto.dart';
-import '../../components/Cliente/auth_scaffold.dart';
 import '../../components/Cliente/auth_header.dart';
+import '../../components/Cliente/auth_scaffold.dart';
+import '../../components/Cliente/entrada_texto.dart';
 import '../../components/Cliente/primary_button.dart';
+import '../../core/app_snackbar.dart';
+import '../../providers/auth_provider.dart';
 import 'codigo_recuperacion_screen.dart';
 
-class ForgottenPassword extends StatefulWidget {
-  const ForgottenPassword({super.key});
+class RecuperarContrasenaScreen extends StatefulWidget {
+  const RecuperarContrasenaScreen({super.key});
 
   @override
-  State<ForgottenPassword> createState() => _ForgottenPasswordState();
+  State<RecuperarContrasenaScreen> createState() =>
+      _RecuperarContrasenaScreenState();
 }
 
-class _ForgottenPasswordState extends State<ForgottenPassword> {
+class _RecuperarContrasenaScreenState
+    extends State<RecuperarContrasenaScreen> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _correoController = TextEditingController();
+  final _correoController = TextEditingController();
   bool _isLoading = false;
 
   @override
@@ -30,12 +32,12 @@ class _ForgottenPasswordState extends State<ForgottenPassword> {
   Future<void> _enviarCodigo() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
+    final auth = context.read<AuthProvider>();
+    final navigator = Navigator.of(context);
     try {
-      final auth = Provider.of<AuthProvider>(context, listen: false);
       await auth.recuperarPassword(_correoController.text.trim());
       if (!mounted) return;
-      Navigator.push(
-        context,
+      navigator.push(
         MaterialPageRoute(
           builder: (_) =>
               CodigoRecuperacionScreen(email: _correoController.text.trim()),
@@ -43,12 +45,7 @@ class _ForgottenPasswordState extends State<ForgottenPassword> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString().replaceAll('Exception: ', '')),
-          backgroundColor: AppColors.error,
-        ),
-      );
+      showAppError(context, e.toString().replaceAll('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -71,6 +68,7 @@ class _ForgottenPasswordState extends State<ForgottenPassword> {
               etiqueta: 'Correo electrónico',
               icono: Icons.email_outlined,
               tipoTeclado: TextInputType.emailAddress,
+              autofillHints: const [AutofillHints.email],
               controlador: _correoController,
               validador: (v) =>
                   (v == null || !v.contains('@')) ? 'Email inválido' : null,

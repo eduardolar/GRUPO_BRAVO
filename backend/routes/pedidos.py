@@ -211,6 +211,11 @@ class ActualizarItemsPedido(BaseModel):
 class ActualizarEstado(BaseModel):
     estado: str
 
+
+class ActualizarItemHecho(BaseModel):
+    hecho: bool
+
+
 _ESTADOS_VALIDOS = {"pendiente", "preparando", "listo", "entregado", "cancelado"}
 
 
@@ -253,6 +258,8 @@ async def crear_pedido(pedido: PedidoCrear):
         pedido_dict["mesa_id"] = pedido.mesaId
     if pedido.numeroMesa is not None:
         pedido_dict["numero_mesa"] = pedido.numeroMesa
+    if pedido.restauranteId:
+        pedido_dict["restaurante_id"] = pedido.restauranteId
 
     resultado = None
     try:
@@ -332,6 +339,46 @@ def actualizar_estado_pedido(pedido_id: str, payload: ActualizarEstado):
     return {"updated": result.modified_count > 0, "estado": payload.estado}
 
 
+@router.patch("/{pedido_id}/items/{item_idx}/hecho")
+def marcar_item_hecho(pedido_id: str, item_idx: int, payload: ActualizarItemHecho):
+    if not ObjectId.is_valid(pedido_id):
+        raise ValidacionError("ID de pedido inválido")
+    if item_idx < 0:
+        raise ValidacionError("Índice de item inválido")
+
+    pedido = coleccion_pedidos.find_one({"_id": ObjectId(pedido_id)})
+    if not pedido:
+        raise NotFoundError("Pedido no encontrado")
+
+    items = pedido.get("items", [])
+    if not isinstance(items, list) or item_idx >= len(items):
+        raise ValidacionError(f"Índice de item fuera de rango (0..{len(items) - 1})")
+
+    coleccion_pedidos.update_one(
+        {"_id": ObjectId(pedido_id)},
+        {"$set": {f"items.{item_idx}.hecho": payload.hecho}},
+    )
+
+    pedido_actualizado = coleccion_pedidos.find_one({"_id": ObjectId(pedido_id)})
+    items_actualizados = pedido_actualizado.get("items", [])
+    todos_hechos = (
+        len(items_actualizados) > 0
+        and all(it.get("hecho", False) for it in items_actualizados)
+    )
+
+    if todos_hechos and pedido_actualizado.get("estado") in {"pendiente", "preparando"}:
+        coleccion_pedidos.update_one(
+            {"_id": ObjectId(pedido_id)},
+            {"$set": {"estado": "listo"}},
+        )
+
+    return {
+        "updated": True,
+        "hecho": payload.hecho,
+        "todosHechos": todos_hechos,
+    }
+
+
 @router.patch("/{pedido_id}")
 def actualizar_pedido(pedido_id: str, payload: ActualizarItemsPedido):
     if not ObjectId.is_valid(pedido_id):
@@ -369,6 +416,8 @@ def obtener_pedidos(
     userId: Optional[str] = Query(None),
     mesaId: Optional[str] = Query(None),
     estadoPago: Optional[str] = Query(None),
+    restauranteId: Optional[str] = Query(None),
+    estado: Optional[str] = Query(None),
 ):
     filtro = {}
     if userId:
@@ -377,14 +426,16 @@ def obtener_pedidos(
         filtro["mesa_id"] = mesaId
     if estadoPago:
         filtro["estado_pago"] = estadoPago
-    if not filtro:
-        raise HTTPException(status_code=400, detail="Se requiere al menos un filtro (userId o mesaId)")
-    pedidos = coleccion_pedidos.find(filtro)
-def obtener_pedidos(userId: Optional[str] = Query(None)):
-    filtro = {}
-    if userId:
-        filtro["usuario_id"] = userId
-        # Si se proporciona userId, se filtran los pedidos de ese usuario. Si no, se devuelven todos.
+    if restauranteId:
+        # Incluir pedidos con ese restaurante_id Y pedidos sin restaurante_id
+        # (retrocompatibilidad con pedidos creados antes de asignar restaurante)
+        filtro["$or"] = [
+            {"restaurante_id": restauranteId},
+            {"restaurante_id": {"$exists": False}},
+        ]
+    if estado:
+        filtro["estado"] = estado
+    # Sin filtros → devolver todos los pedidos (usado por la pantalla de cocina)
     pedidos = coleccion_pedidos.find(filtro)
     resultado = []
     for p in pedidos:
@@ -403,9 +454,35 @@ def obtener_pedidos(userId: Optional[str] = Query(None)):
             "mesaId": p.get("mesa_id"),
             "numeroMesa": p.get("numero_mesa"),
             "notas": p.get("notas", ""),
+            "restauranteId": str(p["restaurante_id"]) if p.get("restaurante_id") else None,
         })
     return resultado
 
+
+
+@router.get("/{pedido_id}")
+def obtener_pedido(pedido_id: str):
+    if not ObjectId.is_valid(pedido_id):
+        raise ValidacionError("ID de pedido inválido")
+    p = coleccion_pedidos.find_one({"_id": ObjectId(pedido_id)})
+    if not p:
+        raise NotFoundError("Pedido no encontrado")
+    items_raw = p.get("items", [])
+    return {
+        "id": str(p["_id"]),
+        "fecha": p.get("fecha", ""),
+        "total": p.get("total", 0),
+        "estado": p.get("estado", "pendiente"),
+        "estadoPago": p.get("estado_pago", "pendiente"),
+        "items": len(items_raw) if isinstance(items_raw, list) else items_raw,
+        "productos": items_raw if isinstance(items_raw, list) else [],
+        "tipoEntrega": p.get("tipo_entrega", ""),
+        "metodoPago": p.get("metodo_pago", ""),
+        "direccion": p.get("direccion_entrega", ""),
+        "mesaId": p.get("mesa_id"),
+        "numeroMesa": p.get("numero_mesa"),
+        "notas": p.get("notas", ""),
+    }
 
 
 @router.patch("/{pedido_id}/items")

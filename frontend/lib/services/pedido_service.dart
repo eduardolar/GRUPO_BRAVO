@@ -18,6 +18,7 @@ class PedidoService {
     String? notas,
     String? referenciaPago,
     required String estadoPago,
+    String? restauranteId,
   }) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 600));
@@ -58,6 +59,7 @@ class PedidoService {
           'notas': notas,
           'referenciaPago': referenciaPago,
           'estadoPago': estadoPago,
+          'restauranteId': ?restauranteId,
         }),
       ),
       retry: false,
@@ -168,7 +170,7 @@ class PedidoService {
         },
         body: jsonEncode({
           'estadoPago': 'pagado',
-          'estado': 'completado',
+          'estado': 'entregado',
           'metodoPago': metodoPago,
         }),
       ),
@@ -183,6 +185,7 @@ class PedidoService {
   static Future<bool> enviarPedidoPorQR({
     required String mesaId,
     required List<dynamic> items,
+    String? restauranteId,
   }) async {
     try {
       final response = await httpWithRetry(
@@ -201,6 +204,7 @@ class PedidoService {
             'mesaId': mesaId,
             'notas': 'Pedido enviado por QR',
             'estadoPago': 'pendiente',
+            'restauranteId': ?restauranteId,
           }),
         ),
         retry: false,
@@ -236,18 +240,79 @@ class PedidoService {
     }
   }
 
-  static Future<List<Pedido>> obtenerTodosLosPedidos() async {
+  /// Marca un item de un pedido como hecho/no hecho.
+  /// El backend devuelve `todosHechos: true` cuando todos los items están
+  /// completados; en ese caso el propio backend mueve el pedido a estado `listo`.
+  static Future<Map<String, dynamic>> marcarItemHecho({
+    required String pedidoId,
+    required int itemIndex,
+    required bool hecho,
+  }) async {
     if (!usarApiReal) {
-      await Future.delayed(const Duration(milliseconds: 400));
-      return MockData.pedidos.map((m) => Pedido.fromMap(m)).toList();
+      await Future.delayed(const Duration(milliseconds: 200));
+      return {'updated': true, 'hecho': hecho, 'todosHechos': false};
     }
 
-    // Llama al endpoint general de pedidos sin filtrar por usuario
+    final response = await httpWithRetry(
+      () => http.patch(
+        Uri.parse('$baseUrl/pedidos/$pedidoId/items/$itemIndex/hecho'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({'hecho': hecho}),
+      ),
+      retry: false,
+    );
+
+    if (response.statusCode >= 400) {
+      throw toApiException(response.statusCode, decodeBody(response));
+    }
+    return Map<String, dynamic>.from(decodeBody(response));
+  }
+
+  static Future<Pedido> obtenerPedido(String pedidoId) async {
+    if (!usarApiReal) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      final mock = MockData.pedidos.firstWhere(
+        (m) => m['id'] == pedidoId,
+        orElse: () => MockData.pedidos.first,
+      );
+      return Pedido.fromMap(mock);
+    }
+
     final response = await httpWithRetry(
       () => http.get(
-        Uri.parse('$baseUrl/pedidos'),
+        Uri.parse('$baseUrl/pedidos/$pedidoId'),
         headers: {'Accept': 'application/json'},
       ),
+    );
+
+    if (response.statusCode == 200) {
+      return Pedido.fromMap(decodeBody(response));
+    }
+    throw toApiException(response.statusCode, decodeBody(response));
+  }
+
+  static Future<List<Pedido>> obtenerTodosLosPedidos({
+    String? restauranteId,
+    String? estado,
+  }) async {
+    if (!usarApiReal) {
+      await Future.delayed(const Duration(milliseconds: 400));
+      var pedidos = MockData.pedidos.map((m) => Pedido.fromMap(m)).toList();
+      if (estado != null) pedidos = pedidos.where((p) => p.estado == estado).toList();
+      return pedidos;
+    }
+
+    final params = <String, String>{};
+    if (restauranteId != null && restauranteId.isNotEmpty) params['restauranteId'] = restauranteId;
+    if (estado != null) params['estado'] = estado;
+    final uri = Uri.parse('$baseUrl/pedidos').replace(
+      queryParameters: params.isEmpty ? null : params,
+    );
+    final response = await httpWithRetry(
+      () => http.get(uri, headers: {'Accept': 'application/json'}),
     );
 
     if (response.statusCode == 200) {

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:frontend/components/bravo_app_bar.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/screens/trabajador/Pedidos/gestion_pedidos.dart';
@@ -118,9 +118,9 @@ class _HeroSection extends StatelessWidget {
                 end: Alignment.bottomCenter,
                 stops: const [0.0, 0.3, 0.7, 1.0],
                 colors: [
-                  Colors.black.withOpacity(0.3),
+                  Colors.black.withValues(alpha:0.3),
                   Colors.transparent,
-                  Colors.black.withOpacity(0.75),
+                  Colors.black.withValues(alpha:0.75),
                   AppColors.background,
                 ],
               ),
@@ -252,7 +252,7 @@ class _MainButton extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Material(
-        color: isPrimary ? AppColors.button : Colors.black.withOpacity(0.55),
+        color: isPrimary ? AppColors.button : Colors.black.withValues(alpha:0.55),
         child: InkWell(
           onTap: onPressed,
           child: Container(
@@ -305,7 +305,7 @@ class _FooterQuote extends StatelessWidget {
           ),
           child: Column(
             children: [
-              Icon(Icons.format_quote, color: AppColors.button.withOpacity(0.4), size: 30),
+              Icon(Icons.format_quote, color: AppColors.button.withValues(alpha:0.4), size: 30),
               const SizedBox(height: 16),
               const Text(
                 "Excelencia en cada servicio.",

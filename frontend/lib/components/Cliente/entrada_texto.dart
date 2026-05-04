@@ -2,15 +2,16 @@ import 'package:flutter/material.dart';
 import '../../core/colors_style.dart';
 
 class EntradaTexto extends StatelessWidget {
-  final String etiqueta; // El texto que flota (Label)
-  final IconData? icono; // El icono de la izquierda
-  final bool esContrasena; // Si debe ocultar el texto
-  final bool? mostrarTexto; // Controla el ojo (obscureText)
-  final VoidCallback? alPresionarIcono; // Acción al tocar el ojo
-  final TextInputType tipoTeclado; // Si es email, números, etc.
+  final String etiqueta;
+  final IconData? icono;
+  final bool esContrasena;
+  final bool? mostrarTexto;
+  final VoidCallback? alPresionarIcono;
+  final TextInputType tipoTeclado;
   final String? Function(String?)? validador;
   final TextEditingController? controlador;
-  final bool readOnly;
+  final List<String>? autofillHints;
+  final TextInputAction textInputAction;
 
   const EntradaTexto({
     super.key,
@@ -22,7 +23,8 @@ class EntradaTexto extends StatelessWidget {
     this.tipoTeclado = TextInputType.text,
     this.validador,
     this.controlador,
-    this.readOnly = false,
+    this.autofillHints,
+    this.textInputAction = TextInputAction.next,
   });
 
   @override
@@ -32,9 +34,10 @@ class EntradaTexto extends StatelessWidget {
       child: TextFormField(
         controller: controlador,
         validator: validador,
-        // Si es contraseña y mostrarTexto es false, oculta los caracteres
         obscureText: esContrasena ? (mostrarTexto ?? true) : false,
         keyboardType: tipoTeclado,
+        autofillHints: autofillHints,
+        textInputAction: textInputAction,
         style: const TextStyle(color: AppColors.textPrimary),
         readOnly: readOnly,
         decoration: InputDecoration(
@@ -42,6 +45,7 @@ class EntradaTexto extends StatelessWidget {
           // Solo muestra el botón del ojo si el campo se marcó como contraseña
           suffixIcon: esContrasena
               ? IconButton(
+                  tooltip: mostrarTexto! ? 'Ocultar contraseña' : 'Mostrar contraseña',
                   icon: Icon(
                     mostrarTexto!
                         ? Icons.visibility_off_outlined

@@ -30,7 +30,7 @@ else:
     load_dotenv()
 MONGO_URI = os.getenv("MONGO_URI")
 
-from routes import auth, usuarios, categorias, productos, pedidos, mesas, reservas, ingredientes
+from routes import auth, usuarios, categorias, productos, pedidos, mesas, reservas, ingredientes, cupones
 from routes import restaurantes
 import pagos
 from tickets import router as tickets_router
@@ -93,6 +93,7 @@ v1.include_router(reservas.router)
 v1.include_router(ingredientes.router)
 v1.include_router(pagos.router)
 v1.include_router(tickets_router)
+v1.include_router(cupones.router)
 app.include_router(v1)
 
 @app.get("/")

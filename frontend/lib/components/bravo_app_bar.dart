@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:frontend/core/app_routes.dart';
-import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/providers/auth_provider.dart';
-import 'package:frontend/screens/cliente/home_screen.dart';
+import 'package:frontend/screens/cliente/inicio_screen.dart';
 import 'package:frontend/screens/cliente/login_screen.dart';
 import 'package:frontend/screens/cliente/perfil_screen.dart';
 
 /// AppBar compartida entre Home, Admin, Trabajador y cualquier pantalla nueva.
 ///
 /// [title]  — texto que aparece centrado.
-/// [isRoot] — true sólo en HomeScreen: el logout no redirige (ya estás en home).
+/// [isRoot] — true sólo en InicioScreen: el logout no redirige (ya estás en inicio).
 class BravoAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
   final bool isRoot;
@@ -30,16 +29,7 @@ class BravoAppBar extends StatelessWidget implements PreferredSizeWidget {
       elevation: 0,
       centerTitle: true,
       iconTheme: const IconThemeData(color: Colors.white),
-      title: Text(
-        title,
-        style: const TextStyle(
-          fontFamily: 'Playfair Display',
-          color: AppColors.textAppBar,
-          fontSize: 18,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 2.0,
-        ),
-      ),
+      title: Text(title),
       actions: [
         Padding(
           padding: EdgeInsets.only(right: auth.estaAutenticado ? 0 : 16.0),
@@ -76,7 +66,7 @@ class BravoAppBar extends StatelessWidget implements PreferredSizeWidget {
                 if (!context.mounted) return;
                 if (!isRoot) {
                   Navigator.of(context).pushAndRemoveUntil(
-                    AppRoute.reveal(const HomeScreen()),
+                    AppRoute.reveal(const InicioScreen()),
                     (route) => false,
                   );
                 }

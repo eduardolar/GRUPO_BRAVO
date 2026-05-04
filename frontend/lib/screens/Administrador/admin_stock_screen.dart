@@ -1,4 +1,4 @@
-import 'dart:ui';
+﻿import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:frontend/components/bravo_app_bar.dart';
@@ -207,7 +207,7 @@ class _AdminStockScreenState extends State<AdminStockScreen> {
             icon: Icons.warning_amber_rounded,
             label: '$bajoCant',
             sublabel: 'bajo mínimo',
-            color: bajoCant > 0 ? Colors.red.shade300 : Colors.white38,
+            color: bajoCant > 0 ? AppColors.error : Colors.white38,
           ),
         ],
       ),
@@ -450,10 +450,10 @@ class _IngredienteCard extends StatelessWidget {
         : 1.0;
 
     final Color barColor = isBajo
-        ? Colors.red.shade400
+        ? AppColors.error
         : isJusto
             ? Colors.amber.shade400
-            : Colors.green.shade400;
+            : AppColors.disp;
 
     final String? badge = isBajo
         ? 'BAJO'
@@ -476,7 +476,7 @@ class _IngredienteCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
                   color: isBajo
-                      ? Colors.red.shade400.withValues(alpha: 0.5)
+                      ? AppColors.error.withValues(alpha: 0.5)
                       : Colors.white.withValues(alpha: 0.12),
                   width: 1.5,
                 ),
@@ -536,7 +536,7 @@ class _IngredienteCard extends StatelessWidget {
                           ),
                           decoration: BoxDecoration(
                             color: (isBajo
-                                    ? Colors.red.shade700
+                                    ? AppColors.error
                                     : Colors.amber.shade700)
                                 .withValues(alpha: 0.9),
                             borderRadius: BorderRadius.circular(8),

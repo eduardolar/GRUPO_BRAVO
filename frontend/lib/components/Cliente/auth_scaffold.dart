@@ -55,6 +55,7 @@ class ClienteAuthScaffold extends StatelessWidget {
               top: 20,
               left: 10,
               child: IconButton(
+                tooltip: 'Volver',
                 icon: const Icon(
                   Icons.arrow_back_ios_new,
                   color: Colors.white,

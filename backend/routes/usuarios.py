@@ -1,10 +1,13 @@
 import random
 import string
 import bcrypt
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
+from typing import Optional
+from database import coleccion_usuarios, coleccion_auditoria
 from exceptions import NotFoundError, ConflictError, ValidacionError, AutenticacionError
 from bson import ObjectId
 from database import coleccion_usuarios
+import audit_general as ag
 from models import UsuarioActualizar
 from pydantic import BaseModel, EmailStr
 from fastapi_mail import FastMail, MessageSchema, MessageType
@@ -58,7 +61,8 @@ class UsuarioActualizar(BaseModel):
     telefono: str | None = ""
     direccion: str | None = ""
     latitud: float | None = None
-    longitud: float | None = None    
+    longitud: float | None = None
+    activo: bool | None = None    
 
 # Modelo para crear usuarios desde el panel de Admin
 class UsuarioCrear(BaseModel):
@@ -93,7 +97,10 @@ def listar_usuarios(rol: str | None = None):
             "longitud": u.get("longitud"),
             "rol": u.get("rol", "cliente"),
             # Lo convertimos a str() por si en Mongo es un ObjectId
-            "restaurante_id": str(res_id) if res_id else None
+            "restaurante_id": str(res_id) if res_id else None,
+            "activo": u.get("activo", True),
+            "totp_enabled": u.get("totp_enabled", False),
+            "email_2fa_enabled": u.get("email_2fa_enabled", False),
         })
     return resultado
 
@@ -134,6 +141,10 @@ def actualizar_perfil(user_id: str, datos: UsuarioActualizar):
     if resultado.matched_count == 0:
         raise NotFoundError("Usuario no encontrado")
 
+    campos = ", ".join(actualizacion.keys())
+    ag.registrar(ag.USUARIO_EDITADO,
+        objetivo=user_id,
+        detalle=f"Campos: {campos}")
     return {"mensaje": "Perfil actualizado correctamente"}
 
 @router.put("/{user_id}/cambiar-password")
@@ -171,14 +182,23 @@ def actualizar_rol(user_id: str, datos: UsuarioActualizarRol):
     
     if resultado.matched_count == 0:
         raise NotFoundError("Usuario no encontrado")
+    usuario = coleccion_usuarios.find_one({"_id": ObjectId(user_id)})
+    ag.registrar(ag.ROL_CAMBIADO,
+        objetivo=usuario.get("correo", user_id) if usuario else user_id,
+        detalle=f"Nuevo rol: {rol_limpio}")
     return {"mensaje": f"Rol actualizado exitosamente a {rol_limpio}"}
 
 # Ruta para eliminar un usuario, es buena tenerla para administración futura.
 @router.delete("/{user_id}")
 def eliminar_usuario(user_id: str):
+    usuario = coleccion_usuarios.find_one({"_id": ObjectId(user_id)})
     resultado = coleccion_usuarios.delete_one({"_id": ObjectId(user_id)})
     if resultado.deleted_count == 0:
         raise NotFoundError("Usuario no encontrado")
+    if usuario:
+        ag.registrar(ag.USUARIO_ELIMINADO,
+            objetivo=usuario.get("correo", user_id),
+            detalle=f"Rol: {usuario.get('rol', '?')}")
     return {"mensaje": "Usuario eliminado"}
 
 # --- NUEVA RUTA PARA QUE EL ADMIN CREE USUARIOS ---
@@ -217,9 +237,28 @@ async def crear_usuario(datos: UsuarioCrear):
 
     if resultado.inserted_id:
         await _enviar_correo_activacion(correo_limpio, datos.nombre, reset_code)
+        ag.registrar(ag.USUARIO_CREADO,
+            objetivo=correo_limpio,
+            detalle=f"Rol: {datos.rol} | Sucursal: {datos.restaurante_id}")
         return {
             "mensaje": "Usuario creado exitosamente. Se envió un correo de activación.",
             "id": str(resultado.inserted_id)
         }
 
     raise RuntimeError("No se pudo crear el usuario")
+
+
+@router.get("/auditoria")
+def obtener_auditoria_usuarios(
+    accion: Optional[str] = Query(None),
+    limite: int = Query(100, ge=1, le=500),
+):
+    filtro = {}
+    if accion:
+        filtro["accion"] = accion
+    eventos = list(
+        coleccion_auditoria.find(filtro, {"_id": 0})
+        .sort("fecha", -1)
+        .limit(limite)
+    )
+    return eventos

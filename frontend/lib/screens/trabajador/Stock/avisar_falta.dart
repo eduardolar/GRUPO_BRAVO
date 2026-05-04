@@ -15,7 +15,8 @@ class _AvisarFaltaScreenState extends State<AvisarFaltaScreen> {
   final Set<String> _seleccionados = {};
   bool _cargando = true;
 
-   void initState() {
+  @override
+  void initState() {
     super.initState();
     _cargarDatos();
   }
@@ -115,78 +116,6 @@ class _AvisarFaltaScreenState extends State<AvisarFaltaScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Container(
-      width: double.infinity,
-      color: AppColors.backgroundButton,
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
-      child: Column(
-        children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 1.5),
-            ),
-            child: const Icon(
-              Icons.warning_amber_outlined,
-              color: Colors.white,
-              size: 24,
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          const Text(
-            "Avisar de Falta",
-            style: TextStyle(
-              fontFamily: 'Playfair Display',
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.5,
-            ),
-          ),
-
-          const SizedBox(height: 6),
-
-          Text(
-            "SELECCIONA LOS INGREDIENTES",
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 10,
-              letterSpacing: 3,
-              fontWeight: FontWeight.w400,
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          Row(
-            children: [
-              const Expanded(child: Divider(color: AppColors.line)),
-              Container(
-                width: 60,
-                height: 1.5,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.transparent,
-                      Colors.white,
-                      Colors.transparent,
-                    ],
-                  ),
-                ),
-              ),
-              const Expanded(child: Divider(color: AppColors.line)),
-            ],
-          ),
-        ],
       ),
     );
   }

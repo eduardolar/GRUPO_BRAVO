@@ -2,18 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:frontend/core/app_routes.dart';
+import 'package:frontend/core/app_snackbar.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/models/usuario_model.dart';
 import 'package:frontend/models/destino_login.dart';
 
-import 'package:frontend/screens/cliente/forgotten_password.dart';
-import 'package:frontend/screens/cliente/menu_screen.dart';
-import 'package:frontend/screens/cliente/register_screen.dart';
+import 'package:frontend/screens/cliente/recuperar_contrasena_screen.dart';
+import 'package:frontend/screens/cliente/carta_screen.dart';
+import 'package:frontend/screens/cliente/registro_screen.dart';
 import 'package:frontend/screens/cliente/reservar_mesa_screen.dart';
 import 'package:frontend/screens/cocinero/home_screen_cocinero.dart';
 import 'package:frontend/screens/home_screen_trabajador.dart';
-import 'package:frontend/screens/super_admin/seleccionar_restaurante_screen.dart';
+import 'package:frontend/screens/super_admin/home_screen_super_admin.dart';
+import 'package:frontend/screens/cliente/seleccionar_restaurante_screen.dart' as sel_rest_cliente;
 import 'package:frontend/screens/Administrador/admin_home_screen.dart';
 import 'package:frontend/screens/super_admin/activar_cuenta_screen.dart';
 
@@ -82,6 +84,7 @@ class _LoginScreenState extends State<LoginScreen> {
           etiqueta: 'Correo electrónico',
           icono: Icons.mail_outline,
           tipoTeclado: TextInputType.emailAddress,
+          autofillHints: const [AutofillHints.email],
           controlador: _emailController,
         ),
         const SizedBox(height: 15),
@@ -92,6 +95,8 @@ class _LoginScreenState extends State<LoginScreen> {
           mostrarTexto: _oscurecerContrasena,
           alPresionarIcono: () =>
               setState(() => _oscurecerContrasena = !_oscurecerContrasena),
+          autofillHints: const [AutofillHints.password],
+          textInputAction: TextInputAction.done,
           controlador: _passwordController,
         ),
       ],
@@ -104,12 +109,12 @@ class _LoginScreenState extends State<LoginScreen> {
       child: TextButton(
         onPressed: () => Navigator.push(
           context,
-          AppRoute.slide(const ForgottenPassword()),
+          AppRoute.slide(const RecuperarContrasenaScreen()),
         ),
         child: Text(
           '¿Olvidaste tu contraseña?',
           style: TextStyle(
-            color: Colors.white.withOpacity(0.8),
+            color: Colors.white.withValues(alpha: 0.8),
             fontWeight: FontWeight.w400,
             fontSize: 13,
           ),
@@ -135,7 +140,7 @@ class _LoginScreenState extends State<LoginScreen> {
             TextButton(
               onPressed: () => Navigator.push(
                 context,
-                AppRoute.slide(RegisterScreen(destino: widget.destino)),
+                AppRoute.slide(RegistroScreen(destino: widget.destino)),
               ),
               child: const Text(
                 'Regístrate',
@@ -170,7 +175,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final password = _passwordController.text;
 
     if (email.isEmpty || password.isEmpty) {
-      _showSnackBar('Por favor, completa todos los campos');
+      showAppError(context, 'Por favor, completa todos los campos');
       return;
     }
 
@@ -187,7 +192,7 @@ class _LoginScreenState extends State<LoginScreen> {
       // 2. CASO 2FA: Si la respuesta indica que requiere verificación por correo
       if (respuesta != null && respuesta['requires_2fa'] == true) {
         final emailParaVerificar = respuesta['correo'] ?? email; // Usar el email del formulario si no viene en la respuesta
-        _showSnackBar('¡Revisa tu bandeja de entrada! Te hemos enviado un código.', isError: false);
+        showAppSuccess(context, '¡Revisa tu bandeja de entrada! Te hemos enviado un código.');
 
         Navigator.push(
           context,
@@ -205,7 +210,7 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
     } catch (e) {
-      if (mounted) _showSnackBar('Error: ${e.toString()}');
+      if (mounted) showAppError(context, 'Error: ${e.toString()}');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -221,12 +226,14 @@ class _LoginScreenState extends State<LoginScreen> {
         destino = const MenuAdministrador();
         break;
       case RolUsuario.superadministrador:
-        destino = const SeleccionarRestauranteScreen();
+        destino = const HomeScreenSuperAdmin();
         break;
       case RolUsuario.cliente:
-        destino = widget.destino == DestinoLogin.reservar
-            ? const ReservarMesaScreen()
-            : const MenuScreen();
+        destino = sel_rest_cliente.SeleccionarRestauranteScreen(
+          siguiente: widget.destino == DestinoLogin.reservar
+              ? const ReservarMesaScreen()
+              : const CartaScreen(),
+        );
         break;
       case RolUsuario.cocinero:
         destino = const HomeCocinero();
@@ -239,21 +246,4 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-void _showSnackBar(String message, {bool isError = true}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          message, 
-          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)
-        ),
-        // Si isError es true pinta tu AppColors.error, si es false pinta el verde
-        backgroundColor: isError ? AppColors.error : const Color.fromARGB(255, 16, 230, 27),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-        margin: const EdgeInsets.all(16),
-      ),
-    );
-  }
 }

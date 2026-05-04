@@ -43,7 +43,7 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
   barrierDismissible: true,
   barrierLabel: '',
   transitionDuration: const Duration(milliseconds: 260),
-  pageBuilder: (_, __, ___) => const SizedBox.shrink(),
+  pageBuilder: (_, _, _) => const SizedBox.shrink(),
   transitionBuilder: (context, animation, secondaryAnimation, child) {
     final curved = CurvedAnimation(
       parent: animation,

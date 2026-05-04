@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/colors_style.dart';
+import '../../services/api_service.dart';
 
 class PedidoConfirmadoScreen extends StatefulWidget {
   final String tipoEntrega;
@@ -28,6 +30,9 @@ class _PedidoConfirmadoScreenState extends State<PedidoConfirmadoScreen>
   late Animation<double> _scaleAnim;
   late Animation<double> _fadeAnim;
 
+  String _estadoActual = 'pendiente';
+  Timer? _pollTimer;
+
   @override
   void initState() {
     super.initState();
@@ -38,13 +43,40 @@ class _PedidoConfirmadoScreenState extends State<PedidoConfirmadoScreen>
     _scaleAnim = CurvedAnimation(parent: _ctrl, curve: Curves.elasticOut);
     _fadeAnim = CurvedAnimation(parent: _ctrl, curve: Curves.easeIn);
     _ctrl.forward();
+
+    if (widget.pedidoId != null) {
+      _pollEstado();
+      _pollTimer = Timer.periodic(
+        const Duration(seconds: 15),
+        (_) => _pollEstado(),
+      );
+    }
+  }
+
+  Future<void> _pollEstado() async {
+    if (widget.pedidoId == null) return;
+    try {
+      final pedido = await ApiService.obtenerPedido(widget.pedidoId!);
+      if (!mounted) return;
+      setState(() => _estadoActual = pedido.estado);
+      // Dejar de hacer polling cuando el pedido ya está cerrado
+      if (pedido.estado == 'entregado' || pedido.estado == 'cancelado') {
+        _pollTimer?.cancel();
+      }
+    } catch (_) {
+      // Fallo silencioso — se reintentará en el siguiente tick
+    }
   }
 
   @override
   void dispose() {
+    _pollTimer?.cancel();
     _ctrl.dispose();
     super.dispose();
   }
+
+  bool get _esCancelado => _estadoActual == 'cancelado';
+  bool get _esEntregado => _estadoActual == 'entregado';
 
   String get _tiempoEstimado {
     if (widget.tipoEntrega.contains('mesa') ||
@@ -61,31 +93,40 @@ class _PedidoConfirmadoScreenState extends State<PedidoConfirmadoScreen>
     return Icons.store_outlined;
   }
 
+  // Mapea el estado real del backend a qué paso del tracking está activo
   List<_TrackingStep> get _pasosSeguimiento {
     final esDomicilio = widget.tipoEntrega.contains('domicilio');
-    return [
-      _TrackingStep(
-        icono: Icons.receipt_long_outlined,
-        label: 'Recibido',
-        hecho: true,
-      ),
-      _TrackingStep(
-        icono: Icons.restaurant_outlined,
-        label: 'En preparación',
-        hecho: false,
-        actual: true,
-      ),
-      _TrackingStep(
+    // índice activo: cuando activo > último índice todos los pasos quedan como hecho=true
+    final int activo = switch (_estadoActual) {
+      'preparando' => 1,
+      'listo'      => 2,
+      'entregado'  => 4, // mayor que el último índice → todos hecho=true
+      _            => 0, // pendiente (y cancelado, pero ese usa _BannerCancelado)
+    };
+
+    List<({IconData icono, String label})> definicion = [
+      (icono: Icons.receipt_long_outlined,  label: 'Recibido'),
+      (icono: Icons.restaurant_outlined,    label: 'En preparación'),
+      (
         icono: esDomicilio ? Icons.delivery_dining : Icons.storefront_outlined,
-        label: esDomicilio ? 'En camino' : 'Listo para recoger',
-        hecho: false,
+        label: esDomicilio ? 'En camino' : 'Listo',
       ),
-      _TrackingStep(
+      (
         icono: esDomicilio ? Icons.home_outlined : Icons.check_circle_outline,
         label: esDomicilio ? 'Entregado' : 'Servido',
-        hecho: false,
       ),
     ];
+
+    return definicion.indexed.map((entry) {
+      final i = entry.$1;
+      final d = entry.$2;
+      return _TrackingStep(
+        icono: d.icono,
+        label: d.label,
+        hecho: i < activo,
+        actual: i == activo,
+      );
+    }).toList();
   }
 
   @override
@@ -129,22 +170,38 @@ class _PedidoConfirmadoScreenState extends State<PedidoConfirmadoScreen>
                       padding: EdgeInsets.fromLTRB(hPad, 48, hPad, 32),
                       child: Column(
                         children: [
-                          // ── Check animado ──────────────────────────────
+                          // ── Icono animado ─────────────────────────────
                           ScaleTransition(
                             scale: _scaleAnim,
                             child: Container(
                               width: 88,
                               height: 88,
                               decoration: BoxDecoration(
-                                color: AppColors.button.withValues(alpha: 0.15),
+                                color: _esCancelado
+                                    ? AppColors.error.withValues(alpha: 0.15)
+                                    : _esEntregado
+                                        ? AppColors.disp.withValues(alpha: 0.15)
+                                        : AppColors.button.withValues(alpha: 0.15),
                                 border: Border.all(
-                                  color: AppColors.button,
+                                  color: _esCancelado
+                                      ? AppColors.error
+                                      : _esEntregado
+                                          ? AppColors.disp
+                                          : AppColors.button,
                                   width: 1.5,
                                 ),
                               ),
-                              child: const Icon(
-                                Icons.check,
-                                color: AppColors.button,
+                              child: Icon(
+                                _esCancelado
+                                    ? Icons.close
+                                    : _esEntregado
+                                        ? Icons.check_circle_outline
+                                        : Icons.check,
+                                color: _esCancelado
+                                    ? AppColors.error
+                                    : _esEntregado
+                                        ? AppColors.disp
+                                        : AppColors.button,
                                 size: 44,
                               ),
                             ),
@@ -153,7 +210,11 @@ class _PedidoConfirmadoScreenState extends State<PedidoConfirmadoScreen>
                           const SizedBox(height: 28),
 
                           Text(
-                            'PEDIDO CONFIRMADO',
+                            _esCancelado
+                                ? 'PEDIDO CANCELADO'
+                                : _esEntregado
+                                    ? 'PEDIDO ENTREGADO'
+                                    : 'PEDIDO CONFIRMADO',
                             style: GoogleFonts.playfairDisplay(
                               color: Colors.white,
                               fontSize: 22,
@@ -165,7 +226,11 @@ class _PedidoConfirmadoScreenState extends State<PedidoConfirmadoScreen>
 
                           const SizedBox(height: 6),
                           Text(
-                            'Tu pedido se ha procesado con éxito.\nEstamos preparándolo.',
+                            _esCancelado
+                                ? 'Este pedido ha sido cancelado.'
+                                : _esEntregado
+                                    ? '¡Que lo disfrutes!'
+                                    : 'Tu pedido se ha procesado con éxito.\nEstamos preparándolo.',
                             style: TextStyle(
                               color: Colors.white.withValues(alpha: 0.55),
                               fontSize: 13,
@@ -176,12 +241,16 @@ class _PedidoConfirmadoScreenState extends State<PedidoConfirmadoScreen>
 
                           const SizedBox(height: 32),
 
-                          // ── Seguimiento ────────────────────────────────
-                          _SeguimientoWidget(pasos: _pasosSeguimiento),
+                          // ── Seguimiento / Cancelado ────────────────────
+                          if (_esCancelado)
+                            _BannerCancelado()
+                          else
+                            _SeguimientoWidget(pasos: _pasosSeguimiento),
 
                           const SizedBox(height: 24),
 
-                          // ── Tiempo estimado ────────────────────────────
+                          // ── Tiempo estimado (solo cuando no terminado) ─
+                          if (!_esCancelado && !_esEntregado)
                           Container(
                             width: double.infinity,
                             padding: const EdgeInsets.symmetric(
@@ -321,6 +390,41 @@ class _PedidoConfirmadoScreenState extends State<PedidoConfirmadoScreen>
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ── Banner cancelado ──────────────────────────────────────────────────────────
+
+class _BannerCancelado extends StatelessWidget {
+  const _BannerCancelado();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 18),
+      decoration: BoxDecoration(
+        color: AppColors.error.withValues(alpha: 0.08),
+        border: Border.all(color: AppColors.error.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.cancel_outlined,
+              color: AppColors.error.withValues(alpha: 0.7), size: 22),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Este pedido fue cancelado y no será procesado.',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.6),
+                fontSize: 13,
+                height: 1.5,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

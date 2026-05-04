@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'dart:convert';
@@ -250,6 +250,7 @@ class _DireccionScreenState extends State<DireccionScreen> {
                             ); // Llamada a API con retraso
                           },
                         );
+                        _obtenerDireccionDesdeCoords(position.center);
                       }
                     },
                   ),
@@ -269,6 +270,9 @@ class _DireccionScreenState extends State<DireccionScreen> {
                             color: Colors.red,
                             size: 40,
                           ),
+                          width: 80,
+                          height: 80,
+                          child: const Icon(Icons.location_on, color: AppColors.error, size: 45),
                         ),
                       ],
                     ),
@@ -326,6 +330,53 @@ class _DireccionScreenState extends State<DireccionScreen> {
                       color: Colors.white70,
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
+          // PARTE INFERIOR: INFO Y ACCIONES
+          Expanded(
+            flex: 1,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              color: Colors.white,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  const Icon(Icons.location_searching_rounded, size: 40, color: Colors.grey),
+                  if (_cargando) const LinearProgressIndicator(),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    child: Text(
+                      _direccionTexto,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+
+                  // BOTÓN GPS
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.my_location),
+                      label: const Text("USAR MI UBICACIÓN ACTUAL"),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF3B82F6),
+                        side: const BorderSide(color: Color(0xFF3B82F6)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                      ),
+                      onPressed: _cargando ? null : () async {
+                        final gpsMessenger = ScaffoldMessenger.of(context);
+                        final LocationService locationService = LocationService();
+                        try {
+                          Position? position = await locationService.obtenerUbicacionActual();
+                          if (position != null) {
+                            _moverMapa(LatLng(position.latitude, position.longitude));
+                          }
+                        } catch (e) {
+                          if (!mounted) return;
+                          gpsMessenger.showSnackBar(
+                            SnackBar(content: Text("Error de GPS: $e"))
+                          );
+                        }
+                      },
                     ),
                   ),
                 ),
@@ -343,6 +394,68 @@ class _DireccionScreenState extends State<DireccionScreen> {
                       : _confirmarYGuardar,
                 ),
               ],
+  ElevatedButton(
+  style: ElevatedButton.styleFrom(
+    backgroundColor: AppColors.backgroundButton,
+    minimumSize: const Size(double.infinity, 55),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+  ),
+  onPressed: _cargando ? null : () async {
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    if (widget.soloSeleccionar) {
+      navigator.pop({
+        'direccion': _direccionTexto,
+        'latitud': _puntoActual.latitude,
+        'longitud': _puntoActual.longitude,
+      });
+      return;
+    }
+
+    setState(() => _cargando = true);
+
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final usuarioService = UsuarioService();
+    final userId = auth.usuarioActual?.id;
+
+    if (userId == null) {
+      _mostrarError("Sesión no válida. Vuelve a loguearte.");
+      return;
+    }
+
+    try {
+      bool exito = await usuarioService.actualizarDireccion(
+        userId: userId,
+        direccion: _direccionTexto,
+        latitud: _puntoActual.latitude,
+        longitud: _puntoActual.longitude,
+      );
+
+      if (exito) {
+        auth.actualizarDireccionLocal(
+          nuevaDir: _direccionTexto,
+          nuevaLat: _puntoActual.latitude,
+          nuevaLon: _puntoActual.longitude,
+        );
+
+        if (!mounted) return;
+        messenger.showSnackBar(
+          const SnackBar(content: Text("¡Ubicación guardada con éxito!"), backgroundColor: AppColors.disp),
+        );
+        navigator.pop();
+      } else {
+        _mostrarError("El servidor no pudo guardar la dirección.");
+      }
+    } catch (e) {
+      _mostrarError("Error de conexión: $e");
+    } finally {
+      if (mounted) setState(() => _cargando = false);
+    }
+  },
+  child: const Text("CONFIRMAR Y GUARDAR", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+)
+                ],
+              ),
             ),
           ),
         ],
@@ -409,5 +522,34 @@ class _DireccionScreenState extends State<DireccionScreen> {
         ),
       ),
     );
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(30),
+        boxShadow: const [BoxShadow(blurRadius: 10, color: Colors.black26)],
+      ),
+      child: TextField(
+        controller: _searchController,
+        decoration: InputDecoration(
+          hintText: "Buscar otra calle...",
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+          border: InputBorder.none,
+          suffixIcon: IconButton(
+            tooltip: 'Buscar dirección',
+            icon: const Icon(Icons.search),
+            onPressed: () => _buscarDireccionEscrita(_searchController.text),
+          ),
+        ),
+        onSubmitted: _buscarDireccionEscrita,
+      ),
+    );
+  }
+
+  void _mostrarError(String mensaje) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(mensaje),
+      backgroundColor: AppColors.error,
+    ),
+  );
   }
 }

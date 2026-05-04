@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/screens/cliente/login_screen.dart';
 
 class DomicilioButton extends StatefulWidget {
@@ -22,7 +23,7 @@ class _DomicilioButtonState extends State<DomicilioButton> {
         width: double.infinity,
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: const Color(0xFF800020),
+          color: AppColors.button,
           border: Border.all(color: const Color(0xFFA6405A)),
           borderRadius: BorderRadius.circular(14),
         ),
@@ -34,7 +35,7 @@ class _DomicilioButtonState extends State<DomicilioButton> {
               width: 3,
               height: 56,
               decoration: BoxDecoration(
-                color: const Color(0xFF1A1A1A),
+                color: AppColors.gold,
                 borderRadius: BorderRadius.circular(3),
               ),
             ),
@@ -44,7 +45,7 @@ class _DomicilioButtonState extends State<DomicilioButton> {
               width: 56,
               height: 56,
               decoration: BoxDecoration(
-                color: const Color(0xFF660019),
+                color: AppColors.sombra,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: const Color(0xFFA6405A)),
               ),

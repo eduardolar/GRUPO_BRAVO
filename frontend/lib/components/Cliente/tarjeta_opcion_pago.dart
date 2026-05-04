@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../../core/colors_style.dart';
 
 class TarjetaOpcionPago extends StatelessWidget {
@@ -23,7 +23,7 @@ class TarjetaOpcionPago extends StatelessWidget {
     Color colorIcono = AppColors.button; // Color por defecto 
     if (seleccionada) { 
       if (titulo.contains('PayPal')) colorIcono = Colors.blue.shade800;
-      if (titulo.contains('Google')) colorIcono = Colors.green.shade700;
+      if (titulo.contains('Google')) colorIcono = AppColors.disp;
     } 
 
     return GestureDetector(

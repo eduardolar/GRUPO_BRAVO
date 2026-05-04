@@ -1,7 +1,7 @@
 """Endpoint tests for /api/v1/pedidos with mocked MongoDB."""
 from unittest.mock import AsyncMock, MagicMock, patch
 from bson import ObjectId
-import pytest
+
 
 ITEM_VALIDO = {"producto_id": "507f1f77bcf86cd799439011", "nombre": "Pizza", "cantidad": 2, "precio": 12.50}
 PEDIDO_VALIDO = {

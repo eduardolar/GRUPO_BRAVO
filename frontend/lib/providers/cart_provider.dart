@@ -26,12 +26,16 @@ class CartProvider with ChangeNotifier {
   final Map<String, CartItem> _items = {};
   String? _mesaId;
   int? _numeroMesa;
+  String? _restauranteId;
+  String? _restauranteNombre;
 
   Map<String, CartItem> get items => _items;
 
   String? get mesaId => _mesaId;
   int? get numeroMesa => _numeroMesa;
   bool get tienemesa => _mesaId != null;
+  String? get restauranteId => _restauranteId;
+  String? get restauranteNombre => _restauranteNombre;
 
   int get itemCount => _items.length;
 
@@ -39,16 +43,16 @@ class CartProvider with ChangeNotifier {
 
   double get totalPrice => _items.values.fold(0.0, (sum, item) => sum + item.subtotal);
 
-  void addItem(Producto producto, {List<String> ingredientesExcluidos = const []}) {
-    final item = CartItem(
-      producto: producto,
-      ingredientesExcluidos: ingredientesExcluidos,
-    );
-    final key = item.key;
+  void addItem(Producto producto, {List<String> ingredientesExcluidos = const [], int cantidad = 1}) {
+    final key = CartItem(producto: producto, ingredientesExcluidos: ingredientesExcluidos).key;
     if (_items.containsKey(key)) {
-      _items[key]!.cantidad++;
+      _items[key]!.cantidad += cantidad;
     } else {
-      _items[key] = item;
+      _items[key] = CartItem(
+        producto: producto,
+        ingredientesExcluidos: ingredientesExcluidos,
+        cantidad: cantidad,
+      );
     }
     notifyListeners();
   }
@@ -76,6 +80,12 @@ class CartProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  void seleccionarRestaurante({required String id, required String nombre}) {
+    _restauranteId = id;
+    _restauranteNombre = nombre;
+    notifyListeners();
+  }
+
   void asignarMesa({required String mesaId, required int numeroMesa}) {
     _mesaId = mesaId;
     _numeroMesa = numeroMesa;
@@ -83,6 +93,15 @@ class CartProvider with ChangeNotifier {
   }
 
   void desasignarMesa() {
+    _mesaId = null;
+    _numeroMesa = null;
+    notifyListeners();
+  }
+
+  void limpiarRestaurante() {
+    _restauranteId = null;
+    _restauranteNombre = null;
+    _items.clear();
     _mesaId = null;
     _numeroMesa = null;
     notifyListeners();

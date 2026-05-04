@@ -1,8 +1,14 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:frontend/models/reserva_model.dart';
 import 'package:frontend/services/reserva_service.dart';
-import 'package:intl/intl.dart';
 import '../../../core/colors_style.dart';
+
+// ── Constantes de texto ──
+const _diasAbrevB = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM'];
+const _mesesAbrevB = [
+  'ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN',
+  'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'
+];
 
 class BorrarReservas extends StatefulWidget {
   const BorrarReservas({super.key});
@@ -30,30 +36,31 @@ class _BorrarReservasState extends State<BorrarReservas> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppColors.backgroundButton,
+        backgroundColor: AppColors.panel,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text(
-          'Eliminar Reserva',
+          '¿Eliminar reserva?',
           style: TextStyle(
-            color: Colors.white,
+            color: AppColors.textPrimary,
             fontWeight: FontWeight.bold,
+            fontFamily: 'Playfair Display',
           ),
         ),
         content: Text(
           '¿Seguro que deseas eliminar la reserva de ${reserva.nombreCompleto} del '
-          '${DateFormat('dd/MM/yyyy').format(reserva.fecha)} a las ${reserva.hora}?',
-          style: const TextStyle(color: Colors.white70),
+          '${reserva.fecha.day}/${reserva.fecha.month}/${reserva.fecha.year} a las ${reserva.hora}?',
+          style: const TextStyle(color: AppColors.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancelar', style: TextStyle(color: Colors.white70)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
-              foregroundColor: AppColors.background,
+            child: const Text(
+              'CANCELAR',
+              style: TextStyle(
+                  color: AppColors.textSecondary, fontWeight: FontWeight.w600),
             ),
+          ),
+          TextButton(
             onPressed: () async {
               Navigator.of(context).pop();
               try {
@@ -61,18 +68,30 @@ class _BorrarReservasState extends State<BorrarReservas> {
                 _refreshReservas();
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Reserva eliminada')),
+                    const SnackBar(
+                      content: Text('Reserva eliminada'),
+                      backgroundColor: AppColors.disp,
+                      behavior: SnackBarBehavior.floating,
+                    ),
                   );
                 }
               } catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error: $e')),
+                    SnackBar(
+                      content: Text('Error: $e'),
+                      backgroundColor: AppColors.error,
+                      behavior: SnackBarBehavior.floating,
+                    ),
                   );
                 }
               }
             },
-            child: const Text('Eliminar'),
+            child: const Text(
+              'ELIMINAR',
+              style: TextStyle(
+                  color: AppColors.error, fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
@@ -82,68 +101,25 @@ class _BorrarReservasState extends State<BorrarReservas> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-      extendBodyBehindAppBar: true,
-
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        iconTheme: const IconThemeData(color: AppColors.background),
-        title: const Text(
-          "BORRAR RESERVAS",
-          style: TextStyle(
-            fontFamily: 'Playfair Display',
-            color: AppColors.background,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.5,
-          ),
-        ),
-      ),
-
-      body: Column(
+      backgroundColor: Colors.black,
+      body: Stack(
         children: [
-          _buildHero(),
-
-          Expanded(
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/Bravo restaurante.jpg',
+              fit: BoxFit.cover,
+            ),
+          ),
+          Positioned.fill(
             child: Container(
-              decoration: const BoxDecoration(
-                color: AppColors.background,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-              ),
-              child: FutureBuilder<List<Reserva>>(
-                future: _reservasFuture,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(
-                      child: CircularProgressIndicator(color: AppColors.button),
-                    );
-                  } else if (snapshot.hasError) {
-                    return Center(
-                      child: Text(
-                        'Error: ${snapshot.error}',
-                        style: const TextStyle(color: AppColors.background),
-                      ),
-                    );
-                  } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                    return const Center(
-                      child: Text(
-                        'No hay reservas futuras',
-                        style: TextStyle(color: AppColors.background),
-                      ),
-                    );
-                  }
-
-                  final reservas = snapshot.data!;
-                  return ListView.builder(
-                    padding: const EdgeInsets.all(20),
-                    itemCount: reservas.length,
-                    itemBuilder: (context, index) =>
-                        _tarjetaReserva(reservas[index]),
-                  );
-                },
-              ),
+                color: AppColors.shadow.withValues(alpha: 0.88)),
+          ),
+          SafeArea(
+            child: Column(
+              children: [
+                _buildAppBar(),
+                Expanded(child: _buildContent()),
+              ],
             ),
           ),
         ],
@@ -151,126 +127,243 @@ class _BorrarReservasState extends State<BorrarReservas> {
     );
   }
 
-  // ─────────────────────────────────────────────────────────────
-  // HERO SECTION
-  // ─────────────────────────────────────────────────────────────
-  Widget _buildHero() {
-    return Stack(
-      children: [
-        SizedBox(
-          height: 220,
-          width: double.infinity,
-          child: Image.asset(
-            'assets/images/Bravo restaurante.jpg',
-            fit: BoxFit.cover,
+  Widget _buildAppBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+      child: Row(
+        children: [
+          IconButton(
+            tooltip: 'Volver',
+            icon: const Icon(Icons.arrow_back_ios_new,
+                color: Colors.white, size: 20),
+            onPressed: () => Navigator.pop(context),
           ),
-        ),
-
-        Container(
-          height: 220,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                AppColors.shadow.withOpacity(0.4),
-                AppColors.shadow.withOpacity(0.2),
-                AppColors.background.withOpacity(0.9),
-              ],
+          const Expanded(
+            child: Text(
+              'BORRAR RESERVAS',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 2.5,
+                fontSize: 15,
+              ),
             ),
           ),
-        ),
-
-        Positioned(
-          bottom: 20,
-          left: 0,
-          right: 0,
-          child: Column(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppColors.backgroundButton,
-                  border: Border.all(color: AppColors.background, width: 1.5),
-                ),
-                child: const Text(
-                  "GESTIÓN DE RESERVAS",
-                  style: TextStyle(
-                    color: AppColors.background,
-                    fontSize: 10,
-                    letterSpacing: 4,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 14),
-              const Text(
-                "Eliminar",
-                style: TextStyle(
-                  fontFamily: 'Playfair Display',
-                  color: AppColors.background,
-                  fontSize: 34,
-                  fontWeight: FontWeight.bold,
-                  shadows: [
-                    Shadow(color: AppColors.shadow, blurRadius: 12),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
+          const SizedBox(width: 48),
+        ],
+      ),
     );
   }
 
-  // ─────────────────────────────────────────────────────────────
-  // TARJETA PREMIUM
-  // ─────────────────────────────────────────────────────────────
+  Widget _buildContent() {
+    return FutureBuilder<List<Reserva>>(
+      future: _reservasFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(color: AppColors.button),
+          );
+        } else if (snapshot.hasError) {
+          return Center(
+            child: Text(
+              'Error: ${snapshot.error}',
+              style: const TextStyle(color: Colors.white70),
+            ),
+          );
+        } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return _buildEstadoVacio();
+        } else {
+          return RefreshIndicator(
+            onRefresh: () async => _refreshReservas(),
+            color: AppColors.button,
+            backgroundColor: AppColors.panel,
+            child: ListView.builder(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+              itemCount: snapshot.data!.length,
+              itemBuilder: (_, i) => _tarjetaReserva(snapshot.data![i]),
+            ),
+          );
+        }
+      },
+    );
+  }
+
+  Widget _buildEstadoVacio() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.event_busy_outlined,
+              size: 64, color: Colors.white24),
+          const SizedBox(height: 16),
+          const Text(
+            'No hay reservas futuras',
+            style: TextStyle(
+                color: Colors.white54, fontSize: 16, letterSpacing: 0.5),
+          ),
+          const SizedBox(height: 24),
+          TextButton(
+            onPressed: _refreshReservas,
+            child: const Text(
+              'Reintentar',
+              style: TextStyle(
+                  color: AppColors.button, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _tarjetaReserva(Reserva reserva) {
     return GestureDetector(
       onTap: () => _confirmarBorrado(reserva),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 14),
+        margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
-          color: AppColors.backgroundButton,
+          color: AppColors.panel.withValues(alpha: 0.96),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.line),
+          border: Border.all(color: Colors.white24),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        child: IntrinsicHeight(
+          child: Row(
             children: [
-              Text(
-                reserva.nombreCompleto,
-                style: const TextStyle(
-                  color: AppColors.background,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+              // ── Columna fecha ──
+              Container(
+                width: 70,
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.08),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(14),
+                    bottomLeft: Radius.circular(14),
+                  ),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      '${reserva.fecha.day}',
+                      style: const TextStyle(
+                        color: AppColors.error,
+                        fontSize: 30,
+                        fontWeight: FontWeight.bold,
+                        height: 1,
+                      ),
+                    ),
+                    Text(
+                      _mesesAbrevB[reserva.fecha.month - 1],
+                      style: const TextStyle(
+                        color: AppColors.error,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _diasAbrevB[reserva.fecha.weekday - 1],
+                      style: const TextStyle(
+                          color: AppColors.textSecondary, fontSize: 10),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 6),
-              Text(
-                "Fecha: ${DateFormat('dd/MM/yyyy').format(reserva.fecha)}",
-                style: const TextStyle(color: AppColors.background),
-              ),
-              Text(
-                "Hora: ${reserva.hora}",
-                style: const TextStyle(color: AppColors.background),
-              ),
-              Text(
-                "Comensales: ${reserva.comensales}",
-                style: const TextStyle(color: AppColors.background),
-              ),
-              if (reserva.numeroMesa != null)
-                Text(
-                  "Mesa: ${reserva.numeroMesa}",
-                  style: const TextStyle(color: AppColors.background),
+              // ── Detalles ──
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              reserva.nombreCompleto,
+                              style: const TextStyle(
+                                color: AppColors.textPrimary,
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: AppColors.error.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                  color: AppColors.error
+                                      .withValues(alpha: 0.3)),
+                            ),
+                            child: const Icon(Icons.delete_outline,
+                                color: AppColors.error, size: 16),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          const Icon(Icons.access_time,
+                              size: 14, color: AppColors.textSecondary),
+                          const SizedBox(width: 5),
+                          Text(
+                            reserva.hora,
+                            style: const TextStyle(
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          const Icon(Icons.people_outline,
+                              size: 14, color: AppColors.textSecondary),
+                          const SizedBox(width: 5),
+                          Text(
+                            '${reserva.comensales}',
+                            style: const TextStyle(
+                                color: AppColors.textPrimary, fontSize: 14),
+                          ),
+                          if (reserva.numeroMesa != null) ...[
+                            const SizedBox(width: 14),
+                            const Icon(Icons.table_bar,
+                                size: 14, color: AppColors.textSecondary),
+                            const SizedBox(width: 5),
+                            Text(
+                              'Mesa ${reserva.numeroMesa}',
+                              style: const TextStyle(
+                                  color: AppColors.textPrimary, fontSize: 14),
+                            ),
+                          ],
+                        ],
+                      ),
+                      if (reserva.notas != null &&
+                          reserva.notas!.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            const Icon(Icons.note_outlined,
+                                size: 13, color: AppColors.textSecondary),
+                            const SizedBox(width: 5),
+                            Expanded(
+                              child: Text(
+                                reserva.notas!,
+                                style: const TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 12),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
-              const SizedBox(height: 10),
-              const Align(
-                alignment: Alignment.centerRight,
-                child: Icon(Icons.delete, color: AppColors.error),
               ),
             ],
           ),

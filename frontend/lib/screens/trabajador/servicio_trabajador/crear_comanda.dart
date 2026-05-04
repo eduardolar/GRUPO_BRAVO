@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:frontend/components/Cliente/producto_card.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/models/producto_model.dart';
+import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/screens/Cliente/perfil_screen.dart';
 import 'package:frontend/services/api_service.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 
 
 class CrearComanda extends StatefulWidget {
@@ -207,6 +209,7 @@ class _CrearPedidosState extends State<CrearComanda> {
 }
 
 void _enviarPedido(BuildContext context) async {
+  final messenger = ScaffoldMessenger.of(context);
   try {
     final mesaId = widget.mesaId;
 
@@ -238,6 +241,7 @@ void _enviarPedido(BuildContext context) async {
       );
     } else {
       // Primer envío: crear pedido nuevo y guardar su id
+      final auth = Provider.of<AuthProvider>(context, listen: false);
       final resultado = await ApiService.crearPedido(
         userId: "TRABAJADOR",
         items: allItems,
@@ -250,13 +254,14 @@ void _enviarPedido(BuildContext context) async {
         notas: "",
         referenciaPago: "",
         estadoPago: "pendiente",
+        restauranteId: auth.usuarioActual?.restauranteId,
       );
       _pedidoId = (resultado['id'] ?? resultado['_id'])?.toString();
     }
 
     if (!mounted) return;
     setState(() => _carrito.clear());
-    _showSnack(context, "Pedido enviado a cocina · puedes añadir más platos");
+    _showSnack(messenger, "Pedido enviado a cocina · puedes añadir más platos");
 
   } catch (e) {
     if (!mounted) return;
@@ -274,14 +279,14 @@ void _enviarPedido(BuildContext context) async {
       }
     }
     _totalAcumulado -= _totalPrecio;
-    _showSnack(context, "Error al enviar pedido", error: true);
+    _showSnack(messenger, "Error al enviar pedido", error: true);
   }
 }
 
 
-  void _showSnack(BuildContext context, String mensaje, {bool error = false}) {
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
+  void _showSnack(ScaffoldMessengerState messenger, String mensaje, {bool error = false}) {
+    messenger.clearSnackBars();
+    messenger.showSnackBar(
       SnackBar(
         content: Row(
           children: [
@@ -672,7 +677,7 @@ class _CategoryBarState extends State<_CategoryBar> {
 // ─── Animación plato con tenedor ──────────────────────────────────────────────
 
 class _PlateAnimation extends StatefulWidget {
-  const _PlateAnimation({super.key});
+  const _PlateAnimation();
   @override
   State<_PlateAnimation> createState() => _PlateAnimationState();
 }
@@ -736,7 +741,7 @@ class _PlateAnimationState extends State<_PlateAnimation>
       height: 100,
       child: AnimatedBuilder(
         animation: _ctrl,
-        builder: (_, __) {
+        builder: (_, _) {
           return Stack(
             alignment: Alignment.center,
             children: [

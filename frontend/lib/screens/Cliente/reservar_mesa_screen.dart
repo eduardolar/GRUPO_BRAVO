@@ -1,11 +1,16 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../components/Cliente/skeleton.dart';
+import '../../core/app_snackbar.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../core/colors_style.dart';
 import '../../models/reserva_model.dart';
+import '../../models/restaurante_model.dart';
 import '../../services/api_service.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/cart_provider.dart';
+import '../../providers/restaurante_provider.dart';
 import 'perfil_screen.dart';
 
 class ReservarMesaScreen extends StatefulWidget {
@@ -70,6 +75,8 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
   List<Reserva> _misReservas = [];
   bool _cargandoReservas = false;
 
+  Restaurante? _restaurante;
+
   static const double _dateItemWidth = 64.0;
 
   // ── Constantes de texto ──
@@ -101,6 +108,7 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
     _cargarDisponibilidad();
     _cargarMaxComensales();
     _cargarReservas();
+    _loadRestaurante();
   }
 
   @override
@@ -112,6 +120,43 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
     _notasController.dispose();
     super.dispose();
   }
+
+  // ── Horario del restaurante ──
+  Future<void> _loadRestaurante() async {
+    final cartRid = context.read<CartProvider>().restauranteId;
+    if (cartRid == null) return;
+    try {
+      final prov = context.read<RestauranteProvider>();
+      if (prov.restaurantes.isEmpty) await prov.cargar();
+      if (!mounted) return;
+      final matches = prov.restaurantes.where((r) => r.id == cartRid);
+      if (matches.isNotEmpty) {
+        setState(() => _restaurante = matches.first);
+        _cargarDisponibilidad();
+      }
+    } catch (e) { debugPrint('$e'); }
+  }
+
+  static int _parseMins(String t) {
+    final parts = t.split(':');
+    return int.parse(parts[0]) * 60 + int.parse(parts[1]);
+  }
+
+  bool _horaEnRango(TimeOfDay t) {
+    final r = _restaurante;
+    if (r?.horarioApertura == null || r?.horarioCierre == null) return true;
+    final mins = t.hour * 60 + t.minute;
+    final apertura = _parseMins(r!.horarioApertura!);
+    final cierre = _parseMins(r.horarioCierre!);
+    if (cierre > apertura) {
+      return mins >= apertura && mins < cierre;
+    } else {
+      return mins >= apertura || mins < cierre;
+    }
+  }
+
+  List<TimeOfDay> _horasFiltradas(String turno) =>
+      _horasPorTurno[turno]!.where(_horaEnRango).toList();
 
   // ── Helpers ──
   String _hora(TimeOfDay t) =>
@@ -151,12 +196,12 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
         setState(() => _maxComensales =
             mesas.map((m) => m.capacidad).reduce((a, b) => a > b ? a : b));
       }
-    } catch (_) {}
+    } catch (e) { debugPrint('$e'); }
   }
 
   Future<void> _cargarDisponibilidad() async {
     setState(() => _cargandoDisponibilidad = true);
-    final horas = _horasPorTurno[_turnoSeleccionado]!;
+    final horas = _horasFiltradas(_turnoSeleccionado);
     final resultado = <String, bool>{};
     for (final h in horas) {
       resultado[_hora(h)] = await ApiService.hayDisponibilidad(
@@ -174,8 +219,11 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
   }
 
   void _autoSeleccionarHoraLibre() {
-    if (!(_disponibilidadHoras[_hora(_horaSeleccionada)] ?? true)) {
-      for (final h in _horasPorTurno[_turnoSeleccionado]!) {
+    final horas = _horasFiltradas(_turnoSeleccionado);
+    if (horas.isEmpty) return;
+    if (!horas.contains(_horaSeleccionada) ||
+        !(_disponibilidadHoras[_hora(_horaSeleccionada)] ?? true)) {
+      for (final h in horas) {
         if (_disponibilidadHoras[_hora(h)] ?? true) {
           _horaSeleccionada = h;
           return;
@@ -196,7 +244,10 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
     HapticFeedback.selectionClick();
     setState(() {
       _turnoSeleccionado = turno;
-      _horaSeleccionada = _horasPorTurno[turno]!.first;
+      final filtradas = _horasFiltradas(turno);
+      _horaSeleccionada = filtradas.isNotEmpty
+          ? filtradas.first
+          : _horasPorTurno[turno]!.first;
     });
     _cargarDisponibilidad();
   }
@@ -215,6 +266,7 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
     setState(() => _isLoading = true);
     try {
       final auth = Provider.of<AuthProvider>(context, listen: false);
+      final restauranteId = context.read<CartProvider>().restauranteId;
       final resultado = await ApiService.crearReserva(
         userId: auth.usuarioActual?.id ?? '',
         nombreCompleto: _nombreController.text.trim(),
@@ -225,6 +277,7 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
         notas: _notasController.text.trim().isNotEmpty
             ? _notasController.text.trim()
             : null,
+        restauranteId: restauranteId,
       );
       if (!mounted) return;
       _mostrarConfirmacion(resultado);
@@ -446,11 +499,11 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
   }
 
   void _snack(String msg, {bool error = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg),
-      backgroundColor: error ? AppColors.error : Colors.green,
-      behavior: SnackBarBehavior.floating,
-    ));
+    if (error) {
+      showAppError(context, msg);
+    } else {
+      showAppSuccess(context, msg);
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -494,6 +547,7 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
       child: Row(
         children: [
           IconButton(
+            tooltip: 'Volver',
             icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
             onPressed: () => Navigator.pop(context),
           ),
@@ -510,6 +564,7 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
             ),
           ),
           IconButton(
+            tooltip: 'Mi perfil',
             icon: const Icon(Icons.person_outline, color: Colors.white, size: 26),
             onPressed: () => Navigator.push(
                 context, MaterialPageRoute(builder: (_) => const PerfilScreen())),
@@ -639,7 +694,7 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
             Text(
               hoy ? 'HOY' : _diasAbrev[fecha.weekday - 1],
               style: TextStyle(
-                color: seleccionada ? Colors.white70 : Colors.white38,
+                color: seleccionada ? Colors.white : Colors.white60,
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 1,
@@ -648,8 +703,8 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
             const SizedBox(height: 4),
             Text(
               '${fecha.day}',
-              style: TextStyle(
-                color: seleccionada ? Colors.white : Colors.white,
+              style: const TextStyle(
+                color: Colors.white,
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
                 height: 1,
@@ -659,7 +714,7 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
             Text(
               _mesesAbrev[fecha.month - 1],
               style: TextStyle(
-                color: seleccionada ? Colors.white60 : Colors.white24,
+                color: seleccionada ? Colors.white70 : Colors.white54,
                 fontSize: 10,
                 letterSpacing: 0.5,
               ),
@@ -767,10 +822,37 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
           );
         }
 
+        final slotsFiltrados = _horasFiltradas(_turnoSeleccionado);
+
+        if (slotsFiltrados.isEmpty) {
+          return Container(
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.04),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.white10),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.schedule_outlined, color: Colors.white38, size: 16),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    _restaurante?.horarioApertura != null
+                        ? 'El restaurante no tiene horario de ${_turnoSeleccionado == 'comida' ? 'comida' : 'cena'} · Abre ${_restaurante!.horarioApertura} – ${_restaurante!.horarioCierre}'
+                        : 'No hay horarios disponibles para este turno',
+                    style: const TextStyle(color: Colors.white38, fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
         return Wrap(
           spacing: spacing,
           runSpacing: spacing,
-          children: _horasPorTurno[_turnoSeleccionado]!.map((hora) {
+          children: slotsFiltrados.map((hora) {
             final horaStr = _hora(hora);
             final disponible = _disponibilidadHoras[horaStr] ?? true;
             final sel = hora == _horaSeleccionada && disponible;
@@ -822,7 +904,7 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
                         color: sel
                             ? Colors.white70
                             : disponible
-                                ? Colors.green
+                                ? AppColors.disp
                                 : AppColors.error,
                         fontSize: fontSize,
                         fontWeight: FontWeight.w600,
@@ -1395,10 +1477,10 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
 
   Color _colorEstado(String estado) {
     switch (estado.toLowerCase()) {
-      case 'confirmada': return Colors.green;
+      case 'confirmada': return AppColors.disp;
       case 'pendiente':  return Colors.orange;
       case 'cancelada':  return AppColors.error;
-      default:           return Colors.blueAccent;
+      default:           return const Color(0xFF3B82F6);
     }
   }
 }
@@ -1442,7 +1524,7 @@ class _ConfirmacionSheet extends StatelessWidget {
               shape: BoxShape.circle,
               color: AppColors.successBackground,
             ),
-            child: const Icon(Icons.check, color: Colors.green, size: 36),
+            child: const Icon(Icons.check, color: AppColors.disp, size: 36),
           ),
           const SizedBox(height: 16),
           const Text(
@@ -1561,9 +1643,9 @@ class _SkeletonReservasState extends State<_SkeletonReservas>
               padding: const EdgeInsets.fromLTRB(20, 28, 20, 14),
               child: Row(
                 children: [
-                  _caja(96, 11),
+                  const SkeletonBlock.dark(width: 96, height: 11),
                   const SizedBox(width: 10),
-                  _caja(22, 22, radio: 11),
+                  const SkeletonBlock.dark(width: 22, height: 22, borderRadius: 11),
                 ],
               ),
             ),
@@ -1583,7 +1665,7 @@ class _SkeletonReservasState extends State<_SkeletonReservas>
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 14),
-              child: _caja(80, 11),
+              child: const SkeletonBlock.dark(width: 80, height: 11),
             ),
           ),
           SliverPadding(
@@ -1596,23 +1678,6 @@ class _SkeletonReservasState extends State<_SkeletonReservas>
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  /// Caja con pulso dorado
-  Widget _caja(double w, double h, {double radio = 6}) {
-    final t = Curves.easeInOut.transform(_ctrl.value);
-    return Container(
-      width: w,
-      height: h,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(radio),
-        color: Color.lerp(
-          Colors.white.withValues(alpha: 0.05),
-          AppColors.button.withValues(alpha: 0.20),
-          t,
-        ),
       ),
     );
   }
@@ -1655,12 +1720,12 @@ class _SkeletonReservasState extends State<_SkeletonReservas>
                 padding: const EdgeInsets.symmetric(vertical: 20),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _caja(30, 28, radio: 4),
-                    const SizedBox(height: 6),
-                    _caja(22, 10, radio: 3),
-                    const SizedBox(height: 4),
-                    _caja(18, 9, radio: 3),
+                  children: const [
+                    SkeletonBlock.dark(width: 30, height: 28, borderRadius: 4),
+                    SizedBox(height: 6),
+                    SkeletonBlock.dark(width: 22, height: 10, borderRadius: 3),
+                    SizedBox(height: 4),
+                    SkeletonBlock.dark(width: 18, height: 9, borderRadius: 3),
                   ],
                 ),
               ),
@@ -1671,18 +1736,18 @@ class _SkeletonReservasState extends State<_SkeletonReservas>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
+                      const Row(
                         children: [
-                          _caja(56, 20, radio: 6),
-                          const SizedBox(width: 8),
-                          _caja(68, 20, radio: 6),
+                          SkeletonBlock.dark(width: 56, height: 20),
+                          SizedBox(width: 8),
+                          SkeletonBlock.dark(width: 68, height: 20),
                         ],
                       ),
                       const SizedBox(height: 10),
-                      _caja(double.infinity, 14, radio: 4),
+                      const SkeletonBlock.dark(height: 14, borderRadius: 4),
                       if (notas) ...[
                         const SizedBox(height: 8),
-                        _caja(120, 11, radio: 4),
+                        const SkeletonBlock.dark(width: 120, height: 11, borderRadius: 4),
                       ],
                     ],
                   ),

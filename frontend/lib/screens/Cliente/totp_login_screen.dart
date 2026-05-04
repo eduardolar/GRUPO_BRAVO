@@ -10,12 +10,12 @@ import '../../components/Cliente/otp_fields.dart';
 import '../../components/Cliente/auth_scaffold.dart';
 import '../../components/Cliente/auth_header.dart';
 
-import 'menu_screen.dart';
+import 'carta_screen.dart';
 import 'reservar_mesa_screen.dart';
 import '../home_screen_trabajador.dart';
 import '../cocinero/home_screen_cocinero.dart';
 import '../Administrador/admin_home_screen.dart';
-import '../super_admin/seleccionar_restaurante_screen.dart';
+import '../super_admin/home_screen_super_admin.dart';
 
 class TotpLoginScreen extends StatefulWidget {
   final DestinoLogin destino;
@@ -73,7 +73,7 @@ class _TotpLoginScreenState extends State<TotpLoginScreen> {
         destino = const MenuAdministrador();
         break;
       case RolUsuario.superadministrador:
-        destino = const SeleccionarRestauranteScreen();
+        destino = const HomeScreenSuperAdmin();
         break;
       case RolUsuario.cocinero:
         destino = const HomeCocinero();
@@ -81,7 +81,7 @@ class _TotpLoginScreenState extends State<TotpLoginScreen> {
       case RolUsuario.cliente:
         destino = widget.destino == DestinoLogin.reservar
             ? const ReservarMesaScreen()
-            : const MenuScreen();
+            : const CartaScreen();
         break;
     }
     Navigator.pushAndRemoveUntil(
@@ -117,7 +117,7 @@ class _TotpLoginScreenState extends State<TotpLoginScreen> {
             try {
               final auth = Provider.of<AuthProvider>(context, listen: false);
               await auth.completarLogin2faRecovery(codigo);
-              if (!mounted) return;
+              if (!mounted || !ctx.mounted) return;
               Navigator.of(ctx).pop();
               _navigateToRoleHome(auth.usuarioActual!);
             } catch (e) {

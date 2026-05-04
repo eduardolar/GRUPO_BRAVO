@@ -1,14 +1,17 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../core/colors_style.dart';
-import '../../providers/auth_provider.dart';
-import '../../components/Cliente/auth_scaffold.dart';
 import '../../components/Cliente/auth_header.dart';
-import '../../components/Cliente/primary_button.dart';
+import '../../components/Cliente/auth_scaffold.dart';
 import '../../components/Cliente/otp_fields.dart';
+import '../../components/Cliente/primary_button.dart';
+import '../../core/app_snackbar.dart';
+import '../../providers/auth_provider.dart';
 import 'nueva_contrasena_screen.dart';
+
+const Duration _kReenvioCooldown = Duration(seconds: 60);
 
 class CodigoRecuperacionScreen extends StatefulWidget {
   final String email;
@@ -25,7 +28,7 @@ class _CodigoRecuperacionScreenState extends State<CodigoRecuperacionScreen> {
   final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
 
   bool _isLoading = false;
-  int _secondsRemaining = 60;
+  int _secondsRemaining = _kReenvioCooldown.inSeconds;
   Timer? _timer;
 
   @override
@@ -35,32 +38,39 @@ class _CodigoRecuperacionScreenState extends State<CodigoRecuperacionScreen> {
   }
 
   void _startTimer() {
-    _secondsRemaining = 60;
+    _timer?.cancel();
+    setState(() => _secondsRemaining = _kReenvioCooldown.inSeconds);
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (mounted) {
-        setState(() {
-          if (_secondsRemaining > 0) {
-            _secondsRemaining--;
-          } else {
-            _timer?.cancel();
-          }
-        });
+      if (!mounted) {
+        timer.cancel();
+        return;
       }
+      setState(() {
+        if (_secondsRemaining > 0) {
+          _secondsRemaining--;
+        } else {
+          timer.cancel();
+        }
+      });
     });
   }
 
   @override
   void dispose() {
     _timer?.cancel();
-    for (var c in _controllers) { c.dispose(); }
-    for (var n in _focusNodes) { n.dispose(); }
+    for (final c in _controllers) {
+      c.dispose();
+    }
+    for (final n in _focusNodes) {
+      n.dispose();
+    }
     super.dispose();
   }
 
   void _continuar() {
     final code = _controllers.map((c) => c.text).join();
     if (code.length < 6) {
-      _showSnackBar('Introduce el código de 6 dígitos', isError: true);
+      showAppError(context, 'Introduce el código de 6 dígitos');
       return;
     }
     Navigator.push(
@@ -74,17 +84,15 @@ class _CodigoRecuperacionScreenState extends State<CodigoRecuperacionScreen> {
 
   Future<void> _reenviarCodigo() async {
     setState(() => _isLoading = true);
+    final auth = context.read<AuthProvider>();
     try {
-      final auth = Provider.of<AuthProvider>(context, listen: false);
       await auth.recuperarPassword(widget.email);
+      if (!mounted) return;
       _startTimer();
-      if (mounted) {
-        _showSnackBar('Código reenviado. Revisa tu correo.', isError: false);
-      }
+      showAppSuccess(context, 'Código reenviado. Revisa tu correo.');
     } catch (e) {
-      if (mounted) {
-        _showSnackBar(e.toString().replaceAll('Exception: ', ''), isError: true);
-      }
+      if (!mounted) return;
+      showAppError(context, e.toString().replaceAll('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -102,15 +110,18 @@ class _CodigoRecuperacionScreenState extends State<CodigoRecuperacionScreen> {
                 Text(
                   'Hemos enviado un código a:',
                   style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.7), fontSize: 15),
+                    color: Colors.white.withValues(alpha: 0.7),
+                    fontSize: 15,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   widget.email,
                   style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15),
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
                 ),
               ],
             ),
@@ -133,6 +144,7 @@ class _CodigoRecuperacionScreenState extends State<CodigoRecuperacionScreen> {
   }
 
   Widget _buildReenviarSeccion() {
+    final disponible = _secondsRemaining == 0 && !_isLoading;
     return Padding(
       padding: const EdgeInsets.only(top: 20),
       child: Row(
@@ -143,17 +155,15 @@ class _CodigoRecuperacionScreenState extends State<CodigoRecuperacionScreen> {
             style: TextStyle(color: Colors.white.withValues(alpha: 0.6)),
           ),
           TextButton(
-            onPressed: (_secondsRemaining == 0 && !_isLoading)
-                ? _reenviarCodigo
-                : null,
+            onPressed: disponible ? _reenviarCodigo : null,
             child: Text(
               _secondsRemaining > 0
                   ? 'Reenviar en ${_secondsRemaining}s'
                   : 'Reenviar',
               style: TextStyle(
-                color: _secondsRemaining == 0 ? Colors.white : Colors.white38,
+                color: disponible ? Colors.white : Colors.white38,
                 fontWeight: FontWeight.bold,
-                decoration: _secondsRemaining == 0
+                decoration: disponible
                     ? TextDecoration.underline
                     : TextDecoration.none,
               ),
@@ -162,12 +172,5 @@ class _CodigoRecuperacionScreenState extends State<CodigoRecuperacionScreen> {
         ],
       ),
     );
-  }
-
-  void _showSnackBar(String message, {bool isError = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(message),
-      backgroundColor: isError ? AppColors.error : Colors.green,
-    ));
   }
 }
