@@ -61,6 +61,7 @@ class PedidoProvider extends ChangeNotifier {
         numeroMesa: _numeroMesa ?? cart.numeroMesa,
         notas: notas,
         estadoPago: 'pendiente',
+        restauranteId: cart.restauranteId,
       );
 
       final exito = resultado['id'] != null || resultado['pedido_id'] != null;

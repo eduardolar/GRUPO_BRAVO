@@ -38,20 +38,28 @@ class _PedidosListosScreenState extends State<PedidosListosScreen> {
     try {
       final restauranteId =
           context.read<AuthProvider>().usuarioActual?.restauranteId;
-      final todos =
-          await ApiService.obtenerTodosLosPedidos(restauranteId: restauranteId);
-      final listos = todos
-          .where((p) => p.estado == 'listo')
-          .toList()
+      final todos = await ApiService.obtenerTodosLosPedidos(
+        restauranteId: restauranteId,
+        estado: 'listo',
+      );
+      // Filtro cliente como fallback: si el backend ignora el param estado,
+      // garantizamos que solo aparecen los marcados como 'listo'.
+      final listos = todos.where((p) => p.estado == 'listo').toList()
         ..sort((a, b) => a.fecha.compareTo(b.fecha));
       if (!mounted) return;
       setState(() {
         _pedidos = listos;
         _cargando = false;
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       setState(() => _cargando = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al cargar pedidos: $e'),
+          backgroundColor: AppColors.error,
+        ),
+      );
     }
   }
 

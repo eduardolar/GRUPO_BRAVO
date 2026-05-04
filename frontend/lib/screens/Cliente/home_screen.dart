@@ -271,14 +271,16 @@ class _ActionButtonsGroup extends StatelessWidget {
           icon: Icons.motorcycle,
           label: "Pedido a domicilio",
           onPressed: () {
-            final destino = auth.estaAutenticado
-                ? const MenuScreen()
-                : const LoginScreen();
+            if (!auth.estaAutenticado) {
+              Navigator.push(context, AppRoute.slide(const LoginScreen()));
+              return;
+            }
             Navigator.push(
               context,
               cart.restauranteId != null
-                  ? AppRoute.slide(destino)
-                  : AppRoute.slide(SeleccionarRestauranteScreen(siguiente: destino)),
+                  ? AppRoute.slide(const MenuScreen())
+                  : AppRoute.slide(const SeleccionarRestauranteScreen(
+                      siguiente: MenuScreen())),
             );
           },
         ),
@@ -286,14 +288,20 @@ class _ActionButtonsGroup extends StatelessWidget {
           icon: Icons.calendar_month,
           label: "Reservar mesa",
           onPressed: () {
-            final destino = auth.estaAutenticado
-                ? const ReservarMesaScreen()
-                : const LoginScreen(destino: DestinoLogin.reservar);
+            if (!auth.estaAutenticado) {
+              Navigator.push(
+                context,
+                AppRoute.slide(
+                    const LoginScreen(destino: DestinoLogin.reservar)),
+              );
+              return;
+            }
             Navigator.push(
               context,
               cart.restauranteId != null
-                  ? AppRoute.slide(destino)
-                  : AppRoute.slide(SeleccionarRestauranteScreen(siguiente: destino)),
+                  ? AppRoute.slide(const ReservarMesaScreen())
+                  : AppRoute.slide(const SeleccionarRestauranteScreen(
+                      siguiente: ReservarMesaScreen())),
             );
           },
         ),
