@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/colors_style.dart';
 import '../../services/api_service.dart';
 import '../../services/pedido_service.dart';
+import '../../components/Cliente/empty_state.dart';
 import '../../components/Cliente/producto_card.dart';
 import '../../components/Cliente/producto_detalle_sheet.dart';
 import '../../models/producto_model.dart';
@@ -458,25 +459,10 @@ class _MenuScreenState extends State<MenuScreen> {
                     child: filtered.isEmpty
                         ? SingleChildScrollView(
                             physics: const AlwaysScrollableScrollPhysics(),
-                            child: SizedBox(
-                              height: 200,
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.restaurant_menu_outlined,
-                                      size: 36, color: Colors.white30),
-                                  const SizedBox(height: 14),
-                                  const Text(
-                                    'SIN PLATOS DISPONIBLES',
-                                    style: TextStyle(
-                                      color: Colors.white60,
-                                      fontSize: 10,
-                                      letterSpacing: 3.0,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                            child: EmptyState.dark(
+                              icon: Icons.restaurant_menu_outlined,
+                              title: 'Sin platos disponibles',
+                              subtitle: 'No hay productos en esta categoría.',
                             ),
                           )
                         : LayoutBuilder(

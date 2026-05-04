@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import '../../components/Cliente/empty_state.dart';
+import '../../components/Cliente/skeleton.dart';
+import '../../core/app_snackbar.dart';
 import '../../core/colors_style.dart';
 import '../../models/pedido_model.dart';
 import '../../screens/cliente/pedido_confirmado_screen.dart';
@@ -14,14 +17,12 @@ class HistorialPedidosScreen extends StatefulWidget {
   State<HistorialPedidosScreen> createState() => _HistorialPedidosScreenState();
 }
 
-class _HistorialPedidosScreenState extends State<HistorialPedidosScreen>
-    with SingleTickerProviderStateMixin {
+class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
   List<Pedido> _pedidos = [];
   List<Pedido> _pedidosFiltrados = [];
   bool _cargando = true;
   int _expandido = -1;
   String _filtroEstado = 'todos';
-  late AnimationController _shimmerController;
 
   static const List<List<String>> _filtros = [
     ['todos', 'Todos'],
@@ -37,17 +38,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen>
   @override
   void initState() {
     super.initState();
-    _shimmerController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1400),
-    )..repeat();
     _cargarPedidos();
-  }
-
-  @override
-  void dispose() {
-    _shimmerController.dispose();
-    super.dispose();
   }
 
   Future<void> _cargarPedidos() async {
@@ -66,16 +57,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen>
     } catch (e) {
       if (!mounted) return;
       setState(() => _cargando = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al cargar pedidos: $e',
-              style: GoogleFonts.manrope()),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      );
+      showAppError(context, 'Error al cargar pedidos: $e');
     }
   }
 
@@ -931,102 +913,57 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen>
   // ── Empty state ───────────────────────────────────────────────────────────
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(40),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: AppColors.panel,
-                shape: BoxShape.circle,
-                border: Border.all(color: AppColors.line, width: 2),
-              ),
-              child: Icon(
-                _filtroEstado == 'todos'
-                    ? Icons.receipt_long_rounded
-                    : _iconoEstado(_filtroEstado),
-                color: AppColors.textSecondary.withValues(alpha: 0.35),
-                size: 36,
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              _filtroEstado == 'todos'
-                  ? 'Aún no tienes pedidos'
-                  : 'Sin pedidos ${_etiquetaEstadoFiltro(_filtroEstado)}',
-              style: GoogleFonts.manrope(
-                color: AppColors.textPrimary,
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _filtroEstado == 'todos'
-                  ? 'Tus pedidos aparecerán aquí\nuna vez que realices tu primera orden.'
-                  : 'No hay pedidos con este estado\nen tu historial.',
-              style: GoogleFonts.manrope(
-                color: AppColors.textSecondary,
-                fontSize: 13,
-                height: 1.6,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
+    final esTodos = _filtroEstado == 'todos';
+    return EmptyState(
+      icon: esTodos ? Icons.receipt_long_rounded : _iconoEstado(_filtroEstado),
+      iconBackground: AppColors.panel,
+      title: esTodos
+          ? 'Aún no tienes pedidos'
+          : 'Sin pedidos ${_etiquetaEstadoFiltro(_filtroEstado)}',
+      subtitle: esTodos
+          ? 'Tus pedidos aparecerán aquí una vez que realices tu primera orden.'
+          : 'No hay pedidos con este estado en tu historial.',
     );
   }
 
   // ── Skeleton shimmer ──────────────────────────────────────────────────────
 
   Widget _buildSkeleton() {
-    return AnimatedBuilder(
-      animation: _shimmerController,
-      builder: (_, _) {
-        final s = _shimmerController.value;
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.panel,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.line),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.panel,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.line),
+        ),
+        child: Row(
+          children: [
+            const SkeletonBlock(width: 50, height: 50, borderRadius: 14),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  SkeletonBlock(height: 14, borderRadius: 7),
+                  SizedBox(height: 8),
+                  SkeletonBlock(width: 130, height: 10, borderRadius: 5),
+                ],
+              ),
             ),
-            child: Row(
-              children: [
-                _ShimmerBox(width: 50, height: 50, radius: 14, v: s),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _ShimmerBox(width: double.infinity, height: 14, radius: 7, v: s),
-                      const SizedBox(height: 8),
-                      _ShimmerBox(width: 130, height: 10, radius: 5, v: s),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    _ShimmerBox(width: 60, height: 14, radius: 7, v: s),
-                    const SizedBox(height: 8),
-                    _ShimmerBox(width: 75, height: 10, radius: 5, v: s),
-                  ],
-                ),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: const [
+                SkeletonBlock(width: 60, height: 14, borderRadius: 7),
+                SizedBox(height: 8),
+                SkeletonBlock(width: 75, height: 10, borderRadius: 5),
               ],
             ),
-          ),
-        );
-      },
+          ],
+        ),
+      ),
     );
   }
 }
@@ -1138,46 +1075,6 @@ class _Divider extends StatelessWidget {
         ],
       ),
     );
-  }
-}
-
-class _ShimmerBox extends StatelessWidget {
-  const _ShimmerBox(
-      {required this.width,
-      required this.height,
-      required this.radius,
-      required this.v});
-  final double width;
-  final double height;
-  final double radius;
-  final double v;
-
-  @override
-  Widget build(BuildContext context) {
-    final box = Container(
-      height: height,
-      width: width == double.infinity ? null : width,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(radius),
-        gradient: LinearGradient(
-          colors: [
-            AppColors.line.withValues(alpha: 0.4),
-            AppColors.line.withValues(alpha: 0.85),
-            AppColors.line.withValues(alpha: 0.4),
-          ],
-          stops: [
-            (v - 0.35).clamp(0.0, 1.0),
-            v.clamp(0.0, 1.0),
-            (v + 0.35).clamp(0.0, 1.0),
-          ],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-        ),
-      ),
-    );
-    return width == double.infinity
-        ? SizedBox(width: double.infinity, child: box)
-        : box;
   }
 }
 

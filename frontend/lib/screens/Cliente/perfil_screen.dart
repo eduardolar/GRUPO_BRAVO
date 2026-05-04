@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/app_snackbar.dart';
 import 'package:flutter/services.dart' show TextInputFormatter, LengthLimitingTextInputFormatter;
 import 'package:frontend/screens/cliente/login_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -74,17 +75,13 @@ class _PerfilScreenState extends State<PerfilScreen> {
   // ── SnackBar helper ──────────────────────────────────────────────────────
 
   void _snack(String msg, {bool error = false, bool success = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg,
-            style: GoogleFonts.manrope(fontWeight: FontWeight.w600)),
-        backgroundColor:
-            error ? AppColors.error : (success ? AppColors.disp : AppColors.button),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        margin: const EdgeInsets.all(16),
-      ),
-    );
+    if (error) {
+      showAppError(context, msg);
+    } else if (success) {
+      showAppSuccess(context, msg);
+    } else {
+      showAppInfo(context, msg);
+    }
   }
 
   // ── Lógica ───────────────────────────────────────────────────────────────

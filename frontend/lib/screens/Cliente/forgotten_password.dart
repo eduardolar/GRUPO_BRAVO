@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../core/colors_style.dart';
+import '../../core/app_snackbar.dart';
 import '../../providers/auth_provider.dart';
 import '../../components/Cliente/entrada_texto.dart';
 import '../../components/Cliente/auth_scaffold.dart';
@@ -43,12 +43,7 @@ class _ForgottenPasswordState extends State<ForgottenPassword> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString().replaceAll('Exception: ', '')),
-          backgroundColor: AppColors.error,
-        ),
-      );
+      showAppError(context, e.toString().replaceAll('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
