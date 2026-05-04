@@ -142,6 +142,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       child: Row(
         children: [
           IconButton(
+            tooltip: 'Volver',
             icon: const Icon(Icons.arrow_back, color: Colors.white),
             onPressed: () => Navigator.pop(context),
           ),
@@ -230,7 +231,27 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
                             size: 22,
                           ),
                         ),
-                        onDismissed: (_) => cart.removeProduct(item.key),
+                        onDismissed: (_) {
+                          final removed = item;
+                          cart.removeProduct(removed.key);
+                          ScaffoldMessenger.of(context)
+                            ..clearSnackBars()
+                            ..showSnackBar(SnackBar(
+                              content: Text(
+                                  '${removed.producto.nombre} eliminado'),
+                              action: SnackBarAction(
+                                label: 'DESHACER',
+                                onPressed: () => cart.addItem(
+                                  removed.producto,
+                                  ingredientesExcluidos:
+                                      removed.ingredientesExcluidos,
+                                  cantidad: removed.cantidad,
+                                ),
+                              ),
+                              duration: const Duration(seconds: 4),
+                              behavior: SnackBarBehavior.floating,
+                            ));
+                        },
                         child: _ArticuloCard(item: item, cart: cart),
                       ),
                     ),

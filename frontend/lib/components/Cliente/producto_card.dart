@@ -187,17 +187,20 @@ class ProductoCard extends StatelessWidget {
                       children: [
                         if (quantity > 0) ...[
                           Expanded(
-                            child: GestureDetector(
-                              onTap: onRemove,
-                              child: Container(
-                                height: 48,
-                                color: AppColors.backgroundButton,
-                                child: Icon(
-                                  quantity == 1
-                                      ? Icons.delete_outline
-                                      : Icons.remove,
-                                  color: AppColors.panel,
-                                  size: 20,
+                            child: Tooltip(
+                              message: quantity == 1 ? 'Eliminar del carrito' : 'Quitar uno',
+                              child: GestureDetector(
+                                onTap: onRemove,
+                                child: Container(
+                                  height: 48,
+                                  color: AppColors.backgroundButton,
+                                  child: Icon(
+                                    quantity == 1
+                                        ? Icons.delete_outline
+                                        : Icons.remove,
+                                    color: AppColors.panel,
+                                    size: 20,
+                                  ),
                                 ),
                               ),
                             ),
@@ -218,20 +221,23 @@ class ProductoCard extends StatelessWidget {
                           ),
                         ],
                         Expanded(
-                          child: GestureDetector(
-                            onTap: () {
-                              final now = DateTime.now();
-                              if (now.difference(_lastTap).inMilliseconds < 300) return;
-                              _lastTap = now;
-                              onAdd();
-                            },
-                            child: Container(
-                              height: 48,
-                              color: AppColors.button,
-                              child: const Icon(
-                                Icons.add,
-                                color: AppColors.background,
-                                size: 22,
+                          child: Tooltip(
+                            message: 'Añadir uno',
+                            child: GestureDetector(
+                              onTap: () {
+                                final now = DateTime.now();
+                                if (now.difference(_lastTap).inMilliseconds < 300) return;
+                                _lastTap = now;
+                                onAdd();
+                              },
+                              child: Container(
+                                height: 48,
+                                color: AppColors.button,
+                                child: const Icon(
+                                  Icons.add,
+                                  color: AppColors.background,
+                                  size: 22,
+                                ),
                               ),
                             ),
                           ),

@@ -83,6 +83,7 @@ class _LoginScreenState extends State<LoginScreen> {
           etiqueta: 'Correo electrónico',
           icono: Icons.mail_outline,
           tipoTeclado: TextInputType.emailAddress,
+          autofillHints: const [AutofillHints.email],
           controlador: _emailController,
         ),
         const SizedBox(height: 15),
@@ -93,6 +94,8 @@ class _LoginScreenState extends State<LoginScreen> {
           mostrarTexto: _oscurecerContrasena,
           alPresionarIcono: () =>
               setState(() => _oscurecerContrasena = !_oscurecerContrasena),
+          autofillHints: const [AutofillHints.password],
+          textInputAction: TextInputAction.done,
           controlador: _passwordController,
         ),
       ],
