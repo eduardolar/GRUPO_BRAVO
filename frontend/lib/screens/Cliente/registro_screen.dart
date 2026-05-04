@@ -29,6 +29,8 @@ class _RegistroScreenState extends State<RegistroScreen> {
   bool _ocultarPass = true;
   bool _ocultarConfirm = true;
   bool _isLoading = false;
+  bool _aceptaPrivacidad = false;
+  bool _privacidadError = false;
 
   final _nombreCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
@@ -52,8 +54,10 @@ class _RegistroScreenState extends State<RegistroScreen> {
 
   String? _validarEmail(String? v) {
     if (v == null || v.trim().isEmpty) return 'Campo requerido';
-    final regex =
-        RegExp(r'^[\w.+\-]+@[\w\-]+\.[a-z]{2,}$', caseSensitive: false);
+    final regex = RegExp(
+      r'^[\w.+\-]+@[\w\-]+\.[a-z]{2,}$',
+      caseSensitive: false,
+    );
     if (!regex.hasMatch(v.trim())) return 'Correo electrónico no válido';
     return null;
   }
@@ -96,6 +100,10 @@ class _RegistroScreenState extends State<RegistroScreen> {
 
   Future<void> _registrarse() async {
     if (!_formKey.currentState!.validate()) return;
+    if (!_aceptaPrivacidad) {
+      setState(() => _privacidadError = true);
+      return;
+    }
     setState(() => _isLoading = true);
     final auth = context.read<AuthProvider>();
     final navigator = Navigator.of(context);
@@ -106,12 +114,12 @@ class _RegistroScreenState extends State<RegistroScreen> {
         contrasena: _passwordCtrl.text,
         telefono: _telefonoCtrl.text.trim(),
         direccion: _direccionCtrl.text.trim(),
+        consentimientoRgpd: true,
       );
       if (!mounted) return;
       navigator.push(
         MaterialPageRoute(
-          builder: (_) =>
-              VerificacionScreen(email: _emailCtrl.text.trim()),
+          builder: (_) => VerificacionScreen(email: _emailCtrl.text.trim()),
         ),
       );
     } catch (e) {
@@ -175,8 +183,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
           icono: Icons.lock_outline,
           esContrasena: true,
           mostrarTexto: _ocultarPass,
-          alPresionarIcono: () =>
-              setState(() => _ocultarPass = !_ocultarPass),
+          alPresionarIcono: () => setState(() => _ocultarPass = !_ocultarPass),
           autofillHints: const [AutofillHints.newPassword],
           controlador: _passwordCtrl,
           validador: _validarContrasena,
@@ -205,6 +212,15 @@ class _RegistroScreenState extends State<RegistroScreen> {
         _DireccionField(
           controller: _direccionCtrl,
           onTap: _abrirSelectorDireccion,
+        ),
+        const SizedBox(height: 16),
+        _ConsentimientoRgpd(
+          aceptado: _aceptaPrivacidad,
+          hayError: _privacidadError,
+          onChange: (v) => setState(() {
+            _aceptaPrivacidad = v ?? false;
+            if (_aceptaPrivacidad) _privacidadError = false;
+          }),
         ),
       ],
     );
@@ -336,6 +352,75 @@ class _PasswordStrengthBarState extends State<_PasswordStrengthBar> {
   }
 }
 
+/// Checkbox de consentimiento RGPD con enlace a la política de privacidad.
+class _ConsentimientoRgpd extends StatelessWidget {
+  const _ConsentimientoRgpd({
+    required this.aceptado,
+    required this.hayError,
+    required this.onChange,
+  });
+
+  final bool aceptado;
+  final bool hayError;
+  final ValueChanged<bool?> onChange;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Checkbox(
+              value: aceptado,
+              onChanged: onChange,
+              activeColor: AppColors.button,
+              checkColor: Colors.white,
+              side: BorderSide(
+                color: hayError ? AppColors.error : AppColors.line,
+                width: 1.5,
+              ),
+            ),
+            Expanded(
+              child: Text.rich(
+                TextSpan(
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                  ),
+                  children: [
+                    const TextSpan(text: 'He leído y acepto la '),
+                    TextSpan(
+                      text: 'Política de Privacidad',
+                      style: const TextStyle(
+                        color: AppColors.gold,
+                        decoration: TextDecoration.underline,
+                        decorationColor: AppColors.gold,
+                      ),
+                    ),
+                    const TextSpan(
+                      text: ' y el tratamiento de mis datos conforme al RGPD.',
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        if (hayError)
+          const Padding(
+            padding: EdgeInsets.only(left: 12),
+            child: Text(
+              'Debes aceptar la Política de Privacidad para continuar',
+              style: TextStyle(color: AppColors.error, fontSize: 11),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
 /// Campo de dirección de solo lectura que abre el selector al tocar.
 class _DireccionField extends StatelessWidget {
   const _DireccionField({required this.controller, required this.onTap});
@@ -363,10 +448,8 @@ class _DireccionField extends StatelessWidget {
           decoration: InputDecoration(
             labelText: 'Dirección de entrega',
             labelStyle: const TextStyle(color: AppColors.textSecondary),
-            prefixIcon:
-                const Icon(Icons.map_outlined, color: AppColors.gold),
-            suffixIcon:
-                const Icon(Icons.chevron_right, color: AppColors.gold),
+            prefixIcon: const Icon(Icons.map_outlined, color: AppColors.gold),
+            suffixIcon: const Icon(Icons.chevron_right, color: AppColors.gold),
             filled: true,
             fillColor: AppColors.panel,
             enabledBorder: _border(AppColors.line),

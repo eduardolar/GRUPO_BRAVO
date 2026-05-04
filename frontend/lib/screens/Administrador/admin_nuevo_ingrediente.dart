@@ -53,10 +53,7 @@ class _AdminNuevoIngredienteScreenState
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: $e'),
-          backgroundColor: AppColors.error,
-        ),
+        SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
       );
     } finally {
       if (mounted) setState(() => _estaGuardando = false);
@@ -129,7 +126,10 @@ class _AdminNuevoIngredienteScreenState
                 padding: const EdgeInsets.only(bottom: 20),
                 child: DropdownButtonFormField<String>(
                   initialValue: _categoriaSeleccionada,
-                  decoration: _dropdownDecoration('Categoría', Icons.category_outlined),
+                  decoration: _dropdownDecoration(
+                    'Categoría',
+                    Icons.category_outlined,
+                  ),
                   isExpanded: true,
                   style: const TextStyle(color: AppColors.textPrimary),
                   dropdownColor: AppColors.panel,
@@ -151,7 +151,9 @@ class _AdminNuevoIngredienteScreenState
                       icono: Icons.inventory_2_outlined,
                       controlador: _cantidadCtrl,
                       etiqueta: 'Cantidad inicial',
-                      tipoTeclado: const TextInputType.numberWithOptions(decimal: true),
+                      tipoTeclado: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       validador: _validarNumero,
                     ),
                   ),
@@ -162,11 +164,16 @@ class _AdminNuevoIngredienteScreenState
                       padding: const EdgeInsets.only(bottom: 20),
                       child: DropdownButtonFormField<String>(
                         initialValue: _unidadSeleccionada,
-                        decoration: _dropdownDecoration('Unidad', Icons.scale_outlined),
+                        decoration: _dropdownDecoration(
+                          'Unidad',
+                          Icons.scale_outlined,
+                        ),
                         style: const TextStyle(color: AppColors.textPrimary),
                         dropdownColor: AppColors.panel,
                         items: IngredienteService.unidades
-                            .map((u) => DropdownMenuItem(value: u, child: Text(u)))
+                            .map(
+                              (u) => DropdownMenuItem(value: u, child: Text(u)),
+                            )
                             .toList(),
                         onChanged: (val) =>
                             setState(() => _unidadSeleccionada = val!),
@@ -181,7 +188,9 @@ class _AdminNuevoIngredienteScreenState
                 icono: Icons.warning_amber_outlined,
                 controlador: _minimoCtrl,
                 etiqueta: 'Stock mínimo de alerta',
-                tipoTeclado: const TextInputType.numberWithOptions(decimal: true),
+                tipoTeclado: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 validador: _validarNumero,
               ),
 
@@ -196,8 +205,9 @@ class _AdminNuevoIngredienteScreenState
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.button,
                     foregroundColor: Colors.white,
-                    disabledBackgroundColor:
-                        AppColors.button.withValues(alpha: 0.5),
+                    disabledBackgroundColor: AppColors.button.withValues(
+                      alpha: 0.5,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(15),
                     ),

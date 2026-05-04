@@ -52,14 +52,14 @@ class _HomeScreenSuperAdminState extends State<HomeScreenSuperAdmin> {
 
   // ── Diálogo crear/editar sucursal ───────────────────────────────
   Future<void> _mostrarFormulario({Restaurante? restaurante}) async {
-    final nombreCtrl =
-        TextEditingController(text: restaurante?.nombre ?? '');
-    final dirCtrl =
-        TextEditingController(text: restaurante?.direccion ?? '');
-    final apertCtrl =
-        TextEditingController(text: restaurante?.horarioApertura ?? '');
-    final cierreCtrl =
-        TextEditingController(text: restaurante?.horarioCierre ?? '');
+    final nombreCtrl = TextEditingController(text: restaurante?.nombre ?? '');
+    final dirCtrl = TextEditingController(text: restaurante?.direccion ?? '');
+    final apertCtrl = TextEditingController(
+      text: restaurante?.horarioApertura ?? '',
+    );
+    final cierreCtrl = TextEditingController(
+      text: restaurante?.horarioCierre ?? '',
+    );
     final formKey = GlobalKey<FormState>();
     final esEdicion = restaurante != null;
 
@@ -68,50 +68,80 @@ class _HomeScreenSuperAdminState extends State<HomeScreenSuperAdmin> {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.background,
         shape: const RoundedRectangleBorder(),
-        title: Text(esEdicion ? 'Editar sucursal' : 'Nueva sucursal',
-            style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+        title: Text(
+          esEdicion ? 'Editar sucursal' : 'Nueva sucursal',
+          style: GoogleFonts.manrope(fontWeight: FontWeight.w700),
+        ),
         content: Form(
           key: formKey,
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            _campo(ctrl: nombreCtrl, label: 'Nombre',
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _campo(
+                ctrl: nombreCtrl,
+                label: 'Nombre',
                 icon: Icons.storefront_outlined,
                 validator: (v) =>
-                    v == null || v.trim().isEmpty ? 'Obligatorio' : null),
-            const SizedBox(height: 12),
-            _campo(ctrl: dirCtrl, label: 'Dirección',
+                    v == null || v.trim().isEmpty ? 'Obligatorio' : null,
+              ),
+              const SizedBox(height: 12),
+              _campo(
+                ctrl: dirCtrl,
+                label: 'Dirección',
                 icon: Icons.location_on_outlined,
                 validator: (v) =>
-                    v == null || v.trim().isEmpty ? 'Obligatorio' : null),
-            const SizedBox(height: 12),
-            Row(children: [
-              Expanded(child: _campo(ctrl: apertCtrl,
-                  label: 'Apertura (HH:MM)', hint: '09:00',
-                  icon: Icons.schedule_outlined,
-                  keyboard: TextInputType.datetime,
-                  validator: _validarHora)),
-              const SizedBox(width: 10),
-              Expanded(child: _campo(ctrl: cierreCtrl,
-                  label: 'Cierre (HH:MM)', hint: '23:00',
-                  icon: Icons.schedule_outlined,
-                  keyboard: TextInputType.datetime,
-                  validator: _validarHora)),
-            ]),
-          ]),
+                    v == null || v.trim().isEmpty ? 'Obligatorio' : null,
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _campo(
+                      ctrl: apertCtrl,
+                      label: 'Apertura (HH:MM)',
+                      hint: '09:00',
+                      icon: Icons.schedule_outlined,
+                      keyboard: TextInputType.datetime,
+                      validator: _validarHora,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _campo(
+                      ctrl: cierreCtrl,
+                      label: 'Cierre (HH:MM)',
+                      hint: '23:00',
+                      icon: Icons.schedule_outlined,
+                      keyboard: TextInputType.datetime,
+                      validator: _validarHora,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false),
-              child: Text('Cancelar',
-                  style: GoogleFonts.manrope(color: AppColors.textSecondary))),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(
+              'Cancelar',
+              style: GoogleFonts.manrope(color: AppColors.textSecondary),
+            ),
+          ),
           TextButton(
             onPressed: () {
               if (formKey.currentState!.validate()) {
                 Navigator.pop(ctx, true);
               }
             },
-            child: Text(esEdicion ? 'GUARDAR' : 'CREAR',
-                style: GoogleFonts.manrope(
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.button)),
+            child: Text(
+              esEdicion ? 'GUARDAR' : 'CREAR',
+              style: GoogleFonts.manrope(
+                fontWeight: FontWeight.w700,
+                color: AppColors.button,
+              ),
+            ),
           ),
         ],
       ),
@@ -127,15 +157,21 @@ class _HomeScreenSuperAdminState extends State<HomeScreenSuperAdmin> {
     bool exito;
     if (esEdicion) {
       exito = await provider.editar(
-          id: restaurante.id, nombre: nombre, direccion: direccion,
-          horarioApertura: apertura, horarioCierre: cierre);
+        id: restaurante.id,
+        nombre: nombre,
+        direccion: direccion,
+        horarioApertura: apertura,
+        horarioCierre: cierre,
+      );
     } else {
       exito = await provider.crear(nombre: nombre, direccion: direccion);
     }
     if (mounted) {
-      _snack(exito
-          ? (esEdicion ? 'Sucursal actualizada' : 'Sucursal creada')
-          : 'Error al guardar');
+      _snack(
+        exito
+            ? (esEdicion ? 'Sucursal actualizada' : 'Sucursal creada')
+            : 'Error al guardar',
+      );
     }
   }
 
@@ -146,28 +182,40 @@ class _HomeScreenSuperAdminState extends State<HomeScreenSuperAdmin> {
       builder: (_) => AlertDialog(
         backgroundColor: AppColors.background,
         shape: const RoundedRectangleBorder(),
-        title: Text('¿Eliminar sucursal?',
-            style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+        title: Text(
+          '¿Eliminar sucursal?',
+          style: GoogleFonts.manrope(fontWeight: FontWeight.w700),
+        ),
         content: Text(
-            'Se eliminará "${r.nombre}" permanentemente.',
-            style: GoogleFonts.manrope(
-                color: AppColors.textSecondary, fontSize: 13)),
+          'Se eliminará "${r.nombre}" permanentemente.',
+          style: GoogleFonts.manrope(
+            color: AppColors.textSecondary,
+            fontSize: 13,
+          ),
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false),
-              child: Text('Cancelar',
-                  style: GoogleFonts.manrope(
-                      color: AppColors.textSecondary))),
-          TextButton(onPressed: () => Navigator.pop(context, true),
-              child: Text('Eliminar',
-                  style: GoogleFonts.manrope(
-                      color: AppColors.error,
-                      fontWeight: FontWeight.w700))),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              'Cancelar',
+              style: GoogleFonts.manrope(color: AppColors.textSecondary),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(
+              'Eliminar',
+              style: GoogleFonts.manrope(
+                color: AppColors.error,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
         ],
       ),
     );
     if (ok != true || !mounted) return;
-    final exito =
-        await context.read<RestauranteProvider>().eliminar(r.id);
+    final exito = await context.read<RestauranteProvider>().eliminar(r.id);
     if (mounted) _snack(exito ? 'Sucursal eliminada' : 'Error al eliminar');
   }
 
@@ -178,44 +226,61 @@ class _HomeScreenSuperAdminState extends State<HomeScreenSuperAdmin> {
       builder: (_) => AlertDialog(
         backgroundColor: AppColors.background,
         shape: const RoundedRectangleBorder(),
-        title: Text(nuevo ? 'Activar sucursal' : 'Suspender sucursal',
-            style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+        title: Text(
+          nuevo ? 'Activar sucursal' : 'Suspender sucursal',
+          style: GoogleFonts.manrope(fontWeight: FontWeight.w700),
+        ),
         content: Text(
-            nuevo
-                ? '¿Activar "${r.nombre}"? Volverá a aceptar pedidos.'
-                : '¿Suspender "${r.nombre}"? No se aceptarán nuevos pedidos.',
-            style: GoogleFonts.manrope(
-                color: AppColors.textSecondary, fontSize: 13)),
+          nuevo
+              ? '¿Activar "${r.nombre}"? Volverá a aceptar pedidos.'
+              : '¿Suspender "${r.nombre}"? No se aceptarán nuevos pedidos.',
+          style: GoogleFonts.manrope(
+            color: AppColors.textSecondary,
+            fontSize: 13,
+          ),
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false),
-              child: Text('Cancelar',
-                  style: GoogleFonts.manrope(
-                      color: AppColors.textSecondary))),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              'Cancelar',
+              style: GoogleFonts.manrope(color: AppColors.textSecondary),
+            ),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text(nuevo ? 'ACTIVAR' : 'SUSPENDER',
-                style: GoogleFonts.manrope(
-                    fontWeight: FontWeight.w700,
-                    color: nuevo ? AppColors.button : AppColors.error)),
+            child: Text(
+              nuevo ? 'ACTIVAR' : 'SUSPENDER',
+              style: GoogleFonts.manrope(
+                fontWeight: FontWeight.w700,
+                color: nuevo ? AppColors.button : AppColors.error,
+              ),
+            ),
           ),
         ],
       ),
     );
     if (ok != true || !mounted) return;
-    final exito =
-        await context.read<RestauranteProvider>().toggleActivo(r.id, nuevo);
+    final exito = await context.read<RestauranteProvider>().toggleActivo(
+      r.id,
+      nuevo,
+    );
     if (mounted) {
-      _snack(exito
-          ? 'Sucursal ${nuevo ? "activada" : "suspendida"}'
-          : 'Error al cambiar estado');
+      _snack(
+        exito
+            ? 'Sucursal ${nuevo ? "activada" : "suspendida"}'
+            : 'Error al cambiar estado',
+      );
     }
   }
 
   void _snack(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg, style: GoogleFonts.manrope()),
-          backgroundColor: AppColors.button,
-          behavior: SnackBarBehavior.floating),
+      SnackBar(
+        content: Text(msg, style: GoogleFonts.manrope()),
+        backgroundColor: AppColors.button,
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
 
@@ -235,8 +300,10 @@ class _HomeScreenSuperAdminState extends State<HomeScreenSuperAdmin> {
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
-        labelStyle:
-            GoogleFonts.manrope(fontSize: 13, color: AppColors.textSecondary),
+        labelStyle: GoogleFonts.manrope(
+          fontSize: 13,
+          color: AppColors.textSecondary,
+        ),
         prefixIcon: icon != null
             ? Icon(icon, color: AppColors.button, size: 20)
             : null,
@@ -244,11 +311,13 @@ class _HomeScreenSuperAdminState extends State<HomeScreenSuperAdmin> {
         fillColor: Colors.white,
         border: const OutlineInputBorder(borderRadius: BorderRadius.zero),
         enabledBorder: const OutlineInputBorder(
-            borderRadius: BorderRadius.zero,
-            borderSide: BorderSide(color: AppColors.line)),
+          borderRadius: BorderRadius.zero,
+          borderSide: BorderSide(color: AppColors.line),
+        ),
         focusedBorder: const OutlineInputBorder(
-            borderRadius: BorderRadius.zero,
-            borderSide: BorderSide(color: AppColors.button, width: 1.5)),
+          borderRadius: BorderRadius.zero,
+          borderSide: BorderSide(color: AppColors.button, width: 1.5),
+        ),
       ),
       validator: validator,
     );
@@ -288,7 +357,9 @@ class _HomeScreenSuperAdminState extends State<HomeScreenSuperAdmin> {
               physics: const BouncingScrollPhysics(),
               child: Padding(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 24.0, vertical: 16.0),
+                  horizontal: 24.0,
+                  vertical: 16.0,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -320,7 +391,8 @@ class _HomeScreenSuperAdminState extends State<HomeScreenSuperAdmin> {
                             padding: EdgeInsets.all(32),
                             child: Center(
                               child: CircularProgressIndicator(
-                                  color: AppColors.button),
+                                color: AppColors.button,
+                              ),
                             ),
                           );
                         }
@@ -328,40 +400,48 @@ class _HomeScreenSuperAdminState extends State<HomeScreenSuperAdmin> {
                           return Padding(
                             padding: const EdgeInsets.all(16),
                             child: Text(
-                                'Error al cargar sucursales: ${rProv.error}',
-                                style: const TextStyle(color: Colors.white70)),
+                              'Error al cargar sucursales: ${rProv.error}',
+                              style: const TextStyle(color: Colors.white70),
+                            ),
                           );
                         }
                         final lista = rProv.restaurantes;
-                        return Column(children: [
-                          for (var i = 0; i < lista.length; i++) ...[
-                            _SucursalGlassCard(
-                              restaurante: lista[i],
-                              numero: i + 1,
-                              personalCount: uProv.usuarios.where((u) {
-                                final id = (u.restauranteId ?? '')
-                                    .toString().trim().toLowerCase();
-                                return id ==
-                                        lista[i].id.trim().toLowerCase() &&
-                                    u.rolRaw != 'cliente' &&
-                                    u.rolRaw != 'superadministrador';
-                              }).length,
-                              onTap: () => _ir(
+                        return Column(
+                          children: [
+                            for (var i = 0; i < lista.length; i++) ...[
+                              _SucursalGlassCard(
+                                restaurante: lista[i],
+                                numero: i + 1,
+                                personalCount: uProv.usuarios.where((u) {
+                                  final id = (u.restauranteId ?? '')
+                                      .toString()
+                                      .trim()
+                                      .toLowerCase();
+                                  return id ==
+                                          lista[i].id.trim().toLowerCase() &&
+                                      u.rolRaw != 'cliente' &&
+                                      u.rolRaw != 'superadministrador';
+                                }).length,
+                                onTap: () => _ir(
                                   context,
                                   SucursalDetailScreen(
-                                      restauranteId: lista[i].id,
-                                      restauranteNombre: lista[i].nombre)),
-                              onEdit: () =>
-                                  _mostrarFormulario(restaurante: lista[i]),
-                              onDelete: () => _confirmarBorrado(lista[i]),
-                              onToggleActivo: (v) =>
-                                  _toggleActivo(lista[i], v),
+                                    restauranteId: lista[i].id,
+                                    restauranteNombre: lista[i].nombre,
+                                  ),
+                                ),
+                                onEdit: () =>
+                                    _mostrarFormulario(restaurante: lista[i]),
+                                onDelete: () => _confirmarBorrado(lista[i]),
+                                onToggleActivo: (v) =>
+                                    _toggleActivo(lista[i], v),
+                              ),
+                              const SizedBox(height: 12),
+                            ],
+                            _NuevaSucursalGlass(
+                              onTap: () => _mostrarFormulario(),
                             ),
-                            const SizedBox(height: 12),
                           ],
-                          _NuevaSucursalGlass(
-                              onTap: () => _mostrarFormulario()),
-                        ]);
+                        );
                       },
                     ),
 
@@ -370,126 +450,140 @@ class _HomeScreenSuperAdminState extends State<HomeScreenSuperAdmin> {
                     // ── HERRAMIENTAS GLOBALES ────────────────────────
                     _sectionLabel('HERRAMIENTAS GLOBALES'),
                     const SizedBox(height: 12),
-                    Row(children: [
-                      Expanded(
-                        child: _GlassCard(
-                          title: 'KPIs Globales',
-                          subtitle: 'Ingresos por sucursal',
-                          icon: Icons.bar_chart_rounded,
-                          onTap: () =>
-                              _ir(context, const KpisGlobalesScreen()),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _GlassCard(
+                            title: 'KPIs Globales',
+                            subtitle: 'Ingresos por sucursal',
+                            icon: Icons.bar_chart_rounded,
+                            onTap: () =>
+                                _ir(context, const KpisGlobalesScreen()),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _GlassCard(
-                          title: 'Pedidos',
-                          subtitle: 'Activos y globales',
-                          icon: Icons.receipt_long_outlined,
-                          onTap: () =>
-                              _ir(context, const PedidosActivosScreen()),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _GlassCard(
+                            title: 'Pedidos',
+                            subtitle: 'Activos y globales',
+                            icon: Icons.receipt_long_outlined,
+                            onTap: () =>
+                                _ir(context, const PedidosActivosScreen()),
+                          ),
                         ),
-                      ),
-                    ]),
+                      ],
+                    ),
                     const SizedBox(height: 16),
-                    Row(children: [
-                      Expanded(
-                        child: _GlassCard(
-                          title: 'Contabilidad',
-                          subtitle: 'Ingresos globales',
-                          icon: Icons.euro_outlined,
-                          onTap: () =>
-                              _ir(context, const ContabilidadScreen()),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _GlassCard(
+                            title: 'Contabilidad',
+                            subtitle: 'Ingresos globales',
+                            icon: Icons.euro_outlined,
+                            onTap: () =>
+                                _ir(context, const ContabilidadScreen()),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _GlassCard(
-                          title: 'Actividad',
-                          subtitle: 'Auditoría de eventos',
-                          icon: Icons.history_outlined,
-                          onTap: () =>
-                              _ir(context, const ActividadScreen()),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _GlassCard(
+                            title: 'Actividad',
+                            subtitle: 'Auditoría de eventos',
+                            icon: Icons.history_outlined,
+                            onTap: () => _ir(context, const ActividadScreen()),
+                          ),
                         ),
-                      ),
-                    ]),
+                      ],
+                    ),
                     const SizedBox(height: 16),
-                    Row(children: [
-                      Expanded(
-                        child: _GlassCard(
-                          title: 'Catálogo',
-                          subtitle: 'Precios y disponibilidad',
-                          icon: Icons.edit_note_rounded,
-                          onTap: () =>
-                              _ir(context, const CatalogoMasivoScreen()),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _GlassCard(
+                            title: 'Catálogo',
+                            subtitle: 'Precios y disponibilidad',
+                            icon: Icons.edit_note_rounded,
+                            onTap: () =>
+                                _ir(context, const CatalogoMasivoScreen()),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _GlassCard(
-                          title: 'Cupones',
-                          subtitle: 'Promociones',
-                          icon: Icons.local_offer_rounded,
-                          onTap: () =>
-                              _ir(context, const CuponesScreen()),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _GlassCard(
+                            title: 'Cupones',
+                            subtitle: 'Promociones',
+                            icon: Icons.local_offer_rounded,
+                            onTap: () => _ir(context, const CuponesScreen()),
+                          ),
                         ),
-                      ),
-                    ]),
+                      ],
+                    ),
 
                     const SizedBox(height: 28),
 
                     // ── USUARIOS GLOBALES ────────────────────────────
                     _sectionLabel('USUARIOS GLOBALES'),
                     const SizedBox(height: 12),
-                    Row(children: [
-                      Expanded(
-                        child: _GlassCard(
-                          title: 'Trabajadores',
-                          subtitle: 'Empleados del grupo',
-                          icon: Icons.people_outline_rounded,
-                          onTap: () => _ir(
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _GlassCard(
+                            title: 'Trabajadores',
+                            subtitle: 'Empleados del grupo',
+                            icon: Icons.people_outline_rounded,
+                            onTap: () => _ir(
                               context,
                               const GestionUsuariosScreen(
-                                  rolAFiltrar: 'trabajador')),
+                                rolAFiltrar: 'trabajador',
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _GlassCard(
-                          title: 'Administradores',
-                          subtitle: 'Gestores de sucursal',
-                          icon: Icons.admin_panel_settings_outlined,
-                          onTap: () => _ir(
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _GlassCard(
+                            title: 'Administradores',
+                            subtitle: 'Gestores de sucursal',
+                            icon: Icons.admin_panel_settings_outlined,
+                            onTap: () => _ir(
                               context,
                               const GestionUsuariosScreen(
-                                  rolAFiltrar: 'administrador')),
+                                rolAFiltrar: 'administrador',
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
-                    ]),
+                      ],
+                    ),
                     const SizedBox(height: 16),
-                    Row(children: [
-                      Expanded(
-                        child: _GlassCard(
-                          title: 'Clientes',
-                          subtitle: 'Base de clientes',
-                          icon: Icons.assignment_ind_outlined,
-                          onTap: () => _ir(
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _GlassCard(
+                            title: 'Clientes',
+                            subtitle: 'Base de clientes',
+                            icon: Icons.assignment_ind_outlined,
+                            onTap: () => _ir(
                               context,
                               const GestionUsuariosScreen(
-                                  rolAFiltrar: 'cliente')),
+                                rolAFiltrar: 'cliente',
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _GlassCard(
-                          title: 'Permisos y Roles',
-                          subtitle: 'Accesos globales',
-                          icon: Icons.security_outlined,
-                          onTap: () =>
-                              _ir(context, const GestionRolesScreen()),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _GlassCard(
+                            title: 'Permisos y Roles',
+                            subtitle: 'Accesos globales',
+                            icon: Icons.security_outlined,
+                            onTap: () =>
+                                _ir(context, const GestionRolesScreen()),
+                          ),
                         ),
-                      ),
-                    ]),
+                      ],
+                    ),
                     const SizedBox(height: 30),
                   ],
                 ),
@@ -502,16 +596,21 @@ class _HomeScreenSuperAdminState extends State<HomeScreenSuperAdmin> {
   }
 
   Widget _sectionLabel(String label) {
-    return Row(children: [
-      Container(width: 3, height: 18, color: AppColors.button),
-      const SizedBox(width: 10),
-      Text(label,
+    return Row(
+      children: [
+        Container(width: 3, height: 18, color: AppColors.button),
+        const SizedBox(width: 10),
+        Text(
+          label,
           style: GoogleFonts.manrope(
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-              color: Colors.white70,
-              letterSpacing: 2)),
-    ]);
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            color: Colors.white70,
+            letterSpacing: 2,
+          ),
+        ),
+      ],
+    );
   }
 }
 
@@ -565,22 +664,22 @@ class _SucursalGlassCard extends StatelessWidget {
                       height: 44,
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        color: (r.activo
-                                ? AppColors.button
-                                : Colors.white24)
+                        color: (r.activo ? AppColors.button : Colors.white24)
                             .withValues(alpha: r.activo ? 0.85 : 1),
                         shape: BoxShape.circle,
                         border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.25),
-                            width: 1),
+                          color: Colors.white.withValues(alpha: 0.25),
+                          width: 1,
+                        ),
                       ),
                       child: Text(
                         numero.toString().padLeft(2, '0'),
                         style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 14,
-                            letterSpacing: 1),
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                          letterSpacing: 1,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 14),
@@ -588,114 +687,143 @@ class _SucursalGlassCard extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(children: [
-                            Expanded(
-                              child: Text(
-                                r.nombre,
-                                style: const TextStyle(
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  r.nombre,
+                                  style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 16,
-                                    fontWeight: FontWeight.bold),
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 6),
-                            r.activo
-                                ? _badgeEstado(r.estaAbierto())
-                                : _badgeSuspendida(),
-                          ]),
+                              const SizedBox(width: 6),
+                              r.activo
+                                  ? _badgeEstado(r.estaAbierto())
+                                  : _badgeSuspendida(),
+                            ],
+                          ),
                           const SizedBox(height: 6),
-                          Row(children: [
-                            Icon(Icons.location_on_outlined,
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.location_on_outlined,
                                 size: 13,
-                                color: Colors.white.withValues(alpha: 0.6)),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                r.direccion,
-                                style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.white
-                                        .withValues(alpha: 0.65)),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                                color: Colors.white.withValues(alpha: 0.6),
                               ),
-                            ),
-                          ]),
-                          const SizedBox(height: 4),
-                          Row(children: [
-                            if (r.horarioApertura != null &&
-                                r.horarioCierre != null) ...[
-                              Icon(Icons.schedule_outlined,
-                                  size: 13,
-                                  color:
-                                      Colors.white.withValues(alpha: 0.6)),
                               const SizedBox(width: 4),
-                              Text(
+                              Expanded(
+                                child: Text(
+                                  r.direccion,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.white.withValues(alpha: 0.65),
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              if (r.horarioApertura != null &&
+                                  r.horarioCierre != null) ...[
+                                Icon(
+                                  Icons.schedule_outlined,
+                                  size: 13,
+                                  color: Colors.white.withValues(alpha: 0.6),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
                                   '${r.horarioApertura} - ${r.horarioCierre}',
                                   style: TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.white
-                                          .withValues(alpha: 0.6))),
-                              const SizedBox(width: 12),
-                            ],
-                            Icon(Icons.badge_outlined,
-                                size: 13,
-                                color:
-                                    Colors.white.withValues(alpha: 0.6)),
-                            const SizedBox(width: 4),
-                            Text('$personalCount empleados',
-                                style: TextStyle(
                                     fontSize: 11,
-                                    color: Colors.white
-                                        .withValues(alpha: 0.6))),
-                          ]),
+                                    color: Colors.white.withValues(alpha: 0.6),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                              ],
+                              Icon(
+                                Icons.badge_outlined,
+                                size: 13,
+                                color: Colors.white.withValues(alpha: 0.6),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '$personalCount empleados',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.white.withValues(alpha: 0.6),
+                                ),
+                              ),
+                            ],
+                          ),
                           const SizedBox(height: 8),
-                          Text('GESTIONAR →',
-                              style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.button
-                                      .withValues(alpha: 0.95),
-                                  letterSpacing: 1.5)),
+                          Text(
+                            'GESTIONAR →',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.button.withValues(alpha: 0.95),
+                              letterSpacing: 1.5,
+                            ),
+                          ),
                         ],
                       ),
                     ),
-                    Column(children: [
-                      Row(mainAxisSize: MainAxisSize.min, children: [
-                        IconButton(
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(
-                              minWidth: 32, minHeight: 32),
-                          icon: const Icon(Icons.edit_outlined,
-                              size: 18, color: Colors.white70),
-                          tooltip: 'Editar',
-                          onPressed: onEdit,
+                    Column(
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(
+                                minWidth: 32,
+                                minHeight: 32,
+                              ),
+                              icon: const Icon(
+                                Icons.edit_outlined,
+                                size: 18,
+                                color: Colors.white70,
+                              ),
+                              tooltip: 'Editar',
+                              onPressed: onEdit,
+                            ),
+                            IconButton(
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(
+                                minWidth: 32,
+                                minHeight: 32,
+                              ),
+                              icon: Icon(
+                                Icons.delete_outline,
+                                size: 18,
+                                color: AppColors.error.withValues(alpha: 0.85),
+                              ),
+                              tooltip: 'Eliminar',
+                              onPressed: onDelete,
+                            ),
+                          ],
                         ),
-                        IconButton(
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(
-                              minWidth: 32, minHeight: 32),
-                          icon: Icon(Icons.delete_outline,
-                              size: 18,
-                              color: AppColors.error
-                                  .withValues(alpha: 0.85)),
-                          tooltip: 'Eliminar',
-                          onPressed: onDelete,
-                        ),
-                      ]),
-                      Tooltip(
-                        message: r.activo ? 'Suspender' : 'Activar',
-                        child: Transform.scale(
-                          scale: 0.7,
-                          child: Switch.adaptive(
-                            value: r.activo,
-                            activeThumbColor: AppColors.button,
-                            inactiveThumbColor: AppColors.error,
-                            onChanged: onToggleActivo,
+                        Tooltip(
+                          message: r.activo ? 'Suspender' : 'Activar',
+                          child: Transform.scale(
+                            scale: 0.7,
+                            child: Switch.adaptive(
+                              value: r.activo,
+                              activeThumbColor: AppColors.button,
+                              inactiveThumbColor: AppColors.error,
+                              onChanged: onToggleActivo,
+                            ),
                           ),
                         ),
-                      ),
-                    ]),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -707,8 +835,7 @@ class _SucursalGlassCard extends StatelessWidget {
   }
 
   Widget _badgeEstado(bool abierto) {
-    final color =
-        abierto ? const Color(0xFF66BB6A) : AppColors.error;
+    final color = abierto ? const Color(0xFF66BB6A) : AppColors.error;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
@@ -716,12 +843,15 @@ class _SucursalGlassCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(4),
         border: Border.all(color: color.withValues(alpha: 0.5)),
       ),
-      child: Text(abierto ? 'ABIERTO' : 'CERRADO',
-          style: TextStyle(
-              fontSize: 8,
-              fontWeight: FontWeight.w800,
-              color: color,
-              letterSpacing: 1)),
+      child: Text(
+        abierto ? 'ABIERTO' : 'CERRADO',
+        style: TextStyle(
+          fontSize: 8,
+          fontWeight: FontWeight.w800,
+          color: color,
+          letterSpacing: 1,
+        ),
+      ),
     );
   }
 
@@ -733,12 +863,15 @@ class _SucursalGlassCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(4),
         border: Border.all(color: AppColors.error.withValues(alpha: 0.5)),
       ),
-      child: const Text('SUSPENDIDA',
-          style: TextStyle(
-              fontSize: 8,
-              fontWeight: FontWeight.w800,
-              color: AppColors.error,
-              letterSpacing: 1)),
+      child: const Text(
+        'SUSPENDIDA',
+        style: TextStyle(
+          fontSize: 8,
+          fontWeight: FontWeight.w800,
+          color: AppColors.error,
+          letterSpacing: 1,
+        ),
+      ),
     );
   }
 }
@@ -776,12 +909,15 @@ class _NuevaSucursalGlass extends StatelessWidget {
                 children: [
                   const Icon(Icons.add_rounded, color: Colors.white),
                   const SizedBox(width: 8),
-                  Text('NUEVA SUCURSAL',
-                      style: GoogleFonts.manrope(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.5,
-                          fontSize: 13)),
+                  Text(
+                    'NUEVA SUCURSAL',
+                    style: GoogleFonts.manrope(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.5,
+                      fontSize: 13,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -839,12 +975,11 @@ class _GlassCard extends StatelessWidget {
                         color: AppColors.button.withValues(alpha: 0.2),
                         shape: BoxShape.circle,
                         border: Border.all(
-                            color:
-                                AppColors.button.withValues(alpha: 0.5),
-                            width: 1),
+                          color: AppColors.button.withValues(alpha: 0.5),
+                          width: 1,
+                        ),
                       ),
-                      child: Icon(icon,
-                          color: AppColors.button, size: 28),
+                      child: Icon(icon, color: AppColors.button, size: 28),
                     ),
                     const Spacer(),
                     Text(

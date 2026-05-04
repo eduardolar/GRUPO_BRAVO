@@ -53,8 +53,9 @@ class PedidoListoWatcher {
     final userId = _userIdActivo;
     if (userId == null) return;
     try {
-      final pedidos =
-          await PedidoService.obtenerHistorialPedidos(userId: userId);
+      final pedidos = await PedidoService.obtenerHistorialPedidos(
+        userId: userId,
+      );
       _procesarPedidos(pedidos);
     } catch (e) {
       debugPrint('PedidoListoWatcher: error consultando pedidos: $e');

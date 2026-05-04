@@ -27,8 +27,14 @@ class RestauranteProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> crear({required String nombre, required String direccion}) async {
-    final nuevo = await _service.crearRestaurante(nombre: nombre, direccion: direccion);
+  Future<bool> crear({
+    required String nombre,
+    required String direccion,
+  }) async {
+    final nuevo = await _service.crearRestaurante(
+      nombre: nombre,
+      direccion: direccion,
+    );
     if (nuevo != null) {
       _restaurantes = [..._restaurantes, nuevo];
       notifyListeners();
@@ -71,7 +77,6 @@ class RestauranteProvider with ChangeNotifier {
     }
     return ok;
   }
-
 
   Future<bool> toggleActivo(String id, bool activo) async {
     final ok = await _service.toggleActivo(id, activo);

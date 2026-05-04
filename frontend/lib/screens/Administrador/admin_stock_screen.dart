@@ -1,4 +1,4 @@
-﻿import 'dart:ui';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:frontend/components/bravo_app_bar.dart';
@@ -36,8 +36,10 @@ class _AdminStockScreenState extends State<AdminStockScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      _restauranteId =
-          context.read<AuthProvider>().usuarioActual?.restauranteId;
+      _restauranteId = context
+          .read<AuthProvider>()
+          .usuarioActual
+          ?.restauranteId;
       _cargar();
     });
   }
@@ -58,9 +60,7 @@ class _AdminStockScreenState extends State<AdminStockScreen> {
       if (!mounted) return;
       final seen = <String>{};
       setState(() {
-        _todos = lista
-            .where((i) => i.id.isNotEmpty && seen.add(i.id))
-            .toList();
+        _todos = lista.where((i) => i.id.isNotEmpty && seen.add(i.id)).toList();
         _cargando = false;
       });
     } catch (_) {
@@ -159,21 +159,20 @@ class _AdminStockScreenState extends State<AdminStockScreen> {
                           ),
                         )
                       : filtrados.isEmpty
-                          ? _buildEmpty()
-                          : RefreshIndicator(
-                              color: AppColors.button,
-                              onRefresh: _cargar,
-                              child: ListView.builder(
-                                padding:
-                                    const EdgeInsets.fromLTRB(16, 4, 16, 100),
-                                itemCount: filtrados.length,
-                                itemBuilder: (_, i) => _IngredienteCard(
-                                  ingrediente: filtrados[i],
-                                  onTap: () =>
-                                      _abrirEditor(ingrediente: filtrados[i]),
-                                ),
-                              ),
+                      ? _buildEmpty()
+                      : RefreshIndicator(
+                          color: AppColors.button,
+                          onRefresh: _cargar,
+                          child: ListView.builder(
+                            padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
+                            itemCount: filtrados.length,
+                            itemBuilder: (_, i) => _IngredienteCard(
+                              ingrediente: filtrados[i],
+                              onTap: () =>
+                                  _abrirEditor(ingrediente: filtrados[i]),
                             ),
+                          ),
+                        ),
                 ),
               ],
             ),
@@ -226,8 +225,7 @@ class _AdminStockScreenState extends State<AdminStockScreen> {
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(14),
-              border:
-                  Border.all(color: Colors.white.withValues(alpha: 0.15)),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
             ),
             child: TextField(
               controller: _busquedaCtrl,
@@ -236,8 +234,7 @@ class _AdminStockScreenState extends State<AdminStockScreen> {
               onChanged: (v) => setState(() => _busqueda = v.toLowerCase()),
               decoration: InputDecoration(
                 hintText: 'Buscar ingrediente...',
-                hintStyle:
-                    const TextStyle(color: Colors.white38, fontSize: 14),
+                hintStyle: const TextStyle(color: Colors.white38, fontSize: 14),
                 prefixIcon: const Icon(
                   Icons.search,
                   color: Colors.white38,
@@ -300,8 +297,9 @@ class _AdminStockScreenState extends State<AdminStockScreen> {
                       cat,
                       style: TextStyle(
                         color: selected ? Colors.white : Colors.white70,
-                        fontWeight:
-                            selected ? FontWeight.w700 : FontWeight.w500,
+                        fontWeight: selected
+                            ? FontWeight.w700
+                            : FontWeight.w500,
                         fontSize: 13,
                       ),
                     ),
@@ -382,13 +380,11 @@ class _StatChip extends StatelessWidget {
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
         child: Container(
-          padding:
-              const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
             color: Colors.black.withValues(alpha: 0.4),
             borderRadius: BorderRadius.circular(10),
-            border:
-                Border.all(color: Colors.white.withValues(alpha: 0.12)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -430,18 +426,15 @@ class _IngredienteCard extends StatelessWidget {
   final Ingrediente ingrediente;
   final VoidCallback onTap;
 
-  const _IngredienteCard({
-    required this.ingrediente,
-    required this.onTap,
-  });
+  const _IngredienteCard({required this.ingrediente, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     final ing = ingrediente;
     final hasMin = ing.stockMinimo > 0;
-    final isBajo =
-        hasMin && ing.cantidadActual <= ing.stockMinimo;
-    final isJusto = hasMin &&
+    final isBajo = hasMin && ing.cantidadActual <= ing.stockMinimo;
+    final isJusto =
+        hasMin &&
         ing.cantidadActual > ing.stockMinimo &&
         ing.cantidadActual <= ing.stockMinimo * 1.5;
 
@@ -452,14 +445,14 @@ class _IngredienteCard extends StatelessWidget {
     final Color barColor = isBajo
         ? AppColors.error
         : isJusto
-            ? Colors.amber.shade400
-            : AppColors.disp;
+        ? Colors.amber.shade400
+        : AppColors.disp;
 
     final String? badge = isBajo
         ? 'BAJO'
         : isJusto
-            ? 'JUSTO'
-            : null;
+        ? 'JUSTO'
+        : null;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -493,8 +486,7 @@ class _IngredienteCard extends StatelessWidget {
                           color: AppColors.button.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(
-                            color: AppColors.button
-                                .withValues(alpha: 0.35),
+                            color: AppColors.button.withValues(alpha: 0.35),
                           ),
                         ),
                         child: Icon(
@@ -535,10 +527,11 @@ class _IngredienteCard extends StatelessWidget {
                             vertical: 3,
                           ),
                           decoration: BoxDecoration(
-                            color: (isBajo
-                                    ? AppColors.error
-                                    : Colors.amber.shade700)
-                                .withValues(alpha: 0.9),
+                            color:
+                                (isBajo
+                                        ? AppColors.error
+                                        : Colors.amber.shade700)
+                                    .withValues(alpha: 0.9),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
@@ -566,10 +559,8 @@ class _IngredienteCard extends StatelessWidget {
                     child: LinearProgressIndicator(
                       value: ratio,
                       minHeight: 6,
-                      backgroundColor:
-                          Colors.white.withValues(alpha: 0.1),
-                      valueColor:
-                          AlwaysStoppedAnimation<Color>(barColor),
+                      backgroundColor: Colors.white.withValues(alpha: 0.1),
+                      valueColor: AlwaysStoppedAnimation<Color>(barColor),
                     ),
                   ),
                   const SizedBox(height: 6),
@@ -652,8 +643,7 @@ class _EditorIngredienteSheet extends StatefulWidget {
       _EditorIngredienteSheetState();
 }
 
-class _EditorIngredienteSheetState
-    extends State<_EditorIngredienteSheet> {
+class _EditorIngredienteSheetState extends State<_EditorIngredienteSheet> {
   final _formKey = GlobalKey<FormState>();
   bool _guardando = false;
 
@@ -679,13 +669,13 @@ class _EditorIngredienteSheetState
     final ingCat = ing?.categoria;
     _categoria =
         ingCat != null && IngredienteService.categorias.contains(ingCat)
-            ? ingCat
-            : IngredienteService.categorias.first;
+        ? ingCat
+        : IngredienteService.categorias.first;
     final ingUnidad = ing?.unidad;
     _unidad =
         ingUnidad != null && IngredienteService.unidades.contains(ingUnidad)
-            ? ingUnidad
-            : 'kg';
+        ? ingUnidad
+        : 'kg';
   }
 
   @override
@@ -723,16 +713,13 @@ class _EditorIngredienteSheetState
       final cantidad = double.parse(_cantidadCtrl.text);
       final minimo = double.parse(_minimoCtrl.text);
       if (_esEdicion) {
-        await IngredienteService.actualizarIngrediente(
-          widget.ingrediente!.id,
-          {
-            'nombre': _nombreCtrl.text.trim(),
-            'categoria': _categoria,
-            'cantidadActual': cantidad,
-            'unidad': _unidad,
-            'stockMinimo': minimo,
-          },
-        );
+        await IngredienteService.actualizarIngrediente(widget.ingrediente!.id, {
+          'nombre': _nombreCtrl.text.trim(),
+          'categoria': _categoria,
+          'cantidadActual': cantidad,
+          'unidad': _unidad,
+          'stockMinimo': minimo,
+        });
       } else {
         await IngredienteService.crearIngrediente({
           'nombre': _nombreCtrl.text.trim(),
@@ -784,9 +771,7 @@ class _EditorIngredienteSheetState
             ),
           ),
           TextButton(
-            style: TextButton.styleFrom(
-              foregroundColor: AppColors.error,
-            ),
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Eliminar'),
           ),
@@ -795,9 +780,7 @@ class _EditorIngredienteSheetState
     );
     if (confirmar != true) return;
     try {
-      await IngredienteService.eliminarIngrediente(
-        widget.ingrediente!.id,
-      );
+      await IngredienteService.eliminarIngrediente(widget.ingrediente!.id);
       widget.onGuardado();
       if (mounted) Navigator.pop(context);
     } catch (e) {
@@ -812,33 +795,29 @@ class _EditorIngredienteSheetState
     }
   }
 
-  InputDecoration _fieldDec(String label, {Widget? suffix}) =>
-      InputDecoration(
-        labelText: label,
-        labelStyle:
-            const TextStyle(color: Colors.white60, fontSize: 13),
-        filled: true,
-        fillColor: _kFieldFill,
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _kBorder),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide:
-              const BorderSide(color: AppColors.button, width: 2),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.error),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide:
-              const BorderSide(color: AppColors.error, width: 2),
-        ),
-        suffixIcon: suffix,
-      );
+  InputDecoration _fieldDec(String label, {Widget? suffix}) => InputDecoration(
+    labelText: label,
+    labelStyle: const TextStyle(color: Colors.white60, fontSize: 13),
+    filled: true,
+    fillColor: _kFieldFill,
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: _kBorder),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: AppColors.button, width: 2),
+    ),
+    errorBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: AppColors.error),
+    ),
+    focusedErrorBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: AppColors.error, width: 2),
+    ),
+    suffixIcon: suffix,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -871,9 +850,7 @@ class _EditorIngredienteSheetState
                 Row(
                   children: [
                     Text(
-                      _esEdicion
-                          ? 'Editar ingrediente'
-                          : 'Nuevo ingrediente',
+                      _esEdicion ? 'Editar ingrediente' : 'Nuevo ingrediente',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 20,
@@ -911,14 +888,11 @@ class _EditorIngredienteSheetState
                         controller: _cantidadCtrl,
                         style: const TextStyle(color: Colors.white),
                         cursorColor: AppColors.button,
-                        keyboardType:
-                            const TextInputType.numberWithOptions(
+                        keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
                         ),
                         inputFormatters: [
-                          FilteringTextInputFormatter.allow(
-                            RegExp(r'[0-9.]'),
-                          ),
+                          FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
                         ],
                         decoration: _fieldDec('Cantidad actual'),
                         validator: (v) {
@@ -955,10 +929,7 @@ class _EditorIngredienteSheetState
                         decoration: _fieldDec('Unidad'),
                         items: IngredienteService.unidades
                             .map(
-                              (u) => DropdownMenuItem(
-                                value: u,
-                                child: Text(u),
-                              ),
+                              (u) => DropdownMenuItem(value: u, child: Text(u)),
                             )
                             .toList(),
                         onChanged: (v) => setState(() => _unidad = v!),
@@ -971,8 +942,9 @@ class _EditorIngredienteSheetState
                   controller: _minimoCtrl,
                   style: const TextStyle(color: Colors.white),
                   cursorColor: AppColors.button,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   inputFormatters: [
                     FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
                   ],
@@ -999,9 +971,7 @@ class _EditorIngredienteSheetState
                   isExpanded: true,
                   decoration: _fieldDec('Categoría'),
                   items: IngredienteService.categorias
-                      .map(
-                        (c) => DropdownMenuItem(value: c, child: Text(c)),
-                      )
+                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                       .toList(),
                   onChanged: (v) => setState(() => _categoria = v!),
                 ),
@@ -1013,8 +983,9 @@ class _EditorIngredienteSheetState
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.button,
                       foregroundColor: Colors.white,
-                      disabledBackgroundColor:
-                          AppColors.button.withValues(alpha: 0.5),
+                      disabledBackgroundColor: AppColors.button.withValues(
+                        alpha: 0.5,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
                       ),
@@ -1067,9 +1038,7 @@ class _StepBtn extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.button.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: AppColors.button.withValues(alpha: 0.4),
-          ),
+          border: Border.all(color: AppColors.button.withValues(alpha: 0.4)),
         ),
         child: Icon(icon, color: AppColors.button, size: 18),
       ),

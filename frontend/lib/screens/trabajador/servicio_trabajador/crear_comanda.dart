@@ -8,7 +8,6 @@ import 'package:frontend/services/api_service.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
-
 class CrearComanda extends StatefulWidget {
   final String mesaId;
 
@@ -74,217 +73,224 @@ class _CrearPedidosState extends State<CrearComanda> {
       _carrito.entries.fold(0.0, (sum, e) => sum + e.key.precio * e.value);
 
   void _mostrarConfirmacion(BuildContext context) {
-  showDialog(
-    context: context,
-    builder: (ctx) => Dialog(
-      backgroundColor: const Color(0xFF1A1A1A),
-      shape: const RoundedRectangleBorder(),
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Animación plato + tenedor ─────────────────────────
-            Center(
-              child: _PlateAnimation(),
-            ),
-            const SizedBox(height: 20),
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        shape: const RoundedRectangleBorder(),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── Animación plato + tenedor ─────────────────────────
+              Center(child: _PlateAnimation()),
+              const SizedBox(height: 20),
 
-            const Text(
-              'CONFIRMAR PEDIDO',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 2.0,
+              const Text(
+                'CONFIRMAR PEDIDO',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 2.0,
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
 
-            ..._carrito.entries.map(
-              (e) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                child: Row(
-                  children: [
-                    Text(
-                      '× ${e.value}',
-                      style: TextStyle(
-                        color: AppColors.button,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        e.key.nombre,
-                        style: const TextStyle(
-                          color: Colors.white70,
+              ..._carrito.entries.map(
+                (e) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Row(
+                    children: [
+                      Text(
+                        '× ${e.value}',
+                        style: TextStyle(
+                          color: AppColors.button,
+                          fontWeight: FontWeight.w700,
                           fontSize: 13,
                         ),
                       ),
-                    ),
-                    Text(
-                      '${(e.key.precio * e.value).toStringAsFixed(2).replaceAll(".", ",")} €',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          e.key.nombre,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 13,
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
+                      Text(
+                        '${(e.key.precio * e.value).toStringAsFixed(2).replaceAll(".", ",")} €',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
 
-            const Divider(color: Colors.white24, height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'TOTAL',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.5,
-                  ),
-                ),
-                Text(
-                  '${_totalPrecio.toStringAsFixed(2).replaceAll(".", ",")} €',
-                  style: TextStyle(
-                    color: AppColors.button,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            Row(
-              children: [
-                Expanded(
-                  child: TextButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    child: const Text(
-                      'CANCELAR',
-                      style: TextStyle(
-                          color: Colors.white54, letterSpacing: 1.0),
+              const Divider(color: Colors.white24, height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'TOTAL',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.5,
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.button,
-                      shape: const RoundedRectangleBorder(),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 10),
+                  Text(
+                    '${_totalPrecio.toStringAsFixed(2).replaceAll(".", ",")} €',
+                    style: TextStyle(
+                      color: AppColors.button,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
                     ),
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      _enviarPedido(context);
-                    },
-                    child: const Text(
-                      'ENVIAR A COCINA',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.5,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text(
+                        'CANCELAR',
+                        style: TextStyle(
+                          color: Colors.white54,
+                          letterSpacing: 1.0,
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.button,
+                        shape: const RoundedRectangleBorder(),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 10,
+                        ),
+                      ),
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        _enviarPedido(context);
+                      },
+                      child: const Text(
+                        'ENVIAR A COCINA',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.5,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
-void _enviarPedido(BuildContext context) async {
-  final messenger = ScaffoldMessenger.of(context);
-  try {
-    final mesaId = widget.mesaId;
+  void _enviarPedido(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final mesaId = widget.mesaId;
 
-    // Mergear carrito actual en el acumulado:
-    // si el producto ya existe, sumar cantidades; si no, añadirlo
-    for (final entry in _carrito.entries) {
-      final id = entry.key.id;
-      if (_itemsAcumulados.containsKey(id)) {
-        _itemsAcumulados[id]!['cantidad'] =
-            (_itemsAcumulados[id]!['cantidad'] as int) + entry.value;
-      } else {
-        _itemsAcumulados[id] = {
-          "producto_id": id,
-          "nombre": entry.key.nombre,
-          "cantidad": entry.value,
-          "precio": entry.key.precio,
-        };
-      }
-    }
-    _totalAcumulado += _totalPrecio;
-    final allItems = _itemsAcumulados.values.toList();
-
-    if (_pedidoId != null) {
-      // Pedido ya existente: reemplazar items con la lista completa acumulada
-      await ApiService.agregarItemsPedido(
-        pedidoId: _pedidoId!,
-        items: allItems,
-        totalExtra: _totalAcumulado,
-      );
-    } else {
-      // Primer envío: crear pedido nuevo y guardar su id
-      final auth = Provider.of<AuthProvider>(context, listen: false);
-      final resultado = await ApiService.crearPedido(
-        userId: "TRABAJADOR",
-        items: allItems,
-        tipoEntrega: "local",
-        metodoPago: "efectivo",
-        total: _totalAcumulado,
-        direccionEntrega: null,
-        mesaId: mesaId,
-        numeroMesa: int.tryParse(mesaId),
-        notas: "",
-        referenciaPago: "",
-        estadoPago: "pendiente",
-        restauranteId: auth.usuarioActual?.restauranteId,
-      );
-      _pedidoId = (resultado['id'] ?? resultado['_id'])?.toString();
-    }
-
-    if (!mounted) return;
-    setState(() => _carrito.clear());
-    _showSnack(messenger, "Pedido enviado a cocina · puedes añadir más platos");
-
-  } catch (e) {
-    if (!mounted) return;
-    // Si falla, deshacer el merge para no corromper el acumulado
-    for (final entry in _carrito.entries) {
-      final id = entry.key.id;
-      final item = _itemsAcumulados[id];
-      if (item != null) {
-        final nuevaCantidad = (item['cantidad'] as int) - entry.value;
-        if (nuevaCantidad <= 0) {
-          _itemsAcumulados.remove(id);
+      // Mergear carrito actual en el acumulado:
+      // si el producto ya existe, sumar cantidades; si no, añadirlo
+      for (final entry in _carrito.entries) {
+        final id = entry.key.id;
+        if (_itemsAcumulados.containsKey(id)) {
+          _itemsAcumulados[id]!['cantidad'] =
+              (_itemsAcumulados[id]!['cantidad'] as int) + entry.value;
         } else {
-          item['cantidad'] = nuevaCantidad;
+          _itemsAcumulados[id] = {
+            "producto_id": id,
+            "nombre": entry.key.nombre,
+            "cantidad": entry.value,
+            "precio": entry.key.precio,
+          };
         }
       }
+      _totalAcumulado += _totalPrecio;
+      final allItems = _itemsAcumulados.values.toList();
+
+      if (_pedidoId != null) {
+        // Pedido ya existente: reemplazar items con la lista completa acumulada
+        await ApiService.agregarItemsPedido(
+          pedidoId: _pedidoId!,
+          items: allItems,
+          totalExtra: _totalAcumulado,
+        );
+      } else {
+        // Primer envío: crear pedido nuevo y guardar su id
+        final auth = Provider.of<AuthProvider>(context, listen: false);
+        final resultado = await ApiService.crearPedido(
+          userId: "TRABAJADOR",
+          items: allItems,
+          tipoEntrega: "local",
+          metodoPago: "efectivo",
+          total: _totalAcumulado,
+          direccionEntrega: null,
+          mesaId: mesaId,
+          numeroMesa: int.tryParse(mesaId),
+          notas: "",
+          referenciaPago: "",
+          estadoPago: "pendiente",
+          restauranteId: auth.usuarioActual?.restauranteId,
+        );
+        _pedidoId = (resultado['id'] ?? resultado['_id'])?.toString();
+      }
+
+      if (!mounted) return;
+      setState(() => _carrito.clear());
+      _showSnack(
+        messenger,
+        "Pedido enviado a cocina · puedes añadir más platos",
+      );
+    } catch (e) {
+      if (!mounted) return;
+      // Si falla, deshacer el merge para no corromper el acumulado
+      for (final entry in _carrito.entries) {
+        final id = entry.key.id;
+        final item = _itemsAcumulados[id];
+        if (item != null) {
+          final nuevaCantidad = (item['cantidad'] as int) - entry.value;
+          if (nuevaCantidad <= 0) {
+            _itemsAcumulados.remove(id);
+          } else {
+            item['cantidad'] = nuevaCantidad;
+          }
+        }
+      }
+      _totalAcumulado -= _totalPrecio;
+      _showSnack(messenger, "Error al enviar pedido", error: true);
     }
-    _totalAcumulado -= _totalPrecio;
-    _showSnack(messenger, "Error al enviar pedido", error: true);
   }
-}
 
-
-  void _showSnack(ScaffoldMessengerState messenger, String mensaje, {bool error = false}) {
+  void _showSnack(
+    ScaffoldMessengerState messenger,
+    String mensaje, {
+    bool error = false,
+  }) {
     messenger.clearSnackBars();
     messenger.showSnackBar(
       SnackBar(
@@ -346,7 +352,9 @@ void _enviarPedido(BuildContext context) async {
                     width: 22,
                     height: 22,
                     child: CircularProgressIndicator(
-                        color: Colors.white, strokeWidth: 1.5),
+                      color: Colors.white,
+                      strokeWidth: 1.5,
+                    ),
                   ),
                   SizedBox(height: 18),
                   Text(
@@ -366,10 +374,12 @@ void _enviarPedido(BuildContext context) async {
       );
     }
 
-    final currentCategory =
-        _categorias.isNotEmpty ? _categorias[_selectedCategory] : '';
-    final filtered =
-        _productos.where((p) => p.categoria == currentCategory).toList();
+    final currentCategory = _categorias.isNotEmpty
+        ? _categorias[_selectedCategory]
+        : '';
+    final filtered = _productos
+        .where((p) => p.categoria == currentCategory)
+        .toList();
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -437,13 +447,17 @@ void _enviarPedido(BuildContext context) async {
                         icon: const CircleAvatar(
                           backgroundColor: Colors.white24,
                           radius: 18,
-                          child: Icon(Icons.person,
-                              color: Colors.white, size: 20),
+                          child: Icon(
+                            Icons.person,
+                            color: Colors.white,
+                            size: 20,
+                          ),
                         ),
                         onPressed: () => Navigator.push(
                           context,
                           MaterialPageRoute(
-                              builder: (_) => const PerfilScreen()),
+                            builder: (_) => const PerfilScreen(),
+                          ),
                         ),
                       ),
                     ],
@@ -466,8 +480,11 @@ void _enviarPedido(BuildContext context) async {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.restaurant_menu_outlined,
-                                  size: 36, color: Colors.white30),
+                              Icon(
+                                Icons.restaurant_menu_outlined,
+                                size: 36,
+                                color: Colors.white30,
+                              ),
                               const SizedBox(height: 14),
                               const Text(
                                 'SIN PLATOS DISPONIBLES',
@@ -484,19 +501,21 @@ void _enviarPedido(BuildContext context) async {
                       : LayoutBuilder(
                           builder: (context, constraints) {
                             final width = constraints.maxWidth;
-                            final columns =
-                                width >= 900 ? 3 : width >= 600 ? 2 : 1;
+                            final columns = width >= 900
+                                ? 3
+                                : width >= 600
+                                ? 2
+                                : 1;
                             return GridView.builder(
                               physics: const BouncingScrollPhysics(),
-                              padding:
-                                  const EdgeInsets.fromLTRB(16, 4, 16, 32),
+                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
                               gridDelegate:
                                   SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: columns,
-                                crossAxisSpacing: 16,
-                                mainAxisSpacing: 16,
-                                mainAxisExtent: 360,
-                              ),
+                                    crossAxisCount: columns,
+                                    crossAxisSpacing: 16,
+                                    mainAxisSpacing: 16,
+                                    mainAxisExtent: 360,
+                                  ),
                               itemCount: filtered.length,
                               itemBuilder: (context, index) {
                                 final p = filtered[index];
@@ -522,8 +541,11 @@ void _enviarPedido(BuildContext context) async {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.restaurant,
-                              color: Colors.white, size: 17),
+                          const Icon(
+                            Icons.restaurant,
+                            color: Colors.white,
+                            size: 17,
+                          ),
                           const SizedBox(width: 10),
                           Text(
                             'MANDAR A COCINA · $_totalItems ${_totalItems == 1 ? "plato" : "platos"}',
@@ -588,8 +610,7 @@ class _CategoryBarState extends State<_CategoryBar> {
 
   void _scrollToSelected() {
     if (!_scroll.hasClients) return;
-    final offset =
-        (widget.selectedIndex * (_chipWidth + _chipSpacing)) - 16.0;
+    final offset = (widget.selectedIndex * (_chipWidth + _chipSpacing)) - 16.0;
     _scroll.animateTo(
       offset.clamp(0.0, _scroll.position.maxScrollExtent),
       duration: const Duration(milliseconds: 280),
@@ -672,7 +693,6 @@ class _CategoryBarState extends State<_CategoryBar> {
       ),
     );
   }
-  
 }
 // ─── Animación plato con tenedor ──────────────────────────────────────────────
 
@@ -685,9 +705,9 @@ class _PlateAnimation extends StatefulWidget {
 class _PlateAnimationState extends State<_PlateAnimation>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
-  late final Animation<double> _stab;   // tenedor baja y sube
+  late final Animation<double> _stab; // tenedor baja y sube
   late final Animation<double> _wobble; // plato tiembla
-  late final Animation<double> _scale;  // plato crece un poco al pinchar
+  late final Animation<double> _scale; // plato crece un poco al pinchar
 
   @override
   void initState() {
@@ -708,14 +728,15 @@ class _PlateAnimationState extends State<_PlateAnimation>
     _wobble = TweenSequence([
       TweenSequenceItem(tween: ConstantTween(0.0), weight: 38),
       TweenSequenceItem(
-          tween: TweenSequence([
-            TweenSequenceItem(tween: Tween(begin: 0.0, end: 4.0), weight: 1),
-            TweenSequenceItem(tween: Tween(begin: 4.0, end: -4.0), weight: 2),
-            TweenSequenceItem(tween: Tween(begin: -4.0, end: 3.0), weight: 2),
-            TweenSequenceItem(tween: Tween(begin: 3.0, end: -2.0), weight: 2),
-            TweenSequenceItem(tween: Tween(begin: -2.0, end: 0.0), weight: 1),
-          ]),
-          weight: 17),
+        tween: TweenSequence([
+          TweenSequenceItem(tween: Tween(begin: 0.0, end: 4.0), weight: 1),
+          TweenSequenceItem(tween: Tween(begin: 4.0, end: -4.0), weight: 2),
+          TweenSequenceItem(tween: Tween(begin: -4.0, end: 3.0), weight: 2),
+          TweenSequenceItem(tween: Tween(begin: 3.0, end: -2.0), weight: 2),
+          TweenSequenceItem(tween: Tween(begin: -2.0, end: 0.0), weight: 1),
+        ]),
+        weight: 17,
+      ),
       TweenSequenceItem(tween: ConstantTween(0.0), weight: 45),
     ]).animate(_ctrl);
 
@@ -772,8 +793,7 @@ class _PlateAnimationState extends State<_PlateAnimation>
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: const Color(0xFF222222),
-                          border:
-                              Border.all(color: Colors.white10, width: 1),
+                          border: Border.all(color: Colors.white10, width: 1),
                         ),
                       ),
                     ),

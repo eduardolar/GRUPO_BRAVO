@@ -342,10 +342,21 @@ def actualizar_estado_pedido(pedido_id: str, payload: ActualizarEstado):
         raise ValidacionError("ID de pedido inválido")
     if payload.estado not in _ESTADOS_VALIDOS:
         raise ValidacionError(f"Estado inválido. Válidos: {_ESTADOS_VALIDOS}")
-    result = coleccion_pedidos.update_one(
-        {"_id": ObjectId(pedido_id)},
-        {"$set": {"estado": payload.estado}},
-    )
+
+    update: dict = {"$set": {"estado": payload.estado}}
+    # RGPD-03 — minimización de datos de geolocalización: cuando un pedido
+    # alcanza un estado terminal (entregado o cancelado) ya no es necesario
+    # conservar las coordenadas de la dirección de entrega. Las eliminamos
+    # del documento del pedido.
+    if payload.estado in {"entregado", "cancelado"}:
+        update["$unset"] = {
+            "direccion_lat": "",
+            "direccion_lon": "",
+            "latitud": "",
+            "longitud": "",
+        }
+
+    result = coleccion_pedidos.update_one({"_id": ObjectId(pedido_id)}, update)
     if result.matched_count == 0:
         raise NotFoundError("Pedido no encontrado")
     return {"updated": result.modified_count > 0, "estado": payload.estado}

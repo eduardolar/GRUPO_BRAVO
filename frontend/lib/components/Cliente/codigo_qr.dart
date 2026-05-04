@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/screens/cliente/scanner_qr.dart';
@@ -51,11 +51,15 @@ class _CodigoQrState extends State<CodigoQr> {
 
           if (!mounted) return;
           if (auth.estaAutenticado) {
-            navigator.push(MaterialPageRoute(builder: (_) => const CartaScreen()));
+            navigator.push(
+              MaterialPageRoute(builder: (_) => const CartaScreen()),
+            );
           } else {
-            navigator.push(MaterialPageRoute(
-              builder: (_) => const LoginScreen(destino: DestinoLogin.menu),
-            ));
+            navigator.push(
+              MaterialPageRoute(
+                builder: (_) => const LoginScreen(destino: DestinoLogin.menu),
+              ),
+            );
           }
         } catch (e) {
           if (!mounted) return;
@@ -78,7 +82,6 @@ class _CodigoQrState extends State<CodigoQr> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-          
             Container(
               width: 3,
               height: 56,
@@ -111,9 +114,7 @@ class _CodigoQrState extends State<CodigoQr> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    cart.tienemesa
-                        ? "Mesa ${cart.numeroMesa}"
-                        : "Escanear QR",
+                    cart.tienemesa ? "Mesa ${cart.numeroMesa}" : "Escanear QR",
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 17,

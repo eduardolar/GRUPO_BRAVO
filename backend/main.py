@@ -1,34 +1,21 @@
-import os
 import logging
 import traceback
-from pathlib import Path
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from dotenv import load_dotenv
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
+
+import config  # carga .env una sola vez (efecto de import)
 from limiter import limiter
 from exceptions import AppError
+import log_redactor
 
-# Cargar variables de entorno del archivo .env
-load_dotenv()
-
-# Puerto y host configurables desde .env o variables de entorno
-PORT = int(os.getenv("PORT", 8000))
-HOST = os.getenv("HOST", "127.0.0.1")
-# Cargar variables de entorno desde el archivo local 'env' o 'env.local'
-dotenv_path = Path(__file__).with_name("env")
-dotenv_local_path = Path(__file__).with_name("env.local")
-if dotenv_path.exists():
-    load_dotenv(dotenv_path=dotenv_path)
-elif dotenv_local_path.exists():
-    load_dotenv(dotenv_path=dotenv_local_path)
-else:
-    load_dotenv()
-MONGO_URI = os.getenv("MONGO_URI")
+# Instala el filtro que redacta PAN/CVV/client_secret/Bearer/JWT/API keys
+# antes de escribir en los logs (cumple PCI-DSS y RGPD).
+log_redactor.install("uvicorn", "uvicorn.error", "uvicorn.access", "fastapi")
 
 from routes import auth, usuarios, categorias, productos, pedidos, mesas, reservas, ingredientes, cupones
 from routes import restaurantes
@@ -46,8 +33,7 @@ app.add_middleware(SlowAPIMiddleware)
 # --- CORS: restringe orígenes en producción mediante ALLOWED_ORIGINS en .env ---
 # Ejemplo producción: ALLOWED_ORIGINS=https://app.grupobravo.com,https://admin.grupobravo.com
 # Desarrollo (vacío): permite cualquier origen, sin credenciales.
-_raw_origins = os.getenv("ALLOWED_ORIGINS", "")
-_allowed_origins = [o.strip() for o in _raw_origins.split(",") if o.strip()]
+_allowed_origins = [o.strip() for o in config.ALLOWED_ORIGINS.split(",") if o.strip()]
 if not _allowed_origins:
     _allowed_origins = ["*"]
 _allow_credentials = _allowed_origins != ["*"]
@@ -101,15 +87,18 @@ v1.include_router(tickets_router)
 v1.include_router(cupones.router)
 app.include_router(v1)
 
-@app.get("/")
+@app.get("/", summary="Healthcheck básico", tags=["health"])
 def inicio():
     return {"status": "Servidor funcionando"}
 
 if __name__ == "__main__":
     import uvicorn
     try:
-        uvicorn.run(app, host=HOST, port=PORT)
+        uvicorn.run(app, host=config.HOST, port=config.PORT)
     except OSError as exc:
-        logger.error("No se pudo iniciar el servidor en %s:%d - %s", HOST, PORT, exc)
-        print(f"ERROR: No se pudo iniciar el servidor en {HOST}:{PORT}. Puede que el puerto ya esté en uso. Usa otro puerto en la variable PORT o detén el proceso que lo está usando.")
+        logger.error(
+            "No se pudo iniciar el servidor en %s:%d - %s. "
+            "Puede que el puerto ya esté en uso. Cambia la variable PORT o detén el proceso que lo ocupa.",
+            config.HOST, config.PORT, exc,
+        )
         raise

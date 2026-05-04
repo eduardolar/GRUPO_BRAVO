@@ -45,15 +45,24 @@ class _KpisGlobalesScreenState extends State<KpisGlobalesScreen> {
   }
 
   Future<void> _cargar() async {
-    setState(() { _cargando = true; _error = null; });
+    setState(() {
+      _cargando = true;
+      _error = null;
+    });
     try {
       // Sin restauranteId → todos los pedidos del sistema
       final datos = await PedidoService.obtenerTodosLosPedidos();
       if (!mounted) return;
-      setState(() { _pedidos = datos; _cargando = false; });
+      setState(() {
+        _pedidos = datos;
+        _cargando = false;
+      });
     } catch (e) {
       if (!mounted) return;
-      setState(() { _cargando = false; _error = e.toString(); });
+      setState(() {
+        _cargando = false;
+        _error = e.toString();
+      });
     }
   }
 
@@ -65,10 +74,15 @@ class _KpisGlobalesScreenState extends State<KpisGlobalesScreen> {
       if (f == null) return false;
       switch (_periodo) {
         case 'hoy':
-          return f.year == ahora.year && f.month == ahora.month && f.day == ahora.day;
+          return f.year == ahora.year &&
+              f.month == ahora.month &&
+              f.day == ahora.day;
         case 'semana':
-          final ini = DateTime(ahora.year, ahora.month, ahora.day)
-              .subtract(Duration(days: ahora.weekday - 1));
+          final ini = DateTime(
+            ahora.year,
+            ahora.month,
+            ahora.day,
+          ).subtract(Duration(days: ahora.weekday - 1));
           return !f.isBefore(ini);
         case 'mes':
           return f.year == ahora.year && f.month == ahora.month;
@@ -95,10 +109,14 @@ class _KpisGlobalesScreenState extends State<KpisGlobalesScreen> {
         return pid == idR && p.estado.toLowerCase() == 'cancelado';
       }).length;
       final ingresos = pedidosSucursal.fold(0.0, (s, p) => s + p.total);
-      final ticket = pedidosSucursal.isEmpty ? 0.0 : ingresos / pedidosSucursal.length;
+      final ticket = pedidosSucursal.isEmpty
+          ? 0.0
+          : ingresos / pedidosSucursal.length;
       final personal = usuarios.where((u) {
         final uid = (u.restauranteId ?? '').toString().trim().toLowerCase();
-        return uid == idR && u.rolRaw != 'cliente' && u.rolRaw != 'superadministrador';
+        return uid == idR &&
+            u.rolRaw != 'cliente' &&
+            u.rolRaw != 'superadministrador';
       }).length;
       return _SucursalKpi(
         restaurante: r,
@@ -112,9 +130,12 @@ class _KpisGlobalesScreenState extends State<KpisGlobalesScreen> {
 
     kpis.sort((a, b) {
       switch (_ordenarPor) {
-        case 'pedidos': return b.pedidos.compareTo(a.pedidos);
-        case 'ticket': return b.ticketMedio.compareTo(a.ticketMedio);
-        default: return b.ingresos.compareTo(a.ingresos);
+        case 'pedidos':
+          return b.pedidos.compareTo(a.pedidos);
+        case 'ticket':
+          return b.ticketMedio.compareTo(a.ticketMedio);
+        default:
+          return b.ingresos.compareTo(a.ingresos);
       }
     });
     return kpis;
@@ -155,7 +176,11 @@ class _KpisGlobalesScreenState extends State<KpisGlobalesScreen> {
             child: Consumer2<RestauranteProvider, UsuarioProvider>(
               builder: (context, rp, up, _) {
                 final pedidosFiltrados = _filtrarPeriodo(_pedidos);
-                final kpis = _calcularKpis(rp.restaurantes, pedidosFiltrados, up.usuarios);
+                final kpis = _calcularKpis(
+                  rp.restaurantes,
+                  pedidosFiltrados,
+                  up.usuarios,
+                );
                 final totalIngresos = kpis.fold(0.0, (s, k) => s + k.ingresos);
                 final totalPedidos = kpis.fold(0, (s, k) => s + k.pedidos);
 
@@ -166,9 +191,16 @@ class _KpisGlobalesScreenState extends State<KpisGlobalesScreen> {
                     _buildSelectorPeriodo(),
                     const SizedBox(height: 12),
                     _buildGlobalKpis(
-                      totalIngresos, totalPedidos, rp.restaurantes.length,
-                      up.usuarios.where((u) =>
-                        u.rolRaw != 'cliente' && u.rolRaw != 'superadministrador').length,
+                      totalIngresos,
+                      totalPedidos,
+                      rp.restaurantes.length,
+                      up.usuarios
+                          .where(
+                            (u) =>
+                                u.rolRaw != 'cliente' &&
+                                u.rolRaw != 'superadministrador',
+                          )
+                          .length,
                     ),
                     const SizedBox(height: 16),
                     _buildOrdenSelector(),
@@ -193,17 +225,31 @@ class _KpisGlobalesScreenState extends State<KpisGlobalesScreen> {
           Row(
             children: [
               Expanded(
-                child: const Text('KPIs Globales',
+                child: const Text(
+                  'KPIs Globales',
                   style: TextStyle(
                     fontFamily: 'Playfair Display',
-                    color: Colors.white, fontSize: 30, fontWeight: FontWeight.bold)),
+                    color: Colors.white,
+                    fontSize: 30,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
               IconButton(
                 icon: _cargando
-                    ? const SizedBox(width: 18, height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 1.8, color: AppColors.button))
-                    : Icon(Icons.refresh_rounded,
-                        color: Colors.white.withValues(alpha: 0.7), size: 22),
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 1.8,
+                          color: AppColors.button,
+                        ),
+                      )
+                    : Icon(
+                        Icons.refresh_rounded,
+                        color: Colors.white.withValues(alpha: 0.7),
+                        size: 22,
+                      ),
                 onPressed: _cargando ? null : _cargar,
               ),
             ],
@@ -211,9 +257,13 @@ class _KpisGlobalesScreenState extends State<KpisGlobalesScreen> {
           const SizedBox(height: 6),
           Container(height: 2, width: 40, color: AppColors.button),
           const SizedBox(height: 8),
-          Text('Comparativa entre sucursales',
+          Text(
+            'Comparativa entre sucursales',
             style: GoogleFonts.manrope(
-                color: Colors.white.withValues(alpha: 0.65), fontSize: 13)),
+              color: Colors.white.withValues(alpha: 0.65),
+              fontSize: 13,
+            ),
+          ),
         ],
       ),
     );
@@ -233,13 +283,21 @@ class _KpisGlobalesScreenState extends State<KpisGlobalesScreen> {
               margin: const EdgeInsets.only(right: 8),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
               decoration: BoxDecoration(
-                color: sel ? AppColors.button : Colors.white.withValues(alpha: 0.07),
-                border: Border.all(color: sel ? AppColors.button : Colors.white24),
+                color: sel
+                    ? AppColors.button
+                    : Colors.white.withValues(alpha: 0.07),
+                border: Border.all(
+                  color: sel ? AppColors.button : Colors.white24,
+                ),
               ),
-              child: Text(_etiquetasPeriodo[p]!,
+              child: Text(
+                _etiquetasPeriodo[p]!,
                 style: GoogleFonts.manrope(
-                  fontSize: 12, fontWeight: FontWeight.w600,
-                  color: sel ? Colors.white : Colors.white70)),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: sel ? Colors.white : Colors.white70,
+                ),
+              ),
             ),
           );
         }).toList(),
@@ -247,7 +305,12 @@ class _KpisGlobalesScreenState extends State<KpisGlobalesScreen> {
     );
   }
 
-  Widget _buildGlobalKpis(double ingresos, int pedidos, int sucursales, int personal) {
+  Widget _buildGlobalKpis(
+    double ingresos,
+    int pedidos,
+    int sucursales,
+    int personal,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Center(
@@ -255,13 +318,25 @@ class _KpisGlobalesScreenState extends State<KpisGlobalesScreen> {
           constraints: const BoxConstraints(maxWidth: 640),
           child: Row(
             children: [
-              Expanded(child: _MiniKpi(label: 'INGRESOS', value: '${ingresos.toStringAsFixed(0)} €', highlight: true)),
+              Expanded(
+                child: _MiniKpi(
+                  label: 'INGRESOS',
+                  value: '${ingresos.toStringAsFixed(0)} €',
+                  highlight: true,
+                ),
+              ),
               const SizedBox(width: 8),
-              Expanded(child: _MiniKpi(label: 'PEDIDOS', value: '$pedidos')),
+              Expanded(
+                child: _MiniKpi(label: 'PEDIDOS', value: '$pedidos'),
+              ),
               const SizedBox(width: 8),
-              Expanded(child: _MiniKpi(label: 'SUCURSALES', value: '$sucursales')),
+              Expanded(
+                child: _MiniKpi(label: 'SUCURSALES', value: '$sucursales'),
+              ),
               const SizedBox(width: 8),
-              Expanded(child: _MiniKpi(label: 'PERSONAL', value: '$personal')),
+              Expanded(
+                child: _MiniKpi(label: 'PERSONAL', value: '$personal'),
+              ),
             ],
           ),
         ),
@@ -277,9 +352,13 @@ class _KpisGlobalesScreenState extends State<KpisGlobalesScreen> {
           constraints: const BoxConstraints(maxWidth: 640),
           child: Row(
             children: [
-              Text('Ordenar:',
-                  style: GoogleFonts.manrope(
-                      fontSize: 11, color: Colors.white.withValues(alpha: 0.65))),
+              Text(
+                'Ordenar:',
+                style: GoogleFonts.manrope(
+                  fontSize: 11,
+                  color: Colors.white.withValues(alpha: 0.65),
+                ),
+              ),
               const SizedBox(width: 10),
               ...[
                 ('ingresos', 'Ingresos'),
@@ -291,15 +370,26 @@ class _KpisGlobalesScreenState extends State<KpisGlobalesScreen> {
                   onTap: () => setState(() => _ordenarPor = item.$1),
                   child: Container(
                     margin: const EdgeInsets.only(right: 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: sel ? AppColors.button : Colors.white24),
-                      color: sel ? AppColors.button.withValues(alpha: 0.15) : Colors.transparent,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
                     ),
-                    child: Text(item.$2,
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: sel ? AppColors.button : Colors.white24,
+                      ),
+                      color: sel
+                          ? AppColors.button.withValues(alpha: 0.15)
+                          : Colors.transparent,
+                    ),
+                    child: Text(
+                      item.$2,
                       style: GoogleFonts.manrope(
-                        fontSize: 11, fontWeight: FontWeight.w600,
-                        color: sel ? AppColors.button : Colors.white70)),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: sel ? AppColors.button : Colors.white70,
+                      ),
+                    ),
                   ),
                 );
               }),
@@ -312,23 +402,44 @@ class _KpisGlobalesScreenState extends State<KpisGlobalesScreen> {
 
   Widget _buildCuerpo(List<_SucursalKpi> kpis, double totalIngresos) {
     if (_cargando) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.button));
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.button),
+      );
     }
     if (_error != null) {
-      return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Icon(Icons.wifi_off_outlined,
-            color: Colors.white.withValues(alpha: 0.4), size: 48),
-        const SizedBox(height: 12),
-        Text('Error al cargar datos',
-            style: GoogleFonts.manrope(color: Colors.white70)),
-        const SizedBox(height: 16),
-        TextButton(onPressed: _cargar,
-          child: Text('Reintentar', style: GoogleFonts.manrope(color: AppColors.button))),
-      ]));
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.wifi_off_outlined,
+              color: Colors.white.withValues(alpha: 0.4),
+              size: 48,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Error al cargar datos',
+              style: GoogleFonts.manrope(color: Colors.white70),
+            ),
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: _cargar,
+              child: Text(
+                'Reintentar',
+                style: GoogleFonts.manrope(color: AppColors.button),
+              ),
+            ),
+          ],
+        ),
+      );
     }
     if (kpis.isEmpty) {
-      return Center(child: Text('No hay sucursales',
-        style: GoogleFonts.manrope(color: Colors.white70)));
+      return Center(
+        child: Text(
+          'No hay sucursales',
+          style: GoogleFonts.manrope(color: Colors.white70),
+        ),
+      );
     }
 
     return RefreshIndicator(
@@ -360,7 +471,11 @@ class _MiniKpi extends StatelessWidget {
   final String value;
   final bool highlight;
 
-  const _MiniKpi({required this.label, required this.value, this.highlight = false});
+  const _MiniKpi({
+    required this.label,
+    required this.value,
+    this.highlight = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -385,16 +500,25 @@ class _MiniKpi extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label,
+              Text(
+                label,
                 style: GoogleFonts.manrope(
-                  fontSize: 8, fontWeight: FontWeight.w800,
+                  fontSize: 8,
+                  fontWeight: FontWeight.w800,
                   color: Colors.white.withValues(alpha: 0.7),
-                  letterSpacing: 1.2)),
+                  letterSpacing: 1.2,
+                ),
+              ),
               const SizedBox(height: 4),
-              Text(value,
+              Text(
+                value,
                 style: GoogleFonts.manrope(
-                  fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white),
-                overflow: TextOverflow.ellipsis),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
             ],
           ),
         ),
@@ -448,7 +572,8 @@ class _SucursalCard extends StatelessWidget {
                     children: [
                       // Número de posición
                       Container(
-                        width: 28, height: 28,
+                        width: 28,
+                        height: 28,
                         decoration: BoxDecoration(
                           color: esLider
                               ? AppColors.button
@@ -460,46 +585,68 @@ class _SucursalCard extends StatelessWidget {
                           ),
                         ),
                         alignment: Alignment.center,
-                        child: Text('$posicion',
+                        child: Text(
+                          '$posicion',
                           style: GoogleFonts.manrope(
-                            fontSize: 13, fontWeight: FontWeight.w800, color: Colors.white)),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(kpi.restaurante.nombre,
+                            Text(
+                              kpi.restaurante.nombre,
                               style: GoogleFonts.manrope(
-                                fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
-                              overflow: TextOverflow.ellipsis),
-                            Text(kpi.restaurante.direccion,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              kpi.restaurante.direccion,
                               style: GoogleFonts.manrope(
-                                  fontSize: 11,
-                                  color: Colors.white.withValues(alpha: 0.65)),
-                              overflow: TextOverflow.ellipsis),
+                                fontSize: 11,
+                                color: Colors.white.withValues(alpha: 0.65),
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ],
                         ),
                       ),
                       const SizedBox(width: 8),
                       // Badge abierto/cerrado
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 3,
+                        ),
                         decoration: BoxDecoration(
                           color: abierto
                               ? Colors.greenAccent.withValues(alpha: 0.15)
                               : Colors.redAccent.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: abierto
-                              ? Colors.greenAccent.withValues(alpha: 0.5)
-                              : Colors.redAccent.withValues(alpha: 0.5)),
+                          border: Border.all(
+                            color: abierto
+                                ? Colors.greenAccent.withValues(alpha: 0.5)
+                                : Colors.redAccent.withValues(alpha: 0.5),
+                          ),
                         ),
                         child: Text(
                           abierto ? 'ABIERTO' : 'CERRADO',
                           style: GoogleFonts.manrope(
-                            fontSize: 9, fontWeight: FontWeight.w800,
-                            color: abierto ? Colors.greenAccent : Colors.redAccent,
-                            letterSpacing: 0.8),
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            color: abierto
+                                ? Colors.greenAccent
+                                : Colors.redAccent,
+                            letterSpacing: 0.8,
+                          ),
                         ),
                       ),
                     ],
@@ -509,18 +656,26 @@ class _SucursalCard extends StatelessWidget {
                 // Barra de ingresos proporcional
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 14),
-                  child: LayoutBuilder(builder: (_, c) => Stack(children: [
-                    Container(
-                        height: 4,
-                        width: c.maxWidth,
-                        color: Colors.white.withValues(alpha: 0.10)),
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 700),
-                      curve: Curves.easeOut,
-                      height: 4, width: c.maxWidth * pct,
-                      color: esLider ? AppColors.button : AppColors.button.withValues(alpha: 0.5),
+                  child: LayoutBuilder(
+                    builder: (_, c) => Stack(
+                      children: [
+                        Container(
+                          height: 4,
+                          width: c.maxWidth,
+                          color: Colors.white.withValues(alpha: 0.10),
+                        ),
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 700),
+                          curve: Curves.easeOut,
+                          height: 4,
+                          width: c.maxWidth * pct,
+                          color: esLider
+                              ? AppColors.button
+                              : AppColors.button.withValues(alpha: 0.5),
+                        ),
+                      ],
                     ),
-                  ])),
+                  ),
                 ),
 
                 const SizedBox(height: 10),
@@ -595,18 +750,30 @@ class _MetricaItem extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(children: [
-          Icon(icono, size: 11, color: c),
-          const SizedBox(width: 4),
-          Text(label,
-            style: GoogleFonts.manrope(fontSize: 9, fontWeight: FontWeight.w700,
-              color: c, letterSpacing: 1)),
-        ]),
+        Row(
+          children: [
+            Icon(icono, size: 11, color: c),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: GoogleFonts.manrope(
+                fontSize: 9,
+                fontWeight: FontWeight.w700,
+                color: c,
+                letterSpacing: 1,
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 3),
-        Text(valor,
+        Text(
+          valor,
           style: GoogleFonts.manrope(
-            fontSize: 13, fontWeight: FontWeight.w800,
-            color: color ?? Colors.white)),
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+            color: color ?? Colors.white,
+          ),
+        ),
       ],
     );
   }

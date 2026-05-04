@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/screens/trabajador/Stock/avisar_falta.dart';
 import 'package:frontend/screens/trabajador/Stock/bloquear_producto.dart';
@@ -21,7 +21,9 @@ class _GestionStockState extends State<GestionStock> {
         duration: const Duration(milliseconds: 600),
         child: _isAppReady
             ? const _StockContent()
-            : _SimpleSplash(onFinished: () => setState(() => _isAppReady = true)),
+            : _SimpleSplash(
+                onFinished: () => setState(() => _isAppReady = true),
+              ),
       ),
     );
   }
@@ -76,12 +78,7 @@ class _StockContent extends StatelessWidget {
       appBar: const _CustomAppBar(),
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
-        child: Column(
-          children: const [
-            _HeroSectionStock(),
-            _FooterQuote(),
-          ],
-        ),
+        child: Column(children: const [_HeroSectionStock(), _FooterQuote()]),
       ),
     );
   }
@@ -116,8 +113,11 @@ class _CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
             icon: CircleAvatar(
               backgroundColor: Colors.white24,
               radius: 18,
-              child: Icon(Icons.inventory_2_outlined,
-                  color: Colors.white, size: 20),
+              child: Icon(
+                Icons.inventory_2_outlined,
+                color: Colors.white,
+                size: 20,
+              ),
             ),
             onPressed: () {},
           ),
@@ -162,9 +162,9 @@ class _HeroSectionStock extends StatelessWidget {
                 end: Alignment.bottomCenter,
                 stops: const [0.0, 0.3, 0.7, 1.0],
                 colors: [
-                  Colors.black.withValues(alpha:0.3),
+                  Colors.black.withValues(alpha: 0.3),
                   Colors.transparent,
-                  Colors.black.withValues(alpha:0.75),
+                  Colors.black.withValues(alpha: 0.75),
                   AppColors.background,
                 ],
               ),
@@ -193,9 +193,7 @@ class _HeroSectionStock extends StatelessWidget {
                       fontSize: 38,
                       height: 1.1,
                       fontWeight: FontWeight.bold,
-                      shadows: [
-                        Shadow(color: Colors.black87, blurRadius: 15)
-                      ],
+                      shadows: [Shadow(color: Colors.black87, blurRadius: 15)],
                     ),
                   ),
 
@@ -257,7 +255,9 @@ class _ActionButtonsStock extends StatelessWidget {
           onPressed: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const AvisarFaltaScreen()),
+              MaterialPageRoute(
+                builder: (context) => const AvisarFaltaScreen(),
+              ),
             );
           },
         ),
@@ -305,8 +305,11 @@ class _MainButton extends StatelessWidget {
                     ),
                   ),
                 ),
-                const Icon(Icons.chevron_right,
-                    color: Colors.white54, size: 18),
+                const Icon(
+                  Icons.chevron_right,
+                  color: Colors.white54,
+                  size: 18,
+                ),
               ],
             ),
           ),
@@ -338,8 +341,11 @@ class _FooterQuote extends StatelessWidget {
           ),
           child: Column(
             children: [
-              Icon(Icons.format_quote,
-                  color: AppColors.button.withValues(alpha:0.4), size: 30),
+              Icon(
+                Icons.format_quote,
+                color: AppColors.button.withValues(alpha: 0.4),
+                size: 30,
+              ),
               const SizedBox(height: 16),
               const Text(
                 "Control y precisión en cada producto.",

@@ -4,11 +4,10 @@ import '../models/producto_model.dart';
 import '../data/mock_data.dart';
 import 'api_config.dart';
 import 'http_client.dart';
+import 'auth_session.dart';
 
 class ProductoService {
-  static const Map<String, String> _jsonHeaders = {
-    'Content-Type': 'application/json',
-  };
+  static Map<String, String> get _jsonHeaders => AuthSession.headers();
 
   // ─── CATEGORÍAS ──────────────────────────────────────────────
 
@@ -90,9 +89,7 @@ class ProductoService {
     }
     final response = await httpWithRetry(
       () => http.put(
-        Uri.parse(
-          '$baseUrl/categorias/${Uri.encodeComponent(nombreActual)}',
-        ),
+        Uri.parse('$baseUrl/categorias/${Uri.encodeComponent(nombreActual)}'),
         headers: _jsonHeaders,
         body: jsonEncode({'nombre': limpio}),
       ),
@@ -168,8 +165,7 @@ class ProductoService {
   static Future<Producto> crearProducto(Map<String, dynamic> datos) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 200));
-      final id =
-          'p_${DateTime.now().millisecondsSinceEpoch.toRadixString(36)}';
+      final id = 'p_${DateTime.now().millisecondsSinceEpoch.toRadixString(36)}';
       final producto = Producto.fromMap({...datos, 'id': id});
       MockData.productos.add(producto);
       return producto;

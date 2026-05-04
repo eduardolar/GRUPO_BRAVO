@@ -27,16 +27,22 @@ class TotpLoginScreen extends StatefulWidget {
 }
 
 class _TotpLoginScreenState extends State<TotpLoginScreen> {
-  final List<TextEditingController> _controllers =
-      List.generate(6, (_) => TextEditingController());
+  final List<TextEditingController> _controllers = List.generate(
+    6,
+    (_) => TextEditingController(),
+  );
   final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
   bool _isLoading = false;
   final _recoveryController = TextEditingController();
 
   @override
   void dispose() {
-    for (final c in _controllers) { c.dispose(); }
-    for (final f in _focusNodes) { f.dispose(); }
+    for (final c in _controllers) {
+      c.dispose();
+    }
+    for (final f in _focusNodes) {
+      f.dispose();
+    }
     _recoveryController.dispose();
     super.dispose();
   }
@@ -57,7 +63,9 @@ class _TotpLoginScreenState extends State<TotpLoginScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
-      for (final c in _controllers) { c.clear(); }
+      for (final c in _controllers) {
+        c.clear();
+      }
       _focusNodes[0].requestFocus();
       _showError(e.toString().replaceAll('Exception: ', ''));
     }
@@ -134,7 +142,9 @@ class _TotpLoginScreenState extends State<TotpLoginScreen> {
 
           return Padding(
             padding: EdgeInsets.only(
-              left: 24, right: 24, top: 28,
+              left: 24,
+              right: 24,
+              top: 28,
               bottom: MediaQuery.of(ctx).viewInsets.bottom + 28,
             ),
             child: Column(
@@ -143,21 +153,36 @@ class _TotpLoginScreenState extends State<TotpLoginScreen> {
               children: [
                 const Text(
                   'Código de recuperación',
-                  style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   'Introduce uno de los 8 códigos que guardaste al activar el 2FA.',
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.55), fontSize: 13, height: 1.5),
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.55),
+                    fontSize: 13,
+                    height: 1.5,
+                  ),
                 ),
                 const SizedBox(height: 20),
                 TextField(
                   controller: _recoveryController,
                   autofocus: true,
-                  style: const TextStyle(color: Colors.white, fontFamily: 'monospace', letterSpacing: 1.5),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontFamily: 'monospace',
+                    letterSpacing: 1.5,
+                  ),
                   decoration: InputDecoration(
                     hintText: 'XXXXXXXX-XXXXXXXX',
-                    hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontFamily: 'monospace'),
+                    hintStyle: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.3),
+                      fontFamily: 'monospace',
+                    ),
                     filled: true,
                     fillColor: Colors.white.withValues(alpha: 0.07),
                     border: OutlineInputBorder(
@@ -181,12 +206,27 @@ class _TotpLoginScreenState extends State<TotpLoginScreen> {
                       backgroundColor: AppColors.button,
                       foregroundColor: Colors.white,
                       disabledBackgroundColor: Colors.white12,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                       elevation: 0,
                     ),
                     child: enviando
-                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                        : const Text('VERIFICAR', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Text(
+                            'VERIFICAR',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.5,
+                            ),
+                          ),
                   ),
                 ),
               ],
@@ -220,7 +260,11 @@ class _TotpLoginScreenState extends State<TotpLoginScreen> {
             ),
             child: Column(
               children: [
-                const Icon(Icons.shield_outlined, color: AppColors.button, size: 36),
+                const Icon(
+                  Icons.shield_outlined,
+                  color: AppColors.button,
+                  size: 36,
+                ),
                 const SizedBox(height: 12),
                 Text(
                   'Abre Google Authenticator y copia el código de 6 dígitos de Restaurante Bravo.',
@@ -250,17 +294,27 @@ class _TotpLoginScreenState extends State<TotpLoginScreen> {
                 backgroundColor: AppColors.button,
                 foregroundColor: Colors.white,
                 disabledBackgroundColor: Colors.white12,
-                shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.zero,
+                ),
                 elevation: 0,
               ),
               child: _isLoading
                   ? const SizedBox(
-                      width: 20, height: 20,
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
                     )
                   : const Text(
                       'VERIFICAR',
-                      style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 2, fontSize: 13),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 2,
+                        fontSize: 13,
+                      ),
                     ),
             ),
           ),
@@ -269,14 +323,20 @@ class _TotpLoginScreenState extends State<TotpLoginScreen> {
             onPressed: () => Navigator.pop(context),
             child: Text(
               'Volver al inicio de sesión',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 13),
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.5),
+                fontSize: 13,
+              ),
             ),
           ),
           TextButton(
             onPressed: _mostrarRecovery,
             child: Text(
               '¿Sin acceso a tu dispositivo?',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.35), fontSize: 12),
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.35),
+                fontSize: 12,
+              ),
             ),
           ),
         ],

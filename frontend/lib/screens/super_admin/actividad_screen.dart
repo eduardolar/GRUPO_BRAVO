@@ -14,16 +14,16 @@ enum _FiltroEstadoPago { todos, ok, error }
 
 extension on _FiltroEstadoPago {
   String get label => switch (this) {
-        _FiltroEstadoPago.todos => 'Todos',
-        _FiltroEstadoPago.ok => '✓ OK',
-        _FiltroEstadoPago.error => '✕ Error',
-      };
+    _FiltroEstadoPago.todos => 'Todos',
+    _FiltroEstadoPago.ok => '✓ OK',
+    _FiltroEstadoPago.error => '✕ Error',
+  };
 
   bool aplica(String estado) => switch (this) {
-        _FiltroEstadoPago.todos => true,
-        _FiltroEstadoPago.ok => estado.toLowerCase() == 'ok',
-        _FiltroEstadoPago.error => estado.toLowerCase() == 'error',
-      };
+    _FiltroEstadoPago.todos => true,
+    _FiltroEstadoPago.ok => estado.toLowerCase() == 'ok',
+    _FiltroEstadoPago.error => estado.toLowerCase() == 'error',
+  };
 }
 
 const Map<String, String> _kAccionesDisponibles = {
@@ -211,8 +211,9 @@ class _ActividadScreenState extends State<ActividadScreen>
 
   @override
   Widget build(BuildContext context) {
-    final erroresPago =
-        _pagos.where((e) => e.estado.toLowerCase() == 'error').length;
+    final erroresPago = _pagos
+        .where((e) => e.estado.toLowerCase() == 'error')
+        .length;
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -258,10 +259,7 @@ class _ActividadScreenState extends State<ActividadScreen>
                 Expanded(
                   child: TabBarView(
                     controller: _tabController,
-                    children: [
-                      _buildTabUsuarios(),
-                      _buildTabPagos(),
-                    ],
+                    children: [_buildTabUsuarios(), _buildTabPagos()],
                   ),
                 ),
               ],
@@ -351,9 +349,7 @@ class _ActividadScreenState extends State<ActividadScreen>
     }
     final lista = _pagosFiltrados;
     if (lista.isEmpty) {
-      return const _EstadoVacio(
-        mensaje: 'Sin eventos de pago registrados',
-      );
+      return const _EstadoVacio(mensaje: 'Sin eventos de pago registrados');
     }
     return RefreshIndicator(
       onRefresh: _cargarPagos,
@@ -789,8 +785,7 @@ class _EstadoError extends StatelessWidget {
               backgroundColor: AppColors.button,
               foregroundColor: Colors.white,
               shape: const RoundedRectangleBorder(borderRadius: _kRadius),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             ),
           ),
         ],
@@ -928,7 +923,9 @@ class _EventoUsuarioTile extends StatelessWidget {
                                     style: GoogleFonts.manrope(
                                       fontSize: 10,
                                       fontWeight: FontWeight.w600,
-                                      color: Colors.white.withValues(alpha: 0.55),
+                                      color: Colors.white.withValues(
+                                        alpha: 0.55,
+                                      ),
                                       letterSpacing: 0.2,
                                     ),
                                     overflow: TextOverflow.ellipsis,
@@ -1078,10 +1075,7 @@ class _EventoPagoTile extends StatelessWidget {
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              _TagAccion(
-                                label: evento.estado,
-                                color: color,
-                              ),
+                              _TagAccion(label: evento.estado, color: color),
                               const Spacer(),
                               Text(
                                 fecha,
@@ -1137,8 +1131,7 @@ class _DetalleSheet extends StatelessWidget {
       builder: (_, scrollCtrl) => Container(
         decoration: const BoxDecoration(
           color: AppColors.backgroundDark,
-          borderRadius:
-              BorderRadius.vertical(top: Radius.circular(24)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
         padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
         child: ListView(
@@ -1190,7 +1183,8 @@ class _DetalleSheet extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
-            for (final fila in filas) _FilaDetalle(label: fila.$1, valor: fila.$2),
+            for (final fila in filas)
+              _FilaDetalle(label: fila.$1, valor: fila.$2),
           ],
         ),
       ),

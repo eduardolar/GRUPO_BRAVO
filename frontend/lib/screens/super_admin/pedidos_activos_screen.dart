@@ -63,7 +63,10 @@ class _PedidosActivosScreenState extends State<PedidosActivosScreen> {
   void initState() {
     super.initState();
     _cargar();
-    _timer = Timer.periodic(_intervaloRefresco, (_) => _cargar(silencioso: true));
+    _timer = Timer.periodic(
+      _intervaloRefresco,
+      (_) => _cargar(silencioso: true),
+    );
   }
 
   @override
@@ -73,10 +76,17 @@ class _PedidosActivosScreenState extends State<PedidosActivosScreen> {
   }
 
   Future<void> _cargar({bool silencioso = false}) async {
-    if (!silencioso) setState(() { _cargando = true; _error = null; });
+    if (!silencioso) {
+      setState(() {
+        _cargando = true;
+        _error = null;
+      });
+    }
     try {
       final datos = await PedidoService.obtenerTodosLosPedidos(
-        restauranteId: (widget.restauranteId?.isEmpty ?? true) ? null : widget.restauranteId,
+        restauranteId: (widget.restauranteId?.isEmpty ?? true)
+            ? null
+            : widget.restauranteId,
       );
       if (!mounted) return;
       setState(() {
@@ -121,7 +131,9 @@ class _PedidosActivosScreenState extends State<PedidosActivosScreen> {
 
   int _contarEstado(String estado) {
     if (estado == 'activos') {
-      return _pedidos.where((p) => _estadosActivos.contains(p.estado.toLowerCase())).length;
+      return _pedidos
+          .where((p) => _estadosActivos.contains(p.estado.toLowerCase()))
+          .length;
     }
     if (estado == 'todos') return _pedidos.length;
     return _pedidos.where((p) => p.estado.toLowerCase() == estado).length;
@@ -129,23 +141,35 @@ class _PedidosActivosScreenState extends State<PedidosActivosScreen> {
 
   Color _colorEstado(String estado) {
     switch (estado.toLowerCase()) {
-      case 'pendiente': return Colors.orange;
-      case 'preparando': return Colors.blue;
-      case 'listo': return Colors.greenAccent;
-      case 'entregado': return Colors.green;
-      case 'cancelado': return AppColors.error;
-      default: return Colors.white70;
+      case 'pendiente':
+        return Colors.orange;
+      case 'preparando':
+        return Colors.blue;
+      case 'listo':
+        return Colors.greenAccent;
+      case 'entregado':
+        return Colors.green;
+      case 'cancelado':
+        return AppColors.error;
+      default:
+        return Colors.white70;
     }
   }
 
   IconData _iconoEstado(String estado) {
     switch (estado.toLowerCase()) {
-      case 'pendiente': return Icons.hourglass_empty_rounded;
-      case 'preparando': return Icons.restaurant_outlined;
-      case 'listo': return Icons.check_circle_outline;
-      case 'entregado': return Icons.done_all_rounded;
-      case 'cancelado': return Icons.cancel_outlined;
-      default: return Icons.circle_outlined;
+      case 'pendiente':
+        return Icons.hourglass_empty_rounded;
+      case 'preparando':
+        return Icons.restaurant_outlined;
+      case 'listo':
+        return Icons.check_circle_outline;
+      case 'entregado':
+        return Icons.done_all_rounded;
+      case 'cancelado':
+        return Icons.cancel_outlined;
+      default:
+        return Icons.circle_outlined;
     }
   }
 
@@ -210,10 +234,13 @@ class _PedidosActivosScreenState extends State<PedidosActivosScreen> {
                     padding: const EdgeInsets.fromLTRB(20, 6, 20, 4),
                     child: Row(
                       children: [
-                        Icon(Icons.sync_rounded, size: 11,
-                            color: _cargando
-                                ? AppColors.button
-                                : Colors.white.withValues(alpha: 0.4)),
+                        Icon(
+                          Icons.sync_rounded,
+                          size: 11,
+                          color: _cargando
+                              ? AppColors.button
+                              : Colors.white.withValues(alpha: 0.4),
+                        ),
                         const SizedBox(width: 5),
                         Text(
                           _cargando
@@ -247,16 +274,23 @@ class _PedidosActivosScreenState extends State<PedidosActivosScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.wifi_off_outlined,
-                color: Colors.white.withValues(alpha: 0.4), size: 48),
+            Icon(
+              Icons.wifi_off_outlined,
+              color: Colors.white.withValues(alpha: 0.4),
+              size: 48,
+            ),
             const SizedBox(height: 12),
-            Text('Error al cargar pedidos',
-                style: GoogleFonts.manrope(color: Colors.white70)),
+            Text(
+              'Error al cargar pedidos',
+              style: GoogleFonts.manrope(color: Colors.white70),
+            ),
             const SizedBox(height: 16),
             TextButton(
               onPressed: _cargar,
-              child: Text('Reintentar',
-                  style: GoogleFonts.manrope(color: AppColors.button)),
+              child: Text(
+                'Reintentar',
+                style: GoogleFonts.manrope(color: AppColors.button),
+              ),
             ),
           ],
         ),
@@ -267,8 +301,11 @@ class _PedidosActivosScreenState extends State<PedidosActivosScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.receipt_long_outlined,
-                size: 64, color: Colors.white.withValues(alpha: 0.4)),
+            Icon(
+              Icons.receipt_long_outlined,
+              size: 64,
+              color: Colors.white.withValues(alpha: 0.4),
+            ),
             const SizedBox(height: 16),
             Text(
               _filtroEstado == 'activos'
@@ -280,7 +317,9 @@ class _PedidosActivosScreenState extends State<PedidosActivosScreen> {
             Text(
               'La pantalla se actualiza automáticamente',
               style: GoogleFonts.manrope(
-                  color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
+                color: Colors.white.withValues(alpha: 0.5),
+                fontSize: 12,
+              ),
             ),
           ],
         ),
@@ -355,10 +394,15 @@ class _PedidosActivosScreenState extends State<PedidosActivosScreen> {
                         width: 18,
                         height: 18,
                         child: CircularProgressIndicator(
-                            strokeWidth: 1.8, color: AppColors.button),
+                          strokeWidth: 1.8,
+                          color: AppColors.button,
+                        ),
                       )
-                    : Icon(Icons.refresh_rounded,
-                        color: Colors.white.withValues(alpha: 0.7), size: 22),
+                    : Icon(
+                        Icons.refresh_rounded,
+                        color: Colors.white.withValues(alpha: 0.7),
+                        size: 22,
+                      ),
                 tooltip: 'Refrescar ahora',
                 onPressed: _cargando ? null : () => _cargar(),
               ),
@@ -394,7 +438,9 @@ class _PedidosActivosScreenState extends State<PedidosActivosScreen> {
               margin: const EdgeInsets.only(right: 8),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: selected ? AppColors.button : Colors.white.withValues(alpha: 0.07),
+                color: selected
+                    ? AppColors.button
+                    : Colors.white.withValues(alpha: 0.07),
                 border: Border.all(
                   color: selected ? AppColors.button : Colors.white24,
                 ),
@@ -413,7 +459,10 @@ class _PedidosActivosScreenState extends State<PedidosActivosScreen> {
                   if (count > 0 && !_cargando) ...[
                     const SizedBox(width: 6),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 5,
+                        vertical: 1,
+                      ),
                       decoration: BoxDecoration(
                         color: selected
                             ? Colors.white.withValues(alpha: 0.25)
@@ -455,13 +504,19 @@ class _PedidoTile extends StatelessWidget {
 
   String get _descripcionEntrega {
     final tipo = pedido.tipoEntrega.toLowerCase();
-    if (tipo.contains('mesa') || tipo.contains('local') || tipo.contains('comer')) {
+    if (tipo.contains('mesa') ||
+        tipo.contains('local') ||
+        tipo.contains('comer')) {
       return pedido.numeroMesa != null ? 'Mesa ${pedido.numeroMesa}' : 'Local';
     }
     if (tipo.contains('domicilio') || tipo.contains('delivery')) {
-      return pedido.direccion?.isNotEmpty == true ? pedido.direccion! : 'A domicilio';
+      return pedido.direccion?.isNotEmpty == true
+          ? pedido.direccion!
+          : 'A domicilio';
     }
-    return pedido.tipoEntrega.isNotEmpty ? pedido.tipoEntrega : 'Sin especificar';
+    return pedido.tipoEntrega.isNotEmpty
+        ? pedido.tipoEntrega
+        : 'Sin especificar';
   }
 
   @override
@@ -476,7 +531,10 @@ class _PedidoTile extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.black.withValues(alpha: 0.45),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: colorEstado.withValues(alpha: 0.40), width: 1.5),
+              border: Border.all(
+                color: colorEstado.withValues(alpha: 0.40),
+                width: 1.5,
+              ),
             ),
             child: Column(
               children: [
@@ -485,11 +543,16 @@ class _PedidoTile extends StatelessWidget {
                   child: Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: colorEstado.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: colorEstado.withValues(alpha: 0.5)),
+                          border: Border.all(
+                            color: colorEstado.withValues(alpha: 0.5),
+                          ),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -535,40 +598,59 @@ class _PedidoTile extends StatelessWidget {
                           Text(
                             fechaFormateada,
                             style: GoogleFonts.manrope(
-                                fontSize: 11,
-                                color: Colors.white.withValues(alpha: 0.6)),
+                              fontSize: 11,
+                              color: Colors.white.withValues(alpha: 0.6),
+                            ),
                           ),
                         ],
                       ),
                     ],
                   ),
                 ),
-                Container(height: 1, color: Colors.white.withValues(alpha: 0.10)),
+                Container(
+                  height: 1,
+                  color: Colors.white.withValues(alpha: 0.10),
+                ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
                   child: Row(
                     children: [
-                      Icon(Icons.shopping_bag_outlined,
-                          size: 13, color: Colors.white.withValues(alpha: 0.6)),
+                      Icon(
+                        Icons.shopping_bag_outlined,
+                        size: 13,
+                        color: Colors.white.withValues(alpha: 0.6),
+                      ),
                       const SizedBox(width: 5),
                       Text(
                         '${pedido.items} artículo${pedido.items != 1 ? 's' : ''}',
                         style: GoogleFonts.manrope(
-                            fontSize: 12, color: Colors.white70),
+                          fontSize: 12,
+                          color: Colors.white70,
+                        ),
                       ),
                       const SizedBox(width: 16),
-                      Icon(Icons.payment_outlined,
-                          size: 13, color: Colors.white.withValues(alpha: 0.6)),
+                      Icon(
+                        Icons.payment_outlined,
+                        size: 13,
+                        color: Colors.white.withValues(alpha: 0.6),
+                      ),
                       const SizedBox(width: 5),
                       Text(
-                        pedido.metodoPago.isNotEmpty ? pedido.metodoPago : 'Sin especificar',
+                        pedido.metodoPago.isNotEmpty
+                            ? pedido.metodoPago
+                            : 'Sin especificar',
                         style: GoogleFonts.manrope(
-                            fontSize: 12, color: Colors.white70),
+                          fontSize: 12,
+                          color: Colors.white70,
+                        ),
                       ),
                       if (pedido.notas != null && pedido.notas!.isNotEmpty) ...[
                         const SizedBox(width: 12),
-                        Icon(Icons.notes_outlined,
-                            size: 13, color: Colors.orange.withValues(alpha: 0.7)),
+                        Icon(
+                          Icons.notes_outlined,
+                          size: 13,
+                          color: Colors.orange.withValues(alpha: 0.7),
+                        ),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(

@@ -52,9 +52,9 @@ class _AdminAnadirMenuState extends State<AdminAnadirMenu> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _cargando = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al cargar datos: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error al cargar datos: $e')));
     }
   }
 
@@ -82,7 +82,12 @@ class _AdminAnadirMenuState extends State<AdminAnadirMenu> {
           children: [
             const SizedBox(height: 30),
             _campoDatos("Nombre", Icons.abc, _nombreplato, _validarObligatorio),
-            _campoDatos("Descripción", Icons.abc, _descripcionPlato, _validarObligatorio),
+            _campoDatos(
+              "Descripción",
+              Icons.abc,
+              _descripcionPlato,
+              _validarObligatorio,
+            ),
             _campoDatos("Precio", Icons.euro, _precio, _validarPrecio),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -138,8 +143,12 @@ class _AdminAnadirMenuState extends State<AdminAnadirMenu> {
                               children: [
                                 Expanded(
                                   child: Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                                    child: Text(_ingredientesProducto[index].nombre),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                    ),
+                                    child: Text(
+                                      _ingredientesProducto[index].nombre,
+                                    ),
                                   ),
                                 ),
                                 IconButton(
@@ -220,7 +229,10 @@ class _AdminAnadirMenuState extends State<AdminAnadirMenu> {
             ? const SizedBox(
                 width: 20,
                 height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
               )
             : const Text("CREAR PRODUCTO"),
       ),
@@ -231,9 +243,9 @@ class _AdminAnadirMenuState extends State<AdminAnadirMenu> {
     if (!_formKey.currentState!.validate()) return;
 
     if (_categoriaSeleccionada == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Selecciona una categoría")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Selecciona una categoría")));
       return;
     }
 
@@ -256,9 +268,9 @@ class _AdminAnadirMenuState extends State<AdminAnadirMenu> {
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error al crear el producto: $e")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error al crear el producto: $e")));
     } finally {
       if (mounted) setState(() => _guardando = false);
     }
@@ -284,13 +296,17 @@ class _AdminAnadirMenuState extends State<AdminAnadirMenu> {
                         final item = _ingredientes[index];
                         return CheckboxListTile(
                           title: Text(item.nombre),
-                          value: seleccionados.any((i) => i.nombre == item.nombre),
+                          value: seleccionados.any(
+                            (i) => i.nombre == item.nombre,
+                          ),
                           onChanged: (bool? marcado) {
                             setModalState(() {
                               if (marcado == true) {
                                 seleccionados.add(item);
                               } else {
-                                seleccionados.removeWhere((i) => i.nombre == item.nombre);
+                                seleccionados.removeWhere(
+                                  (i) => i.nombre == item.nombre,
+                                );
                               }
                             });
                           },

@@ -8,13 +8,10 @@ import '../../services/cupon_service.dart';
 import '../../core/colors_style.dart';
 
 // ─── Colores ─────────────────────────────────────────────────────────────────
-const _kBg = Color(0xFF0F0F0F);
 const _kCard = Color(0xFF1C1C1E);
-const _kBorder = Color(0xFF2C2C2E);
 const _kText = Color(0xFFEAEAEA);
 const _kSub = Color(0xFF8E8E93);
 const _kGreen = Color(0xFF34C759);
-const _kOrange = Color(0xFFFF9500);
 const _kRed = Color(0xFFFF3B30);
 const _kBlue = Color(0xFF0A84FF);
 const _kAccent = AppColors.button;
@@ -34,7 +31,7 @@ class _CuponesScreenState extends State<CuponesScreen>
 
   String _filtro = 'todos';
   String _busqueda = '';
-  String _orden = 'recientes';
+  final String _orden = 'recientes';
 
   late TabController _tabCtrl;
 
@@ -55,14 +52,17 @@ class _CuponesScreenState extends State<CuponesScreen>
   Future<void> _cargar() async {
     setState(() {
       _cargando = true;
+      _error = null;
     });
     try {
       final lista = await CuponService.listar();
+      if (!mounted) return;
       setState(() {
         _cupones = lista;
         _cargando = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = e.toString();
         _cargando = false;
@@ -177,60 +177,106 @@ class _CuponesScreenState extends State<CuponesScreen>
           ),
 
           Expanded(
-            child: ListView.builder(
-              itemCount: _filtrados.length,
-              itemBuilder: (_, i) {
-                final c = _filtrados[i];
-                final exp = _expirado(c);
-
-                return Card(
-                  color: _kCard,
-                  child: ListTile(
-                    title: Text(
-                      c.codigo,
-                      style: const TextStyle(color: _kText),
-                    ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          c.descripcion,
-                          style: const TextStyle(color: _kSub),
-                        ),
-                        if (exp)
-                          const Text(
-                            'EXPIRADO',
-                            style: TextStyle(color: _kRed),
+            child: _cargando
+                ? const Center(
+                    child: CircularProgressIndicator(color: _kAccent),
+                  )
+                : _error != null
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.error_outline,
+                            color: _kRed,
+                            size: 48,
                           ),
-                        Text(
-                          "Usos: ${c.usosActuales}",
-                          style: const TextStyle(color: _kSub),
-                        ),
-                      ],
+                          const SizedBox(height: 12),
+                          Text(
+                            'No se pudieron cargar los cupones',
+                            style: const TextStyle(color: _kText, fontSize: 16),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _error!,
+                            style: const TextStyle(color: _kSub, fontSize: 12),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton.icon(
+                            onPressed: _cargar,
+                            icon: const Icon(Icons.refresh),
+                            label: const Text('Reintentar'),
+                          ),
+                        ],
+                      ),
                     ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.qr_code, color: _kAccent),
-                          onPressed: () => _mostrarQR(c),
+                  )
+                : ListView.builder(
+                    itemCount: _filtrados.length,
+                    itemBuilder: (_, i) {
+                      final c = _filtrados[i];
+                      final exp = _expirado(c);
+
+                      return Card(
+                        color: _kCard,
+                        child: ListTile(
+                          title: Text(
+                            c.codigo,
+                            style: const TextStyle(color: _kText),
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                c.descripcion,
+                                style: const TextStyle(color: _kSub),
+                              ),
+                              if (exp)
+                                const Text(
+                                  'EXPIRADO',
+                                  style: TextStyle(color: _kRed),
+                                ),
+                              Text(
+                                "Usos: ${c.usosActuales}",
+                                style: const TextStyle(color: _kSub),
+                              ),
+                            ],
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.qr_code,
+                                  color: _kAccent,
+                                ),
+                                onPressed: () => _mostrarQR(c),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.copy, color: _kBlue),
+                                onPressed: () {
+                                  Clipboard.setData(
+                                    ClipboardData(text: c.codigo),
+                                  );
+                                },
+                              ),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.copy_all,
+                                  color: _kGreen,
+                                ),
+                                onPressed: () => _duplicar(c),
+                              ),
+                            ],
+                          ),
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.copy, color: _kBlue),
-                          onPressed: () {
-                            Clipboard.setData(ClipboardData(text: c.codigo));
-                          },
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.copy_all, color: _kGreen),
-                          onPressed: () => _duplicar(c),
-                        ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
-                );
-              },
-            ),
           ),
         ],
       ),

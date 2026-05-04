@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../models/producto_model.dart';
@@ -50,10 +51,12 @@ class _ProductoDetalleSheetState extends State<ProductoDetalleSheet> {
               SizedBox(
                 height: 200,
                 width: double.infinity,
-                child: Image.network(
-                  p.imagenUrl!,
+                child: CachedNetworkImage(
+                  imageUrl: p.imagenUrl!,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                  errorWidget: (_, _, _) => const SizedBox.shrink(),
+                  placeholder: (_, _) =>
+                      const ColoredBox(color: AppColors.panel),
                 ),
               ),
 
@@ -111,7 +114,9 @@ class _ProductoDetalleSheetState extends State<ProductoDetalleSheet> {
                     const SizedBox(height: 24),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 5),
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
                       decoration: BoxDecoration(
                         border: Border.all(color: AppColors.line),
                       ),
@@ -142,7 +147,9 @@ class _ProductoDetalleSheetState extends State<ProductoDetalleSheet> {
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 150),
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 8),
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
                             decoration: BoxDecoration(
                               color: excluido
                                   ? AppColors.error.withValues(alpha: 0.08)
@@ -158,8 +165,11 @@ class _ProductoDetalleSheetState extends State<ProductoDetalleSheet> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 if (excluido) ...[
-                                  const Icon(Icons.close,
-                                      size: 11, color: AppColors.error),
+                                  const Icon(
+                                    Icons.close,
+                                    size: 11,
+                                    color: AppColors.error,
+                                  ),
                                   const SizedBox(width: 4),
                                 ],
                                 Text(
@@ -201,7 +211,9 @@ class _ProductoDetalleSheetState extends State<ProductoDetalleSheet> {
                               icon: _cantidad == 1
                                   ? Icons.delete_outline
                                   : Icons.remove,
-                              tooltip: _cantidad == 1 ? 'Eliminar' : 'Quitar uno',
+                              tooltip: _cantidad == 1
+                                  ? 'Eliminar'
+                                  : 'Quitar uno',
                               onTap: () {
                                 if (_cantidad > 1) {
                                   setState(() => _cantidad--);
@@ -239,8 +251,7 @@ class _ProductoDetalleSheetState extends State<ProductoDetalleSheet> {
                           child: InkWell(
                             onTap: () {
                               Navigator.pop(context);
-                              widget.onAgregar(
-                                  _excluidos.toList(), _cantidad);
+                              widget.onAgregar(_excluidos.toList(), _cantidad);
                             },
                             child: SizedBox(
                               height: 50,
@@ -275,7 +286,11 @@ class _StepBtn extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
   final String tooltip;
-  const _StepBtn({required this.icon, required this.onTap, required this.tooltip});
+  const _StepBtn({
+    required this.icon,
+    required this.onTap,
+    required this.tooltip,
+  });
 
   @override
   Widget build(BuildContext context) {

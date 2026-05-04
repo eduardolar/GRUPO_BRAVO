@@ -262,9 +262,9 @@ class _EditorProductoSheetState extends State<_EditorProductoSheet> {
   Future<void> _guardar() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     if (_categoriaSeleccionada == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Selecciona una categoría')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Selecciona una categoría')));
       return;
     }
 
@@ -273,7 +273,7 @@ class _EditorProductoSheetState extends State<_EditorProductoSheet> {
       final ingredientes = _items.values.map((it) {
         final cantidad =
             double.tryParse(it.controller.text.replaceAll(',', '.')) ??
-                it.cantidad;
+            it.cantidad;
         return it.ingrediente.copyWith(cantidadReceta: cantidad).toJson();
       }).toList();
 
@@ -298,9 +298,9 @@ class _EditorProductoSheetState extends State<_EditorProductoSheet> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _guardando = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al guardar: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error al guardar: $e')));
     }
   }
 
@@ -346,9 +346,9 @@ class _EditorProductoSheetState extends State<_EditorProductoSheet> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _guardando = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al eliminar: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error al eliminar: $e')));
     }
   }
 
@@ -373,10 +373,7 @@ class _EditorProductoSheetState extends State<_EditorProductoSheet> {
               children: [
                 _buildDragHandle(),
                 _buildHeader(),
-                Divider(
-                  height: 1,
-                  color: Colors.white.withValues(alpha: 0.12),
-                ),
+                Divider(height: 1, color: Colors.white.withValues(alpha: 0.12)),
                 if (_cargando)
                   const Expanded(
                     child: Center(
@@ -413,8 +410,8 @@ class _EditorProductoSheetState extends State<_EditorProductoSheet> {
                                   icono: Icons.euro,
                                   teclado:
                                       const TextInputType.numberWithOptions(
-                                    decimal: true,
-                                  ),
+                                        decimal: true,
+                                      ),
                                   requerido: true,
                                   esNumero: true,
                                   formatters: [_DecimalInputFormatter()],
@@ -496,10 +493,7 @@ class _EditorProductoSheetState extends State<_EditorProductoSheet> {
                 if (_esEdicion)
                   Text(
                     widget.producto!.nombre,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Colors.white60,
-                    ),
+                    style: const TextStyle(fontSize: 12, color: Colors.white60),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -790,8 +784,10 @@ class _EditorProductoSheetState extends State<_EditorProductoSheet> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
-                    borderSide:
-                        const BorderSide(color: _kBorderFocus, width: 2),
+                    borderSide: const BorderSide(
+                      color: _kBorderFocus,
+                      width: 2,
+                    ),
                   ),
                 ),
               ),
@@ -873,9 +869,7 @@ class _EditorProductoSheetState extends State<_EditorProductoSheet> {
               label: const Text('Eliminar producto'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.error,
-                side: BorderSide(
-                  color: AppColors.error.withValues(alpha: 0.7),
-                ),
+                side: BorderSide(color: AppColors.error.withValues(alpha: 0.7)),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),

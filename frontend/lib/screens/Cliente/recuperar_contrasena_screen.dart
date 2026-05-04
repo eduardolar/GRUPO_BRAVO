@@ -17,8 +17,7 @@ class RecuperarContrasenaScreen extends StatefulWidget {
       _RecuperarContrasenaScreenState();
 }
 
-class _RecuperarContrasenaScreenState
-    extends State<RecuperarContrasenaScreen> {
+class _RecuperarContrasenaScreenState extends State<RecuperarContrasenaScreen> {
   final _formKey = GlobalKey<FormState>();
   final _correoController = TextEditingController();
   bool _isLoading = false;

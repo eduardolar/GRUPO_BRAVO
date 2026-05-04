@@ -227,14 +227,14 @@ class _PedidosCocinaScreenState extends State<PedidosCocinaScreen> {
         ServerTimeService.instance.sincronizar();
       }
 
-      final restauranteId =
-          context.read<AuthProvider>().usuarioActual?.restauranteId;
+      final restauranteId = context
+          .read<AuthProvider>()
+          .usuarioActual
+          ?.restauranteId;
       final todos = await ApiService.obtenerTodosLosPedidos(
         restauranteId: restauranteId,
       );
-      final activos = todos
-          .where((p) => _kEstados.contains(p.estado))
-          .toList()
+      final activos = todos.where((p) => _kEstados.contains(p.estado)).toList()
         ..sort((a, b) => a.fecha.compareTo(b.fecha));
 
       // Detectar nuevos pedidos en estado pendiente. Solo después de la
@@ -489,13 +489,12 @@ class _KanbanColumn extends StatelessWidget {
           width: width,
           height: height,
           decoration: BoxDecoration(
-            color:
-                hovering ? color.withValues(alpha: 0.06) : Colors.transparent,
+            color: hovering
+                ? color.withValues(alpha: 0.06)
+                : Colors.transparent,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: hovering
-                  ? color.withValues(alpha: 0.45)
-                  : AppColors.line,
+              color: hovering ? color.withValues(alpha: 0.45) : AppColors.line,
               width: hovering ? 1.5 : 1,
             ),
           ),
@@ -782,10 +781,7 @@ class _PedidoCard extends StatelessWidget {
               ],
             ),
           ),
-          _ChipCronometro(
-            color: colorTiempo,
-            texto: _formatoTiempo(minutos),
-          ),
+          _ChipCronometro(color: colorTiempo, texto: _formatoTiempo(minutos)),
           if (!compact) ...[
             const SizedBox(width: 6),
             Tooltip(
@@ -873,8 +869,9 @@ class _PedidoCard extends StatelessWidget {
                         decoration: hecho
                             ? TextDecoration.lineThrough
                             : TextDecoration.none,
-                        decorationColor:
-                            AppColors.textSecondary.withValues(alpha: 0.6),
+                        decorationColor: AppColors.textSecondary.withValues(
+                          alpha: 0.6,
+                        ),
                       ),
                     ),
                     if (p.sin.isNotEmpty)
@@ -1043,10 +1040,7 @@ class _Boton extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            if (iconLeft) ...[
-              Icon(icon, size: 13),
-              const SizedBox(width: 3),
-            ],
+            if (iconLeft) ...[Icon(icon, size: 13), const SizedBox(width: 3)],
             Flexible(
               child: Text(
                 label,
@@ -1059,10 +1053,7 @@ class _Boton extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            if (!iconLeft) ...[
-              const SizedBox(width: 3),
-              Icon(icon, size: 13),
-            ],
+            if (!iconLeft) ...[const SizedBox(width: 3), Icon(icon, size: 13)],
           ],
         ),
       ),

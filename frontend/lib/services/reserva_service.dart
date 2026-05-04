@@ -5,6 +5,7 @@ import '../models/mesa_model.dart';
 import '../data/mock_data.dart';
 import 'api_config.dart';
 import 'http_client.dart';
+import 'auth_session.dart';
 
 class ReservaService {
   static const int _duracionReservaMinutos = 90;
@@ -60,7 +61,7 @@ class ReservaService {
     final response = await httpWithRetry(
       () => http.post(
         Uri.parse('$baseUrl/reservas'),
-        headers: {'Content-Type': 'application/json'},
+        headers: AuthSession.headers(),
         body: jsonEncode({
           'usuarioId': userId,
           'nombreCompleto': nombreCompleto,
@@ -140,8 +141,9 @@ class ReservaService {
       await Future.delayed(const Duration(milliseconds: 300));
       final index = MockData.reservas.indexWhere((r) => r.id == reservaId);
       if (index >= 0) {
-        MockData.reservas[index] =
-            MockData.reservas[index].copyWith(comensales: comensales);
+        MockData.reservas[index] = MockData.reservas[index].copyWith(
+          comensales: comensales,
+        );
       }
       return true;
     }
@@ -149,7 +151,7 @@ class ReservaService {
     final response = await httpWithRetry(
       () => http.patch(
         Uri.parse('$baseUrl/reservas/$reservaId'),
-        headers: {'Content-Type': 'application/json'},
+        headers: AuthSession.headers(),
         body: jsonEncode({'comensales': comensales}),
       ),
       retry: false,
@@ -184,7 +186,9 @@ class ReservaService {
     );
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
-      return data.map((m) => Reserva.fromMap(m as Map<String, dynamic>)).toList();
+      return data
+          .map((m) => Reserva.fromMap(m as Map<String, dynamic>))
+          .toList();
     }
     throw toApiException(response.statusCode, decodeBody(response));
   }
@@ -202,7 +206,7 @@ class ReservaService {
     final response = await httpWithRetry(
       () => http.put(
         Uri.parse('$baseUrl/reservas/${reserva.id}'),
-        headers: {'Content-Type': 'application/json'},
+        headers: AuthSession.headers(),
         body: jsonEncode({
           'fecha': reserva.fecha.toIso8601String().split('T').first,
           'hora': reserva.hora,

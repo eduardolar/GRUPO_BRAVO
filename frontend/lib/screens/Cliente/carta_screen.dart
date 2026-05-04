@@ -138,10 +138,10 @@ class _CartaScreenState extends State<CartaScreen> {
           producto: producto,
           onAgregar: (excluidos, cantidad) {
             sheetCtx.read<CartProvider>().addItem(
-                  producto,
-                  ingredientesExcluidos: excluidos,
-                  cantidad: cantidad,
-                );
+              producto,
+              ingredientesExcluidos: excluidos,
+              cantidad: cantidad,
+            );
             _showSnack('${producto.nombre} añadido al pedido');
           },
         ),
@@ -168,10 +168,7 @@ class _CartaScreenState extends State<CartaScreen> {
     if (agregados > 0) {
       _showSnack('Pedido anterior añadido al carrito');
     } else {
-      _showSnack(
-        'No se pudo repetir (productos no disponibles)',
-        error: true,
-      );
+      _showSnack('No se pudo repetir (productos no disponibles)', error: true);
     }
   }
 
@@ -294,8 +291,8 @@ class _CartaScreenState extends State<CartaScreen> {
             child: _cargando
                 ? const _CargandoCarta()
                 : _errorCarga
-                    ? _ErrorCarta(onRetry: _cargarDatos)
-                    : _buildContenido(),
+                ? _ErrorCarta(onRetry: _cargarDatos)
+                : _buildContenido(),
           ),
         ],
       ),
@@ -305,8 +302,9 @@ class _CartaScreenState extends State<CartaScreen> {
   }
 
   Widget _buildContenido() {
-    final currentCategory =
-        _categorias.isNotEmpty ? _categorias[_selectedCategory] : '';
+    final currentCategory = _categorias.isNotEmpty
+        ? _categorias[_selectedCategory]
+        : '';
     final filtered = _productos
         .where((p) => p.categoria == currentCategory)
         .toList(growable: false);
@@ -344,11 +342,8 @@ class _CartaScreenState extends State<CartaScreen> {
             child: _categorias.isEmpty
                 ? const _SinCategorias()
                 : filtered.isEmpty
-                    ? const _SinPlatosCategoria()
-                    : _GrillaProductos(
-                        productos: filtered,
-                        onTap: _mostrarDetalle,
-                      ),
+                ? const _SinPlatosCategoria()
+                : _GrillaProductos(productos: filtered, onTap: _mostrarDetalle),
           ),
         ),
       ],
@@ -531,8 +526,8 @@ class _GrillaProductos extends StatelessWidget {
         final columns = width >= 900
             ? 3
             : width >= 600
-                ? 2
-                : 1;
+            ? 2
+            : 1;
         return GridView.builder(
           physics: const AlwaysScrollableScrollPhysics(
             parent: BouncingScrollPhysics(),
@@ -563,10 +558,7 @@ class _Cabecera extends StatelessWidget {
   final VoidCallback onPerfil;
   final VoidCallback onCambiarRestaurante;
 
-  const _Cabecera({
-    required this.onPerfil,
-    required this.onCambiarRestaurante,
-  });
+  const _Cabecera({required this.onPerfil, required this.onCambiarRestaurante});
 
   @override
   Widget build(BuildContext context) {
@@ -636,8 +628,7 @@ class _ChipRestaurante extends StatelessWidget {
             onTap: onTap,
             borderRadius: BorderRadius.circular(6),
             child: Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -649,10 +640,7 @@ class _ChipRestaurante extends StatelessWidget {
                   const SizedBox(width: 4),
                   Text(
                     cart.restauranteNombre!,
-                    style: const TextStyle(
-                      color: Colors.white38,
-                      fontSize: 11,
-                    ),
+                    style: const TextStyle(color: Colors.white38, fontSize: 11),
                   ),
                   const SizedBox(width: 4),
                   const Icon(Icons.sync, color: AppColors.gold, size: 12),
@@ -718,9 +706,7 @@ class _ReorderBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.50),
         borderRadius: _kRadius,
-        border: Border.all(
-          color: AppColors.button.withValues(alpha: 0.55),
-        ),
+        border: Border.all(color: AppColors.button.withValues(alpha: 0.55)),
       ),
       child: Row(
         children: [
@@ -742,10 +728,7 @@ class _ReorderBanner extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   '$nombres$extra',
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 11,
-                  ),
+                  style: const TextStyle(color: Colors.white70, fontSize: 11),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -760,8 +743,7 @@ class _ReorderBanner extends StatelessWidget {
               onTap: onReorder,
               borderRadius: BorderRadius.circular(8),
               child: const Padding(
-                padding:
-                    EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                 child: Text(
                   'REPETIR',
                   style: TextStyle(
@@ -842,8 +824,7 @@ class _CategoryBarState extends State<_CategoryBar> {
             separatorBuilder: (_, _) => const SizedBox(width: 8),
             itemBuilder: (context, index) {
               final isSelected = widget.selectedIndex == index;
-              final chipKey =
-                  _chipKeys.putIfAbsent(index, () => GlobalKey());
+              final chipKey = _chipKeys.putIfAbsent(index, () => GlobalKey());
               return _Chip(
                 key: chipKey,
                 label: widget.categorias[index],
@@ -913,8 +894,7 @@ class _Chip extends StatelessWidget {
             style: TextStyle(
               color: seleccionado ? Colors.white : Colors.white70,
               fontSize: 11,
-              fontWeight:
-                  seleccionado ? FontWeight.w700 : FontWeight.w500,
+              fontWeight: seleccionado ? FontWeight.w700 : FontWeight.w500,
               letterSpacing: 1.0,
             ),
           ),

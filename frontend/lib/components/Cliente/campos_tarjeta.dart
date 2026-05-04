@@ -6,10 +6,7 @@ import '../../core/colors_style.dart';
 class CamposTarjeta extends StatelessWidget {
   final void Function(CardFieldInputDetails?) onCardChanged;
 
-  const CamposTarjeta({
-    super.key,
-    required this.onCardChanged,
-  });
+  const CamposTarjeta({super.key, required this.onCardChanged});
 
   @override
   Widget build(BuildContext context) {

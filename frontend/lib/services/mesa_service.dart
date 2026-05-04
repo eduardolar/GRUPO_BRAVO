@@ -4,6 +4,7 @@ import '../models/mesa_model.dart';
 import '../data/mock_data.dart';
 import 'api_config.dart';
 import 'http_client.dart';
+import 'auth_session.dart';
 
 class MesaService {
   static Future<List<Mesa>> obtenerMesas() async {
@@ -44,7 +45,7 @@ class MesaService {
     final response = await httpWithRetry(
       () => http.post(
         Uri.parse('$baseUrl/mesas/validar-qr'),
-        headers: {'Content-Type': 'application/json'},
+        headers: AuthSession.headers(),
         body: jsonEncode({'codigoQr': codigoQr}),
       ),
       retry: false,
@@ -77,7 +78,7 @@ class MesaService {
     final response = await httpWithRetry(
       () => http.post(
         Uri.parse('$baseUrl/mesas'),
-        headers: {'Content-Type': 'application/json'},
+        headers: AuthSession.headers(),
         body: jsonEncode({
           'numero': numero,
           'capacidad': capacidad,
@@ -116,7 +117,9 @@ class MesaService {
       await Future.delayed(const Duration(milliseconds: 200));
       final index = MockData.mesas.indexWhere((m) => m.id == mesaId);
       if (index != -1) {
-        MockData.mesas[index] = MockData.mesas[index].copyWith(disponible: false);
+        MockData.mesas[index] = MockData.mesas[index].copyWith(
+          disponible: false,
+        );
       }
       return;
     }
@@ -124,7 +127,7 @@ class MesaService {
     final response = await httpWithRetry(
       () => http.patch(
         Uri.parse('$baseUrl/mesas/$mesaId'),
-        headers: {'Content-Type': 'application/json'},
+        headers: AuthSession.headers(),
         body: jsonEncode({'disponible': false}),
       ),
       retry: false,
@@ -140,8 +143,9 @@ class MesaService {
       await Future.delayed(const Duration(milliseconds: 200));
       final index = MockData.mesas.indexWhere((m) => m.id == mesaId);
       if (index != -1) {
-        MockData.mesas[index] =
-            MockData.mesas[index].copyWith(disponible: true);
+        MockData.mesas[index] = MockData.mesas[index].copyWith(
+          disponible: true,
+        );
       }
       return;
     }
@@ -149,7 +153,7 @@ class MesaService {
     final response = await httpWithRetry(
       () => http.patch(
         Uri.parse('$baseUrl/mesas/$mesaId'),
-        headers: {'Content-Type': 'application/json'},
+        headers: AuthSession.headers(),
         body: jsonEncode({'disponible': true}),
       ),
       retry: false,

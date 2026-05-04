@@ -1,3 +1,4 @@
+import logging
 import os
 import uuid
 from datetime import datetime
@@ -6,21 +7,33 @@ from typing import Any, Dict, Optional
 import httpx
 import stripe
 from bson import ObjectId
-from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
+import config  # carga .env una sola vez (efecto de import)
 from audit import registrar_pago
 from security import require_role
 from database import coleccion_auditoria_pagos, coleccion_pedidos
 
-load_dotenv()
+logger = logging.getLogger("uvicorn.error")
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
+STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 
 PAYPAL_CLIENT_ID = os.getenv("PAYPAL_CLIENT_ID", "")
 PAYPAL_CLIENT_SECRET = os.getenv("PAYPAL_CLIENT_SECRET", "")
 PAYPAL_BASE_URL = os.getenv("PAYPAL_BASE_URL", "https://api-m.sandbox.paypal.com")
+
+
+def _exigir_stripe() -> None:
+    """Detiene la petición con 503 si Stripe no está configurado.
+
+    No revela detalles internos como el nombre de la variable que falta:
+    eso aparece sólo en el log del servidor.
+    """
+    if not stripe.api_key:
+        logger.error("STRIPE_SECRET_KEY ausente: el servicio de pagos no puede operar.")
+        raise HTTPException(status_code=503, detail="Servicio de pagos no disponible")
 
 router = APIRouter(prefix="/payments", tags=["Pagos"])
 
@@ -84,8 +97,7 @@ def _total_pedido(pedido_id: str) -> float:
 @router.post("/stripe/create-intent")
 @router.post("/card/create-intent")
 def crear_payment_intent(request: Request, payload: PaymentIntentCreate):
-    if not stripe.api_key:
-        raise HTTPException(status_code=500, detail="Falta STRIPE_SECRET_KEY")
+    _exigir_stripe()
     total = _total_pedido(payload.pedido_id)
     try:
         intent = stripe.PaymentIntent.create(
@@ -111,8 +123,7 @@ def crear_payment_intent(request: Request, payload: PaymentIntentCreate):
 @router.post("/stripe/confirm")
 @router.post("/card/confirm")
 def confirmar_payment_intent(request: Request, payload: CardConfirmRequest):
-    if not stripe.api_key:
-        raise HTTPException(status_code=500, detail="Falta STRIPE_SECRET_KEY")
+    _exigir_stripe()
     if not payload.payment_intent_id.strip() or not payload.payment_method_id.strip():
         raise HTTPException(status_code=400, detail="payment_intent_id y payment_method_id son requeridos")
     try:
@@ -138,8 +149,7 @@ def confirmar_payment_intent(request: Request, payload: CardConfirmRequest):
 
 @router.post("/apple-pay/init")
 async def iniciar_apple_pay(request: Request, payload: ApplePayInitRequest):
-    if not stripe.api_key:
-        raise HTTPException(status_code=500, detail="Falta STRIPE_SECRET_KEY")
+    _exigir_stripe()
     total = _total_pedido(payload.pedido_id)
     try:
         intent = stripe.PaymentIntent.create(
@@ -165,8 +175,7 @@ async def iniciar_apple_pay(request: Request, payload: ApplePayInitRequest):
 
 @router.post("/apple-pay/confirm")
 async def confirmar_apple_pay(request: Request, payload: ConfirmPaymentIntentRequest):
-    if not stripe.api_key:
-        raise HTTPException(status_code=500, detail="Falta STRIPE_SECRET_KEY")
+    _exigir_stripe()
     if not payload.payment_intent_id.strip() or not payload.payment_method_id.strip():
         raise HTTPException(status_code=400, detail="payment_intent_id y payment_method_id son requeridos")
     try:
@@ -191,8 +200,7 @@ async def confirmar_apple_pay(request: Request, payload: ConfirmPaymentIntentReq
 
 @router.get("/apple-pay/verify/{payment_intent_id}")
 def verificar_apple_pay(request: Request, payment_intent_id: str):
-    if not stripe.api_key:
-        raise HTTPException(status_code=500, detail="Falta STRIPE_SECRET_KEY")
+    _exigir_stripe()
     try:
         intent = stripe.PaymentIntent.retrieve(payment_intent_id)
         paid = intent["status"] == "succeeded"
@@ -213,8 +221,7 @@ def verificar_apple_pay(request: Request, payment_intent_id: str):
 
 @router.post("/google-pay/init")
 async def iniciar_google_pay(request: Request, payload: GooglePayInitRequest):
-    if not stripe.api_key:
-        raise HTTPException(status_code=500, detail="Falta STRIPE_SECRET_KEY")
+    _exigir_stripe()
     total = _total_pedido(payload.pedido_id)
     try:
         intent = stripe.PaymentIntent.create(
@@ -240,8 +247,7 @@ async def iniciar_google_pay(request: Request, payload: GooglePayInitRequest):
 
 @router.post("/google-pay/confirm")
 async def confirmar_google_pay(request: Request, payload: ConfirmPaymentIntentRequest):
-    if not stripe.api_key:
-        raise HTTPException(status_code=500, detail="Falta STRIPE_SECRET_KEY")
+    _exigir_stripe()
     if not payload.payment_intent_id.strip() or not payload.payment_method_id.strip():
         raise HTTPException(status_code=400, detail="payment_intent_id y payment_method_id son requeridos")
     try:
@@ -266,8 +272,7 @@ async def confirmar_google_pay(request: Request, payload: ConfirmPaymentIntentRe
 
 @router.get("/google-pay/verify/{payment_intent_id}")
 def verificar_google_pay(request: Request, payment_intent_id: str):
-    if not stripe.api_key:
-        raise HTTPException(status_code=500, detail="Falta STRIPE_SECRET_KEY")
+    _exigir_stripe()
     try:
         intent = stripe.PaymentIntent.retrieve(payment_intent_id)
         paid = intent["status"] == "succeeded"
@@ -289,8 +294,7 @@ def verificar_google_pay(request: Request, payment_intent_id: str):
 @router.get("/stripe/verify/{payment_intent_id}")
 @router.get("/card/verify/{payment_intent_id}")
 def verificar_payment_intent(request: Request, payment_intent_id: str):
-    if not stripe.api_key:
-        raise HTTPException(status_code=500, detail="Falta STRIPE_SECRET_KEY")
+    _exigir_stripe()
     try:
         intent = stripe.PaymentIntent.retrieve(payment_intent_id)
         paid = intent["status"] == "succeeded"
@@ -312,8 +316,7 @@ def verificar_payment_intent(request: Request, payment_intent_id: str):
 
 @router.post("/stripe/create-checkout-session")
 def crear_checkout_session(request: Request, payload: CheckoutSessionCreate):
-    if not stripe.api_key:
-        raise HTTPException(status_code=500, detail="Falta STRIPE_SECRET_KEY")
+    _exigir_stripe()
     if payload.pedido_id:
         total = _total_pedido(payload.pedido_id)
     elif payload.total is not None and payload.total > 0:
@@ -348,8 +351,7 @@ def crear_checkout_session(request: Request, payload: CheckoutSessionCreate):
 
 @router.get("/stripe/verify-session/{session_id}")
 def verificar_checkout_session(request: Request, session_id: str):
-    if not stripe.api_key:
-        raise HTTPException(status_code=500, detail="Falta STRIPE_SECRET_KEY")
+    _exigir_stripe()
     try:
         session = stripe.checkout.Session.retrieve(session_id)
         registrar_pago(request, "stripe.checkout_verified", "stripe",
@@ -370,7 +372,8 @@ def verificar_checkout_session(request: Request, session_id: str):
 
 async def _paypal_access_token() -> str:
     if not PAYPAL_CLIENT_ID or not PAYPAL_CLIENT_SECRET:
-        raise HTTPException(status_code=500, detail="Faltan credenciales de PayPal")
+        logger.error("Credenciales de PayPal ausentes; no se puede obtener token OAuth.")
+        raise HTTPException(status_code=503, detail="Servicio de pagos no disponible")
 
     async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.post(
@@ -507,6 +510,69 @@ async def capturar_orden_paypal_get(request: Request, order_id: str):
     registrar_pago(request, "paypal.order_captured", "paypal",
                    referencia=data.get("id"), estado=data.get("status", "COMPLETED"))
     return data
+
+
+# ── Webhook de Stripe ──────────────────────────────────────────────────────────
+
+@router.post("/stripe/webhook", summary="Recibe eventos firmados de Stripe (fuente de verdad del pago)")
+async def stripe_webhook(request: Request):
+    """Endpoint público al que Stripe entrega eventos. La autenticidad se
+    verifica mediante la cabecera Stripe-Signature comparando con
+    STRIPE_WEBHOOK_SECRET. Sin firma válida, se rechaza con 400.
+
+    Cuando un PaymentIntent llega a `succeeded`, se persiste el estado de
+    pago del pedido para que ningún flujo del cliente pueda marcarlo como
+    pagado por su cuenta.
+    """
+    if not STRIPE_WEBHOOK_SECRET:
+        logger.error("STRIPE_WEBHOOK_SECRET ausente; rechazando webhook entrante.")
+        raise HTTPException(status_code=503, detail="Webhook de pagos no disponible")
+
+    payload = await request.body()
+    signature = request.headers.get("stripe-signature", "")
+
+    try:
+        event = stripe.Webhook.construct_event(
+            payload=payload,
+            sig_header=signature,
+            secret=STRIPE_WEBHOOK_SECRET,
+        )
+    except (ValueError, stripe.error.SignatureVerificationError) as exc:
+        logger.warning("Webhook de Stripe rechazado: %s", exc)
+        raise HTTPException(status_code=400, detail="Firma inválida")
+
+    tipo = event.get("type", "")
+    obj = event.get("data", {}).get("object", {}) or {}
+    intent_id = obj.get("id") or obj.get("payment_intent")
+    pedido_id = (obj.get("metadata") or {}).get("pedido_id")
+
+    if tipo == "payment_intent.succeeded":
+        if pedido_id and ObjectId.is_valid(pedido_id):
+            coleccion_pedidos.update_one(
+                {"_id": ObjectId(pedido_id)},
+                {"$set": {
+                    "pagado": True,
+                    "estado_pago": "pagado",
+                    "stripe_payment_intent_id": intent_id,
+                    "fecha_pago": datetime.utcnow().isoformat(),
+                }},
+            )
+        registrar_pago(request, "stripe.webhook.succeeded", "stripe",
+                       referencia=intent_id, estado="succeeded",
+                       detalle=f"pedido_id={pedido_id}")
+    elif tipo in {"payment_intent.payment_failed", "payment_intent.canceled"}:
+        if pedido_id and ObjectId.is_valid(pedido_id):
+            coleccion_pedidos.update_one(
+                {"_id": ObjectId(pedido_id)},
+                {"$set": {"estado_pago": "fallido", "stripe_payment_intent_id": intent_id}},
+            )
+        registrar_pago(request, f"stripe.webhook.{tipo}", "stripe",
+                       referencia=intent_id, estado="fallido")
+    else:
+        registrar_pago(request, f"stripe.webhook.{tipo}", "stripe",
+                       referencia=intent_id, estado="info")
+
+    return {"received": True}
 
 
 # ── Auditoría (admin) ──────────────────────────────────────────────────────────

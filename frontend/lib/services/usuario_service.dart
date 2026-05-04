@@ -6,18 +6,16 @@ import 'package:http/http.dart' as http;
 import '../models/usuario_model.dart';
 import 'actor_context.dart';
 import 'api_config.dart';
+import 'auth_session.dart';
 
 class UsuarioService {
   /// Cabeceras para peticiones que registran auditoría:
-  /// añade `X-Actor` con el correo del usuario actualmente logueado.
-  static Map<String, String> _headersConActor() => {
-        'Content-Type': 'application/json',
-        ...ActorContext.instance.headers,
-      };
+  /// añade `X-Actor` con el correo del usuario actualmente logueado y el
+  /// `Authorization: Bearer ...` cuando hay sesión activa.
+  static Map<String, String> _headersConActor() =>
+      AuthSession.headers(extra: ActorContext.instance.headers);
 
-  static const Map<String, String> _headersJson = {
-    'Content-Type': 'application/json',
-  };
+  static Map<String, String> get _headersJson => AuthSession.headers();
 
   // 1. Obtener todos los usuarios
   Future<List<Usuario>> obtenerTodos() async {

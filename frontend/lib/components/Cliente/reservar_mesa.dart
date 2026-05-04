@@ -16,7 +16,10 @@ class _ReservarMesaState extends State<ReservarMesa> {
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => const LoginScreen(destino: DestinoLogin.reservar)),
+          MaterialPageRoute(
+            builder: (context) =>
+                const LoginScreen(destino: DestinoLogin.reservar),
+          ),
         );
       },
       child: Container(

@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -16,6 +16,7 @@ import 'pedido_service.dart';
 import 'reserva_service.dart';
 import 'mesa_service.dart';
 import 'http_client.dart';
+import 'auth_session.dart';
 
 class ApiService {
   static String get baseUrl {
@@ -41,12 +42,14 @@ class ApiService {
     required String contrasena,
     required String telefono,
     required String direccion,
+    required bool consentimientoRgpd,
   }) => AuthService.registrarUsuario(
     nombre: nombre,
     correo: correo,
     contrasena: contrasena,
     telefono: telefono,
     direccion: direccion,
+    consentimientoRgpd: consentimientoRgpd,
   );
 
   static Future<bool> actualizarPerfil({
@@ -83,8 +86,7 @@ class ApiService {
   static Future<void> renombrarCategoria(
     String nombreActual,
     String nuevoNombre,
-  ) =>
-      ProductoService.renombrarCategoria(nombreActual, nuevoNombre);
+  ) => ProductoService.renombrarCategoria(nombreActual, nuevoNombre);
 
   static Future<void> reordenarCategorias(List<String> nuevoOrden) =>
       ProductoService.reordenarCategorias(nuevoOrden);
@@ -103,8 +105,7 @@ class ApiService {
   static Future<Producto> actualizarProducto(
     String id,
     Map<String, dynamic> datos,
-  ) =>
-      ProductoService.actualizarProducto(id, datos);
+  ) => ProductoService.actualizarProducto(id, datos);
 
   static Future<void> reordenarProductos(List<String> ids) =>
       ProductoService.reordenarProductos(ids);
@@ -114,14 +115,21 @@ class ApiService {
 
   // ─── INGREDIENTES ────────────────────────────────────────────
 
-  static Future<List<Ingrediente>> obtenerIngredientes({String? restauranteId}) =>
-      IngredienteService.obtenerIngredientes(restauranteId: restauranteId);
+  static Future<List<Ingrediente>> obtenerIngredientes({
+    String? restauranteId,
+  }) => IngredienteService.obtenerIngredientes(restauranteId: restauranteId);
 
-  static Future<Map<String, List<Ingrediente>>> obtenerIngredientesPorCategoria({String? restauranteId}) =>
-      IngredienteService.obtenerIngredientesPorCategoria(restauranteId: restauranteId);
+  static Future<Map<String, List<Ingrediente>>>
+  obtenerIngredientesPorCategoria({String? restauranteId}) =>
+      IngredienteService.obtenerIngredientesPorCategoria(
+        restauranteId: restauranteId,
+      );
 
-  static Future<List<Ingrediente>> obtenerIngredientesStockBajo({String? restauranteId}) =>
-      IngredienteService.obtenerIngredientesStockBajo(restauranteId: restauranteId);
+  static Future<List<Ingrediente>> obtenerIngredientesStockBajo({
+    String? restauranteId,
+  }) => IngredienteService.obtenerIngredientesStockBajo(
+    restauranteId: restauranteId,
+  );
 
   // ─── PEDIDOS ─────────────────────────────────────────────────
 
@@ -130,10 +138,10 @@ class ApiService {
     required List<dynamic> items,
     String? restauranteId,
   }) => PedidoService.enviarPedidoPorQR(
-        mesaId: mesaId,
-        items: items,
-        restauranteId: restauranteId,
-      );
+    mesaId: mesaId,
+    items: items,
+    restauranteId: restauranteId,
+  );
 
   static Future<Map<String, dynamic>> crearPedido({
     required String userId,
@@ -184,28 +192,29 @@ class ApiService {
     String? restauranteId,
     String? estado,
   }) => PedidoService.obtenerTodosLosPedidos(
-        restauranteId: restauranteId,
-        estado: estado,
-      );
+    restauranteId: restauranteId,
+    estado: estado,
+  );
 
   static Future<void> actualizarEstadoPedido({
     required String pedidoId,
     required String estado,
-  }) => PedidoService.actualizarEstadoPedido(pedidoId: pedidoId, estado: estado);
+  }) =>
+      PedidoService.actualizarEstadoPedido(pedidoId: pedidoId, estado: estado);
 
   static Future<Map<String, dynamic>> marcarItemHecho({
     required String pedidoId,
     required int itemIndex,
     required bool hecho,
   }) => PedidoService.marcarItemHecho(
-        pedidoId: pedidoId,
-        itemIndex: itemIndex,
-        hecho: hecho,
-      );
+    pedidoId: pedidoId,
+    itemIndex: itemIndex,
+    hecho: hecho,
+  );
 
   static Future<Map<String, dynamic>?> obtenerPedidoActivoPorMesa(
-          String mesaId) =>
-      PedidoService.obtenerPedidoActivoPorMesa(mesaId);
+    String mesaId,
+  ) => PedidoService.obtenerPedidoActivoPorMesa(mesaId);
 
   static Future<void> cerrarPedido({
     required String pedidoId,
@@ -565,9 +574,8 @@ class ApiService {
   // ─── HELPERS ─────────────────────────────────────────────────
 
   static Map<String, String> _jsonHeaders() {
-    return {'Content-Type': 'application/json', 'Accept': 'application/json'};
+    return AuthSession.headers(extra: {'Accept': 'application/json'});
   }
-
 
   static Future<void> agregarItemTicket({
     required String mesaId,

@@ -47,8 +47,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
     _nombreController = TextEditingController(text: usuario?.nombre ?? '');
     _emailController = TextEditingController(text: usuario?.email ?? '');
     _telefonoController = TextEditingController(text: usuario?.telefono ?? '');
-    _direccionController =
-        TextEditingController(text: usuario?.direccion ?? '');
+    _direccionController = TextEditingController(
+      text: usuario?.direccion ?? '',
+    );
 
     for (final c in [
       _nombreController,
@@ -76,7 +77,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
 
   void _detectarCambios() {
     final usuario = context.read<AuthProvider>().usuarioActual;
-    final cambio = _nombreController.text != (usuario?.nombre ?? '') ||
+    final cambio =
+        _nombreController.text != (usuario?.nombre ?? '') ||
         _emailController.text != (usuario?.email ?? '') ||
         _telefonoController.text != (usuario?.telefono ?? '') ||
         _direccionController.text != (usuario?.direccion ?? '');
@@ -105,11 +107,11 @@ class _PerfilScreenState extends State<PerfilScreen> {
     setState(() => _isLoading = true);
     try {
       await context.read<AuthProvider>().actualizarPerfil(
-            nombre: _nombreController.text.trim(),
-            email: _emailController.text.trim(),
-            telefono: _telefonoController.text.trim(),
-            direccion: _direccionController.text.trim(),
-          );
+        nombre: _nombreController.text.trim(),
+        email: _emailController.text.trim(),
+        telefono: _telefonoController.text.trim(),
+        direccion: _direccionController.text.trim(),
+      );
       if (!mounted) return;
       _snack('Datos actualizados correctamente', success: true);
       setState(() => _hayCambios = false);
@@ -224,10 +226,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                   ),
                   child: Text(
                     'CANCELAR',
-                    style: GoogleFonts.manrope(
-                      fontSize: 12,
-                      letterSpacing: 1,
-                    ),
+                    style: GoogleFonts.manrope(fontSize: 12, letterSpacing: 1),
                   ),
                 ),
               ),
@@ -330,9 +329,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       if (!formKey.currentState!.validate()) return;
                       setSheet(() => cargando = true);
                       try {
-                        await context
-                            .read<AuthProvider>()
-                            .desactivar2fa(codigoCtrl.text.trim());
+                        await context.read<AuthProvider>().desactivar2fa(
+                          codigoCtrl.text.trim(),
+                        );
                         if (sheetCtx.mounted) Navigator.pop(sheetCtx);
                         if (!mounted) return;
                         setState(() {});
@@ -445,11 +444,11 @@ class _PerfilScreenState extends State<PerfilScreen> {
                         try {
                           final auth = context.read<AuthProvider>();
                           if (activar) {
-                            await auth
-                                .activarEmail2FA(codigoCtrl.text.trim());
+                            await auth.activarEmail2FA(codigoCtrl.text.trim());
                           } else {
-                            await auth
-                                .desactivarEmail2FA(codigoCtrl.text.trim());
+                            await auth.desactivarEmail2FA(
+                              codigoCtrl.text.trim(),
+                            );
                           }
                           if (sheetCtx.mounted) Navigator.pop(sheetCtx);
                           if (!mounted) return;
@@ -564,9 +563,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       setSheet(() => cargando = true);
                       try {
                         await context.read<AuthProvider>().cambiarContrasena(
-                              passwordActual: actualCtrl.text,
-                              nuevaPassword: nuevaCtrl.text,
-                            );
+                          passwordActual: actualCtrl.text,
+                          nuevaPassword: nuevaCtrl.text,
+                        );
                         if (sheetCtx.mounted) Navigator.pop(sheetCtx);
                         if (!mounted) return;
                         _snack(
@@ -743,8 +742,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
       width: double.infinity,
       height: 52,
       child: ElevatedButton(
-        onPressed:
-            (_hayCambios && !_isLoading) ? _guardarCambios : null,
+        onPressed: (_hayCambios && !_isLoading) ? _guardarCambios : null,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.button,
           disabledBackgroundColor: Colors.white.withValues(alpha: 0.08),
@@ -810,9 +808,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
             label: 'Historial de pedidos',
             onTap: () => Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (_) => const HistorialPedidosScreen(),
-              ),
+              MaterialPageRoute(builder: (_) => const HistorialPedidosScreen()),
             ),
           ),
           const SizedBox(height: 10),
@@ -971,8 +967,10 @@ class _PerfilScreenState extends State<PerfilScreen> {
         errorBorder: _fieldBorder(AppColors.error),
         focusedErrorBorder: _fieldBorder(AppColors.error, width: 2),
         errorStyle: const TextStyle(color: AppColors.error),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
       ),
     );
   }
@@ -995,13 +993,14 @@ class _PerfilScreenState extends State<PerfilScreen> {
           color: Colors.white.withValues(alpha: 0.5),
           fontSize: 14,
         ),
-        prefixIcon:
-            const Icon(Icons.lock_outline, color: AppColors.button, size: 20),
+        prefixIcon: const Icon(
+          Icons.lock_outline,
+          color: AppColors.button,
+          size: 20,
+        ),
         suffixIcon: IconButton(
           icon: Icon(
-            oculto
-                ? Icons.visibility_off_outlined
-                : Icons.visibility_outlined,
+            oculto ? Icons.visibility_off_outlined : Icons.visibility_outlined,
             color: Colors.white38,
             size: 20,
           ),
@@ -1014,8 +1013,10 @@ class _PerfilScreenState extends State<PerfilScreen> {
         errorBorder: _fieldBorder(AppColors.error),
         focusedErrorBorder: _fieldBorder(AppColors.error, width: 2),
         errorStyle: const TextStyle(color: AppColors.error),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
       ),
     );
   }
@@ -1050,24 +1051,24 @@ class _PerfilScreenState extends State<PerfilScreen> {
       subtitulo: habilitado
           ? 'Activada · toca para desactivar'
           : 'No activada · toca para activar',
-      subtituloColor:
-          habilitado ? AppColors.disp.withValues(alpha: 0.8) : Colors.white38,
+      subtituloColor: habilitado
+          ? AppColors.disp.withValues(alpha: 0.8)
+          : Colors.white38,
       onTap: habilitado ? _mostrarDesactivar2FA : _mostrarActivar2FA,
     );
   }
 
   Widget _buildAccionEmail2fa({required bool habilitado}) {
     return _AccionTileToggle(
-      icono: habilitado
-          ? Icons.mark_email_read_outlined
-          : Icons.email_outlined,
+      icono: habilitado ? Icons.mark_email_read_outlined : Icons.email_outlined,
       iconColor: habilitado ? _kBlue2FA : Colors.white70,
       titulo: 'Verificación por correo',
       subtitulo: habilitado
           ? 'Activada · toca para desactivar'
           : 'No activada · toca para activar',
-      subtituloColor:
-          habilitado ? _kBlue2FA.withValues(alpha: 0.8) : Colors.white38,
+      subtituloColor: habilitado
+          ? _kBlue2FA.withValues(alpha: 0.8)
+          : Colors.white38,
       onTap: () => _mostrarGestionEmail2FA(activar: !habilitado),
     );
   }
@@ -1200,11 +1201,7 @@ class _AccionTileToggle extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(
-                Icons.chevron_right,
-                color: Colors.white24,
-                size: 20,
-              ),
+              const Icon(Icons.chevron_right, color: Colors.white24, size: 20),
             ],
           ),
         ),
@@ -1222,8 +1219,9 @@ class _BottomSheetContainer extends StatelessWidget {
     return Container(
       decoration: const BoxDecoration(
         color: AppColors.gold,
-        borderRadius:
-            BorderRadius.vertical(top: Radius.circular(_kSheetTopRadius)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(_kSheetTopRadius),
+        ),
       ),
       padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
       child: child,
@@ -1290,29 +1288,29 @@ class _SheetButton extends StatelessWidget {
                 ),
               )
             : icon != null
-                ? Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(icon, size: 18),
-                      const SizedBox(width: 8),
-                      Text(
-                        label,
-                        style: GoogleFonts.manrope(
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.8,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
-                  )
-                : Text(
+            ? Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, size: 18),
+                  const SizedBox(width: 8),
+                  Text(
                     label,
                     style: GoogleFonts.manrope(
                       fontWeight: FontWeight.bold,
-                      letterSpacing: 1,
+                      letterSpacing: 0.8,
                       fontSize: 13,
                     ),
                   ),
+                ],
+              )
+            : Text(
+                label,
+                style: GoogleFonts.manrope(
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1,
+                  fontSize: 13,
+                ),
+              ),
       ),
     );
   }

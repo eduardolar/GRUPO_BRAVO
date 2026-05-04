@@ -42,13 +42,15 @@ class PedidoProvider extends ChangeNotifier {
 
     try {
       final items = cart.items.values
-          .map((item) => {
-                'producto_id': item.producto.id,
-                'nombre': item.producto.nombre,
-                'cantidad': item.cantidad,
-                'precio': item.producto.precio,
-                'sin': item.ingredientesExcluidos,
-              })
+          .map(
+            (item) => {
+              'producto_id': item.producto.id,
+              'nombre': item.producto.nombre,
+              'cantidad': item.cantidad,
+              'precio': item.producto.precio,
+              'sin': item.ingredientesExcluidos,
+            },
+          )
           .toList();
 
       final resultado = await ApiService.crearPedido(

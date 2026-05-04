@@ -23,8 +23,10 @@ class CodigoRecuperacionScreen extends StatefulWidget {
 }
 
 class _CodigoRecuperacionScreenState extends State<CodigoRecuperacionScreen> {
-  final List<TextEditingController> _controllers =
-      List.generate(6, (_) => TextEditingController());
+  final List<TextEditingController> _controllers = List.generate(
+    6,
+    (_) => TextEditingController(),
+  );
   final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
 
   bool _isLoading = false;
@@ -133,10 +135,7 @@ class _CodigoRecuperacionScreenState extends State<CodigoRecuperacionScreen> {
             onComplete: _continuar,
           ),
           const SizedBox(height: 40),
-          PrimaryButton(
-            label: 'CONTINUAR',
-            onPressed: _continuar,
-          ),
+          PrimaryButton(label: 'CONTINUAR', onPressed: _continuar),
           _buildReenviarSeccion(),
         ],
       ),

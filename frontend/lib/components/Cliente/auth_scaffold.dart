@@ -33,9 +33,7 @@ class ClienteAuthScaffold extends StatelessWidget {
             ),
           ),
           Positioned.fill(
-            child: Container(
-              color: AppColors.shadow.withValues(alpha: 0.85),
-            ),
+            child: Container(color: AppColors.shadow.withValues(alpha: 0.85)),
           ),
           SafeArea(
             child: Center(
@@ -43,7 +41,8 @@ class ClienteAuthScaffold extends StatelessWidget {
                 constraints: BoxConstraints(maxWidth: maxWidth),
                 child: SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
-                  padding: padding ??
+                  padding:
+                      padding ??
                       const EdgeInsets.symmetric(horizontal: 30, vertical: 20),
                   child: child,
                 ),

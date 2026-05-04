@@ -71,7 +71,13 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
     'cliente': Icons.person_outline,
   };
 
-  static const _rolesPersonal = ['administrador', 'cocinero', 'camarero', 'mesero', 'trabajador'];
+  static const _rolesPersonal = [
+    'administrador',
+    'cocinero',
+    'camarero',
+    'mesero',
+    'trabajador',
+  ];
 
   List<Usuario> _filtrarPorRestaurante(List<Usuario> todos) {
     final idFiltro = (widget.restauranteId ?? '').trim().toLowerCase();
@@ -100,7 +106,9 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
   }
 
   Future<void> _irACrearUsuario() async {
-    final rolFijo = widget.rolAFiltrar.toLowerCase() == 'administrador' ? 'administrador' : null;
+    final rolFijo = widget.rolAFiltrar.toLowerCase() == 'administrador'
+        ? 'administrador'
+        : null;
     await Navigator.push(
       context,
       MaterialPageRoute(
@@ -136,16 +144,30 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
               style: GoogleFonts.manrope(color: Colors.white, fontSize: 14),
               decoration: InputDecoration(
                 hintText: 'Buscar por nombre o email...',
-                hintStyle: GoogleFonts.manrope(color: Colors.white38, fontSize: 14),
-                prefixIcon: const Icon(Icons.search, color: Colors.white38, size: 20),
+                hintStyle: GoogleFonts.manrope(
+                  color: Colors.white38,
+                  fontSize: 14,
+                ),
+                prefixIcon: const Icon(
+                  Icons.search,
+                  color: Colors.white38,
+                  size: 20,
+                ),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
-                        icon: const Icon(Icons.close, color: Colors.white38, size: 18),
+                        icon: const Icon(
+                          Icons.close,
+                          color: Colors.white38,
+                          size: 18,
+                        ),
                         onPressed: () => _searchController.clear(),
                       )
                     : null,
                 border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 14,
+                ),
               ),
             ),
           ),
@@ -162,7 +184,10 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
         children: [
           // Fondo
           Positioned.fill(
-            child: Image.asset('assets/images/Bravo restaurante.jpg', fit: BoxFit.cover),
+            child: Image.asset(
+              'assets/images/Bravo restaurante.jpg',
+              fit: BoxFit.cover,
+            ),
           ),
           Positioned.fill(
             child: Container(
@@ -191,7 +216,9 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
                     builder: (context, provider, _) {
                       if (provider.cargando) {
                         return const Center(
-                          child: CircularProgressIndicator(color: AppColors.button),
+                          child: CircularProgressIndicator(
+                            color: AppColors.button,
+                          ),
                         );
                       }
                       if (provider.error != null) {
@@ -203,7 +230,9 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
                         );
                       }
 
-                      final lista = _filtrarPorBusqueda(_filtrarPorRestaurante(provider.usuarios));
+                      final lista = _filtrarPorBusqueda(
+                        _filtrarPorRestaurante(provider.usuarios),
+                      );
                       final grupos = _agruparPorRol(lista);
 
                       if (grupos.isEmpty) {
@@ -221,13 +250,19 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
                                 children: [
                                   for (final rol in [..._rolesOrden, 'otros'])
                                     if (grupos.containsKey(rol)) ...[
-                                      _buildSeccionHeader(rol, grupos[rol]!.length),
+                                      _buildSeccionHeader(
+                                        rol,
+                                        grupos[rol]!.length,
+                                      ),
                                       ...grupos[rol]!.map(
                                         (u) => _UsuarioTile(
                                           usuario: u,
-                                          onDelete: () => _confirmarBorrado(context, u),
-                                          onEdit: () => _abrirEdicion(context, u),
-                                          onToggleActivo: () => _toggleActivo(context, u),
+                                          onDelete: () =>
+                                              _confirmarBorrado(context, u),
+                                          onEdit: () =>
+                                              _abrirEdicion(context, u),
+                                          onToggleActivo: () =>
+                                              _toggleActivo(context, u),
                                         ),
                                       ),
                                       const SizedBox(height: 16),
@@ -250,7 +285,11 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
             top: 20,
             left: 10,
             child: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+              icon: const Icon(
+                Icons.arrow_back_ios_new,
+                color: Colors.white,
+                size: 20,
+              ),
               onPressed: () => Navigator.pop(context),
             ),
           ),
@@ -270,7 +309,9 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  widget.rolAFiltrar.toLowerCase() == 'cliente' ? 'Clientes' : 'Personal',
+                  widget.rolAFiltrar.toLowerCase() == 'cliente'
+                      ? 'Clientes'
+                      : 'Personal',
                   style: const TextStyle(
                     fontFamily: 'Playfair Display',
                     color: Colors.white,
@@ -355,10 +396,17 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
           const SizedBox(height: 24),
           TextButton.icon(
             onPressed: _irACrearUsuario,
-            icon: const Icon(Icons.person_add_outlined, color: AppColors.button, size: 18),
+            icon: const Icon(
+              Icons.person_add_outlined,
+              color: AppColors.button,
+              size: 18,
+            ),
             label: Text(
               'Agregar el primero',
-              style: GoogleFonts.manrope(color: AppColors.button, fontWeight: FontWeight.w600),
+              style: GoogleFonts.manrope(
+                color: AppColors.button,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -369,17 +417,24 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
   Future<void> _toggleActivo(BuildContext context, Usuario user) async {
     final messenger = ScaffoldMessenger.of(context);
     final nuevoEstado = !user.activo;
-    final ok = await context.read<UsuarioProvider>().toggleActivo(user.id, nuevoEstado);
+    final ok = await context.read<UsuarioProvider>().toggleActivo(
+      user.id,
+      nuevoEstado,
+    );
     if (!mounted) return;
-    messenger.showSnackBar(SnackBar(
-      content: Text(
-        ok
-            ? (nuevoEstado ? 'Usuario activado' : 'Usuario suspendido')
-            : 'Error al cambiar estado',
-        style: GoogleFonts.manrope(),
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          ok
+              ? (nuevoEstado ? 'Usuario activado' : 'Usuario suspendido')
+              : 'Error al cambiar estado',
+          style: GoogleFonts.manrope(),
+        ),
+        backgroundColor: ok
+            ? (nuevoEstado ? AppColors.button : Colors.orange)
+            : AppColors.error,
       ),
-      backgroundColor: ok ? (nuevoEstado ? AppColors.button : Colors.orange) : AppColors.error,
-    ));
+    );
   }
 
   void _abrirEdicion(BuildContext context, Usuario user) {
@@ -391,7 +446,10 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
       builder: (_) => AlertDialog(
         backgroundColor: AppColors.background,
         shape: const RoundedRectangleBorder(),
-        title: Text('Editar usuario', style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+        title: Text(
+          'Editar usuario',
+          style: GoogleFonts.manrope(fontWeight: FontWeight.w700),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -403,7 +461,10 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancelar', style: GoogleFonts.manrope(color: AppColors.textSecondary)),
+            child: Text(
+              'Cancelar',
+              style: GoogleFonts.manrope(color: AppColors.textSecondary),
+            ),
           ),
           TextButton(
             onPressed: () async {
@@ -413,21 +474,29 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
               final correo = emailCtrl.text.trim();
               if (nombre.isEmpty || correo.isEmpty) return;
               final ok = await context.read<UsuarioProvider>().editar(
-                    user.id,
-                    nombre: nombre,
-                    correo: correo,
-                  );
+                user.id,
+                nombre: nombre,
+                correo: correo,
+              );
               if (!mounted) return;
               nav.pop();
-              messenger.showSnackBar(SnackBar(
-                content: Text(
-                  ok ? 'Usuario actualizado' : 'Error al actualizar',
-                  style: GoogleFonts.manrope(),
+              messenger.showSnackBar(
+                SnackBar(
+                  content: Text(
+                    ok ? 'Usuario actualizado' : 'Error al actualizar',
+                    style: GoogleFonts.manrope(),
+                  ),
+                  backgroundColor: ok ? AppColors.button : AppColors.error,
                 ),
-                backgroundColor: ok ? AppColors.button : AppColors.error,
-              ));
+              );
             },
-            child: Text('Guardar', style: GoogleFonts.manrope(color: AppColors.button, fontWeight: FontWeight.w700)),
+            child: Text(
+              'Guardar',
+              style: GoogleFonts.manrope(
+                color: AppColors.button,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
         ],
       ),
@@ -440,31 +509,53 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
       builder: (_) => AlertDialog(
         backgroundColor: AppColors.background,
         shape: const RoundedRectangleBorder(),
-        title: Text('¿Eliminar usuario?', style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+        title: Text(
+          '¿Eliminar usuario?',
+          style: GoogleFonts.manrope(fontWeight: FontWeight.w700),
+        ),
         content: Text(
           '¿Confirmas la eliminación de ${user.nombre}? Esta acción no se puede deshacer.',
-          style: GoogleFonts.manrope(color: AppColors.textSecondary, fontSize: 13),
+          style: GoogleFonts.manrope(
+            color: AppColors.textSecondary,
+            fontSize: 13,
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancelar', style: GoogleFonts.manrope(color: AppColors.textSecondary)),
+            child: Text(
+              'Cancelar',
+              style: GoogleFonts.manrope(color: AppColors.textSecondary),
+            ),
           ),
           TextButton(
             onPressed: () async {
               final nav = Navigator.of(context);
               final messenger = ScaffoldMessenger.of(context);
-              final borrado = await context.read<UsuarioProvider>().eliminar(user.id);
+              final borrado = await context.read<UsuarioProvider>().eliminar(
+                user.id,
+              );
               if (borrado) {
                 if (!mounted) return;
                 nav.pop();
-                messenger.showSnackBar(SnackBar(
-                  content: Text('Usuario eliminado', style: GoogleFonts.manrope()),
-                  backgroundColor: AppColors.button,
-                ));
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Usuario eliminado',
+                      style: GoogleFonts.manrope(),
+                    ),
+                    backgroundColor: AppColors.button,
+                  ),
+                );
               }
             },
-            child: Text('Eliminar', style: GoogleFonts.manrope(color: AppColors.error, fontWeight: FontWeight.w700)),
+            child: Text(
+              'Eliminar',
+              style: GoogleFonts.manrope(
+                color: AppColors.error,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
         ],
       ),
@@ -488,7 +579,11 @@ class _NuevoUsuarioButton extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.person_add_outlined, color: Colors.white, size: 18),
+              const Icon(
+                Icons.person_add_outlined,
+                color: Colors.white,
+                size: 18,
+              ),
               const SizedBox(width: 8),
               Text(
                 'NUEVO',
@@ -524,7 +619,12 @@ class _UsuarioTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final initials = usuario.nombre.isNotEmpty
-        ? usuario.nombre.trim().split(' ').map((e) => e.isNotEmpty ? e[0].toUpperCase() : '').take(2).join()
+        ? usuario.nombre
+              .trim()
+              .split(' ')
+              .map((e) => e.isNotEmpty ? e[0].toUpperCase() : '')
+              .take(2)
+              .join()
         : '?';
 
     final activo = usuario.activo;
@@ -533,7 +633,9 @@ class _UsuarioTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.07),
-        border: Border.all(color: activo ? Colors.white12 : Colors.orange.withValues(alpha: 0.3)),
+        border: Border.all(
+          color: activo ? Colors.white12 : Colors.orange.withValues(alpha: 0.3),
+        ),
       ),
       child: Row(
         children: [
@@ -569,7 +671,10 @@ class _UsuarioTile extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   usuario.email,
-                  style: GoogleFonts.manrope(fontSize: 12, color: Colors.white54),
+                  style: GoogleFonts.manrope(
+                    fontSize: 12,
+                    color: Colors.white54,
+                  ),
                 ),
                 const SizedBox(height: 5),
                 _BadgeEstadoCuenta(activo: activo),
@@ -579,7 +684,9 @@ class _UsuarioTile extends StatelessWidget {
           IconButton(
             icon: Icon(
               activo ? Icons.pause_circle_outline : Icons.play_circle_outline,
-              color: activo ? Colors.orange.withValues(alpha: 0.8) : Colors.greenAccent.withValues(alpha: 0.8),
+              color: activo
+                  ? Colors.orange.withValues(alpha: 0.8)
+                  : Colors.greenAccent.withValues(alpha: 0.8),
               size: 22,
             ),
             tooltip: activo ? 'Suspender' : 'Activar',
@@ -590,7 +697,11 @@ class _UsuarioTile extends StatelessWidget {
             onPressed: onEdit,
           ),
           IconButton(
-            icon: Icon(Icons.delete_outline, color: AppColors.error.withValues(alpha: 0.8), size: 22),
+            icon: Icon(
+              Icons.delete_outline,
+              color: AppColors.error.withValues(alpha: 0.8),
+              size: 22,
+            ),
             onPressed: onDelete,
           ),
           const SizedBox(width: 4),
@@ -678,7 +789,10 @@ class _CampoEdicion extends StatelessWidget {
             style: GoogleFonts.manrope(color: Colors.white, fontSize: 14),
             decoration: const InputDecoration(
               border: InputBorder.none,
-              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
             ),
           ),
         ),

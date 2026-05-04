@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:frontend/core/colors_style.dart';
@@ -79,12 +79,43 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
 
   // ── Constantes de texto ──
   static const _diasAbrev = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM'];
-  static const _mesesAbrev = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN',
-                               'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
-  static const _mesesCompletos = ['enero', 'febrero', 'marzo', 'abril', 'mayo',
-    'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
-  static const _diasCompletos = ['Lunes', 'Martes', 'Miércoles', 'Jueves',
-                                  'Viernes', 'Sábado', 'Domingo'];
+  static const _mesesAbrev = [
+    'ENE',
+    'FEB',
+    'MAR',
+    'ABR',
+    'MAY',
+    'JUN',
+    'JUL',
+    'AGO',
+    'SEP',
+    'OCT',
+    'NOV',
+    'DIC',
+  ];
+  static const _mesesCompletos = [
+    'enero',
+    'febrero',
+    'marzo',
+    'abril',
+    'mayo',
+    'junio',
+    'julio',
+    'agosto',
+    'septiembre',
+    'octubre',
+    'noviembre',
+    'diciembre',
+  ];
+  static const _diasCompletos = [
+    'Lunes',
+    'Martes',
+    'Miércoles',
+    'Jueves',
+    'Viernes',
+    'Sábado',
+    'Domingo',
+  ];
 
   @override
   void initState() {
@@ -132,7 +163,9 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
         setState(() => _restaurante = matches.first);
         _cargarDisponibilidad();
       }
-    } catch (e) { debugPrint('$e'); }
+    } catch (e) {
+      debugPrint('$e');
+    }
   }
 
   static int _parseMins(String t) {
@@ -191,10 +224,15 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
     try {
       final mesas = await ApiService.obtenerMesas();
       if (mesas.isNotEmpty && mounted) {
-        setState(() => _maxComensales =
-            mesas.map((m) => m.capacidad).reduce((a, b) => a > b ? a : b));
+        setState(
+          () => _maxComensales = mesas
+              .map((m) => m.capacidad)
+              .reduce((a, b) => a > b ? a : b),
+        );
       }
-    } catch (e) { debugPrint('$e'); }
+    } catch (e) {
+      debugPrint('$e');
+    }
   }
 
   Future<void> _cargarDisponibilidad() async {
@@ -291,7 +329,9 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
     setState(() => _cargandoReservas = true);
     try {
       final auth = Provider.of<AuthProvider>(context, listen: false);
-      final r = await ApiService.obtenerReservas(userId: auth.usuarioActual?.id ?? '');
+      final r = await ApiService.obtenerReservas(
+        userId: auth.usuarioActual?.id ?? '',
+      );
       if (!mounted) return;
       setState(() => _misReservas = r);
     } catch (e) {
@@ -308,8 +348,13 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.panel,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('¿Cancelar reserva?',
-            style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
+        title: const Text(
+          '¿Cancelar reserva?',
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         content: Text(
           '${_fechaLarga(reserva.fecha)} · ${reserva.hora}',
           style: const TextStyle(color: AppColors.textSecondary),
@@ -317,13 +362,23 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('MANTENER',
-                style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+            child: const Text(
+              'MANTENER',
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('CANCELAR RESERVA',
-                style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold)),
+            child: const Text(
+              'CANCELAR RESERVA',
+              style: TextStyle(
+                color: AppColors.error,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
       ),
@@ -344,13 +399,21 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
 
   /// La reserva se puede editar si falta más de 1 día para su fecha.
   bool _puedeEditar(DateTime fecha) {
-    final hoy = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+    final hoy = DateTime(
+      DateTime.now().year,
+      DateTime.now().month,
+      DateTime.now().day,
+    );
     return fecha.difference(hoy).inDays > 1;
   }
 
   /// La reserva se puede eliminar si su fecha no ha pasado (hoy incluido).
   bool _puedeEliminar(DateTime fecha) {
-    final hoy = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+    final hoy = DateTime(
+      DateTime.now().year,
+      DateTime.now().month,
+      DateTime.now().day,
+    );
     return !fecha.isBefore(hoy);
   }
 
@@ -362,7 +425,9 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDlg) => AlertDialog(
           backgroundColor: AppColors.panel,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: const Text(
             'Editar comensales',
             style: TextStyle(
@@ -376,7 +441,10 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
             children: [
               Text(
                 _fechaLarga(reserva.fecha),
-                style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 13,
+                ),
               ),
               const SizedBox(height: 24),
               Row(
@@ -407,7 +475,9 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
                         Text(
                           editados == 1 ? 'persona' : 'personas',
                           style: const TextStyle(
-                              color: AppColors.textSecondary, fontSize: 12),
+                            color: AppColors.textSecondary,
+                            fontSize: 12,
+                          ),
                         ),
                       ],
                     ),
@@ -425,14 +495,20 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('CANCELAR',
-                  style: TextStyle(color: AppColors.textSecondary)),
+              child: const Text(
+                'CANCELAR',
+                style: TextStyle(color: AppColors.textSecondary),
+              ),
             ),
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('GUARDAR',
-                  style: TextStyle(
-                      color: AppColors.button, fontWeight: FontWeight.bold)),
+              child: const Text(
+                'GUARDAR',
+                style: TextStyle(
+                  color: AppColors.button,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ],
         ),
@@ -454,7 +530,9 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
         _snack('Reserva actualizada');
       }
     } catch (e) {
-      if (mounted) _snack(e.toString().replaceAll('Exception: ', ''), error: true);
+      if (mounted) {
+        _snack(e.toString().replaceAll('Exception: ', ''), error: true);
+      }
     }
   }
 
@@ -469,11 +547,13 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
           color: activo
               ? AppColors.button.withValues(alpha: 0.1)
               : Colors.transparent,
-          border: Border.all(
-              color: activo ? AppColors.button : AppColors.line),
+          border: Border.all(color: activo ? AppColors.button : AppColors.line),
         ),
-        child: Icon(icono,
-            color: activo ? AppColors.button : AppColors.line, size: 20),
+        child: Icon(
+          icono,
+          color: activo ? AppColors.button : AppColors.line,
+          size: 20,
+        ),
       ),
     );
   }
@@ -497,11 +577,13 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
   }
 
   void _snack(String msg, {bool error = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg),
-      backgroundColor: error ? AppColors.error : AppColors.disp,
-      behavior: SnackBarBehavior.floating,
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: error ? AppColors.error : AppColors.disp,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -515,7 +597,10 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
       body: Stack(
         children: [
           Positioned.fill(
-            child: Image.asset('assets/images/Bravo restaurante.jpg', fit: BoxFit.cover),
+            child: Image.asset(
+              'assets/images/Bravo restaurante.jpg',
+              fit: BoxFit.cover,
+            ),
           ),
           Positioned.fill(
             child: Container(color: AppColors.shadow.withValues(alpha: 0.88)),
@@ -546,7 +631,11 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
         children: [
           IconButton(
             tooltip: 'Volver',
-            icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+            icon: const Icon(
+              Icons.arrow_back_ios_new,
+              color: Colors.white,
+              size: 20,
+            ),
             onPressed: () => Navigator.pop(context),
           ),
           const Expanded(
@@ -563,9 +652,15 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
           ),
           IconButton(
             tooltip: 'Mi perfil',
-            icon: const Icon(Icons.person_outline, color: Colors.white, size: 26),
+            icon: const Icon(
+              Icons.person_outline,
+              color: Colors.white,
+              size: 26,
+            ),
             onPressed: () => Navigator.push(
-                context, MaterialPageRoute(builder: (_) => const PerfilScreen())),
+              context,
+              MaterialPageRoute(builder: (_) => const PerfilScreen()),
+            ),
           ),
         ],
       ),
@@ -581,10 +676,17 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
         indicatorWeight: 2,
         labelColor: Colors.white,
         unselectedLabelColor: Colors.white38,
-        labelStyle: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.5, fontSize: 13),
+        labelStyle: const TextStyle(
+          fontWeight: FontWeight.bold,
+          letterSpacing: 1.5,
+          fontSize: 13,
+        ),
         unselectedLabelStyle: const TextStyle(fontSize: 13),
         dividerColor: Colors.white12,
-        tabs: const [Tab(text: 'NUEVA RESERVA'), Tab(text: 'MIS RESERVAS')],
+        tabs: const [
+          Tab(text: 'NUEVA RESERVA'),
+          Tab(text: 'MIS RESERVAS'),
+        ],
       ),
     );
   }
@@ -624,14 +726,16 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
                         hint: 'Nombre completo',
                         icono: Icons.person_outline,
                         capitalizacion: TextCapitalization.words,
-                        validator: (v) =>
-                            (v == null || v.trim().isEmpty) ? 'El nombre es obligatorio' : null,
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'El nombre es obligatorio'
+                            : null,
                       ),
                       const SizedBox(height: 20),
                       _buildSeccion('NOTAS ESPECIALES'),
                       _buildCampoTexto(
                         controller: _notasController,
-                        hint: 'Alergias, celebración, silla para niños… (opcional)',
+                        hint:
+                            'Alergias, celebración, silla para niños… (opcional)',
                         icono: Icons.note_outlined,
                         maxLines: 3,
                       ),
@@ -642,10 +746,7 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
             ),
           ),
         ),
-        Positioned(
-          bottom: 0, left: 0, right: 0,
-          child: _buildBarraConfirmar(),
-        ),
+        Positioned(bottom: 0, left: 0, right: 0, child: _buildBarraConfirmar()),
       ],
     );
   }
@@ -832,7 +933,11 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
             ),
             child: Row(
               children: [
-                const Icon(Icons.schedule_outlined, color: Colors.white38, size: 16),
+                const Icon(
+                  Icons.schedule_outlined,
+                  color: Colors.white38,
+                  size: 16,
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
@@ -869,15 +974,15 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
                   color: sel
                       ? AppColors.button
                       : disponible
-                          ? AppColors.panel.withValues(alpha: 0.9)
-                          : Colors.white.withValues(alpha: 0.04),
+                      ? AppColors.panel.withValues(alpha: 0.9)
+                      : Colors.white.withValues(alpha: 0.04),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
                     color: sel
                         ? AppColors.button
                         : disponible
-                            ? Colors.white24
-                            : Colors.white10,
+                        ? Colors.white24
+                        : Colors.white10,
                   ),
                 ),
                 child: Column(
@@ -889,8 +994,8 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
                         color: sel
                             ? Colors.white
                             : disponible
-                                ? AppColors.textPrimary
-                                : Colors.white24,
+                            ? AppColors.textPrimary
+                            : Colors.white24,
                         fontWeight: FontWeight.bold,
                         fontSize: fontSize + 2,
                       ),
@@ -902,8 +1007,8 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
                         color: sel
                             ? Colors.white70
                             : disponible
-                                ? AppColors.disp
-                                : AppColors.error,
+                            ? AppColors.disp
+                            : AppColors.error,
                         fontSize: fontSize,
                         fontWeight: FontWeight.w600,
                       ),
@@ -929,7 +1034,11 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
       ),
       child: Row(
         children: [
-          _botonComensales(Icons.remove, () => _cambiarComensales(-1), _numComensales > 1),
+          _botonComensales(
+            Icons.remove,
+            () => _cambiarComensales(-1),
+            _numComensales > 1,
+          ),
           const Spacer(),
           Column(
             children: [
@@ -958,7 +1067,11 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
             ],
           ),
           const Spacer(),
-          _botonComensales(Icons.add, () => _cambiarComensales(1), _numComensales < _maxComensales),
+          _botonComensales(
+            Icons.add,
+            () => _cambiarComensales(1),
+            _numComensales < _maxComensales,
+          ),
         ],
       ),
     );
@@ -976,12 +1089,13 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
           color: activo
               ? AppColors.button.withValues(alpha: 0.12)
               : Colors.transparent,
-          border: Border.all(
-            color: activo ? AppColors.button : AppColors.line,
-          ),
+          border: Border.all(color: activo ? AppColors.button : AppColors.line),
         ),
-        child: Icon(icono,
-            color: activo ? AppColors.button : AppColors.line, size: 20),
+        child: Icon(
+          icono,
+          color: activo ? AppColors.button : AppColors.line,
+          size: 20,
+        ),
       ),
     );
   }
@@ -1004,12 +1118,16 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(
-            color: AppColors.textSecondary.withValues(alpha: 0.55), fontSize: 14),
+          color: AppColors.textSecondary.withValues(alpha: 0.55),
+          fontSize: 14,
+        ),
         prefixIcon: maxLines == 1
             ? Icon(icono, color: AppColors.button, size: 20)
             : null,
         contentPadding: EdgeInsets.symmetric(
-            horizontal: maxLines > 1 ? 16 : 0, vertical: 14),
+          horizontal: maxLines > 1 ? 16 : 0,
+          vertical: 14,
+        ),
         filled: true,
         fillColor: AppColors.panel.withValues(alpha: 0.92),
         enabledBorder: OutlineInputBorder(
@@ -1064,7 +1182,9 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
               children: [
                 _chipResumen(Icons.calendar_today, '$diasSemana $dia $mes'),
                 _chipResumen(
-                  _turnoSeleccionado == 'comida' ? Icons.wb_sunny_outlined : Icons.nightlight_outlined,
+                  _turnoSeleccionado == 'comida'
+                      ? Icons.wb_sunny_outlined
+                      : Icons.nightlight_outlined,
                   _turnoSeleccionado == 'comida' ? 'Comida' : 'Cena',
                 ),
                 _chipResumen(Icons.access_time, _hora(_horaSeleccionada)),
@@ -1081,14 +1201,22 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.button,
                 foregroundColor: Colors.white,
-                disabledBackgroundColor: AppColors.button.withValues(alpha: 0.5),
-                shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                disabledBackgroundColor: AppColors.button.withValues(
+                  alpha: 0.5,
+                ),
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.zero,
+                ),
                 elevation: 0,
               ),
               child: _isLoading
                   ? const SizedBox(
-                      width: 22, height: 22,
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2.5,
+                      ),
                     )
                   : const Text(
                       'CONFIRMAR RESERVA',
@@ -1135,14 +1263,24 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
     }
 
     final ahora = DateTime.now();
-    final proximas = _misReservas
-        .where((r) => !r.fecha.isBefore(DateTime(ahora.year, ahora.month, ahora.day)))
-        .toList()
-      ..sort((a, b) => a.fecha.compareTo(b.fecha));
-    final pasadas = _misReservas
-        .where((r) => r.fecha.isBefore(DateTime(ahora.year, ahora.month, ahora.day)))
-        .toList()
-      ..sort((a, b) => b.fecha.compareTo(a.fecha));
+    final proximas =
+        _misReservas
+            .where(
+              (r) => !r.fecha.isBefore(
+                DateTime(ahora.year, ahora.month, ahora.day),
+              ),
+            )
+            .toList()
+          ..sort((a, b) => a.fecha.compareTo(b.fecha));
+    final pasadas =
+        _misReservas
+            .where(
+              (r) => r.fecha.isBefore(
+                DateTime(ahora.year, ahora.month, ahora.day),
+              ),
+            )
+            .toList()
+          ..sort((a, b) => b.fecha.compareTo(a.fecha));
 
     if (_misReservas.isEmpty) {
       return _buildEstadoVacio();
@@ -1161,7 +1299,8 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
               padding: const EdgeInsets.symmetric(horizontal: 20),
               sliver: SliverList(
                 delegate: SliverChildBuilderDelegate(
-                  (_, i) => _buildTarjetaDismissible(proximas[i], pasada: false),
+                  (_, i) =>
+                      _buildTarjetaDismissible(proximas[i], pasada: false),
                   childCount: proximas.length,
                 ),
               ),
@@ -1198,8 +1337,11 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
               color: Colors.white.withValues(alpha: 0.06),
               border: Border.all(color: Colors.white12),
             ),
-            child: const Icon(Icons.calendar_month_outlined,
-                color: Colors.white24, size: 42),
+            child: const Icon(
+              Icons.calendar_month_outlined,
+              color: Colors.white24,
+              size: 42,
+            ),
           ),
           const SizedBox(height: 20),
           const Text(
@@ -1214,7 +1356,10 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
           const SizedBox(height: 8),
           Text(
             'Haz tu primera reserva en unos segundos',
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 14),
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.5),
+              fontSize: 14,
+            ),
           ),
           const SizedBox(height: 28),
           TextButton(
@@ -1296,7 +1441,14 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
           children: [
             Icon(Icons.delete_outline, color: Colors.white, size: 26),
             SizedBox(height: 4),
-            Text('CANCELAR', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+            Text(
+              'CANCELAR',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ],
         ),
       ),
@@ -1338,7 +1490,9 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
                     Text(
                       '${reserva.fecha.day}',
                       style: TextStyle(
-                        color: pasada ? AppColors.textSecondary : AppColors.button,
+                        color: pasada
+                            ? AppColors.textSecondary
+                            : AppColors.button,
                         fontSize: 30,
                         fontWeight: FontWeight.bold,
                         height: 1,
@@ -1347,7 +1501,9 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
                     Text(
                       _mesesAbrev[reserva.fecha.month - 1],
                       style: TextStyle(
-                        color: pasada ? AppColors.textSecondary : AppColors.button,
+                        color: pasada
+                            ? AppColors.textSecondary
+                            : AppColors.button,
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 1,
@@ -1375,11 +1531,17 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
                         children: [
                           _badgeSmall(
                             esCena ? 'Cena' : 'Comida',
-                            esCena ? Icons.nightlight_outlined : Icons.wb_sunny_outlined,
+                            esCena
+                                ? Icons.nightlight_outlined
+                                : Icons.wb_sunny_outlined,
                             esCena ? Colors.indigo : Colors.orange,
                           ),
                           const SizedBox(width: 6),
-                          _badgeSmall(reserva.estado, Icons.circle, colorEstado),
+                          _badgeSmall(
+                            reserva.estado,
+                            Icons.circle,
+                            colorEstado,
+                          ),
                           const Spacer(),
                           if (_puedeEditar(reserva.fecha))
                             GestureDetector(
@@ -1387,13 +1549,21 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
                               child: Container(
                                 padding: const EdgeInsets.all(6),
                                 decoration: BoxDecoration(
-                                  color: AppColors.button.withValues(alpha: 0.1),
+                                  color: AppColors.button.withValues(
+                                    alpha: 0.1,
+                                  ),
                                   borderRadius: BorderRadius.circular(8),
                                   border: Border.all(
-                                      color: AppColors.button.withValues(alpha: 0.3)),
+                                    color: AppColors.button.withValues(
+                                      alpha: 0.3,
+                                    ),
+                                  ),
                                 ),
-                                child: const Icon(Icons.group_outlined,
-                                    color: AppColors.button, size: 16),
+                                child: const Icon(
+                                  Icons.group_outlined,
+                                  color: AppColors.button,
+                                  size: 16,
+                                ),
                               ),
                             ),
                         ],
@@ -1401,40 +1571,68 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
                       const SizedBox(height: 10),
                       Row(
                         children: [
-                          const Icon(Icons.access_time, size: 14, color: AppColors.textSecondary),
+                          const Icon(
+                            Icons.access_time,
+                            size: 14,
+                            color: AppColors.textSecondary,
+                          ),
                           const SizedBox(width: 5),
-                          Text(reserva.hora,
-                              style: const TextStyle(
-                                  color: AppColors.textPrimary,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15)),
+                          Text(
+                            reserva.hora,
+                            style: const TextStyle(
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
+                          ),
                           const SizedBox(width: 16),
-                          const Icon(Icons.people_outline, size: 14, color: AppColors.textSecondary),
+                          const Icon(
+                            Icons.people_outline,
+                            size: 14,
+                            color: AppColors.textSecondary,
+                          ),
                           const SizedBox(width: 5),
-                          Text('${reserva.comensales}',
-                              style: const TextStyle(
-                                  color: AppColors.textPrimary, fontSize: 15)),
+                          Text(
+                            '${reserva.comensales}',
+                            style: const TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 15,
+                            ),
+                          ),
                           const SizedBox(width: 16),
-                          const Icon(Icons.table_bar, size: 14, color: AppColors.textSecondary),
+                          const Icon(
+                            Icons.table_bar,
+                            size: 14,
+                            color: AppColors.textSecondary,
+                          ),
                           const SizedBox(width: 5),
-                          Text('Mesa ${reserva.numeroMesa ?? "-"}',
-                              style: const TextStyle(
-                                  color: AppColors.textPrimary, fontSize: 15)),
+                          Text(
+                            'Mesa ${reserva.numeroMesa ?? "-"}',
+                            style: const TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 15,
+                            ),
+                          ),
                         ],
                       ),
-                      if (reserva.notas != null && reserva.notas!.isNotEmpty) ...[
+                      if (reserva.notas != null &&
+                          reserva.notas!.isNotEmpty) ...[
                         const SizedBox(height: 8),
                         Row(
                           children: [
-                            const Icon(Icons.note_outlined,
-                                size: 13, color: AppColors.textSecondary),
+                            const Icon(
+                              Icons.note_outlined,
+                              size: 13,
+                              color: AppColors.textSecondary,
+                            ),
                             const SizedBox(width: 5),
                             Expanded(
                               child: Text(
                                 reserva.notas!,
                                 style: const TextStyle(
-                                    color: AppColors.textSecondary,
-                                    fontSize: 12),
+                                  color: AppColors.textSecondary,
+                                  fontSize: 12,
+                                ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -1465,9 +1663,14 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
         children: [
           Icon(icono, size: 10, color: color),
           const SizedBox(width: 4),
-          Text(label,
-              style: TextStyle(
-                  color: color, fontWeight: FontWeight.bold, fontSize: 11)),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.bold,
+              fontSize: 11,
+            ),
+          ),
         ],
       ),
     );
@@ -1475,10 +1678,14 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
 
   Color _colorEstado(String estado) {
     switch (estado.toLowerCase()) {
-      case 'confirmada': return AppColors.disp;
-      case 'pendiente':  return Colors.orange;
-      case 'cancelada':  return AppColors.error;
-      default:           return const Color(0xFF3B82F6);
+      case 'confirmada':
+        return AppColors.disp;
+      case 'pendiente':
+        return Colors.orange;
+      case 'cancelada':
+        return AppColors.error;
+      default:
+        return const Color(0xFF3B82F6);
     }
   }
 }
@@ -1509,7 +1716,8 @@ class _ConfirmacionSheet extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 40, height: 4,
+            width: 40,
+            height: 4,
             decoration: BoxDecoration(
               color: AppColors.line,
               borderRadius: BorderRadius.circular(2),
@@ -1517,7 +1725,8 @@ class _ConfirmacionSheet extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           Container(
-            width: 70, height: 70,
+            width: 70,
+            height: 70,
             decoration: const BoxDecoration(
               shape: BoxShape.circle,
               color: AppColors.successBackground,
@@ -1537,7 +1746,9 @@ class _ConfirmacionSheet extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             'Te esperamos en Bravo',
-            style: TextStyle(color: AppColors.textSecondary.withValues(alpha: 0.8)),
+            style: TextStyle(
+              color: AppColors.textSecondary.withValues(alpha: 0.8),
+            ),
           ),
           const SizedBox(height: 24),
           Container(
@@ -1552,7 +1763,9 @@ class _ConfirmacionSheet extends StatelessWidget {
                 _fila(Icons.calendar_today, fechaLarga),
                 const Divider(color: AppColors.line, height: 16),
                 _fila(
-                  turno == 'comida' ? Icons.wb_sunny_outlined : Icons.nightlight_outlined,
+                  turno == 'comida'
+                      ? Icons.wb_sunny_outlined
+                      : Icons.nightlight_outlined,
                   turno == 'comida' ? 'Turno de comida' : 'Turno de cena',
                 ),
                 const Divider(color: AppColors.line, height: 16),
@@ -1573,7 +1786,9 @@ class _ConfirmacionSheet extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.button,
                 foregroundColor: Colors.white,
-                shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.zero,
+                ),
                 elevation: 0,
               ),
               child: const Text(
@@ -1593,8 +1808,10 @@ class _ConfirmacionSheet extends StatelessWidget {
         Icon(icono, color: AppColors.button, size: 18),
         const SizedBox(width: 12),
         Expanded(
-          child: Text(texto,
-              style: const TextStyle(color: AppColors.textPrimary, fontSize: 14)),
+          child: Text(
+            texto,
+            style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+          ),
         ),
       ],
     );

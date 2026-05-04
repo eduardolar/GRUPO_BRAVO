@@ -3,7 +3,7 @@ import 'package:intl/intl.dart';
 class Reserva {
   final String id;
   final String usuarioId;
-  final String nombreCompleto; 
+  final String nombreCompleto;
   final DateTime fecha;
   final String hora;
   final int comensales;
@@ -16,7 +16,7 @@ class Reserva {
   Reserva({
     required this.id,
     required this.usuarioId,
-    required this.nombreCompleto, 
+    required this.nombreCompleto,
     required this.fecha,
     required this.hora,
     required this.comensales,

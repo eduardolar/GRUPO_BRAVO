@@ -7,8 +7,13 @@ import '../../components/Cliente/entrada_texto.dart';
 
 class CrearUsuarioScreen extends StatefulWidget {
   final String restauranteId;
-  final String? rolFijo; // Si se pasa, el rol queda fijo y no se muestra el dropdown
-  const CrearUsuarioScreen({super.key, required this.restauranteId, this.rolFijo});
+  final String?
+  rolFijo; // Si se pasa, el rol queda fijo y no se muestra el dropdown
+  const CrearUsuarioScreen({
+    super.key,
+    required this.restauranteId,
+    this.rolFijo,
+  });
 
   @override
   State<CrearUsuarioScreen> createState() => _CrearUsuarioScreenState();
@@ -60,10 +65,15 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
           shape: const RoundedRectangleBorder(),
           title: Row(
             children: [
-              const Icon(Icons.mark_email_read_outlined, color: AppColors.button),
+              const Icon(
+                Icons.mark_email_read_outlined,
+                color: AppColors.button,
+              ),
               const SizedBox(width: 10),
               Text(
-                widget.rolFijo == 'administrador' ? '¡Administrador creado!' : '¡Personal registrado!',
+                widget.rolFijo == 'administrador'
+                    ? '¡Administrador creado!'
+                    : '¡Personal registrado!',
                 style: GoogleFonts.manrope(fontWeight: FontWeight.w700),
               ),
             ],
@@ -76,16 +86,26 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
                 widget.rolFijo == 'administrador'
                     ? 'Se ha enviado un correo de activación al nuevo administrador:'
                     : 'Se ha enviado un correo de activación al nuevo empleado:',
-                style: GoogleFonts.manrope(color: AppColors.textSecondary, fontSize: 13),
+                style: GoogleFonts.manrope(
+                  color: AppColors.textSecondary,
+                  fontSize: 13,
+                ),
               ),
               const SizedBox(height: 8),
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 color: AppColors.panel,
                 child: Text(
                   correo,
-                  style: GoogleFonts.manrope(fontWeight: FontWeight.w700, color: AppColors.button, fontSize: 13),
+                  style: GoogleFonts.manrope(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.button,
+                    fontSize: 13,
+                  ),
                 ),
               ),
               const SizedBox(height: 12),
@@ -93,7 +113,11 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
                 widget.rolFijo == 'administrador'
                     ? 'El administrador debe abrir la app, ir a "Activar mi cuenta" e ingresar el código recibido para establecer su contraseña.'
                     : 'El empleado debe abrir la app, ir a "Activar mi cuenta" e ingresar el código que recibió para establecer su contraseña definitiva.',
-                style: GoogleFonts.manrope(color: AppColors.textSecondary, fontSize: 12, height: 1.5),
+                style: GoogleFonts.manrope(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                  height: 1.5,
+                ),
               ),
             ],
           ),
@@ -104,11 +128,19 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.button,
                   foregroundColor: Colors.white,
-                  shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.zero,
+                  ),
                   elevation: 0,
                 ),
                 onPressed: () => Navigator.pop(ctx),
-                child: Text('ENTENDIDO', style: GoogleFonts.manrope(fontWeight: FontWeight.w700, letterSpacing: 1.5)),
+                child: Text(
+                  'ENTENDIDO',
+                  style: GoogleFonts.manrope(
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.5,
+                  ),
+                ),
               ),
             ),
           ],
@@ -118,7 +150,10 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error al crear el usuario. ¿Correo repetido?', style: GoogleFonts.manrope()),
+          content: Text(
+            'Error al crear el usuario. ¿Correo repetido?',
+            style: GoogleFonts.manrope(),
+          ),
           backgroundColor: AppColors.error,
         ),
       );
@@ -162,7 +197,10 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
                 constraints: const BoxConstraints(maxWidth: 500),
                 child: SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 20),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 30,
+                    vertical: 20,
+                  ),
                   child: Form(
                     key: _formKey,
                     child: Column(
@@ -185,7 +223,11 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
             top: 20,
             left: 10,
             child: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+              icon: const Icon(
+                Icons.arrow_back_ios_new,
+                color: Colors.white,
+                size: 20,
+              ),
               onPressed: () => Navigator.pop(context),
             ),
           ),
@@ -199,7 +241,9 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
       children: [
         const SizedBox(height: 40),
         Text(
-          widget.rolFijo == 'administrador' ? 'Nuevo Administrador' : 'Nuevo Personal',
+          widget.rolFijo == 'administrador'
+              ? 'Nuevo Administrador'
+              : 'Nuevo Personal',
           textAlign: TextAlign.center,
           style: const TextStyle(
             fontFamily: 'Playfair Display',
@@ -232,25 +276,33 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
           etiqueta: 'Nombre Completo',
           icono: Icons.badge_outlined,
           controlador: _nombreCtrl,
-          validador: (v) => v == null || v.isEmpty ? 'Este campo es obligatorio' : null,
+          validador: (v) =>
+              v == null || v.isEmpty ? 'Este campo es obligatorio' : null,
         ),
         EntradaTexto(
           etiqueta: 'Correo Electrónico',
           icono: Icons.email_outlined,
           tipoTeclado: TextInputType.emailAddress,
           controlador: _correoCtrl,
-          validador: (v) => v == null || v.isEmpty ? 'Este campo es obligatorio' : null,
+          validador: (v) =>
+              v == null || v.isEmpty ? 'Este campo es obligatorio' : null,
         ),
         if (widget.rolFijo == null)
           Padding(
             padding: const EdgeInsets.only(bottom: 20),
             child: DropdownButtonFormField<String>(
               initialValue: _rolSeleccionado,
-              style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 14,
+              ),
               decoration: InputDecoration(
                 labelText: 'Asignar Rol',
                 labelStyle: const TextStyle(color: AppColors.textSecondary),
-                prefixIcon: const Icon(Icons.settings_accessibility_outlined, color: AppColors.gold),
+                prefixIcon: const Icon(
+                  Icons.settings_accessibility_outlined,
+                  color: AppColors.gold,
+                ),
                 filled: true,
                 fillColor: AppColors.panel,
                 enabledBorder: OutlineInputBorder(
@@ -259,16 +311,27 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(15),
-                  borderSide: const BorderSide(color: AppColors.button, width: 2),
+                  borderSide: const BorderSide(
+                    color: AppColors.button,
+                    width: 2,
+                  ),
                 ),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
               ),
               items: const [
                 DropdownMenuItem(value: 'cocinero', child: Text('Cocinero')),
                 DropdownMenuItem(value: 'camarero', child: Text('Camarero')),
                 DropdownMenuItem(value: 'mesero', child: Text('Mesero')),
-                DropdownMenuItem(value: 'trabajador', child: Text('Trabajador (general)')),
-                DropdownMenuItem(value: 'administrador', child: Text('Administrador')),
+                DropdownMenuItem(
+                  value: 'trabajador',
+                  child: Text('Trabajador (general)'),
+                ),
+                DropdownMenuItem(
+                  value: 'administrador',
+                  child: Text('Administrador'),
+                ),
               ],
               onChanged: (val) => setState(() => _rolSeleccionado = val!),
             ),
@@ -293,14 +356,14 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
             ? const SizedBox(
                 height: 20,
                 width: 20,
-                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
               )
             : const Text(
                 'CREAR USUARIO',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 2,
-                ),
+                style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 2),
               ),
       ),
     );
