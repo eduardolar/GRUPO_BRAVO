@@ -11,7 +11,7 @@ import '../../components/Cliente/otp_fields.dart';
 
 // Importes para la redirección de roles
 import '../../models/usuario_model.dart';
-import '../cliente/menu_screen.dart';
+import '../cliente/carta_screen.dart';
 import '../cliente/seleccionar_restaurante_screen.dart' as sel_rest_cliente;
 import '../home_screen_trabajador.dart';
 import '../Administrador/admin_home_screen.dart';
@@ -100,7 +100,7 @@ class _VerificacionScreenState extends State<VerificacionScreen> {
             context,
             MaterialPageRoute(
               builder: (_) => sel_rest_cliente.SeleccionarRestauranteScreen(
-                siguiente: const MenuScreen(),
+                siguiente: const CartaScreen(),
               ),
             ),
             (route) => false,
@@ -134,7 +134,7 @@ class _VerificacionScreenState extends State<VerificacionScreen> {
         break;
       case RolUsuario.cliente:
         destino = sel_rest_cliente.SeleccionarRestauranteScreen(
-          siguiente: const MenuScreen(),
+          siguiente: const CartaScreen(),
         );
         break;
     }

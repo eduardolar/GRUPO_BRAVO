@@ -36,6 +36,7 @@ class ItemPedido(BaseModel):
     cantidad: int = Field(default=1, ge=1)
     precio: float = Field(ge=0)
     sin: list[str] = []
+    hecho: bool = False
 
 class UsuarioRegistro(BaseModel):
     nombre: str

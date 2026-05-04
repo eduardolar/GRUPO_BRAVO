@@ -42,7 +42,7 @@ class ProductoCard extends StatelessWidget {
             child: CachedNetworkImage(
               imageUrl: product.imagenUrl ?? '',
               fit: BoxFit.cover,
-              placeholder: (_, __) => Container(
+              placeholder: (_, _) => Container(
                 color: AppColors.background,
                 child: const Center(
                   child: SizedBox(
@@ -55,7 +55,7 @@ class ProductoCard extends StatelessWidget {
                   ),
                 ),
               ),
-              errorWidget: (_, __, ___) => const _ImagePlaceholder(),
+              errorWidget: (_, _, _) => const _ImagePlaceholder(),
             ),
           ),
 

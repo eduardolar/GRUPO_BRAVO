@@ -4,6 +4,7 @@ class ProductoPedido {
   final int cantidad;
   final double precio;
   final List<String> sin;
+  final bool hecho;
 
   ProductoPedido({
     this.productoId,
@@ -11,6 +12,7 @@ class ProductoPedido {
     required this.cantidad,
     required this.precio,
     this.sin = const [],
+    this.hecho = false,
   });
 
   factory ProductoPedido.fromMap(Map<String, dynamic> mapa) {
@@ -20,11 +22,18 @@ class ProductoPedido {
       cantidad: mapa['cantidad'] ?? 1,
       precio: (mapa['precio'] ?? 0.0).toDouble(),
       sin: (mapa['sin'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+      hecho: mapa['hecho'] == true,
     );
   }
 
   Map<String, dynamic> toMap() {
-    return {'nombre': nombre, 'cantidad': cantidad, 'precio': precio, 'sin': sin};
+    return {
+      'nombre': nombre,
+      'cantidad': cantidad,
+      'precio': precio,
+      'sin': sin,
+      'hecho': hecho,
+    };
   }
 
   double get subtotal => cantidad * precio;

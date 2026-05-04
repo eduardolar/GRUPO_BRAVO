@@ -4,7 +4,7 @@ import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/screens/cliente/scanner_qr.dart';
 import 'package:frontend/screens/cliente/login_screen.dart';
 import 'package:frontend/models/destino_login.dart';
-import 'package:frontend/screens/cliente/menu_screen.dart';
+import 'package:frontend/screens/cliente/carta_screen.dart';
 import 'package:frontend/providers/cart_provider.dart';
 import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/services/api_service.dart';
@@ -51,7 +51,7 @@ class _CodigoQrState extends State<CodigoQr> {
 
           if (!mounted) return;
           if (auth.estaAutenticado) {
-            navigator.push(MaterialPageRoute(builder: (_) => const MenuScreen()));
+            navigator.push(MaterialPageRoute(builder: (_) => const CartaScreen()));
           } else {
             navigator.push(MaterialPageRoute(
               builder: (_) => const LoginScreen(destino: DestinoLogin.menu),

@@ -8,9 +8,9 @@ import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/models/usuario_model.dart';
 import 'package:frontend/models/destino_login.dart';
 
-import 'package:frontend/screens/cliente/forgotten_password.dart';
-import 'package:frontend/screens/cliente/menu_screen.dart';
-import 'package:frontend/screens/cliente/register_screen.dart';
+import 'package:frontend/screens/cliente/recuperar_contrasena_screen.dart';
+import 'package:frontend/screens/cliente/carta_screen.dart';
+import 'package:frontend/screens/cliente/registro_screen.dart';
 import 'package:frontend/screens/cliente/reservar_mesa_screen.dart';
 import 'package:frontend/screens/cocinero/home_screen_cocinero.dart';
 import 'package:frontend/screens/home_screen_trabajador.dart';
@@ -109,7 +109,7 @@ class _LoginScreenState extends State<LoginScreen> {
       child: TextButton(
         onPressed: () => Navigator.push(
           context,
-          AppRoute.slide(const ForgottenPassword()),
+          AppRoute.slide(const RecuperarContrasenaScreen()),
         ),
         child: Text(
           '¿Olvidaste tu contraseña?',
@@ -140,7 +140,7 @@ class _LoginScreenState extends State<LoginScreen> {
             TextButton(
               onPressed: () => Navigator.push(
                 context,
-                AppRoute.slide(RegisterScreen(destino: widget.destino)),
+                AppRoute.slide(RegistroScreen(destino: widget.destino)),
               ),
               child: const Text(
                 'Regístrate',
@@ -232,7 +232,7 @@ class _LoginScreenState extends State<LoginScreen> {
         destino = sel_rest_cliente.SeleccionarRestauranteScreen(
           siguiente: widget.destino == DestinoLogin.reservar
               ? const ReservarMesaScreen()
-              : const MenuScreen(),
+              : const CartaScreen(),
         );
         break;
       case RolUsuario.cocinero:

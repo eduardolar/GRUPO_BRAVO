@@ -307,7 +307,7 @@ class _ContabilidadScreenState extends State<ContabilidadScreen> {
                         icon: Icons.euro_rounded,
                         label: 'INGRESOS',
                         value: '${_ingresos.toStringAsFixed(2)} €',
-                        sub: lista.isEmpty ? 'Sin pedidos' : '${_totalPedidos} pedido${_totalPedidos != 1 ? 's' : ''}',
+                        sub: lista.isEmpty ? 'Sin pedidos' : '$_totalPedidos pedido${_totalPedidos != 1 ? 's' : ''}',
                         highlight: true,
                       )),
                       const SizedBox(width: 12),

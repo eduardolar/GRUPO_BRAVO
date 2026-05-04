@@ -193,6 +193,16 @@ class ApiService {
     required String estado,
   }) => PedidoService.actualizarEstadoPedido(pedidoId: pedidoId, estado: estado);
 
+  static Future<Map<String, dynamic>> marcarItemHecho({
+    required String pedidoId,
+    required int itemIndex,
+    required bool hecho,
+  }) => PedidoService.marcarItemHecho(
+        pedidoId: pedidoId,
+        itemIndex: itemIndex,
+        hecho: hecho,
+      );
+
   static Future<Map<String, dynamic>?> obtenerPedidoActivoPorMesa(
           String mesaId) =>
       PedidoService.obtenerPedidoActivoPorMesa(mesaId);
