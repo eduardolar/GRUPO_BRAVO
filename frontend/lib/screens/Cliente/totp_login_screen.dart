@@ -10,7 +10,7 @@ import '../../components/Cliente/otp_fields.dart';
 import '../../components/Cliente/auth_scaffold.dart';
 import '../../components/Cliente/auth_header.dart';
 
-import 'menu_screen.dart';
+import 'carta_screen.dart';
 import 'reservar_mesa_screen.dart';
 import '../home_screen_trabajador.dart';
 import '../cocinero/home_screen_cocinero.dart';
@@ -81,7 +81,7 @@ class _TotpLoginScreenState extends State<TotpLoginScreen> {
       case RolUsuario.cliente:
         destino = widget.destino == DestinoLogin.reservar
             ? const ReservarMesaScreen()
-            : const MenuScreen();
+            : const CartaScreen();
         break;
     }
     Navigator.pushAndRemoveUntil(

@@ -242,7 +242,7 @@ class _CuponesScreenState extends State<CuponesScreen>
       child: ListView.separated(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
         itemCount: lista.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 10),
+        separatorBuilder: (_, _) => const SizedBox(height: 10),
         itemBuilder: (_, i) => _TarjetaCupon(
           cupon: lista[i],
           onToggle: () => _toggleActivo(lista[i]),
@@ -374,7 +374,7 @@ class _TarjetaCupon extends StatelessWidget {
                   // Switch activo
                   Switch.adaptive(
                     value: c.activo,
-                    activeColor: _kGreen,
+                    activeThumbColor: _kGreen,
                     inactiveThumbColor: _kSub,
                     onChanged: (_) => onToggle(),
                   ),

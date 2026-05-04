@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../components/Cliente/auth_header.dart';
+import '../../components/Cliente/auth_scaffold.dart';
+import '../../components/Cliente/entrada_texto.dart';
+import '../../components/Cliente/primary_button.dart';
 import '../../core/app_snackbar.dart';
 import '../../providers/auth_provider.dart';
-import '../../components/Cliente/entrada_texto.dart';
-import '../../components/Cliente/auth_scaffold.dart';
-import '../../components/Cliente/auth_header.dart';
-import '../../components/Cliente/primary_button.dart';
 import 'login_screen.dart';
 
 class NuevaContrasenaScreen extends StatefulWidget {
@@ -25,8 +25,8 @@ class NuevaContrasenaScreen extends StatefulWidget {
 
 class _NuevaContrasenaScreenState extends State<NuevaContrasenaScreen> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmController = TextEditingController();
 
   bool _isLoading = false;
   bool _obscurePassword = true;
@@ -39,11 +39,26 @@ class _NuevaContrasenaScreenState extends State<NuevaContrasenaScreen> {
     super.dispose();
   }
 
+  String? _validarContrasena(String? v) {
+    if (v == null || v.isEmpty) return 'Campo requerido';
+    if (v.length < 8) return 'Mínimo 8 caracteres';
+    if (!RegExp(r'[A-Z]').hasMatch(v)) return 'Falta una mayúscula';
+    if (!RegExp(r'[0-9]').hasMatch(v)) return 'Falta un número';
+    return null;
+  }
+
+  String? _validarConfirmar(String? v) {
+    if (v == null || v.isEmpty) return 'Campo requerido';
+    if (v != _passwordController.text) return 'Las contraseñas no coinciden';
+    return null;
+  }
+
   Future<void> _confirmar() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
+    final auth = context.read<AuthProvider>();
+    final navigator = Navigator.of(context);
     try {
-      final auth = Provider.of<AuthProvider>(context, listen: false);
       await auth.resetPassword(
         email: widget.email,
         codigo: widget.codigo,
@@ -51,15 +66,13 @@ class _NuevaContrasenaScreenState extends State<NuevaContrasenaScreen> {
       );
       if (!mounted) return;
       showAppSuccess(context, '¡Contraseña actualizada!');
-      Navigator.pushAndRemoveUntil(
-        context,
+      navigator.pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const LoginScreen()),
         (route) => false,
       );
     } catch (e) {
-      if (mounted) {
-        showAppError(context, e.toString().replaceAll('Exception: ', ''));
-      }
+      if (!mounted) return;
+      showAppError(context, e.toString().replaceAll('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -84,14 +97,9 @@ class _NuevaContrasenaScreenState extends State<NuevaContrasenaScreen> {
               mostrarTexto: _obscurePassword,
               alPresionarIcono: () =>
                   setState(() => _obscurePassword = !_obscurePassword),
+              autofillHints: const [AutofillHints.newPassword],
               controlador: _passwordController,
-              validador: (v) {
-                if (v == null || v.isEmpty) return 'Campo requerido';
-                if (v.length < 8) return 'Mínimo 8 caracteres';
-                if (!RegExp(r'[A-Z]').hasMatch(v)) return 'Falta una mayúscula';
-                if (!RegExp(r'[0-9]').hasMatch(v)) return 'Falta un número';
-                return null;
-              },
+              validador: _validarContrasena,
             ),
             const SizedBox(height: 15),
             EntradaTexto(
@@ -101,14 +109,9 @@ class _NuevaContrasenaScreenState extends State<NuevaContrasenaScreen> {
               mostrarTexto: _obscureConfirm,
               alPresionarIcono: () =>
                   setState(() => _obscureConfirm = !_obscureConfirm),
+              autofillHints: const [AutofillHints.newPassword],
               controlador: _confirmController,
-              validador: (v) {
-                if (v == null || v.isEmpty) return 'Campo requerido';
-                if (v != _passwordController.text) {
-                  return 'Las contraseñas no coinciden';
-                }
-                return null;
-              },
+              validador: _validarConfirmar,
             ),
             const SizedBox(height: 10),
             PrimaryButton(

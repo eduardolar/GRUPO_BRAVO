@@ -211,6 +211,11 @@ class ActualizarItemsPedido(BaseModel):
 class ActualizarEstado(BaseModel):
     estado: str
 
+
+class ActualizarItemHecho(BaseModel):
+    hecho: bool
+
+
 _ESTADOS_VALIDOS = {"pendiente", "preparando", "listo", "entregado", "cancelado"}
 
 
@@ -332,6 +337,46 @@ def actualizar_estado_pedido(pedido_id: str, payload: ActualizarEstado):
     if result.matched_count == 0:
         raise NotFoundError("Pedido no encontrado")
     return {"updated": result.modified_count > 0, "estado": payload.estado}
+
+
+@router.patch("/{pedido_id}/items/{item_idx}/hecho")
+def marcar_item_hecho(pedido_id: str, item_idx: int, payload: ActualizarItemHecho):
+    if not ObjectId.is_valid(pedido_id):
+        raise ValidacionError("ID de pedido inválido")
+    if item_idx < 0:
+        raise ValidacionError("Índice de item inválido")
+
+    pedido = coleccion_pedidos.find_one({"_id": ObjectId(pedido_id)})
+    if not pedido:
+        raise NotFoundError("Pedido no encontrado")
+
+    items = pedido.get("items", [])
+    if not isinstance(items, list) or item_idx >= len(items):
+        raise ValidacionError(f"Índice de item fuera de rango (0..{len(items) - 1})")
+
+    coleccion_pedidos.update_one(
+        {"_id": ObjectId(pedido_id)},
+        {"$set": {f"items.{item_idx}.hecho": payload.hecho}},
+    )
+
+    pedido_actualizado = coleccion_pedidos.find_one({"_id": ObjectId(pedido_id)})
+    items_actualizados = pedido_actualizado.get("items", [])
+    todos_hechos = (
+        len(items_actualizados) > 0
+        and all(it.get("hecho", False) for it in items_actualizados)
+    )
+
+    if todos_hechos and pedido_actualizado.get("estado") in {"pendiente", "preparando"}:
+        coleccion_pedidos.update_one(
+            {"_id": ObjectId(pedido_id)},
+            {"$set": {"estado": "listo"}},
+        )
+
+    return {
+        "updated": True,
+        "hecho": payload.hecho,
+        "todosHechos": todos_hechos,
+    }
 
 
 @router.patch("/{pedido_id}")

@@ -240,6 +240,37 @@ class PedidoService {
     }
   }
 
+  /// Marca un item de un pedido como hecho/no hecho.
+  /// El backend devuelve `todosHechos: true` cuando todos los items están
+  /// completados; en ese caso el propio backend mueve el pedido a estado `listo`.
+  static Future<Map<String, dynamic>> marcarItemHecho({
+    required String pedidoId,
+    required int itemIndex,
+    required bool hecho,
+  }) async {
+    if (!usarApiReal) {
+      await Future.delayed(const Duration(milliseconds: 200));
+      return {'updated': true, 'hecho': hecho, 'todosHechos': false};
+    }
+
+    final response = await httpWithRetry(
+      () => http.patch(
+        Uri.parse('$baseUrl/pedidos/$pedidoId/items/$itemIndex/hecho'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({'hecho': hecho}),
+      ),
+      retry: false,
+    );
+
+    if (response.statusCode >= 400) {
+      throw toApiException(response.statusCode, decodeBody(response));
+    }
+    return Map<String, dynamic>.from(decodeBody(response));
+  }
+
   static Future<Pedido> obtenerPedido(String pedidoId) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 300));

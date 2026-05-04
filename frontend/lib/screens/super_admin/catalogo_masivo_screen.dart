@@ -91,7 +91,9 @@ class _CatalogoMasivoScreenState extends State<CatalogoMasivoScreen> {
       final categorias = results[1] as List<String>;
 
       // Dispose old items
-      for (final it in _items) it.dispose();
+      for (final it in _items) {
+        it.dispose();
+      }
 
       // Orden: categorías que existen, luego sin categoría
       final cats = List<String>.from(categorias);
@@ -121,11 +123,6 @@ class _CatalogoMasivoScreenState extends State<CatalogoMasivoScreen> {
     }).toList();
   }
 
-  List<_ItemEdicion> get _suciosVisible {
-    if (_busqueda.isEmpty) return _items.where((it) => it.sucio).toList();
-    return _items.where((it) => it.sucio && it.original.nombre
-        .toLowerCase().contains(_busqueda.toLowerCase())).toList();
-  }
 
   int get _totalSucio => _items.where((it) => it.sucio).length;
 
@@ -493,7 +490,7 @@ class _CatalogoMasivoScreenState extends State<CatalogoMasivoScreen> {
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: items.length,
-                    separatorBuilder: (_, __) =>
+                    separatorBuilder: (_, _) =>
                         const Divider(color: Colors.white12, height: 1),
                     itemBuilder: (_, i) => _FilaProducto(
                       item: items[i],
@@ -579,7 +576,7 @@ class _FilaProductoState extends State<_FilaProducto> {
                     width: 44,
                     height: 44,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _placeholder(),
+                    errorBuilder: (_, _, _) => _placeholder(),
                   )
                 : _placeholder(),
           ),
@@ -656,7 +653,7 @@ class _FilaProductoState extends State<_FilaProducto> {
           // Toggle disponible
           Switch.adaptive(
             value: it.disponible,
-            activeColor: _kGreen,
+            activeThumbColor: _kGreen,
             inactiveThumbColor: Colors.white60,
             onChanged: (v) {
               setState(() => it.disponible = v);

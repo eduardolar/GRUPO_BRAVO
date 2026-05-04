@@ -1,30 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../components/Cliente/auth_header.dart';
+import '../../components/Cliente/auth_scaffold.dart';
+import '../../components/Cliente/entrada_texto.dart';
+import '../../components/Cliente/primary_button.dart';
 import '../../core/app_snackbar.dart';
 import '../../core/colors_style.dart';
-import '../../providers/auth_provider.dart';
 import '../../models/destino_login.dart';
-
-import '../../components/Cliente/entrada_texto.dart';
-import '../../components/Cliente/auth_scaffold.dart';
-import '../../components/Cliente/auth_header.dart';
-import '../../components/Cliente/primary_button.dart';
-
+import '../../providers/auth_provider.dart';
+import 'direccion_screen.dart';
 import 'login_screen.dart';
 import 'verificacion_screen.dart';
-import 'direccion_screen.dart';
 
-class RegisterScreen extends StatefulWidget {
+const BorderRadius _kFieldRadius = BorderRadius.all(Radius.circular(15));
+
+class RegistroScreen extends StatefulWidget {
   final DestinoLogin destino;
 
-  const RegisterScreen({super.key, this.destino = DestinoLogin.menu});
+  const RegistroScreen({super.key, this.destino = DestinoLogin.menu});
 
   @override
-  State<RegisterScreen> createState() => _RegisterScreenState();
+  State<RegistroScreen> createState() => _RegistroScreenState();
 }
 
-class _RegisterScreenState extends State<RegisterScreen> {
+class _RegistroScreenState extends State<RegistroScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _ocultarPass = true;
   bool _ocultarConfirm = true;
@@ -48,11 +48,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  // ── Validadores ──────────────────────────────────────────────────────────
+  // ── Validadores ─────────────────────────────────────────────────────────
 
   String? _validarEmail(String? v) {
     if (v == null || v.trim().isEmpty) return 'Campo requerido';
-    final regex = RegExp(r'^[\w.+\-]+@[\w\-]+\.[a-z]{2,}$', caseSensitive: false);
+    final regex =
+        RegExp(r'^[\w.+\-]+@[\w\-]+\.[a-z]{2,}$', caseSensitive: false);
     if (!regex.hasMatch(v.trim())) return 'Correo electrónico no válido';
     return null;
   }
@@ -78,26 +79,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return null;
   }
 
-  // ── Acciones ─────────────────────────────────────────────────────────────
+  // ── Acciones ────────────────────────────────────────────────────────────
 
   Future<void> _abrirSelectorDireccion() async {
     final resultado = await Navigator.push<Map<String, dynamic>>(
       context,
       MaterialPageRoute(
-          builder: (_) => const DireccionScreen(soloSeleccionar: true)),
+        builder: (_) => const DireccionScreen(soloSeleccionar: true),
+      ),
     );
-    if (resultado != null && mounted) {
-      setState(() {
-        _direccionCtrl.text = resultado['direccion'] as String;
-      });
-    }
+    if (!mounted || resultado == null) return;
+    setState(() {
+      _direccionCtrl.text = resultado['direccion'] as String;
+    });
   }
 
   Future<void> _registrarse() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
+    final auth = context.read<AuthProvider>();
+    final navigator = Navigator.of(context);
     try {
-      final auth = Provider.of<AuthProvider>(context, listen: false);
       await auth.registrarse(
         nombre: _nombreCtrl.text.trim(),
         email: _emailCtrl.text.trim(),
@@ -106,8 +108,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         direccion: _direccionCtrl.text.trim(),
       );
       if (!mounted) return;
-      Navigator.push(
-        context,
+      navigator.push(
         MaterialPageRoute(
           builder: (_) =>
               VerificacionScreen(email: _emailCtrl.text.trim()),
@@ -115,13 +116,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      showAppError(context, 'Error: ${e.toString()}');
+      showAppError(context, 'Error: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  // ── Build ─────────────────────────────────────────────────────────────────
+  // ── Build ───────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -149,13 +150,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  // ── Campos del formulario ─────────────────────────────────────────────────
-
   Widget _buildInputs() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Nombre
         EntradaTexto(
           etiqueta: 'Nombre completo',
           icono: Icons.person_outline,
@@ -164,8 +162,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
           validador: (v) =>
               (v == null || v.trim().isEmpty) ? 'Campo requerido' : null,
         ),
-
-        // Email
         EntradaTexto(
           etiqueta: 'Correo electrónico',
           icono: Icons.email_outlined,
@@ -174,8 +170,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
           controlador: _emailCtrl,
           validador: _validarEmail,
         ),
-
-        // Contraseña
         EntradaTexto(
           etiqueta: 'Contraseña',
           icono: Icons.lock_outline,
@@ -187,13 +181,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
           controlador: _passwordCtrl,
           validador: _validarContrasena,
         ),
-
-        // Indicador de fuerza
         _PasswordStrengthBar(password: _passwordCtrl),
-
         const SizedBox(height: 16),
-
-        // Confirmar contraseña
         EntradaTexto(
           etiqueta: 'Confirmar contraseña',
           icono: Icons.lock_outline,
@@ -205,8 +194,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
           controlador: _confirmCtrl,
           validador: _validarConfirmar,
         ),
-
-        // Teléfono
         EntradaTexto(
           etiqueta: 'Teléfono',
           icono: Icons.phone_android_outlined,
@@ -215,8 +202,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
           controlador: _telefonoCtrl,
           validador: _validarTelefono,
         ),
-
-        // Dirección (selector externo)
         _DireccionField(
           controller: _direccionCtrl,
           onTap: _abrirSelectorDireccion,
@@ -224,8 +209,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ],
     );
   }
-
-  // ── Footer ────────────────────────────────────────────────────────────────
 
   Widget _buildFooter() {
     return Padding(
@@ -260,9 +243,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Widgets auxiliares
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Widgets auxiliares ───────────────────────────────────────────────────
 
 /// Barra visual de fuerza de contraseña que escucha el controller.
 class _PasswordStrengthBar extends StatefulWidget {
@@ -361,6 +342,12 @@ class _DireccionField extends StatelessWidget {
   final TextEditingController controller;
   final VoidCallback onTap;
 
+  static OutlineInputBorder _border(Color color, {double width = 1}) =>
+      OutlineInputBorder(
+        borderRadius: _kFieldRadius,
+        borderSide: BorderSide(color: color, width: width),
+      );
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -382,27 +369,12 @@ class _DireccionField extends StatelessWidget {
                 const Icon(Icons.chevron_right, color: AppColors.gold),
             filled: true,
             fillColor: AppColors.panel,
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(15),
-              borderSide: const BorderSide(color: AppColors.line),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(15),
-              borderSide:
-                  const BorderSide(color: AppColors.button, width: 2),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(15),
-              borderSide: const BorderSide(color: AppColors.error),
-            ),
-            focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(15),
-              borderSide:
-                  const BorderSide(color: AppColors.error, width: 2),
-            ),
+            enabledBorder: _border(AppColors.line),
+            focusedBorder: _border(AppColors.button, width: 2),
+            errorBorder: _border(AppColors.error),
+            focusedErrorBorder: _border(AppColors.error, width: 2),
             errorStyle: const TextStyle(color: AppColors.error),
-            border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(15)),
+            border: const OutlineInputBorder(borderRadius: _kFieldRadius),
           ),
         ),
       ),

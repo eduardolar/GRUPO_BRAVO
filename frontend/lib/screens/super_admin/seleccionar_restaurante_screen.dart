@@ -647,9 +647,7 @@ class _RestauranteCard extends StatelessWidget {
                                 size: 13, color: AppColors.textSecondary),
                             const SizedBox(width: 4),
                             Text(
-                              restaurante.horarioApertura! +
-                                  ' - ' +
-                                  restaurante.horarioCierre!,
+                              '${restaurante.horarioApertura!} - ${restaurante.horarioCierre!}',
                               style: GoogleFonts.manrope(
                                   fontSize: 11, color: AppColors.textSecondary),
                             ),
@@ -659,7 +657,7 @@ class _RestauranteCard extends StatelessWidget {
                               size: 13, color: AppColors.textSecondary),
                           const SizedBox(width: 4),
                           Text(
-                            personalCount.toString() + ' empleados',
+                            '$personalCount empleados',
                             style: GoogleFonts.manrope(
                                 fontSize: 11, color: AppColors.textSecondary),
                           ),
@@ -706,7 +704,7 @@ class _RestauranteCard extends StatelessWidget {
                     scale: 0.75,
                     child: Switch.adaptive(
                       value: restaurante.activo,
-                      activeColor: AppColors.button,
+                      activeThumbColor: AppColors.button,
                       inactiveThumbColor: AppColors.error,
                       onChanged: onToggleActivo,
                     ),

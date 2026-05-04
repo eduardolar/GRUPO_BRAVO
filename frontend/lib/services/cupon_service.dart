@@ -33,7 +33,7 @@ class CuponService {
       'tipo': tipo,
       'valor': valor,
       'descripcion': descripcion,
-      if (usosMaximos != null) 'usos_maximos': usosMaximos,
+      'usos_maximos': ?usosMaximos,
       if (fechaInicio != null && fechaInicio.isNotEmpty)
         'fecha_inicio': fechaInicio,
       if (fechaFin != null && fechaFin.isNotEmpty) 'fecha_fin': fechaFin,
@@ -59,12 +59,12 @@ class CuponService {
     String? fechaFin,
   }) async {
     final body = <String, dynamic>{
-      if (descripcion != null) 'descripcion': descripcion,
-      if (valor != null) 'valor': valor,
-      if (tipo != null) 'tipo': tipo,
-      if (usosMaximos != null) 'usos_maximos': usosMaximos,
-      if (fechaInicio != null) 'fecha_inicio': fechaInicio,
-      if (fechaFin != null) 'fecha_fin': fechaFin,
+      'descripcion': ?descripcion,
+      'valor': ?valor,
+      'tipo': ?tipo,
+      'usos_maximos': ?usosMaximos,
+      'fecha_inicio': ?fechaInicio,
+      'fecha_fin': ?fechaFin,
     };
     final res = await httpWithRetry(
       () => http.put(Uri.parse('$baseUrl/cupones/$id'),
