@@ -8,13 +8,10 @@ import '../../services/cupon_service.dart';
 import '../../core/colors_style.dart';
 
 // ─── Colores ─────────────────────────────────────────────────────────────────
-const _kBg = Color(0xFF0F0F0F);
 const _kCard = Color(0xFF1C1C1E);
-const _kBorder = Color(0xFF2C2C2E);
 const _kText = Color(0xFFEAEAEA);
 const _kSub = Color(0xFF8E8E93);
 const _kGreen = Color(0xFF34C759);
-const _kOrange = Color(0xFFFF9500);
 const _kRed = Color(0xFFFF3B30);
 const _kBlue = Color(0xFF0A84FF);
 const _kAccent = AppColors.button;
@@ -34,7 +31,7 @@ class _CuponesScreenState extends State<CuponesScreen>
 
   String _filtro = 'todos';
   String _busqueda = '';
-  String _orden = 'recientes';
+  final String _orden = 'recientes';
 
   late TabController _tabCtrl;
 

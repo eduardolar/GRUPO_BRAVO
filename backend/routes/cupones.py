@@ -1,9 +1,10 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import Optional
 from pydantic import BaseModel, field_validator
 from bson import ObjectId
 from bson.errors import InvalidId
 from database import coleccion_cupones
+from security import require_role, get_current_user
 import re
 
 router = APIRouter(prefix="/cupones", tags=["Cupones"])
@@ -80,24 +81,31 @@ def _serializar(c: dict) -> dict:
 
 
 # ─── Endpoints ─────────────────────────────────────────────────────────────────
+# Lectura permitida a cualquier usuario autenticado; mutación restringida a admins.
 
-@router.get("")
-def listar_cupones(solo_activos: bool = Query(False)):
+@router.get("", summary="Listar cupones")
+def listar_cupones(
+    solo_activos: bool = Query(False),
+    _user: dict = Depends(get_current_user),
+):
     filtro = {"activo": True} if solo_activos else {}
     cupones = list(coleccion_cupones.find(filtro).sort("_id", -1))
     return [_serializar(c) for c in cupones]
 
 
-@router.get("/{cupon_id}")
-def obtener_cupon(cupon_id: str):
+@router.get("/{cupon_id}", summary="Obtener un cupón por ID")
+def obtener_cupon(cupon_id: str, _user: dict = Depends(get_current_user)):
     c = coleccion_cupones.find_one({"_id": _oid(cupon_id)})
     if not c:
         raise HTTPException(status_code=404, detail="Cupón no encontrado")
     return _serializar(c)
 
 
-@router.post("")
-def crear_cupon(datos: CuponCrear):
+@router.post("", summary="Crear cupón (admin)")
+def crear_cupon(
+    datos: CuponCrear,
+    _admin: dict = Depends(require_role(["admin", "super_admin"])),
+):
     if coleccion_cupones.find_one({"codigo": datos.codigo}):
         raise HTTPException(status_code=409, detail=f"Ya existe un cupón con el código '{datos.codigo}'")
     nuevo = {
@@ -115,8 +123,12 @@ def crear_cupon(datos: CuponCrear):
     return _serializar({**nuevo, "_id": resultado.inserted_id})
 
 
-@router.put("/{cupon_id}")
-def editar_cupon(cupon_id: str, datos: CuponEditar):
+@router.put("/{cupon_id}", summary="Editar cupón (admin)")
+def editar_cupon(
+    cupon_id: str,
+    datos: CuponEditar,
+    _admin: dict = Depends(require_role(["admin", "super_admin"])),
+):
     oid = _oid(cupon_id)
     if not coleccion_cupones.find_one({"_id": oid}):
         raise HTTPException(status_code=404, detail="Cupón no encontrado")
@@ -130,8 +142,12 @@ def editar_cupon(cupon_id: str, datos: CuponEditar):
     return _serializar(actualizado)
 
 
-@router.patch("/{cupon_id}/activo")
-def toggle_activo(cupon_id: str, activo: bool = Query(...)):
+@router.patch("/{cupon_id}/activo", summary="Activar/desactivar cupón (admin)")
+def toggle_activo(
+    cupon_id: str,
+    activo: bool = Query(...),
+    _admin: dict = Depends(require_role(["admin", "super_admin"])),
+):
     oid = _oid(cupon_id)
     resultado = coleccion_cupones.update_one({"_id": oid}, {"$set": {"activo": activo}})
     if resultado.matched_count == 0:
@@ -139,26 +155,42 @@ def toggle_activo(cupon_id: str, activo: bool = Query(...)):
     return {"mensaje": "Cupón " + ("activado" if activo else "desactivado")}
 
 
-@router.delete("/{cupon_id}")
-def eliminar_cupon(cupon_id: str):
+@router.delete("/{cupon_id}", summary="Eliminar cupón (admin)")
+def eliminar_cupon(
+    cupon_id: str,
+    _admin: dict = Depends(require_role(["admin", "super_admin"])),
+):
     resultado = coleccion_cupones.delete_one({"_id": _oid(cupon_id)})
     if resultado.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Cupón no encontrado")
     return {"mensaje": "Cupón eliminado"}
 
 
-@router.post("/{cupon_id}/usar")
-def registrar_uso(cupon_id: str):
+@router.post("/{cupon_id}/usar", summary="Registrar uso del cupón")
+def registrar_uso(cupon_id: str, _user: dict = Depends(get_current_user)):
     """Incrementa el contador de usos. Llámalo al aplicar el cupón en un pedido."""
     oid = _oid(cupon_id)
-    c = coleccion_cupones.find_one({"_id": oid})
+    # Operación atómica: sólo incrementa si está activo y aún no agotado.
+    c = coleccion_cupones.find_one_and_update(
+        {
+            "_id": oid,
+            "activo": True,
+            "$expr": {
+                "$or": [
+                    {"$eq": [{"$ifNull": ["$usos_maximos", None]}, None]},
+                    {"$lt": [{"$ifNull": ["$usos_actuales", 0]}, "$usos_maximos"]},
+                ]
+            },
+        },
+        {"$inc": {"usos_actuales": 1}},
+        return_document=True,
+    )
     if not c:
-        raise HTTPException(status_code=404, detail="Cupón no encontrado")
-    if not c.get("activo", True):
-        raise HTTPException(status_code=400, detail="El cupón está inactivo")
-    max_usos = c.get("usos_maximos")
-    usos = c.get("usos_actuales", 0)
-    if max_usos is not None and usos >= max_usos:
+        # Diferenciar si no existe vs. si está agotado/inactivo
+        existente = coleccion_cupones.find_one({"_id": oid})
+        if not existente:
+            raise HTTPException(status_code=404, detail="Cupón no encontrado")
+        if not existente.get("activo", True):
+            raise HTTPException(status_code=400, detail="El cupón está inactivo")
         raise HTTPException(status_code=400, detail="El cupón ha alcanzado el límite de usos")
-    coleccion_cupones.update_one({"_id": oid}, {"$inc": {"usos_actuales": 1}})
-    return {"mensaje": "Uso registrado", "usos_actuales": usos + 1}
+    return {"mensaje": "Uso registrado", "usos_actuales": c.get("usos_actuales", 0)}

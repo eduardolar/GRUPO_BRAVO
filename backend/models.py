@@ -46,6 +46,7 @@ class UsuarioRegistro(BaseModel):
     direccion: str
     rol: str = "cliente"
     restauranteId: Optional[str] = None
+    consentimiento_rgpd: bool = False
 
     @field_validator("password")
     @classmethod

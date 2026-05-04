@@ -3,9 +3,10 @@ import 'package:http/http.dart' as http;
 import '../models/cupon_model.dart';
 import 'api_config.dart';
 import 'http_client.dart';
+import 'auth_session.dart';
 
 class CuponService {
-  static const _headers = {'Content-Type': 'application/json'};
+  static Map<String, String> get _headers => AuthSession.headers();
 
   static Future<List<Cupon>> listar({bool soloActivos = false}) async {
     final uri = Uri.parse(

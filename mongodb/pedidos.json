@@ -1,43 +1,41 @@
 [
   {
-  "tipo_pedido": "local",
-  "numero_mesa": 5,
-  "camarero": "leslie_g",
-  "items": [
-    {"producto": "Hamburguesa Queso", "cantidad": 2},
-    {"producto": "Refresco", "cantidad": 2}
-],
-  "estado": "servido",
-  "total": 25.00
-},
-
-{
-  "tipo_pedido": "domicilio",
-  "cliente_id": "ID_DE_LESLIE",
-  "items": [
-    {"producto": "Hamburguesa Queso", "cantidad": 2},
-    {"producto": "Refresco", "cantidad": 2}
-  ],
-  "estado": "en camino",
-  "datos_entrega": {
-    "direccion": "Calle central 20, 2B",
-    "telefono_contacto": "622111222",
-    "repartidor": "Juan Moto",
-    "hora_estimada": "23:45"
+    "tipo_pedido": "local",
+    "numero_mesa": 5,
+    "camarero": "admin_demo1",
+    "items": [
+      {"producto": "Hamburguesa Queso", "cantidad": 2},
+      {"producto": "Refresco", "cantidad": 2}
+    ],
+    "estado": "servido",
+    "total": 25.00
   },
-  "total": 35.50
-},
-
-{
-  "tipo_pedido": "recoger",
-  "cliente_nombre": "Carlos Pérez",
-  "items": [
-    {"producto": "Hamburguesa Queso", "cantidad": 2},
-    {"producto": "Refresco", "cantidad": 2}
-  ],
-  "estado": "listo para recoger",
-  "hora_recogida_pactada": "23:00",
-  "pagado": true,
-  "total": 15.00
-}
+  {
+    "tipo_pedido": "domicilio",
+    "cliente_id": "<RELLENAR_CON_ID_REAL_TRAS_INSERTAR_CLIENTES>",
+    "items": [
+      {"producto": "Hamburguesa Queso", "cantidad": 2},
+      {"producto": "Refresco", "cantidad": 2}
+    ],
+    "estado": "en camino",
+    "datos_entrega": {
+      "direccion": "Calle Demo 1, 2B",
+      "telefono_contacto": "600000001",
+      "repartidor": "Repartidor Demo",
+      "hora_estimada": "23:45"
+    },
+    "total": 35.50
+  },
+  {
+    "tipo_pedido": "recoger",
+    "cliente_nombre": "Cliente Demo Tres",
+    "items": [
+      {"producto": "Hamburguesa Queso", "cantidad": 2},
+      {"producto": "Refresco", "cantidad": 2}
+    ],
+    "estado": "listo para recoger",
+    "hora_recogida_pactada": "23:00",
+    "pagado": true,
+    "total": 15.00
+  }
 ]

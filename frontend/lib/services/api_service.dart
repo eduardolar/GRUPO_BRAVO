@@ -16,6 +16,7 @@ import 'pedido_service.dart';
 import 'reserva_service.dart';
 import 'mesa_service.dart';
 import 'http_client.dart';
+import 'auth_session.dart';
 
 class ApiService {
   static String get baseUrl {
@@ -41,12 +42,14 @@ class ApiService {
     required String contrasena,
     required String telefono,
     required String direccion,
+    required bool consentimientoRgpd,
   }) => AuthService.registrarUsuario(
     nombre: nombre,
     correo: correo,
     contrasena: contrasena,
     telefono: telefono,
     direccion: direccion,
+    consentimientoRgpd: consentimientoRgpd,
   );
 
   static Future<bool> actualizarPerfil({
@@ -565,7 +568,7 @@ class ApiService {
   // ─── HELPERS ─────────────────────────────────────────────────
 
   static Map<String, String> _jsonHeaders() {
-    return {'Content-Type': 'application/json', 'Accept': 'application/json'};
+    return AuthSession.headers(extra: {'Accept': 'application/json'});
   }
 
 

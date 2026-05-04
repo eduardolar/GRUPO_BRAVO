@@ -4,11 +4,10 @@ import '../models/producto_model.dart';
 import '../data/mock_data.dart';
 import 'api_config.dart';
 import 'http_client.dart';
+import 'auth_session.dart';
 
 class ProductoService {
-  static const Map<String, String> _jsonHeaders = {
-    'Content-Type': 'application/json',
-  };
+  static Map<String, String> get _jsonHeaders => AuthSession.headers();
 
   // ─── CATEGORÍAS ──────────────────────────────────────────────
 

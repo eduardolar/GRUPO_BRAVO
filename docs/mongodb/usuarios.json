@@ -1,13 +1,13 @@
 [
   {
-    "nombre": "Leslie Gonzales",
-    "username": "leslie_g",
+    "nombre": "Admin Demo Uno",
+    "username": "admin_demo1",
     "password_hash": "...",
     "rol": "admin"
   },
   {
-    "nombre": "Pablo Admin",
-    "username": "pablo_admin",
+    "nombre": "Admin Demo Dos",
+    "username": "admin_demo2",
     "password_hash": "...",
     "rol": "admin"
   }

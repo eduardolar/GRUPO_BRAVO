@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:frontend/components/bravo_app_bar.dart';
@@ -571,12 +572,13 @@ class _FilaProductoState extends State<_FilaProducto> {
             borderRadius: BorderRadius.circular(8),
             child: it.original.imagenUrl != null &&
                     it.original.imagenUrl!.isNotEmpty
-                ? Image.network(
-                    it.original.imagenUrl!,
+                ? CachedNetworkImage(
+                    imageUrl: it.original.imagenUrl!,
                     width: 44,
                     height: 44,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => _placeholder(),
+                    errorWidget: (_, _, _) => _placeholder(),
+                    placeholder: (_, _) => _placeholder(),
                   )
                 : _placeholder(),
           ),

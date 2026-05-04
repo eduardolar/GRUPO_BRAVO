@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import '../models/ingrediente_model.dart';
 import 'api_config.dart';
 import 'http_client.dart';
+import 'auth_session.dart';
 
 class IngredienteService {
   static const List<String> categorias = [
@@ -77,7 +78,7 @@ class IngredienteService {
     final response = await httpWithRetry(
       () => http.post(
         Uri.parse('$baseUrl/ingredientes'),
-        headers: {'Content-Type': 'application/json'},
+        headers: AuthSession.headers(),
         body: jsonEncode(datos),
       ),
       retry: false,
@@ -91,7 +92,7 @@ class IngredienteService {
     final response = await httpWithRetry(
       () => http.put(
         Uri.parse('$baseUrl/ingredientes/$id'),
-        headers: {'Content-Type': 'application/json'},
+        headers: AuthSession.headers(),
         body: jsonEncode(datos),
       ),
       retry: false,

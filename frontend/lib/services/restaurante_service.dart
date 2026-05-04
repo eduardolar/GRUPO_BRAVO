@@ -3,13 +3,14 @@ import 'package:http/http.dart' as http;
 import '../models/restaurante_model.dart';
 import 'api_config.dart';
 import 'http_client.dart';
+import 'auth_session.dart';
 
 class RestauranteService {
   Future<List<Restaurante>> obtenerTodos() async {
     final response = await httpWithRetry(
       () => http.get(
         Uri.parse('$baseUrl/restaurantes'),
-        headers: {'Content-Type': 'application/json'},
+        headers: AuthSession.headers(),
       ),
     );
     if (response.statusCode == 200) {
@@ -27,7 +28,7 @@ class RestauranteService {
       final response = await httpWithRetry(
         () => http.post(
           Uri.parse('$baseUrl/restaurantes'),
-          headers: {'Content-Type': 'application/json'},
+          headers: AuthSession.headers(),
           body: jsonEncode({'nombre': nombre, 'direccion': direccion}),
         ),
         retry: false,
@@ -59,7 +60,7 @@ class RestauranteService {
       final response = await httpWithRetry(
         () => http.put(
           Uri.parse('$baseUrl/restaurantes/$id'),
-          headers: {'Content-Type': 'application/json'},
+          headers: AuthSession.headers(),
           body: jsonEncode(body),
         ),
         retry: false,
@@ -76,7 +77,7 @@ class RestauranteService {
       final response = await httpWithRetry(
         () => http.patch(
           Uri.parse('\$baseUrl/restaurantes/\$id/activo'),
-          headers: {'Content-Type': 'application/json'},
+          headers: AuthSession.headers(),
           body: jsonEncode({'activo': activo}),
         ),
         retry: false,
@@ -92,7 +93,7 @@ class RestauranteService {
       final response = await httpWithRetry(
         () => http.delete(
           Uri.parse('$baseUrl/restaurantes/$id'),
-          headers: {'Content-Type': 'application/json'},
+          headers: AuthSession.headers(),
         ),
         retry: false,
       );

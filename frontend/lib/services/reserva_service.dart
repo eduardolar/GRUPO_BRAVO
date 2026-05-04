@@ -5,6 +5,7 @@ import '../models/mesa_model.dart';
 import '../data/mock_data.dart';
 import 'api_config.dart';
 import 'http_client.dart';
+import 'auth_session.dart';
 
 class ReservaService {
   static const int _duracionReservaMinutos = 90;
@@ -60,7 +61,7 @@ class ReservaService {
     final response = await httpWithRetry(
       () => http.post(
         Uri.parse('$baseUrl/reservas'),
-        headers: {'Content-Type': 'application/json'},
+        headers: AuthSession.headers(),
         body: jsonEncode({
           'usuarioId': userId,
           'nombreCompleto': nombreCompleto,
@@ -149,7 +150,7 @@ class ReservaService {
     final response = await httpWithRetry(
       () => http.patch(
         Uri.parse('$baseUrl/reservas/$reservaId'),
-        headers: {'Content-Type': 'application/json'},
+        headers: AuthSession.headers(),
         body: jsonEncode({'comensales': comensales}),
       ),
       retry: false,
@@ -202,7 +203,7 @@ class ReservaService {
     final response = await httpWithRetry(
       () => http.put(
         Uri.parse('$baseUrl/reservas/${reserva.id}'),
-        headers: {'Content-Type': 'application/json'},
+        headers: AuthSession.headers(),
         body: jsonEncode({
           'fecha': reserva.fecha.toIso8601String().split('T').first,
           'hora': reserva.hora,

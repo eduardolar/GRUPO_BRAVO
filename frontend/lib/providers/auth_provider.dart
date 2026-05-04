@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/usuario_model.dart';
 import '../services/auth_service.dart';
+import '../services/auth_session.dart';
 
 class AuthProvider with ChangeNotifier {
   Usuario? _usuarioActual;
@@ -91,6 +92,7 @@ class AuthProvider with ChangeNotifier {
     required String contrasena,
     required String telefono,
     required String direccion,
+    required bool consentimientoRgpd,
   }) async {
     try {
       final response = await AuthService.registrarUsuario(
@@ -99,6 +101,7 @@ class AuthProvider with ChangeNotifier {
         contrasena: contrasena,
         telefono: telefono,
         direccion: direccion,
+        consentimientoRgpd: consentimientoRgpd,
       );
       _usuarioActual = Usuario(
         id: response['id'] ?? '',
@@ -177,6 +180,7 @@ class AuthProvider with ChangeNotifier {
     final success = await AuthService.eliminarCuenta(userId: _usuarioActual!.id);
     if (!success) throw Exception('Error al eliminar la cuenta');
     _usuarioActual = null;
+    AuthSession.limpiar();
     notifyListeners();
     await _limpiarSesion();
   }
@@ -184,6 +188,7 @@ class AuthProvider with ChangeNotifier {
   Future<void> cerrarSesion() async {
     _usuarioActual = null;
     _pendingUserId2fa = null;
+    AuthSession.limpiar();
     notifyListeners();
     await _limpiarSesion();
   }

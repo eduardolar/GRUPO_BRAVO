@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -194,13 +194,13 @@ class _DireccionScreenState extends State<DireccionScreen> {
                     initialCenter: _puntoActual,
                     initialZoom: 17,
                     onPositionChanged: (pos, hasGesture) {
-                      setState(() => _puntoActual = pos.center!);
+                      setState(() => _puntoActual = pos.center);
                       if (hasGesture) {
                         _debounceTimer?.cancel();
                         _debounceTimer = Timer(
                           const Duration(milliseconds: 500),
                           () {
-                            _obtenerDireccionDesdeCoords(pos.center!);
+                            _obtenerDireccionDesdeCoords(pos.center);
                           },
                         );
                       }

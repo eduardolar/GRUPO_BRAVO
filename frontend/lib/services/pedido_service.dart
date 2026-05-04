@@ -4,6 +4,7 @@ import '../models/pedido_model.dart';
 import '../data/mock_data.dart';
 import 'api_config.dart';
 import 'http_client.dart';
+import 'auth_session.dart';
 
 class PedidoService {
   static Future<Map<String, dynamic>> crearPedido({
@@ -44,10 +45,7 @@ class PedidoService {
     final response = await httpWithRetry(
       () => http.post(
         Uri.parse('$baseUrl/pedidos'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        headers: AuthSession.headers(extra: {'Accept': 'application/json'}),
         body: jsonEncode({
           'userId': userId,
           'items': items,
@@ -109,10 +107,7 @@ class PedidoService {
     final response = await httpWithRetry(
       () => http.patch(
         Uri.parse('$baseUrl/pedidos/$pedidoId'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        headers: AuthSession.headers(extra: {'Accept': 'application/json'}),
         body: jsonEncode({
           'items': items,
           'total': totalExtra,
@@ -164,10 +159,7 @@ class PedidoService {
     final response = await httpWithRetry(
       () => http.patch(
         Uri.parse('$baseUrl/pedidos/$pedidoId'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        headers: AuthSession.headers(extra: {'Accept': 'application/json'}),
         body: jsonEncode({
           'estadoPago': 'pagado',
           'estado': 'entregado',
@@ -191,10 +183,7 @@ class PedidoService {
       final response = await httpWithRetry(
         () => http.post(
           Uri.parse('$baseUrl/pedidos'),
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
+          headers: AuthSession.headers(extra: {'Accept': 'application/json'}),
           body: jsonEncode({
             'userId': '',
             'items': items,
@@ -226,10 +215,7 @@ class PedidoService {
     final response = await httpWithRetry(
       () => http.patch(
         Uri.parse('$baseUrl/pedidos/$pedidoId/estado'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        headers: AuthSession.headers(extra: {'Accept': 'application/json'}),
         body: jsonEncode({'estado': estado}),
       ),
       retry: false,
@@ -256,10 +242,7 @@ class PedidoService {
     final response = await httpWithRetry(
       () => http.patch(
         Uri.parse('$baseUrl/pedidos/$pedidoId/items/$itemIndex/hecho'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        headers: AuthSession.headers(extra: {'Accept': 'application/json'}),
         body: jsonEncode({'hecho': hecho}),
       ),
       retry: false,

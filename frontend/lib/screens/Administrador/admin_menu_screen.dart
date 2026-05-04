@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:frontend/components/bravo_app_bar.dart';
 import 'package:frontend/core/colors_style.dart';
@@ -402,14 +403,11 @@ class _ProductoAdminCard extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             if (imagen != null && imagen.isNotEmpty)
-              Image.network(
-                imagen,
+              CachedNetworkImage(
+                imageUrl: imagen,
                 fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => _imgFallback(),
-                loadingBuilder: (_, child, progress) {
-                  if (progress == null) return child;
-                  return _imgFallback();
-                },
+                errorWidget: (_, _, _) => _imgFallback(),
+                placeholder: (_, _) => _imgFallback(),
               )
             else
               _imgFallback(),

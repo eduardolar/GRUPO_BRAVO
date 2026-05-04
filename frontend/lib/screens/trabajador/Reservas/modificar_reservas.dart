@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:frontend/models/reserva_model.dart';
 import 'package:frontend/services/reserva_service.dart';
 import 'package:intl/intl.dart';
@@ -172,7 +172,7 @@ class _EditarReservaDialogState extends State<EditarReservaDialog> {
               keyboard: TextInputType.number,
             ),
             DropdownButtonFormField<String>(
-              value: _turno,
+              initialValue: _turno,
               dropdownColor: AppColors.panel,
               decoration: _inputDecoration('Turno'),
               style: const TextStyle(
