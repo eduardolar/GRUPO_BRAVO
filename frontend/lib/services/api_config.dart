@@ -7,10 +7,13 @@ import 'platform_helper.dart';
 const bool usarApiReal = true;
 
 /// URL base del backend.
-/// - Web → localhost
-/// - Android emulador → 10.0.2.2 (alias del host)
-/// - Resto → localhost
+/// En producción, pasa la URL completa mediante dart-define:
+///   flutter run --dart-define=API_BASE_URL=https://api.grupobravo.com
+/// Sin el flag, usa la URL de desarrollo local según plataforma.
+const String _apiBaseUrlOverride = String.fromEnvironment('API_BASE_URL', defaultValue: '');
+
 String get baseUrl {
+  if (_apiBaseUrlOverride.isNotEmpty) return '$_apiBaseUrlOverride/api/v1';
   const port = 8000;
   if (kIsWeb) return 'http://localhost:$port/api/v1';
   if (isAndroid) return 'http://10.0.2.2:$port/api/v1';

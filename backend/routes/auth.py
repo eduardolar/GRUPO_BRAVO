@@ -3,6 +3,7 @@ import os
 import random
 import secrets
 import string
+from datetime import datetime, timedelta, timezone
 import bcrypt
 import pyotp
 from bson import ObjectId
@@ -15,6 +16,7 @@ from pydantic import BaseModel, EmailStr
 from database import coleccion_usuarios
 from models import UsuarioRegistro, UsuarioLogin, VerificarRecuperacion
 from limiter import limiter
+from security import crear_token
 from exceptions import (
     AppError, NotFoundError, ConflictError, ValidacionError,
     AutenticacionError, AutorizacionError,
@@ -35,6 +37,24 @@ dotenv_path = Path(__file__).resolve().parents[2] / ".env"
 load_dotenv(dotenv_path=dotenv_path, override=True)
 
 router = APIRouter()
+
+_CODE_TTL_MINUTES = 15
+
+
+def _expiry_iso(minutes: int = _CODE_TTL_MINUTES) -> str:
+    return (datetime.now(timezone.utc) + timedelta(minutes=minutes)).isoformat()
+
+
+def _codigo_expirado(expiry_str: str | None) -> bool:
+    if not expiry_str:
+        return False  # códigos sin TTL (legacy) se consideran válidos
+    try:
+        expiry = datetime.fromisoformat(expiry_str)
+        if expiry.tzinfo is None:
+            expiry = expiry.replace(tzinfo=timezone.utc)
+        return datetime.now(timezone.utc) > expiry
+    except ValueError:
+        return True
 
 
 # ── Códigos de recuperación 2FA ───────────────────────────────────────────────
@@ -168,6 +188,7 @@ async def registrar_usuario(request: Request, usuario: UsuarioRegistro):
             "password_hash": hashed_password.decode('utf-8'),
             "is_verified": False,
             "verification_code": codigo_otp,
+            "verification_code_expiry": _expiry_iso(),
         }
 
         # Guardar en base de datos
@@ -199,8 +220,16 @@ async def verificar_codigo(request: Request, datos: VerificacionCodigo):
     codigo_verificacion = str(usuario_db.get("verification_code") or "").strip()
     codigo_reset = str(usuario_db.get("reset_code") or "").strip()
 
-    coincide_verificacion = codigo_recibido == codigo_verificacion and codigo_verificacion != ""
-    coincide_reset = codigo_recibido == codigo_reset and codigo_reset != ""
+    coincide_verificacion = (
+        codigo_recibido == codigo_verificacion
+        and codigo_verificacion != ""
+        and not _codigo_expirado(usuario_db.get("verification_code_expiry"))
+    )
+    coincide_reset = (
+        codigo_recibido == codigo_reset
+        and codigo_reset != ""
+        and not _codigo_expirado(usuario_db.get("reset_code_expiry"))
+    )
 
     if not coincide_verificacion and not coincide_reset:
         raise AutenticacionError("Código incorrecto o expirado")
@@ -279,7 +308,10 @@ async def iniciar_sesion(request: Request, credenciales: UsuarioLogin):
                     codigo_2fa = ''.join(random.choices(string.digits, k=6))
                     coleccion_usuarios.update_one(
                         {"_id": usuario_db["_id"]},
-                        {"$set": {"login_code_2fa": codigo_2fa}}
+                        {"$set": {
+                            "login_code_2fa": codigo_2fa,
+                            "login_code_2fa_expiry": _expiry_iso(),
+                        }}
                     )
                     await enviar_correo_2fa(usuario_db["correo"], codigo_2fa)
                     return {
@@ -287,7 +319,8 @@ async def iniciar_sesion(request: Request, credenciales: UsuarioLogin):
                         "correo": usuario_db["correo"],
                         "mensaje": "Se ha enviado un código de seguridad a tu correo.",
                     }
-                # Email 2FA desactivado: acceso directo
+                # Email 2FA desactivado: acceso directo con JWT
+                token = crear_token({"sub": str(usuario_db["_id"]), "correo": correo_normalizado, "rol": rol})
                 return {
                     "id": str(usuario_db["_id"]),
                     "nombre": usuario_db["nombre"],
@@ -295,16 +328,21 @@ async def iniciar_sesion(request: Request, credenciales: UsuarioLogin):
                     "rol": rol,
                     "restauranteId": usuario_db.get("restaurante_id", ""),
                     "email_2fa_enabled": False,
+                    "access_token": token,
+                    "token_type": "bearer",
                 }
 
-            # CAMINO B: Trabajador, admin, cocinero. Acceso directo sin 2FA.
+            # CAMINO B: Trabajador, admin, cocinero. Acceso directo sin 2FA con JWT.
             else:
+                token = crear_token({"sub": str(usuario_db["_id"]), "correo": correo_normalizado, "rol": rol})
                 return {
                     "id": str(usuario_db["_id"]),
                     "nombre": usuario_db["nombre"],
                     "correo": usuario_db["correo"],
                     "rol": rol,
                     "restauranteId": usuario_db.get("restaurante_id", ""),
+                    "access_token": token,
+                    "token_type": "bearer",
                 }
    
     raise AutenticacionError("Credenciales incorrectas")
@@ -324,23 +362,31 @@ def verificar_login_2fa(datos: VerificarLogin2FA):
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
     codigo_guardado = str(usuario_db.get("login_code_2fa") or "").strip()
-    
-    if not codigo_guardado or datos.codigo.strip() != codigo_guardado:
+
+    if (
+        not codigo_guardado
+        or datos.codigo.strip() != codigo_guardado
+        or _codigo_expirado(usuario_db.get("login_code_2fa_expiry"))
+    ):
         raise HTTPException(status_code=400, detail="Código incorrecto o expirado")
 
     # Si es correcto, borramos el código para que no se pueda reusar y damos el acceso
     coleccion_usuarios.update_one(
         {"_id": usuario_db["_id"]},
-        {"$unset": {"login_code_2fa": ""}}
+        {"$unset": {"login_code_2fa": "", "login_code_2fa_expiry": ""}}
     )
 
+    rol = usuario_db.get("rol", "cliente")
+    token = crear_token({"sub": str(usuario_db["_id"]), "correo": datos.correo, "rol": rol})
     return {
         "id": str(usuario_db["_id"]),
         "nombre": usuario_db["nombre"],
         "correo": usuario_db["correo"],
-        "rol": usuario_db.get("rol", "cliente"),
+        "rol": rol,
         "restauranteId": usuario_db.get("restaurante_id", ""),
         "email_2fa_enabled": usuario_db.get("email_2fa_enabled", False),
+        "access_token": token,
+        "token_type": "bearer",
     }
 
 # ---6. ENDPOINT: SOLICITAR RECUPERACIÓN ---
@@ -360,7 +406,7 @@ async def recuperar_password(request: Request, datos: dict):
 
     coleccion_usuarios.update_one(
         {"correo": correo_normalizado},
-        {"$set": {"reset_code": codigo_recuperacion}}
+        {"$set": {"reset_code": codigo_recuperacion, "reset_code_expiry": _expiry_iso()}}
     )
 
     # Diseño unificado con el correo de bienvenida
@@ -436,7 +482,11 @@ async def reset_password(request: Request, datos: ResetPassword):
         raise NotFoundError("Usuario no encontrado")
 
     codigo_guardado = str(usuario_db.get("reset_code") or "").strip()
-    if not codigo_guardado or datos.codigo.strip() != codigo_guardado:
+    if (
+        not codigo_guardado
+        or datos.codigo.strip() != codigo_guardado
+        or _codigo_expirado(usuario_db.get("reset_code_expiry"))
+    ):
         raise AutenticacionError("Código inválido o expirado")
 
     password_bytes = datos.nueva_password.encode('utf-8')
@@ -560,13 +610,17 @@ def verificar_2fa(request: Request, datos: Verificar2FA):
     if not totp.verify(datos.codigo.strip(), valid_window=1):
         raise AutenticacionError("Código incorrecto. Verifica tu Google Authenticator")
 
+    rol = usuario_db.get("rol", "cliente")
+    token = crear_token({"sub": str(usuario_db["_id"]), "correo": usuario_db["correo"], "rol": rol})
     return {
         "id": str(usuario_db["_id"]),
         "nombre": usuario_db["nombre"],
         "correo": usuario_db["correo"],
-        "rol": usuario_db.get("rol", "cliente"),
+        "rol": rol,
         "restauranteId": usuario_db.get("restaurante_id", ""),
         "totp_enabled": True,
+        "access_token": token,
+        "token_type": "bearer",
     }
 
 class ConfirmarEmail2FA(BaseModel):
@@ -622,14 +676,18 @@ def verificar_2fa_recovery(request: Request, datos: VerificarRecuperacion):
     )
 
     codigos_restantes = len(hashes) - 1
+    rol = usuario_db.get("rol", "cliente")
+    token = crear_token({"sub": str(usuario_db["_id"]), "correo": usuario_db["correo"], "rol": rol})
     return {
         "id": str(usuario_db["_id"]),
         "nombre": usuario_db["nombre"],
         "correo": usuario_db["correo"],
-        "rol": usuario_db.get("rol", "cliente"),
+        "rol": rol,
         "restauranteId": usuario_db.get("restaurante_id", ""),
         "totp_enabled": True,
         "codigosRestantes": codigos_restantes,
+        "access_token": token,
+        "token_type": "bearer",
     }
 
 
