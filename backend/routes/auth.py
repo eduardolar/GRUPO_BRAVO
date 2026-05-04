@@ -20,6 +20,16 @@ from exceptions import (
     AutenticacionError, AutorizacionError,
 )
 
+# Cargar el archivo de entorno local llamado 'env' o 'env.local'
+dotenv_dir = Path(__file__).resolve().parents[1]
+dotenv_path = dotenv_dir / "env"
+dotenv_local_path = dotenv_dir / "env.local"
+if dotenv_path.exists():
+    load_dotenv(dotenv_path=dotenv_path, override=True)
+elif dotenv_local_path.exists():
+    load_dotenv(dotenv_path=dotenv_local_path, override=True)
+else:
+    load_dotenv(override=True)
 # Cargar el archivo de entorno local llamado 'env'
 dotenv_path = Path(__file__).resolve().parents[2] / ".env"
 load_dotenv(dotenv_path=dotenv_path, override=True)

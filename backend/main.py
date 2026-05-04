@@ -19,9 +19,15 @@ load_dotenv()
 # Puerto y host configurables desde .env o variables de entorno
 PORT = int(os.getenv("PORT", 8000))
 HOST = os.getenv("HOST", "127.0.0.1")
-# Cargar variables de entorno desde el archivo local 'env'
+# Cargar variables de entorno desde el archivo local 'env' o 'env.local'
 dotenv_path = Path(__file__).with_name("env")
-load_dotenv(dotenv_path=dotenv_path)
+dotenv_local_path = Path(__file__).with_name("env.local")
+if dotenv_path.exists():
+    load_dotenv(dotenv_path=dotenv_path)
+elif dotenv_local_path.exists():
+    load_dotenv(dotenv_path=dotenv_local_path)
+else:
+    load_dotenv()
 MONGO_URI = os.getenv("MONGO_URI")
 
 from routes import auth, usuarios, categorias, productos, pedidos, mesas, reservas, ingredientes, cupones
