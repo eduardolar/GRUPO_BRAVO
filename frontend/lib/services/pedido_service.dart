@@ -185,6 +185,7 @@ class PedidoService {
   static Future<bool> enviarPedidoPorQR({
     required String mesaId,
     required List<dynamic> items,
+    String? restauranteId,
   }) async {
     try {
       final response = await httpWithRetry(
@@ -203,6 +204,7 @@ class PedidoService {
             'mesaId': mesaId,
             'notas': 'Pedido enviado por QR',
             'estadoPago': 'pendiente',
+            'restauranteId': ?restauranteId,
           }),
         ),
         retry: false,
@@ -261,14 +263,22 @@ class PedidoService {
     throw toApiException(response.statusCode, decodeBody(response));
   }
 
-  static Future<List<Pedido>> obtenerTodosLosPedidos({String? restauranteId}) async {
+  static Future<List<Pedido>> obtenerTodosLosPedidos({
+    String? restauranteId,
+    String? estado,
+  }) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 400));
-      return MockData.pedidos.map((m) => Pedido.fromMap(m)).toList();
+      var pedidos = MockData.pedidos.map((m) => Pedido.fromMap(m)).toList();
+      if (estado != null) pedidos = pedidos.where((p) => p.estado == estado).toList();
+      return pedidos;
     }
 
+    final params = <String, String>{};
+    if (restauranteId != null && restauranteId.isNotEmpty) params['restauranteId'] = restauranteId;
+    if (estado != null) params['estado'] = estado;
     final uri = Uri.parse('$baseUrl/pedidos').replace(
-      queryParameters: restauranteId != null ? {'restauranteId': restauranteId} : null,
+      queryParameters: params.isEmpty ? null : params,
     );
     final response = await httpWithRetry(
       () => http.get(uri, headers: {'Accept': 'application/json'}),

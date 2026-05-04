@@ -372,6 +372,7 @@ def obtener_pedidos(
     mesaId: Optional[str] = Query(None),
     estadoPago: Optional[str] = Query(None),
     restauranteId: Optional[str] = Query(None),
+    estado: Optional[str] = Query(None),
 ):
     filtro = {}
     if userId:
@@ -381,7 +382,14 @@ def obtener_pedidos(
     if estadoPago:
         filtro["estado_pago"] = estadoPago
     if restauranteId:
-        filtro["restaurante_id"] = restauranteId
+        # Incluir pedidos con ese restaurante_id Y pedidos sin restaurante_id
+        # (retrocompatibilidad con pedidos creados antes de asignar restaurante)
+        filtro["$or"] = [
+            {"restaurante_id": restauranteId},
+            {"restaurante_id": {"$exists": False}},
+        ]
+    if estado:
+        filtro["estado"] = estado
     # Sin filtros → devolver todos los pedidos (usado por la pantalla de cocina)
     pedidos = coleccion_pedidos.find(filtro)
     resultado = []

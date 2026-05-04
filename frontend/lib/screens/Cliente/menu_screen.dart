@@ -14,7 +14,7 @@ import '../../providers/cart_provider.dart';
 import '../../core/app_routes.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/restaurante_provider.dart';
-import 'delivery_options_screen.dart';
+import 'opciones_entrega_screen.dart';
 import 'perfil_screen.dart';
 import 'seleccionar_restaurante_screen.dart';
 
