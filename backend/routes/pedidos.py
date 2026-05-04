@@ -30,7 +30,17 @@ def obtener_server_time():
 
 # ── Helpers de stock ──────────────────────────────────────────────────────────
 
-def _descontar_stock(items: list, session=None):
+def _descontar_stock(items: list, session=None, restaurante_id: str | None = None):
+    """Resta del inventario los ingredientes consumidos por los items.
+
+    El descuento se hace contra los ingredientes de la **misma sucursal**
+    que el producto: si Madrid hace un pedido con "Pollo", se descuenta
+    el "Pollo" de Madrid, nunca el de Zaragoza. La sucursal se toma de:
+      1. el `restaurante_id` que pasa el caller (el del pedido), si llega
+      2. el `restaurante_id` del propio producto (fallback)
+    Si ninguno está disponible (caso legacy), se cae al matching por nombre
+    sin sucursal — pero loguea un aviso.
+    """
     for item in items:
         producto_id = item.get("producto_id", "")
         cantidad_pedida = item.get("cantidad", 1)
@@ -40,12 +50,17 @@ def _descontar_stock(items: list, session=None):
             continue
 
         try:
-            producto_db = coleccion_productos.find_one({"_id": ObjectId(producto_id)}, session=session)
+            producto_db = coleccion_productos.find_one(
+                {"_id": ObjectId(producto_id)}, session=session
+            )
         except Exception:
             producto_db = None
 
         if not producto_db:
             continue
+
+        # Sucursal contra la que descontar: prioriza la del pedido.
+        rid = restaurante_id or producto_db.get("restaurante_id")
 
         for ing in producto_db.get("ingredientes", []):
             if isinstance(ing, str):
@@ -61,16 +76,43 @@ def _descontar_stock(items: list, session=None):
                 continue
 
             descuento = cantidad_pedida * cantidad_receta
+            filtro: dict = {
+                "nombre": {"$regex": f"^{nombre_ing}$", "$options": "i"},
+                "cantidad_actual": {"$gte": descuento},
+            }
+            if rid:
+                # Aislamiento por sucursal: el ingrediente DEBE pertenecer
+                # al mismo restaurante que el producto/pedido.
+                filtro["restaurante_id"] = rid
+            else:
+                logger.warning(
+                    "Descuento de stock sin restaurante_id (producto=%s ingrediente=%r). "
+                    "Cayendo a matching solo por nombre (legacy).",
+                    producto_id, nombre_ing,
+                )
+
             result = coleccion_ingredientes.update_one(
-                {
-                    "nombre": {"$regex": f"^{nombre_ing}$", "$options": "i"},
-                    "cantidad_actual": {"$gte": descuento},
-                },
+                filtro,
                 {"$inc": {"cantidad_actual": -descuento}},
                 session=session,
             )
             if result.matched_count == 0:
-                raise ConflictError(f"Stock insuficiente para el ingrediente '{nombre_ing}'")
+                # Diagnóstico fino: distinguimos "no existe en la sucursal"
+                # de "existe pero no hay stock suficiente".
+                existe = coleccion_ingredientes.find_one(
+                    {
+                        "nombre": {"$regex": f"^{nombre_ing}$", "$options": "i"},
+                        **({"restaurante_id": rid} if rid else {}),
+                    },
+                    session=session,
+                )
+                if existe is None:
+                    raise ConflictError(
+                        f"El ingrediente '{nombre_ing}' no existe en esta sucursal"
+                    )
+                raise ConflictError(
+                    f"Stock insuficiente para el ingrediente '{nombre_ing}'"
+                )
 
 
 VALORES_ENTREGA_VALIDOS = {"local", "domicilio", "recoger"}
@@ -273,11 +315,15 @@ async def crear_pedido(pedido: PedidoCrear):
     if pedido.restauranteId:
         pedido_dict["restaurante_id"] = pedido.restauranteId
 
+    # Sucursal del pedido — el descuento de stock va contra ESTA sucursal,
+    # nunca contra otra (aunque haya un ingrediente con el mismo nombre).
+    rid_pedido = pedido.restauranteId
+
     resultado = None
     try:
         with cliente.start_session() as session:
             with session.start_transaction():
-                _descontar_stock(items_dict, session=session)
+                _descontar_stock(items_dict, session=session, restaurante_id=rid_pedido)
                 resultado = coleccion_pedidos.insert_one(pedido_dict, session=session)
     except AppError:
         raise
@@ -285,7 +331,7 @@ async def crear_pedido(pedido: PedidoCrear):
         # MongoDB standalone no soporta transacciones: fallback a operaciones atómicas por documento
         if "Transaction numbers are only allowed" in str(e) or e.code == 20:
             logger.warning("MongoDB standalone detectado: usando actualizaciones atómicas sin transacción")
-            _descontar_stock(items_dict)
+            _descontar_stock(items_dict, restaurante_id=rid_pedido)
             resultado = coleccion_pedidos.insert_one(pedido_dict)
         else:
             logger.error(f"Error de base de datos creando pedido: {e}")

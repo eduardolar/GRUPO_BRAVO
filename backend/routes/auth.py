@@ -333,7 +333,12 @@ async def iniciar_sesion(request: Request, credenciales: UsuarioLogin):
                         "mensaje": "Se ha enviado un código de seguridad a tu correo.",
                     }
                 # Email 2FA desactivado: acceso directo con JWT
-                token = crear_token({"sub": str(usuario_db["_id"]), "correo": correo_normalizado, "rol": rol})
+                token = crear_token({
+                    "sub": str(usuario_db["_id"]),
+                    "correo": correo_normalizado,
+                    "rol": rol,
+                    "restaurante_id": usuario_db.get("restaurante_id"),
+                })
                 return {
                     "id": str(usuario_db["_id"]),
                     "nombre": usuario_db["nombre"],
@@ -347,7 +352,12 @@ async def iniciar_sesion(request: Request, credenciales: UsuarioLogin):
 
             # CAMINO B: Trabajador, admin, cocinero. Acceso directo sin 2FA con JWT.
             else:
-                token = crear_token({"sub": str(usuario_db["_id"]), "correo": correo_normalizado, "rol": rol})
+                token = crear_token({
+                    "sub": str(usuario_db["_id"]),
+                    "correo": correo_normalizado,
+                    "rol": rol,
+                    "restaurante_id": usuario_db.get("restaurante_id"),
+                })
                 return {
                     "id": str(usuario_db["_id"]),
                     "nombre": usuario_db["nombre"],
@@ -390,7 +400,12 @@ def verificar_login_2fa(datos: VerificarLogin2FA):
     )
 
     rol = usuario_db.get("rol", "cliente")
-    token = crear_token({"sub": str(usuario_db["_id"]), "correo": datos.correo, "rol": rol})
+    token = crear_token({
+        "sub": str(usuario_db["_id"]),
+        "correo": datos.correo,
+        "rol": rol,
+        "restaurante_id": usuario_db.get("restaurante_id"),
+    })
     return {
         "id": str(usuario_db["_id"]),
         "nombre": usuario_db["nombre"],
@@ -625,7 +640,12 @@ def verificar_2fa(request: Request, datos: Verificar2FA):
         raise AutenticacionError("Código incorrecto. Verifica tu Google Authenticator")
 
     rol = usuario_db.get("rol", "cliente")
-    token = crear_token({"sub": str(usuario_db["_id"]), "correo": usuario_db["correo"], "rol": rol})
+    token = crear_token({
+        "sub": str(usuario_db["_id"]),
+        "correo": usuario_db["correo"],
+        "rol": rol,
+        "restaurante_id": usuario_db.get("restaurante_id"),
+    })
     return {
         "id": str(usuario_db["_id"]),
         "nombre": usuario_db["nombre"],
@@ -691,7 +711,12 @@ def verificar_2fa_recovery(request: Request, datos: VerificarRecuperacion):
 
     codigos_restantes = len(hashes) - 1
     rol = usuario_db.get("rol", "cliente")
-    token = crear_token({"sub": str(usuario_db["_id"]), "correo": usuario_db["correo"], "rol": rol})
+    token = crear_token({
+        "sub": str(usuario_db["_id"]),
+        "correo": usuario_db["correo"],
+        "rol": rol,
+        "restaurante_id": usuario_db.get("restaurante_id"),
+    })
     return {
         "id": str(usuario_db["_id"]),
         "nombre": usuario_db["nombre"],

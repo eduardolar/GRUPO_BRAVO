@@ -5,10 +5,13 @@ import 'package:frontend/components/bravo_app_bar.dart';
 import 'package:frontend/core/app_snackbar.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/models/producto_model.dart';
+import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/screens/Administrador/admin_categorias_tab.dart';
 import 'package:frontend/screens/Administrador/admin_editar_plato.dart';
 import 'package:frontend/services/api_service.dart';
+import 'package:frontend/services/producto_service.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 
 class AdminMenuScreen extends StatefulWidget {
   const AdminMenuScreen({super.key});
@@ -49,9 +52,18 @@ class _AdminMenuScreenState extends State<AdminMenuScreen>
       _cargando = true;
       _errorCarga = null;
     });
+    // Restringimos el listado a la sucursal del admin actual: nunca debe
+    // ver/editar productos de otras sucursales del Grupo. Si no tiene
+    // restaurante asignado (caso legacy) cae a la lista global.
+    final restauranteId = context
+        .read<AuthProvider>()
+        .usuarioActual
+        ?.restauranteId;
     try {
       final categorias = await ApiService.obtenerCategorias();
-      final productos = await ApiService.obtenerProductos();
+      final productos = await ProductoService.obtenerProductos(
+        restauranteId: restauranteId,
+      );
       if (!mounted) return;
       setState(() {
         _categorias = categorias;

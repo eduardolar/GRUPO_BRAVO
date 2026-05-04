@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:frontend/components/Cliente/entrada_texto.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/models/ingrediente_model.dart';
+import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/services/api_service.dart';
+import 'package:provider/provider.dart';
 
 class AdminAnadirMenu extends StatefulWidget {
   const AdminAnadirMenu({super.key});
@@ -251,6 +253,14 @@ class _AdminAnadirMenuState extends State<AdminAnadirMenu> {
 
     setState(() => _guardando = true);
 
+    // Sucursal del admin actual: el producto se crea SIEMPRE asignado a su
+    // restaurante. Sin esto el producto quedaba huérfano y desaparecía al
+    // filtrar por sucursal en cualquier listado del panel.
+    final restauranteId = context
+        .read<AuthProvider>()
+        .usuarioActual
+        ?.restauranteId;
+
     try {
       await ApiService.crearProducto({
         'nombre': _nombreplato.text.trim(),
@@ -259,6 +269,8 @@ class _AdminAnadirMenuState extends State<AdminAnadirMenu> {
         'categoria': _categoriaSeleccionada,
         'ingredientes': _ingredientesProducto.map((i) => i.nombre).toList(),
         'disponible': true,
+        if (restauranteId != null && restauranteId.isNotEmpty)
+          'restaurante_id': restauranteId,
       });
 
       if (!mounted) return;

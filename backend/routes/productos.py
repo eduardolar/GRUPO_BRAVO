@@ -1,10 +1,11 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import List, Optional
 from pydantic import BaseModel
 from bson import ObjectId
 from bson.errors import InvalidId
 from database import coleccion_productos, coleccion_ingredientes
 from models import ProductoCrear
+from security import require_role
 
 router = APIRouter(prefix="/productos", tags=["Productos"])
 
@@ -13,9 +14,25 @@ class ProductoOrden(BaseModel):
     orden: List[str]
 
 
+class AsignarSucursalRequest(BaseModel):
+    """Asigna una sucursal a un grupo de productos. Si `solo_huerfanos`
+    es True, ignora `ids` y opera sobre todos los productos sin
+    `restaurante_id` (atajo para migrar el catálogo legacy)."""
+    restaurante_id: str
+    ids: List[str] = []
+    solo_huerfanos: bool = False
+
+
 def _normalizar_payload(producto: ProductoCrear) -> dict:
-    """Convierte el modelo Pydantic a un dict listo para Mongo."""
-    return producto.dict()
+    """Convierte el modelo Pydantic a un dict listo para Mongo.
+
+    `restaurante_id=None` se omite del `$set` para que un PUT que no envíe
+    ese campo NO borre el restaurante asignado al producto.
+    """
+    datos = producto.dict()
+    if datos.get("restaurante_id") is None:
+        datos.pop("restaurante_id", None)
+    return datos
 
 
 def _obj_id(id_str: str) -> ObjectId:
@@ -35,11 +52,37 @@ def _siguiente_orden() -> int:
     return coleccion_productos.count_documents({})
 
 
-@router.get("")
-def obtener_productos(categoria: Optional[str] = Query(None)):
-    filtro = {}
+@router.get("", summary="Listar productos (opcionalmente filtrados por restaurante)")
+def obtener_productos(
+    categoria: Optional[str] = Query(None),
+    restauranteId: Optional[str] = Query(
+        None,
+        description="Filtra productos por sucursal (acepta camelCase desde el frontend)",
+    ),
+    restaurante_id: Optional[str] = Query(
+        None, description="Alias snake_case del filtro por sucursal"
+    ),
+    incluirSinAsignar: bool = Query(
+        False,
+        description="Si filtras por sucursal, incluye también los productos legacy sin restaurante_id",
+    ),
+):
+    filtro: dict = {}
     if categoria:
         filtro["categoria"] = categoria
+    rid = restauranteId or restaurante_id
+    if rid:
+        if incluirSinAsignar:
+            # Productos del restaurante O productos huérfanos (sin restaurante_id
+            # o con restaurante_id vacío). Útil en panel super admin para
+            # asignar el catálogo legacy a una sucursal.
+            filtro["$or"] = [
+                {"restaurante_id": rid},
+                {"restaurante_id": {"$in": [None, ""]}},
+                {"restaurante_id": {"$exists": False}},
+            ]
+        else:
+            filtro["restaurante_id"] = rid
     productos_raw = list(coleccion_productos.find(filtro))
     con_orden = [p for p in productos_raw if isinstance(p.get("orden"), int)]
     sin_orden = [p for p in productos_raw if not isinstance(p.get("orden"), int)]
@@ -84,19 +127,68 @@ def obtener_productos(categoria: Optional[str] = Query(None)):
             "categoria": p.get("categoria", ""),
             "estaDisponible": esta_disponible,
             "ingredientes": ingredientes,
+            # Devolvemos el restaurante en ambas convenciones para que tanto
+            # frontends nuevos (camelCase) como antiguos (snake_case) funcionen.
+            "restauranteId": p.get("restaurante_id"),
+            "restaurante_id": p.get("restaurante_id"),
         })
     return resultado
 
-@router.post("")
-def crear_producto(producto: ProductoCrear):
+@router.post("/asignar-sucursal", summary="Asignar sucursal a productos en masa (super admin)")
+def asignar_sucursal(
+    payload: AsignarSucursalRequest,
+    _admin: dict = Depends(require_role(["admin", "super_admin"])),
+):
+    """Reasigna `restaurante_id` en bloque. Útil para migrar productos
+    legacy (sin sucursal) a una sucursal concreta."""
+    rid = payload.restaurante_id.strip()
+    if not rid:
+        raise HTTPException(status_code=400, detail="restaurante_id requerido")
+
+    if payload.solo_huerfanos:
+        filtro = {
+            "$or": [
+                {"restaurante_id": {"$in": [None, ""]}},
+                {"restaurante_id": {"$exists": False}},
+            ]
+        }
+    else:
+        oids = []
+        for id_str in payload.ids:
+            try:
+                oids.append(ObjectId(id_str))
+            except (InvalidId, TypeError):
+                raise HTTPException(status_code=400, detail=f"ID inválido: {id_str}")
+        if not oids:
+            raise HTTPException(status_code=400, detail="Sin IDs para asignar")
+        filtro = {"_id": {"$in": oids}}
+
+    resultado = coleccion_productos.update_many(
+        filtro, {"$set": {"restaurante_id": rid}}
+    )
+    return {
+        "mensaje": "Sucursal asignada",
+        "actualizados": resultado.modified_count,
+        "coincidencias": resultado.matched_count,
+    }
+
+
+@router.post("", summary="Crear producto (admin)")
+def crear_producto(
+    producto: ProductoCrear,
+    _admin: dict = Depends(require_role(["admin", "super_admin"])),
+):
     producto_dict = _normalizar_payload(producto)
     producto_dict["orden"] = _siguiente_orden()
     resultado = coleccion_productos.insert_one(producto_dict)
     return {"id": str(resultado.inserted_id), "mensaje": "Producto creado"}
 
 
-@router.put("/orden")
-def reordenar_productos(payload: ProductoOrden):
+@router.put("/orden", summary="Reordenar productos (admin)")
+def reordenar_productos(
+    payload: ProductoOrden,
+    _admin: dict = Depends(require_role(["admin", "super_admin"])),
+):
     ids_recibidos = [i.strip() for i in payload.orden if i and i.strip()]
     oids = []
     for id_str in ids_recibidos:
@@ -118,8 +210,12 @@ def reordenar_productos(payload: ProductoOrden):
     return {"mensaje": "Orden actualizado", "total": len(oids)}
 
 
-@router.put("/{producto_id}")
-def actualizar_producto(producto_id: str, producto: ProductoCrear):
+@router.put("/{producto_id}", summary="Actualizar producto (admin)")
+def actualizar_producto(
+    producto_id: str,
+    producto: ProductoCrear,
+    _admin: dict = Depends(require_role(["admin", "super_admin"])),
+):
     oid = _obj_id(producto_id)
     if not coleccion_productos.find_one({"_id": oid}):
         raise HTTPException(status_code=404, detail="Producto no encontrado")
@@ -134,8 +230,11 @@ def actualizar_producto(producto_id: str, producto: ProductoCrear):
     return actualizado
 
 
-@router.delete("/{producto_id}")
-def eliminar_producto(producto_id: str):
+@router.delete("/{producto_id}", summary="Eliminar producto (admin)")
+def eliminar_producto(
+    producto_id: str,
+    _admin: dict = Depends(require_role(["admin", "super_admin"])),
+):
     oid = _obj_id(producto_id)
     resultado = coleccion_productos.delete_one({"_id": oid})
     if resultado.deleted_count == 0:

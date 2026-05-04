@@ -141,23 +141,94 @@ class ProductoService {
 
   // ─── PRODUCTOS ───────────────────────────────────────────────
 
-  static Future<List<Producto>> obtenerProductos({String? categoria}) async {
+  static Future<List<Producto>> obtenerProductos({
+    String? categoria,
+    String? restauranteId,
+    bool incluirSinAsignar = false,
+  }) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 300));
       final productos = MockData.productos;
+      Iterable<Producto> filtrados = productos;
       if (categoria != null) {
-        return productos.where((p) => p.categoria == categoria).toList();
+        filtrados = filtrados.where((p) => p.categoria == categoria);
       }
-      return List.from(productos);
+      if (restauranteId != null && restauranteId.isNotEmpty) {
+        if (incluirSinAsignar) {
+          filtrados = filtrados.where(
+            (p) =>
+                p.restauranteId == restauranteId ||
+                (p.restauranteId == null || p.restauranteId!.isEmpty),
+          );
+        } else {
+          filtrados = filtrados.where((p) => p.restauranteId == restauranteId);
+        }
+      }
+      return filtrados.toList();
     }
 
-    final uri = categoria != null
-        ? Uri.parse('$baseUrl/productos?categoria=$categoria')
-        : Uri.parse('$baseUrl/productos');
+    final params = <String, String>{};
+    if (categoria != null && categoria.isNotEmpty) {
+      params['categoria'] = categoria;
+    }
+    if (restauranteId != null && restauranteId.isNotEmpty) {
+      params['restauranteId'] = restauranteId;
+      if (incluirSinAsignar) {
+        params['incluirSinAsignar'] = 'true';
+      }
+    }
+    final uri = Uri.parse(
+      '$baseUrl/productos',
+    ).replace(queryParameters: params.isEmpty ? null : params);
     final response = await httpWithRetry(() => http.get(uri));
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
       return data.map((json) => Producto.fromMap(json)).toList();
+    }
+    throw toApiException(response.statusCode, decodeBody(response));
+  }
+
+  /// Asigna una sucursal a uno o varios productos. Si [soloHuerfanos] es
+  /// `true`, opera sobre TODOS los productos sin sucursal asignada y se
+  /// ignora [ids]. Devuelve cuántos documentos se actualizaron.
+  static Future<int> asignarSucursalEnMasa({
+    required String restauranteId,
+    List<String> ids = const [],
+    bool soloHuerfanos = false,
+  }) async {
+    if (!usarApiReal) {
+      await Future.delayed(const Duration(milliseconds: 200));
+      var n = 0;
+      for (var i = 0; i < MockData.productos.length; i++) {
+        final p = MockData.productos[i];
+        final esHuerfano = p.restauranteId == null || p.restauranteId!.isEmpty;
+        final esObjetivo = soloHuerfanos ? esHuerfano : ids.contains(p.id);
+        if (esObjetivo) {
+          MockData.productos[i] = Producto.fromMap({
+            ...p.toMap(),
+            'restauranteId': restauranteId,
+          });
+          n++;
+        }
+      }
+      return n;
+    }
+
+    final response = await httpWithRetry(
+      () => http.post(
+        Uri.parse('$baseUrl/productos/asignar-sucursal'),
+        headers: _jsonHeaders,
+        body: jsonEncode({
+          'restaurante_id': restauranteId,
+          'ids': ids,
+          'solo_huerfanos': soloHuerfanos,
+        }),
+      ),
+      retry: false,
+    );
+    if (response.statusCode == 200) {
+      final body = decodeBody(response);
+      return (body['actualizados'] as int?) ?? 0;
     }
     throw toApiException(response.statusCode, decodeBody(response));
   }
