@@ -43,17 +43,22 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 
-# --- CONFIGURACIÓN DE CORS CORREGIDA (PARA EVITAR 400 OPTIONS) ---
-# Al usar allow_origins=["*"], permitimos que cualquier origen conecte.
-# IMPORTANTE: allow_credentials debe ser False cuando usamos el comodín "*".
+# --- CORS: restringe orígenes en producción mediante ALLOWED_ORIGINS en .env ---
+# Ejemplo producción: ALLOWED_ORIGINS=https://app.grupobravo.com,https://admin.grupobravo.com
+# Desarrollo (vacío): permite cualquier origen, sin credenciales.
+_raw_origins = os.getenv("ALLOWED_ORIGINS", "")
+_allowed_origins = [o.strip() for o in _raw_origins.split(",") if o.strip()]
+if not _allowed_origins:
+    _allowed_origins = ["*"]
+_allow_credentials = _allowed_origins != ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False, 
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=_allowed_origins,
+    allow_credentials=_allow_credentials,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Actor"],
 )
-# ----------------------------------------------------------------
 
 @app.exception_handler(AppError)
 async def app_error_handler(request: Request, exc: AppError):

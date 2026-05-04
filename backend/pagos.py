@@ -7,10 +7,11 @@ import httpx
 import stripe
 from bson import ObjectId
 from dotenv import load_dotenv
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from audit import registrar_pago
+from security import require_role
 from database import coleccion_auditoria_pagos, coleccion_pedidos
 
 load_dotenv()
@@ -30,11 +31,8 @@ class PaymentIntentCreate(BaseModel):
     currency: str = "eur"
 
 class CardConfirmRequest(BaseModel):
-    clientSecret: str
-    numeroTarjeta: str
-    fechaExpiracion: str
-    cvv: str
-    nombreTitular: str
+    payment_intent_id: str
+    payment_method_id: str
 
 class ApplePayInitRequest(BaseModel):
     pedido_id: str
@@ -113,20 +111,29 @@ def crear_payment_intent(request: Request, payload: PaymentIntentCreate):
 @router.post("/stripe/confirm")
 @router.post("/card/confirm")
 def confirmar_payment_intent(request: Request, payload: CardConfirmRequest):
-    if not payload.clientSecret.strip():
-        raise HTTPException(status_code=400, detail="clientSecret requerido")
-    if not payload.numeroTarjeta.strip():
-        raise HTTPException(status_code=400, detail="Número de tarjeta requerido")
-    if not payload.fechaExpiracion.strip():
-        raise HTTPException(status_code=400, detail="Fecha de expiración requerida")
-    if not payload.cvv.strip():
-        raise HTTPException(status_code=400, detail="CVV requerido")
-    if not payload.nombreTitular.strip():
-        raise HTTPException(status_code=400, detail="Nombre del titular requerido")
-
-    registrar_pago(request, "stripe.card_confirm", "stripe",
-                   estado="simulado", detalle="Confirmación simulada en entorno de desarrollo")
-    return {"success": True, "message": "Confirmación simulada en backend de desarrollo"}
+    if not stripe.api_key:
+        raise HTTPException(status_code=500, detail="Falta STRIPE_SECRET_KEY")
+    if not payload.payment_intent_id.strip() or not payload.payment_method_id.strip():
+        raise HTTPException(status_code=400, detail="payment_intent_id y payment_method_id son requeridos")
+    try:
+        intent = stripe.PaymentIntent.confirm(
+            payload.payment_intent_id,
+            payment_method=payload.payment_method_id,
+        )
+        paid = intent["status"] == "succeeded"
+        registrar_pago(request, "stripe.card_confirm", "stripe",
+                       referencia=intent["id"], estado=intent["status"],
+                       detalle=f"paid={paid}")
+        return {
+            "id": intent["id"],
+            "status": intent["status"],
+            "paid": paid,
+        }
+    except Exception as e:
+        registrar_pago(request, "stripe.card_confirm", "stripe",
+                       referencia=payload.payment_intent_id,
+                       estado="error", detalle=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.post("/apple-pay/init")
@@ -506,6 +513,7 @@ async def capturar_orden_paypal_get(request: Request, order_id: str):
 
 @router.get("/audit")
 def obtener_auditoria(
+    _admin: dict = Depends(require_role(["admin", "super_admin"])),
     proveedor: Optional[str] = Query(None),
     estado: Optional[str] = Query(None),
     desde: Optional[str] = Query(None, description="ISO 8601, ej: 2024-01-01T00:00:00"),

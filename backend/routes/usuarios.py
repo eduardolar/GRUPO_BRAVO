@@ -1,7 +1,7 @@
 import random
 import string
 import bcrypt
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from typing import Optional
 from database import coleccion_usuarios, coleccion_auditoria
 from exceptions import NotFoundError, ConflictError, ValidacionError, AutenticacionError
@@ -9,6 +9,7 @@ from bson import ObjectId
 from database import coleccion_usuarios
 import audit_general as ag
 from models import UsuarioActualizar
+from security import require_role, normalizar_rol, ROLES_CANONICOS
 from pydantic import BaseModel, EmailStr
 from fastapi_mail import FastMail, MessageSchema, MessageType
 
@@ -83,7 +84,10 @@ class UsuarioCrear(BaseModel):
 router = APIRouter(prefix="/usuarios", tags=["Usuarios"])
 
 @router.get("/")
-def listar_usuarios(rol: str | None = None):
+def listar_usuarios(
+    rol: str | None = None,
+    _admin: dict = Depends(require_role(["admin", "super_admin"])),
+):
     filtro = {}
     if rol:
         filtro["rol"] = rol
@@ -120,6 +124,7 @@ def listar_usuarios(rol: str | None = None):
 def obtener_auditoria_usuarios(
     accion: Optional[str] = Query(None),
     limite: int = Query(100, ge=1, le=500),
+    _admin: dict = Depends(require_role(["admin", "super_admin"])),
 ):
     filtro = {}
     if accion:
@@ -195,13 +200,16 @@ def cambiar_password(user_id: str, datos: CambiarPassword):
 
 # Ruta obligatoria para que funcione el botón de Flutter de "Cambiar Rol"
 @router.put("/{user_id}/rol")
-def actualizar_rol(user_id: str, datos: UsuarioActualizarRol, request: Request):
-    rol_limpio = datos.rol.strip().lower()
+def actualizar_rol(
+    user_id: str,
+    datos: UsuarioActualizarRol,
+    request: Request,
+    _admin: dict = Depends(require_role(["admin", "super_admin"])),
+):
+    # Normaliza alias (mesero→camarero, administrador→admin, etc.) al rol canónico
+    rol_limpio = normalizar_rol(datos.rol)
 
-    # Aquí aceptamos los trabajos, pero también el rol de "admin" y "super_admin" para futuras necesidades de administración.
-    roles_permitidos = ["cliente", "cocinero", "camarero", "mesero", "trabajador", "admin", "administrador", "super_admin", "superadministrador"]
-
-    if rol_limpio not in roles_permitidos:
+    if rol_limpio not in ROLES_CANONICOS:
         raise ValidacionError(f"Rol '{rol_limpio}' no válido")
 
     resultado = coleccion_usuarios.update_one(
@@ -220,7 +228,11 @@ def actualizar_rol(user_id: str, datos: UsuarioActualizarRol, request: Request):
 
 # Ruta para eliminar un usuario, es buena tenerla para administración futura.
 @router.delete("/{user_id}")
-def eliminar_usuario(user_id: str, request: Request):
+def eliminar_usuario(
+    user_id: str,
+    request: Request,
+    _admin: dict = Depends(require_role(["admin", "super_admin"])),
+):
     usuario = coleccion_usuarios.find_one({"_id": ObjectId(user_id)})
     resultado = coleccion_usuarios.delete_one({"_id": ObjectId(user_id)})
     if resultado.deleted_count == 0:
@@ -234,7 +246,11 @@ def eliminar_usuario(user_id: str, request: Request):
 
 # --- NUEVA RUTA PARA QUE EL ADMIN CREE USUARIOS ---
 @router.post("/")
-async def crear_usuario(datos: UsuarioCrear, request: Request):
+async def crear_usuario(
+    datos: UsuarioCrear,
+    request: Request,
+    _admin: dict = Depends(require_role(["admin", "super_admin"])),
+):
     correo_limpio = datos.correo.lower().strip()
 
     if coleccion_usuarios.find_one({"correo": correo_limpio}):
