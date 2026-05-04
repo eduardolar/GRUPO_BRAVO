@@ -12,6 +12,7 @@ import 'providers/pedido_provider.dart';
 import 'providers/restaurante_provider.dart';
 import 'providers/usuario_provider.dart';
 import 'screens/cliente/inicio_screen.dart';
+import 'services/actor_context.dart';
 import 'services/api_config.dart';
 import 'services/notificaciones_service.dart';
 import 'services/pedido_listo_watcher.dart';
@@ -60,10 +61,12 @@ class _MainAppState extends State<MainApp> {
     super.dispose();
   }
 
-  /// Arranca el watcher de "pedido listo" para clientes logueados; lo detiene
-  /// si la sesión cambia o se cierra.
+  /// Sincroniza estado dependiente de la sesión cuando cambia el AuthProvider:
+  /// - ActorContext (para auditoría con `X-Actor`)
+  /// - Watcher de "pedido listo" (solo para clientes)
   void _onAuthCambio() {
     final usuario = widget.authProvider.usuarioActual;
+    ActorContext.instance.set(usuario?.email);
     if (usuario != null && usuario.rol == RolUsuario.cliente) {
       PedidoListoWatcher.instance.iniciar(usuario.id);
     } else {

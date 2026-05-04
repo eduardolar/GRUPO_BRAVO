@@ -1,7 +1,7 @@
 import random
 import string
 import bcrypt
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from typing import Optional
 from database import coleccion_usuarios, coleccion_auditoria
 from exceptions import NotFoundError, ConflictError, ValidacionError, AutenticacionError
@@ -14,6 +14,14 @@ from fastapi_mail import FastMail, MessageSchema, MessageType
 
 # Importar la configuración de correo desde auth
 from routes.auth import conf
+
+def _actor_de(request: Request) -> Optional[str]:
+    """Lee el correo del usuario que ejecuta la acción desde la cabecera
+    `X-Actor`. Es trivialmente falsificable (no hay auth real); cuando el
+    proyecto migre a JWT, sustituir por la extracción del token."""
+    valor = request.headers.get("X-Actor")
+    return valor.strip() if valor and valor.strip() else None
+
 
 async def _enviar_correo_activacion(email: str, nombre: str, codigo: str):
     html = f"""
@@ -104,6 +112,26 @@ def listar_usuarios(rol: str | None = None):
         })
     return resultado
 
+# IMPORTANTE: las rutas con path literal (/auditoria) deben declararse ANTES
+# que las rutas con parámetro (/{user_id}). FastAPI evalúa en orden y si la
+# paramétrica va primero capturaría "auditoria" como user_id e intentaría
+# convertirlo a ObjectId.
+@router.get("/auditoria")
+def obtener_auditoria_usuarios(
+    accion: Optional[str] = Query(None),
+    limite: int = Query(100, ge=1, le=500),
+):
+    filtro = {}
+    if accion:
+        filtro["accion"] = accion
+    eventos = list(
+        coleccion_auditoria.find(filtro, {"_id": 0})
+        .sort("fecha", -1)
+        .limit(limite)
+    )
+    return eventos
+
+
 @router.get("/{user_id}")
 def ver_perfil(user_id: str):
     usuario = coleccion_usuarios.find_one({"_id": ObjectId(user_id)})
@@ -120,11 +148,11 @@ def ver_perfil(user_id: str):
         "rol": usuario.get("rol", "cliente"),
     }
 @router.put("/{user_id}")
-def actualizar_perfil(user_id: str, datos: UsuarioActualizar):
+def actualizar_perfil(user_id: str, datos: UsuarioActualizar, request: Request):
     # 1. Convertimos el modelo Pydantic a un diccionario de Python
     datos_dict = datos.dict()
 
-    # Creamos un nuevo diccionario solo con los campos 
+    # Creamos un nuevo diccionario solo con los campos
     # que NO son None. Así no intentamos sobrescribir nombre/correo con nulos.
     actualizacion = {k: v for k, v in datos_dict.items() if v is not None}
 
@@ -135,7 +163,7 @@ def actualizar_perfil(user_id: str, datos: UsuarioActualizar):
     # 3. Ejecutamos la actualización en MongoDB usando solo los campos filtrados
     resultado = coleccion_usuarios.update_one(
         {"_id": ObjectId(user_id)},
-        {"$set": actualizacion} 
+        {"$set": actualizacion}
     )
 
     if resultado.matched_count == 0:
@@ -143,6 +171,7 @@ def actualizar_perfil(user_id: str, datos: UsuarioActualizar):
 
     campos = ", ".join(actualizacion.keys())
     ag.registrar(ag.USUARIO_EDITADO,
+        actor=_actor_de(request),
         objetivo=user_id,
         detalle=f"Campos: {campos}")
     return {"mensaje": "Perfil actualizado correctamente"}
@@ -166,12 +195,12 @@ def cambiar_password(user_id: str, datos: CambiarPassword):
 
 # Ruta obligatoria para que funcione el botón de Flutter de "Cambiar Rol"
 @router.put("/{user_id}/rol")
-def actualizar_rol(user_id: str, datos: UsuarioActualizarRol):
+def actualizar_rol(user_id: str, datos: UsuarioActualizarRol, request: Request):
     rol_limpio = datos.rol.strip().lower()
-    
+
     # Aquí aceptamos los trabajos, pero también el rol de "admin" y "super_admin" para futuras necesidades de administración.
     roles_permitidos = ["cliente", "cocinero", "camarero", "mesero", "trabajador", "admin", "administrador", "super_admin", "superadministrador"]
-    
+
     if rol_limpio not in roles_permitidos:
         raise ValidacionError(f"Rol '{rol_limpio}' no válido")
 
@@ -179,31 +208,33 @@ def actualizar_rol(user_id: str, datos: UsuarioActualizarRol):
         {"_id": ObjectId(user_id)},
         {"$set": {"rol": rol_limpio}}
     )
-    
+
     if resultado.matched_count == 0:
         raise NotFoundError("Usuario no encontrado")
     usuario = coleccion_usuarios.find_one({"_id": ObjectId(user_id)})
     ag.registrar(ag.ROL_CAMBIADO,
+        actor=_actor_de(request),
         objetivo=usuario.get("correo", user_id) if usuario else user_id,
         detalle=f"Nuevo rol: {rol_limpio}")
     return {"mensaje": f"Rol actualizado exitosamente a {rol_limpio}"}
 
 # Ruta para eliminar un usuario, es buena tenerla para administración futura.
 @router.delete("/{user_id}")
-def eliminar_usuario(user_id: str):
+def eliminar_usuario(user_id: str, request: Request):
     usuario = coleccion_usuarios.find_one({"_id": ObjectId(user_id)})
     resultado = coleccion_usuarios.delete_one({"_id": ObjectId(user_id)})
     if resultado.deleted_count == 0:
         raise NotFoundError("Usuario no encontrado")
     if usuario:
         ag.registrar(ag.USUARIO_ELIMINADO,
+            actor=_actor_de(request),
             objetivo=usuario.get("correo", user_id),
             detalle=f"Rol: {usuario.get('rol', '?')}")
     return {"mensaje": "Usuario eliminado"}
 
 # --- NUEVA RUTA PARA QUE EL ADMIN CREE USUARIOS ---
 @router.post("/")
-async def crear_usuario(datos: UsuarioCrear):
+async def crear_usuario(datos: UsuarioCrear, request: Request):
     correo_limpio = datos.correo.lower().strip()
 
     if coleccion_usuarios.find_one({"correo": correo_limpio}):
@@ -238,6 +269,7 @@ async def crear_usuario(datos: UsuarioCrear):
     if resultado.inserted_id:
         await _enviar_correo_activacion(correo_limpio, datos.nombre, reset_code)
         ag.registrar(ag.USUARIO_CREADO,
+            actor=_actor_de(request),
             objetivo=correo_limpio,
             detalle=f"Rol: {datos.rol} | Sucursal: {datos.restaurante_id}")
         return {
@@ -248,17 +280,3 @@ async def crear_usuario(datos: UsuarioCrear):
     raise RuntimeError("No se pudo crear el usuario")
 
 
-@router.get("/auditoria")
-def obtener_auditoria_usuarios(
-    accion: Optional[str] = Query(None),
-    limite: int = Query(100, ge=1, le=500),
-):
-    filtro = {}
-    if accion:
-        filtro["accion"] = accion
-    eventos = list(
-        coleccion_auditoria.find(filtro, {"_id": 0})
-        .sort("fecha", -1)
-        .limit(limite)
-    )
-    return eventos
