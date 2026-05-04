@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:frontend/components/Cliente/producto_card.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/models/producto_model.dart';
+import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/screens/Cliente/perfil_screen.dart';
 import 'package:frontend/services/api_service.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 
 
 class CrearComanda extends StatefulWidget {
@@ -239,6 +241,7 @@ void _enviarPedido(BuildContext context) async {
       );
     } else {
       // Primer envío: crear pedido nuevo y guardar su id
+      final auth = Provider.of<AuthProvider>(context, listen: false);
       final resultado = await ApiService.crearPedido(
         userId: "TRABAJADOR",
         items: allItems,
@@ -251,6 +254,7 @@ void _enviarPedido(BuildContext context) async {
         notas: "",
         referenciaPago: "",
         estadoPago: "pendiente",
+        restauranteId: auth.usuarioActual?.restauranteId,
       );
       _pedidoId = (resultado['id'] ?? resultado['_id'])?.toString();
     }
