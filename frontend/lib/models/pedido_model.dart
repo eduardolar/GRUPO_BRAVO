@@ -43,6 +43,7 @@ class Pedido {
   final int? numeroMesa;
   final List<ProductoPedido> productos;
   final String? notas;
+  final String? restauranteId;
 
   Pedido({
     required this.id,
@@ -57,6 +58,7 @@ class Pedido {
     this.numeroMesa,
     required this.productos,
     this.notas,
+    this.restauranteId,
   });
 
   factory Pedido.fromMap(Map<String, dynamic> mapa) {
@@ -78,6 +80,7 @@ class Pedido {
       numeroMesa: mapa['numeroMesa'],
       productos: productosList,
       notas: mapa['notas'] as String?,
+      restauranteId: mapa['restauranteId'] as String?,
     );
   }
 
@@ -95,6 +98,7 @@ class Pedido {
       'numeroMesa': numeroMesa,
       'productos': productos.map((p) => p.toMap()).toList(),
       'notas': notas,
+      'restauranteId': restauranteId,
     };
   }
 }

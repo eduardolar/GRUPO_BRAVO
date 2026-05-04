@@ -401,6 +401,7 @@ def obtener_pedidos(
             "mesaId": p.get("mesa_id"),
             "numeroMesa": p.get("numero_mesa"),
             "notas": p.get("notas", ""),
+            "restauranteId": str(p["restaurante_id"]) if p.get("restaurante_id") else None,
         })
     return resultado
 

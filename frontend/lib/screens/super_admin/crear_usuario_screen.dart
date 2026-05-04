@@ -139,10 +139,19 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
             ),
           ),
 
-          // Overlay oscuro
+          // Overlay oscuro con gradient
           Positioned.fill(
             child: Container(
-              color: AppColors.shadow.withValues(alpha: 0.85),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withValues(alpha: 0.55),
+                    Colors.black.withValues(alpha: 0.88),
+                  ],
+                ),
+              ),
             ),
           ),
 

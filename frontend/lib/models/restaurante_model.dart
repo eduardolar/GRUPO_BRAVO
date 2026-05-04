@@ -5,6 +5,7 @@ class Restaurante {
   final String codigo;
   final String? horarioApertura; // "HH:MM" e.g. "09:00"
   final String? horarioCierre;   // "HH:MM" e.g. "23:00"
+  final bool activo;
 
   Restaurante({
     required this.id,
@@ -13,6 +14,7 @@ class Restaurante {
     required this.codigo,
     this.horarioApertura,
     this.horarioCierre,
+    this.activo = true,
   });
 
   factory Restaurante.fromJson(Map<String, dynamic> json) {
@@ -25,6 +27,7 @@ class Restaurante {
           json['horario_apertura'] as String?,
       horarioCierre: json['horarioCierre'] as String? ??
           json['horario_cierre'] as String?,
+      activo: json['activo'] != false,
     );
   }
 

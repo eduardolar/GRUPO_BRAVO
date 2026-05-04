@@ -41,7 +41,18 @@ class _ActivarCuentaScreenState extends State<ActivarCuentaScreen> {
             child: Image.asset('assets/images/Bravo restaurante.jpg', fit: BoxFit.cover),
           ),
           Positioned.fill(
-            child: Container(color: AppColors.shadow.withValues(alpha: 0.85)),
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withValues(alpha: 0.55),
+                    Colors.black.withValues(alpha: 0.88),
+                  ],
+                ),
+              ),
+            ),
           ),
           SafeArea(
             child: Center(

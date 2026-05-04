@@ -103,6 +103,25 @@ class UsuarioService {
   } 
 }
 
+// 6. Editar campos de un usuario (nombre, correo, activo)
+  Future<bool> editarUsuario(String id, {String? nombre, String? correo, bool? activo}) async {
+    try {
+      final body = <String, dynamic>{};
+      if (nombre != null) body['nombre'] = nombre;
+      if (correo != null) body['correo'] = correo;
+      if (activo != null) body['activo'] = activo;
+      final response = await http.put(
+        Uri.parse('\$baseUrl/usuarios/\$id'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(body),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('Error al editar usuario: \$e');
+      return false;
+    }
+  }
+
 //  7. Persistencia de Dirección y Coordenadas ---
   Future<bool> actualizarDireccion({
     required String userId,

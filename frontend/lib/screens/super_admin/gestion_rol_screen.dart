@@ -1,14 +1,16 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:frontend/components/bravo_app_bar.dart';
 import '../../models/usuario_model.dart';
 import '../../providers/usuario_provider.dart';
 import '../../core/colors_style.dart';
 
 class GestionRolesScreen extends StatefulWidget {
-  final String restauranteId;
+  final String? restauranteId;
 
-  const GestionRolesScreen({super.key, required this.restauranteId});
+  const GestionRolesScreen({super.key, this.restauranteId});
 
   @override
   State<GestionRolesScreen> createState() => _GestionRolesScreenState();
@@ -59,9 +61,9 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
   ];
 
   List<Usuario> _filtrarPorRestaurante(List<Usuario> todos) {
-    final idFiltro = widget.restauranteId.trim().toLowerCase();
+    final idFiltro = (widget.restauranteId ?? '').trim().toLowerCase();
     return todos.where((u) {
-      if ((u.restauranteId ?? '').toString().trim().toLowerCase() != idFiltro) return false;
+      if (idFiltro.isNotEmpty && (u.restauranteId ?? '').toString().trim().toLowerCase() != idFiltro) return false;
       return u.rolRaw != 'cliente';
     }).toList();
   }
@@ -79,15 +81,31 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: Image.asset('assets/images/Bravo restaurante.jpg', fit: BoxFit.cover),
+      extendBodyBehindAppBar: true,
+      appBar: const BravoAppBar(title: 'PERMISOS Y ROLES'),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/images/Bravo restaurante.jpg'),
+            fit: BoxFit.cover,
           ),
-          Positioned.fill(
-            child: Container(color: AppColors.shadow.withValues(alpha: 0.88)),
+        ),
+        child: Container(
+          width: double.infinity,
+          height: double.infinity,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.black.withValues(alpha: 0.55),
+                Colors.black.withValues(alpha: 0.88),
+              ],
+            ),
           ),
-          SafeArea(
+          child: SafeArea(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -123,6 +141,7 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
 
                       return ListView(
                         padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
+                        physics: const BouncingScrollPhysics(),
                         children: [
                           Center(
                             child: ConstrainedBox(
@@ -153,22 +172,14 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
               ],
             ),
           ),
-          Positioned(
-            top: 20,
-            left: 10,
-            child: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
-              onPressed: () => Navigator.pop(context),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -177,7 +188,7 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
             style: TextStyle(
               fontFamily: 'Playfair Display',
               color: Colors.white,
-              fontSize: 34,
+              fontSize: 30,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -187,7 +198,7 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
           Text(
             'Modifica el rol de cualquier usuario de esta sucursal',
             style: GoogleFonts.manrope(
-              color: Colors.white.withValues(alpha: 0.6),
+              color: Colors.white.withValues(alpha: 0.65),
               fontSize: 13,
             ),
           ),
@@ -204,6 +215,8 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
       padding: const EdgeInsets.only(top: 8, bottom: 10),
       child: Row(
         children: [
+          Container(width: 3, height: 18, color: AppColors.button),
+          const SizedBox(width: 10),
           Icon(icono, color: AppColors.button, size: 16),
           const SizedBox(width: 8),
           Text(
@@ -211,20 +224,24 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
             style: GoogleFonts.manrope(
               fontSize: 11,
               fontWeight: FontWeight.w800,
-              color: AppColors.button,
+              color: Colors.white70,
               letterSpacing: 2,
             ),
           ),
           const SizedBox(width: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-            color: AppColors.button.withValues(alpha: 0.15),
+            decoration: BoxDecoration(
+              color: AppColors.button.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: AppColors.button.withValues(alpha: 0.45)),
+            ),
             child: Text(
               '$count',
               style: GoogleFonts.manrope(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
-                color: AppColors.button,
+                color: Colors.white,
               ),
             ),
           ),
@@ -339,7 +356,7 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
   }
 }
 
-// ── TILE DE ROL ──────────────────────────────────────────────────────
+// ── TILE DE ROL (GLASS) ──────────────────────────────────────────────
 class _RolTile extends StatelessWidget {
   final Usuario usuario;
   final VoidCallback onEdit;
@@ -354,56 +371,78 @@ class _RolTile extends StatelessWidget {
 
     final rolLabel = _labelRol(usuario.rolRaw);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.07),
-        border: Border.all(color: Colors.white12),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 52,
-            height: 64,
-            color: AppColors.button.withValues(alpha: 0.8),
-            alignment: Alignment.center,
-            child: Text(
-              initials,
-              style: GoogleFonts.manrope(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.45),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.15),
+                width: 1.5,
+              ),
             ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                Text(
-                  usuario.nombre,
-                  style: GoogleFonts.manrope(fontWeight: FontWeight.w700, fontSize: 14, color: Colors.white),
-                ),
-                const SizedBox(height: 4),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  color: AppColors.button.withValues(alpha: 0.2),
-                  child: Text(
-                    rolLabel.toUpperCase(),
-                    style: GoogleFonts.manrope(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.button,
-                      letterSpacing: 1,
+                  width: 52,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: AppColors.button.withValues(alpha: 0.85),
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(20),
+                      bottomLeft: Radius.circular(20),
                     ),
                   ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    initials,
+                    style: GoogleFonts.manrope(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15),
+                  ),
                 ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        usuario.nombre,
+                        style: GoogleFonts.manrope(fontWeight: FontWeight.w700, fontSize: 14, color: Colors.white),
+                      ),
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.button.withValues(alpha: 0.25),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: AppColors.button.withValues(alpha: 0.5)),
+                        ),
+                        child: Text(
+                          rolLabel.toUpperCase(),
+                          style: GoogleFonts.manrope(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined, color: Colors.white70, size: 22),
+                  onPressed: onEdit,
+                ),
+                const SizedBox(width: 4),
               ],
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.edit_outlined, color: Colors.white54, size: 22),
-            onPressed: onEdit,
-          ),
-          const SizedBox(width: 4),
-        ],
+        ),
       ),
     );
   }
