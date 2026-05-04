@@ -88,17 +88,18 @@ class EventoGeneral {
   }
 }
 
-extension AuditoriaGeneralService on AuditoriaService {
+class AuditoriaGeneralService {
   static Future<List<EventoGeneral>> obtenerEventosGenerales({
     String? accion,
     int limite = 100,
   }) async {
-    final params = <String, String>{'limite': '\$limite'};
+    final params = <String, String>{'limite': '$limite'};
     if (accion != null && accion.isNotEmpty) params['accion'] = accion;
 
-    final uri = Uri.parse('\$baseUrl/usuarios/auditoria')
+    final uri = Uri.parse('$baseUrl/usuarios/auditoria')
         .replace(queryParameters: params);
-    final response = await http.get(uri, headers: {'Accept': 'application/json'});
+    final response =
+        await http.get(uri, headers: {'Accept': 'application/json'});
 
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
@@ -106,7 +107,6 @@ extension AuditoriaGeneralService on AuditoriaService {
           .map((j) => EventoGeneral.fromJson(j as Map<String, dynamic>))
           .toList();
     }
-    // Si el endpoint aún no devuelve datos simplemente retorna vacío
-    return [];
+    throw Exception('Error al cargar eventos de usuarios (${response.statusCode})');
   }
 }
