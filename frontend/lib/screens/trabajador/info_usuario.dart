@@ -279,8 +279,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
                     oculto: false,
                     onToggle: () {},
                     validator: (v) {
-                      if (v == null || v.trim().length != 6)
+                      if (v == null || v.trim().length != 6) {
                         return 'Introduce el código de 6 dígitos';
+                      }
                       return null;
                     },
                   ),
@@ -325,8 +326,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
                                   );
                                 }
                               } catch (e) {
-                                if (ctx.mounted)
+                                if (ctx.mounted) {
                                   setSheet(() => cargando = false);
+                                }
                                 if (mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
@@ -440,13 +442,16 @@ class _PerfilScreenState extends State<PerfilScreen> {
                     oculto: !verNueva,
                     onToggle: () => setSheet(() => verNueva = !verNueva),
                     validator: (v) {
-                      if (v == null || v.isEmpty)
+                      if (v == null || v.isEmpty) {
                         return 'Introduce la nueva contraseña';
+                      }
                       if (v.length < 8) return 'Mínimo 8 caracteres';
-                      if (!RegExp(r'[A-Z]').hasMatch(v))
+                      if (!RegExp(r'[A-Z]').hasMatch(v)) {
                         return 'Falta una mayúscula';
-                      if (!RegExp(r'[0-9]').hasMatch(v))
+                      }
+                      if (!RegExp(r'[0-9]').hasMatch(v)) {
                         return 'Falta un número';
+                      }
                       return null;
                     },
                   ),
@@ -502,8 +507,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
                                   );
                                 }
                               } catch (e) {
-                                if (ctx.mounted)
+                                if (ctx.mounted) {
                                   setSheet(() => cargando = false);
+                                }
                                 if (mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
@@ -670,10 +676,12 @@ class _PerfilScreenState extends State<PerfilScreen> {
                             Icons.phone_outlined,
                             keyboardType: TextInputType.phone,
                             validator: (v) {
-                              if (v == null || v.trim().isEmpty)
+                              if (v == null || v.trim().isEmpty) {
                                 return 'El teléfono es obligatorio';
-                              if (!RegExp(r'^\+?\d{6,15}$').hasMatch(v.trim()))
+                              }
+                              if (!RegExp(r'^\+?\d{6,15}$').hasMatch(v.trim())) {
                                 return 'Teléfono no válido';
+                              }
                               return null;
                             },
                           ),
@@ -692,8 +700,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
                                   size: 20,
                                 ),
                                 validator: (v) {
-                                  if (v == null || v.trim().isEmpty)
+                                  if (v == null || v.trim().isEmpty) {
                                     return 'La dirección es obligatoria';
+                                  }
                                   return null;
                                 },
                               ),

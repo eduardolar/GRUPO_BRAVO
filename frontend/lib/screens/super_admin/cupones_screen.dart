@@ -34,7 +34,7 @@ class _CuponesScreenState extends State<CuponesScreen>
 
   String _filtro = 'todos';
   String _busqueda = '';
-  String _orden = 'recientes';
+  final String _orden = 'recientes';
 
   late TabController _tabCtrl;
 
