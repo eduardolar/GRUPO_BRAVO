@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../../models/restaurante_model.dart';
 import '../../providers/restaurante_provider.dart';
 import '../../providers/usuario_provider.dart';
-import 'home_screen_super_admin.dart';
+import 'sucursal_detail_screen.dart';
 import '../../core/colors_style.dart';
 
 class SeleccionarRestauranteScreen extends StatefulWidget {
@@ -250,12 +250,66 @@ class _SeleccionarRestauranteScreenState extends State<SeleccionarRestauranteScr
     }
   }
 
+
+  // ── TOGGLE ACTIVO ──────────────────────────────────────────────────
+  Future<void> _toggleActivo(Restaurante restaurante, bool nuevoEstado) async {
+    final accion = nuevoEstado ? 'activar' : 'suspender';
+    final confirmado = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: AppColors.background,
+        shape: const RoundedRectangleBorder(),
+        title: Text(
+          nuevoEstado ? 'Activar sucursal' : 'Suspender sucursal',
+          style: GoogleFonts.manrope(fontWeight: FontWeight.w700),
+        ),
+        content: Text(
+          nuevoEstado
+              ? '¿Deseas activar "${restaurante.nombre}"? Volverá a aceptar pedidos.'
+              : '¿Deseas suspender "${restaurante.nombre}"? No se aceptarán nuevos pedidos mientras esté suspendida.',
+          style: GoogleFonts.manrope(color: AppColors.textSecondary, fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancelar', style: GoogleFonts.manrope(color: AppColors.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(
+              nuevoEstado ? 'ACTIVAR' : 'SUSPENDER',
+              style: GoogleFonts.manrope(
+                fontWeight: FontWeight.w700,
+                color: nuevoEstado ? AppColors.button : AppColors.error,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmado != true || !mounted) return;
+    final ok = await context.read<RestauranteProvider>().toggleActivo(restaurante.id, nuevoEstado);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(
+          ok
+              ? 'Sucursal ${nuevoEstado ? "activada" : "suspendida"}'
+              : 'Error al $accion la sucursal',
+          style: GoogleFonts.manrope(),
+        ),
+        backgroundColor: ok
+            ? (nuevoEstado ? AppColors.button : AppColors.error)
+            : AppColors.error,
+      ));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.black,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () { _mostrarFormulario(); },
         backgroundColor: AppColors.button,
@@ -267,40 +321,60 @@ class _SeleccionarRestauranteScreenState extends State<SeleccionarRestauranteScr
           style: GoogleFonts.manrope(color: Colors.white, fontWeight: FontWeight.w700, letterSpacing: 1.5),
         ),
       ),
-      body: CustomScrollView(
-        physics: const BouncingScrollPhysics(),
-        slivers: [
-          SliverAppBar(
-            expandedHeight: screenHeight * 0.48,
-            pinned: true,
-            backgroundColor: AppColors.button,
-            automaticallyImplyLeading: false,
-            flexibleSpace: FlexibleSpaceBar(
-              collapseMode: CollapseMode.parallax,
-              background: _HeroHeader(),
-              title: Text(
-                'GRUPO BRAVO',
-                style: GoogleFonts.manrope(fontWeight: FontWeight.w800, fontSize: 15, color: Colors.white, letterSpacing: 2),
-              ),
-              centerTitle: true,
+      body: Container(
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/images/Bravo restaurante.jpg'),
+            fit: BoxFit.cover,
+          ),
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.black.withValues(alpha: 0.55),
+                Colors.black.withValues(alpha: 0.88),
+              ],
             ),
           ),
-
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 28, 24, 8),
-              child: Row(
-                children: [
-                  Container(width: 3, height: 18, color: AppColors.button),
-                  const SizedBox(width: 10),
-                  Text(
-                    'SUCURSALES',
-                    style: GoogleFonts.manrope(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.textSecondary, letterSpacing: 2),
+          child: CustomScrollView(
+            physics: const BouncingScrollPhysics(),
+            slivers: [
+              SliverAppBar(
+                expandedHeight: screenHeight * 0.42,
+                pinned: true,
+                backgroundColor: Colors.black,
+                foregroundColor: Colors.white,
+                iconTheme: const IconThemeData(color: Colors.white),
+                automaticallyImplyLeading: false,
+                flexibleSpace: FlexibleSpaceBar(
+                  collapseMode: CollapseMode.parallax,
+                  background: _HeroHeader(),
+                  title: Text(
+                    'GRUPO BRAVO',
+                    style: GoogleFonts.manrope(fontWeight: FontWeight.w800, fontSize: 15, color: Colors.white, letterSpacing: 2),
                   ),
-                ],
+                  centerTitle: true,
+                ),
               ),
-            ),
-          ),
+
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 28, 24, 8),
+                  child: Row(
+                    children: [
+                      Container(width: 3, height: 18, color: AppColors.button),
+                      const SizedBox(width: 10),
+                      Text(
+                        'SUCURSALES',
+                        style: GoogleFonts.manrope(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white70, letterSpacing: 2),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
 
           Consumer<UsuarioProvider>(
             builder: (context, usuarioProvider, _) {
@@ -355,6 +429,7 @@ class _SeleccionarRestauranteScreenState extends State<SeleccionarRestauranteScr
                           }).length,
                           onEdit: () { _mostrarFormulario(restaurante: restaurantes[index]); },
                           onDelete: () { _confirmarBorrado(restaurantes[index]); },
+                          onToggleActivo: (v) => _toggleActivo(restaurantes[index], v),
                         ),
                       ),
                     ),
@@ -367,6 +442,8 @@ class _SeleccionarRestauranteScreenState extends State<SeleccionarRestauranteScr
         },
         ),
         ],
+          ),
+        ),
       ),
     );
   }
@@ -389,10 +466,10 @@ class _HeroHeader extends StatelessWidget {
                 end: Alignment.bottomCenter,
                 stops: const [0.0, 0.35, 0.70, 1.0],
                 colors: [
-                  Colors.black.withValues(alpha: 0.45),
-                  Colors.black.withValues(alpha: 0.10),
                   Colors.black.withValues(alpha: 0.55),
-                  AppColors.background,
+                  Colors.black.withValues(alpha: 0.20),
+                  Colors.black.withValues(alpha: 0.70),
+                  Colors.black.withValues(alpha: 0.95),
                 ],
               ),
             ),
@@ -457,6 +534,7 @@ class _RestauranteCard extends StatelessWidget {
   final int personalCount;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final ValueChanged<bool> onToggleActivo;
 
   const _RestauranteCard({
     required this.restaurante,
@@ -464,6 +542,7 @@ class _RestauranteCard extends StatelessWidget {
     required this.personalCount,
     required this.onEdit,
     required this.onDelete,
+    required this.onToggleActivo,
   });
 
   @override
@@ -486,7 +565,7 @@ class _RestauranteCard extends StatelessWidget {
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => HomeScreenSuperAdmin(
+                  builder: (_) => SucursalDetailScreen(
                     restauranteId: restaurante.id,
                     restauranteNombre: restaurante.nombre,
                   ),
@@ -510,10 +589,10 @@ class _RestauranteCard extends StatelessWidget {
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => HomeScreenSuperAdmin(
-                      restauranteId: restaurante.id,
-                      restauranteNombre: restaurante.nombre,
-                    ),
+                    builder: (_) => SucursalDetailScreen(
+                    restauranteId: restaurante.id,
+                    restauranteNombre: restaurante.nombre,
+                  ),
                   ),
                 ),
                 child: Padding(
@@ -535,7 +614,9 @@ class _RestauranteCard extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 6),
-                          _BadgeEstado(abierto: restaurante.estaAbierto()),
+                          restaurante.activo
+                              ? _BadgeEstado(abierto: restaurante.estaAbierto())
+                              : _BadgeSuspendida(),
                         ],
                       ),
                       const SizedBox(height: 5),
@@ -600,21 +681,37 @@ class _RestauranteCard extends StatelessWidget {
               ),
             ),
 
-            // Acciones editar / borrar
-            Row(
-              mainAxisSize: MainAxisSize.min,
+            // Acciones editar / borrar / suspender
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                IconButton(
-                  icon: const Icon(Icons.edit_outlined, size: 20, color: AppColors.button),
-                  onPressed: onEdit,
-                  tooltip: 'Editar',
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined, size: 20, color: AppColors.button),
+                      onPressed: onEdit,
+                      tooltip: 'Editar',
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.delete_outline, size: 20, color: AppColors.error.withValues(alpha: 0.8)),
+                      onPressed: onDelete,
+                      tooltip: 'Eliminar',
+                    ),
+                  ],
                 ),
-                IconButton(
-                  icon: Icon(Icons.delete_outline, size: 20, color: AppColors.error.withValues(alpha: 0.8)),
-                  onPressed: onDelete,
-                  tooltip: 'Eliminar',
+                Tooltip(
+                  message: restaurante.activo ? 'Suspender sucursal' : 'Activar sucursal',
+                  child: Transform.scale(
+                    scale: 0.75,
+                    child: Switch.adaptive(
+                      value: restaurante.activo,
+                      activeColor: AppColors.button,
+                      inactiveThumbColor: AppColors.error,
+                      onChanged: onToggleActivo,
+                    ),
+                  ),
                 ),
-                const SizedBox(width: 4),
               ],
             ),
           ],
@@ -678,6 +775,31 @@ class _BadgeEstado extends StatelessWidget {
           fontSize: 8,
           fontWeight: FontWeight.w800,
           color: abierto ? const Color(0xFF2E7D32) : AppColors.error,
+          letterSpacing: 1,
+        ),
+      ),
+    );
+  }
+}
+
+// ── BADGE SUSPENDIDA ────────────────────────────────────────────────
+class _BadgeSuspendida extends StatelessWidget {
+  const _BadgeSuspendida();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: AppColors.error.withValues(alpha: 0.12),
+        border: Border.all(color: AppColors.error.withValues(alpha: 0.45)),
+      ),
+      child: Text(
+        'SUSPENDIDA',
+        style: GoogleFonts.manrope(
+          fontSize: 8,
+          fontWeight: FontWeight.w800,
+          color: AppColors.error,
           letterSpacing: 1,
         ),
       ),

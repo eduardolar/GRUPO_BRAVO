@@ -15,7 +15,7 @@ import 'reservar_mesa_screen.dart';
 import '../home_screen_trabajador.dart';
 import '../cocinero/home_screen_cocinero.dart';
 import '../Administrador/admin_home_screen.dart';
-import '../super_admin/seleccionar_restaurante_screen.dart';
+import '../super_admin/home_screen_super_admin.dart';
 
 class TotpLoginScreen extends StatefulWidget {
   final DestinoLogin destino;
@@ -73,7 +73,7 @@ class _TotpLoginScreenState extends State<TotpLoginScreen> {
         destino = const MenuAdministrador();
         break;
       case RolUsuario.superadministrador:
-        destino = const SeleccionarRestauranteScreen();
+        destino = const HomeScreenSuperAdmin();
         break;
       case RolUsuario.cocinero:
         destino = const HomeCocinero();

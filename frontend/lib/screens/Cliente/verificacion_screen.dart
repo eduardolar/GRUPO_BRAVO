@@ -15,7 +15,7 @@ import '../cliente/menu_screen.dart';
 import '../cliente/seleccionar_restaurante_screen.dart' as sel_rest_cliente;
 import '../home_screen_trabajador.dart';
 import '../Administrador/admin_home_screen.dart';
-import '../super_admin/seleccionar_restaurante_screen.dart';
+import '../super_admin/home_screen_super_admin.dart';
 import '../cocinero/home_screen_cocinero.dart';
 
 class VerificacionScreen extends StatefulWidget {
@@ -127,7 +127,7 @@ class _VerificacionScreenState extends State<VerificacionScreen> {
         destino = const MenuAdministrador();
         break;
       case RolUsuario.superadministrador:
-        destino = const SeleccionarRestauranteScreen();
+        destino = const HomeScreenSuperAdmin();
         break;
       case RolUsuario.cocinero:
         destino = const HomeCocinero();

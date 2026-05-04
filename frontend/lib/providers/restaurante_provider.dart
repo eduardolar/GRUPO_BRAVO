@@ -72,6 +72,27 @@ class RestauranteProvider with ChangeNotifier {
     return ok;
   }
 
+
+  Future<bool> toggleActivo(String id, bool activo) async {
+    final ok = await _service.toggleActivo(id, activo);
+    if (ok) {
+      _restaurantes = _restaurantes.map((r) {
+        if (r.id != id) return r;
+        return Restaurante(
+          id: r.id,
+          nombre: r.nombre,
+          direccion: r.direccion,
+          codigo: r.codigo,
+          horarioApertura: r.horarioApertura,
+          horarioCierre: r.horarioCierre,
+          activo: activo,
+        );
+      }).toList();
+      notifyListeners();
+    }
+    return ok;
+  }
+
   Future<bool> eliminar(String id) async {
     final ok = await _service.eliminarRestaurante(id);
     if (ok) {

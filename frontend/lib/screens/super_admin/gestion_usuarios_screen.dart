@@ -7,12 +7,12 @@ import '../../core/colors_style.dart';
 import 'crear_usuario_screen.dart';
 
 class GestionUsuariosScreen extends StatefulWidget {
-  final String restauranteId;
+  final String? restauranteId;
   final String rolAFiltrar;
 
   const GestionUsuariosScreen({
     super.key,
-    required this.restauranteId,
+    this.restauranteId,
     this.rolAFiltrar = '',
   });
 
@@ -74,7 +74,7 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
   static const _rolesPersonal = ['administrador', 'cocinero', 'camarero', 'mesero', 'trabajador'];
 
   List<Usuario> _filtrarPorRestaurante(List<Usuario> todos) {
-    final idFiltro = widget.restauranteId.trim().toLowerCase();
+    final idFiltro = (widget.restauranteId ?? '').trim().toLowerCase();
     final filtro = widget.rolAFiltrar.toLowerCase();
 
     return todos.where((u) {
@@ -105,7 +105,7 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
       context,
       MaterialPageRoute(
         builder: (_) => CrearUsuarioScreen(
-          restauranteId: widget.restauranteId,
+          restauranteId: widget.restauranteId ?? '',
           rolFijo: rolFijo,
         ),
       ),
@@ -165,7 +165,18 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
             child: Image.asset('assets/images/Bravo restaurante.jpg', fit: BoxFit.cover),
           ),
           Positioned.fill(
-            child: Container(color: AppColors.shadow.withValues(alpha: 0.88)),
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withValues(alpha: 0.55),
+                    Colors.black.withValues(alpha: 0.88),
+                  ],
+                ),
+              ),
+            ),
           ),
 
           // Contenido
@@ -215,6 +226,8 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
                                         (u) => _UsuarioTile(
                                           usuario: u,
                                           onDelete: () => _confirmarBorrado(context, u),
+                                          onEdit: () => _abrirEdicion(context, u),
+                                          onToggleActivo: () => _toggleActivo(context, u),
                                         ),
                                       ),
                                       const SizedBox(height: 16),
@@ -353,6 +366,74 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
     );
   }
 
+  Future<void> _toggleActivo(BuildContext context, Usuario user) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final nuevoEstado = !user.activo;
+    final ok = await context.read<UsuarioProvider>().toggleActivo(user.id, nuevoEstado);
+    if (!mounted) return;
+    messenger.showSnackBar(SnackBar(
+      content: Text(
+        ok
+            ? (nuevoEstado ? 'Usuario activado' : 'Usuario suspendido')
+            : 'Error al cambiar estado',
+        style: GoogleFonts.manrope(),
+      ),
+      backgroundColor: ok ? (nuevoEstado ? AppColors.button : Colors.orange) : AppColors.error,
+    ));
+  }
+
+  void _abrirEdicion(BuildContext context, Usuario user) {
+    final nombreCtrl = TextEditingController(text: user.nombre);
+    final emailCtrl = TextEditingController(text: user.email);
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: AppColors.background,
+        shape: const RoundedRectangleBorder(),
+        title: Text('Editar usuario', style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _CampoEdicion(controller: nombreCtrl, label: 'Nombre'),
+            const SizedBox(height: 12),
+            _CampoEdicion(controller: emailCtrl, label: 'Email'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancelar', style: GoogleFonts.manrope(color: AppColors.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () async {
+              final nav = Navigator.of(context);
+              final messenger = ScaffoldMessenger.of(context);
+              final nombre = nombreCtrl.text.trim();
+              final correo = emailCtrl.text.trim();
+              if (nombre.isEmpty || correo.isEmpty) return;
+              final ok = await context.read<UsuarioProvider>().editar(
+                    user.id,
+                    nombre: nombre,
+                    correo: correo,
+                  );
+              if (!mounted) return;
+              nav.pop();
+              messenger.showSnackBar(SnackBar(
+                content: Text(
+                  ok ? 'Usuario actualizado' : 'Error al actualizar',
+                  style: GoogleFonts.manrope(),
+                ),
+                backgroundColor: ok ? AppColors.button : AppColors.error,
+              ));
+            },
+            child: Text('Guardar', style: GoogleFonts.manrope(color: AppColors.button, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _confirmarBorrado(BuildContext context, Usuario user) {
     showDialog(
       context: context,
@@ -430,8 +511,15 @@ class _NuevoUsuarioButton extends StatelessWidget {
 class _UsuarioTile extends StatelessWidget {
   final Usuario usuario;
   final VoidCallback onDelete;
+  final VoidCallback onEdit;
+  final VoidCallback onToggleActivo;
 
-  const _UsuarioTile({required this.usuario, required this.onDelete});
+  const _UsuarioTile({
+    required this.usuario,
+    required this.onDelete,
+    required this.onEdit,
+    required this.onToggleActivo,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -439,18 +527,22 @@ class _UsuarioTile extends StatelessWidget {
         ? usuario.nombre.trim().split(' ').map((e) => e.isNotEmpty ? e[0].toUpperCase() : '').take(2).join()
         : '?';
 
+    final activo = usuario.activo;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.07),
-        border: Border.all(color: Colors.white12),
+        border: Border.all(color: activo ? Colors.white12 : Colors.orange.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
           Container(
             width: 52,
-            height: 64,
-            color: AppColors.button.withValues(alpha: 0.8),
+            height: 72,
+            color: activo
+                ? AppColors.button.withValues(alpha: 0.8)
+                : Colors.orange.withValues(alpha: 0.5),
             alignment: Alignment.center,
             child: Text(
               initials,
@@ -479,8 +571,23 @@ class _UsuarioTile extends StatelessWidget {
                   usuario.email,
                   style: GoogleFonts.manrope(fontSize: 12, color: Colors.white54),
                 ),
+                const SizedBox(height: 5),
+                _BadgeEstadoCuenta(activo: activo),
               ],
             ),
+          ),
+          IconButton(
+            icon: Icon(
+              activo ? Icons.pause_circle_outline : Icons.play_circle_outline,
+              color: activo ? Colors.orange.withValues(alpha: 0.8) : Colors.greenAccent.withValues(alpha: 0.8),
+              size: 22,
+            ),
+            tooltip: activo ? 'Suspender' : 'Activar',
+            onPressed: onToggleActivo,
+          ),
+          IconButton(
+            icon: Icon(Icons.edit_outlined, color: Colors.white38, size: 20),
+            onPressed: onEdit,
           ),
           IconButton(
             icon: Icon(Icons.delete_outline, color: AppColors.error.withValues(alpha: 0.8), size: 22),
@@ -489,6 +596,93 @@ class _UsuarioTile extends StatelessWidget {
           const SizedBox(width: 4),
         ],
       ),
+    );
+  }
+}
+
+// ── BADGE ESTADO CUENTA ──────────────────────────────────────────────
+class _BadgeEstadoCuenta extends StatelessWidget {
+  final bool activo;
+  const _BadgeEstadoCuenta({required this.activo});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: activo
+            ? Colors.greenAccent.withValues(alpha: 0.12)
+            : Colors.orange.withValues(alpha: 0.12),
+        border: Border.all(
+          color: activo
+              ? Colors.greenAccent.withValues(alpha: 0.4)
+              : Colors.orange.withValues(alpha: 0.4),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 5,
+            height: 5,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: activo ? Colors.greenAccent : Colors.orange,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            activo ? 'ACTIVO' : 'SUSPENDIDO',
+            style: GoogleFonts.manrope(
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+              color: activo ? Colors.greenAccent : Colors.orange,
+              letterSpacing: 1,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── CAMPO DE EDICIÓN ─────────────────────────────────────────────────
+class _CampoEdicion extends StatelessWidget {
+  final TextEditingController controller;
+  final String label;
+
+  const _CampoEdicion({required this.controller, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label.toUpperCase(),
+          style: GoogleFonts.manrope(
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textSecondary,
+            letterSpacing: 1.5,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.06),
+            border: Border.all(color: Colors.white12),
+          ),
+          child: TextField(
+            controller: controller,
+            style: GoogleFonts.manrope(color: Colors.white, fontSize: 14),
+            decoration: const InputDecoration(
+              border: InputBorder.none,
+              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

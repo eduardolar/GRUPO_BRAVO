@@ -99,6 +99,22 @@ def editar_restaurante(id: str, datos: RestauranteEditar):
         raise HTTPException(status_code=404, detail="Restaurante no encontrado")
     return {"mensaje": "Restaurante actualizado"}
 
+
+
+class RestauranteActivo(BaseModel):
+    activo: bool
+
+@router.patch("/{id}/activo")
+def toggle_activo_restaurante(id: str, datos: RestauranteActivo):
+    resultado = coleccion_restaurantes.update_one(
+        {"_id": ObjectId(id)},
+        {"$set": {"activo": datos.activo}},
+    )
+    if resultado.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Restaurante no encontrado")
+    estado = "activado" if datos.activo else "suspendido"
+    return {"mensaje": f"Restaurante {estado}"}
+
 @router.delete("/{id}")
 def eliminar_restaurante(id: str):
     resultado = coleccion_restaurantes.delete_one({"_id": ObjectId(id)})

@@ -70,6 +70,23 @@ class RestauranteService {
     }
   }
 
+
+  Future<bool> toggleActivo(String id, bool activo) async {
+    try {
+      final response = await httpWithRetry(
+        () => http.patch(
+          Uri.parse('\$baseUrl/restaurantes/\$id/activo'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'activo': activo}),
+        ),
+        retry: false,
+      );
+      return response.statusCode == 200;
+    } on ApiException {
+      return false;
+    }
+  }
+
   Future<bool> eliminarRestaurante(String id) async {
     try {
       final response = await httpWithRetry(
