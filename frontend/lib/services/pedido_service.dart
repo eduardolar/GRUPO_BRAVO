@@ -108,10 +108,7 @@ class PedidoService {
       () => http.patch(
         Uri.parse('$baseUrl/pedidos/$pedidoId'),
         headers: AuthSession.headers(extra: {'Accept': 'application/json'}),
-        body: jsonEncode({
-          'items': items,
-          'total': totalExtra,
-        }),
+        body: jsonEncode({'items': items, 'total': totalExtra}),
       ),
       retry: false,
     );
@@ -122,7 +119,8 @@ class PedidoService {
   }
 
   static Future<Map<String, dynamic>?> obtenerPedidoActivoPorMesa(
-      String mesaId) async {
+    String mesaId,
+  ) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 300));
       return null;
@@ -203,6 +201,7 @@ class PedidoService {
       return false;
     }
   }
+
   static Future<void> actualizarEstadoPedido({
     required String pedidoId,
     required String estado,
@@ -284,16 +283,20 @@ class PedidoService {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 400));
       var pedidos = MockData.pedidos.map((m) => Pedido.fromMap(m)).toList();
-      if (estado != null) pedidos = pedidos.where((p) => p.estado == estado).toList();
+      if (estado != null) {
+        pedidos = pedidos.where((p) => p.estado == estado).toList();
+      }
       return pedidos;
     }
 
     final params = <String, String>{};
-    if (restauranteId != null && restauranteId.isNotEmpty) params['restauranteId'] = restauranteId;
+    if (restauranteId != null && restauranteId.isNotEmpty) {
+      params['restauranteId'] = restauranteId;
+    }
     if (estado != null) params['estado'] = estado;
-    final uri = Uri.parse('$baseUrl/pedidos').replace(
-      queryParameters: params.isEmpty ? null : params,
-    );
+    final uri = Uri.parse(
+      '$baseUrl/pedidos',
+    ).replace(queryParameters: params.isEmpty ? null : params);
     final response = await httpWithRetry(
       () => http.get(uri, headers: {'Accept': 'application/json'}),
     );

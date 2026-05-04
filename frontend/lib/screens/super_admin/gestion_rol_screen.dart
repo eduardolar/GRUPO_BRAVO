@@ -63,7 +63,10 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
   List<Usuario> _filtrarPorRestaurante(List<Usuario> todos) {
     final idFiltro = (widget.restauranteId ?? '').trim().toLowerCase();
     return todos.where((u) {
-      if (idFiltro.isNotEmpty && (u.restauranteId ?? '').toString().trim().toLowerCase() != idFiltro) return false;
+      if (idFiltro.isNotEmpty &&
+          (u.restauranteId ?? '').toString().trim().toLowerCase() != idFiltro) {
+        return false;
+      }
       return u.rolRaw != 'cliente';
     }).toList();
   }
@@ -115,7 +118,9 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
                     builder: (context, provider, _) {
                       if (provider.cargando) {
                         return const Center(
-                          child: CircularProgressIndicator(color: AppColors.button),
+                          child: CircularProgressIndicator(
+                            color: AppColors.button,
+                          ),
                         );
                       }
                       if (provider.error != null) {
@@ -151,11 +156,18 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
                                 children: [
                                   for (final rol in [..._rolesOrden, 'otros'])
                                     if (grupos.containsKey(rol)) ...[
-                                      _buildSeccionHeader(rol, grupos[rol]!.length),
+                                      _buildSeccionHeader(
+                                        rol,
+                                        grupos[rol]!.length,
+                                      ),
                                       ...grupos[rol]!.map(
                                         (u) => _RolTile(
                                           usuario: u,
-                                          onEdit: () => _mostrarDialogoCambiarRol(context, u),
+                                          onEdit: () =>
+                                              _mostrarDialogoCambiarRol(
+                                                context,
+                                                u,
+                                              ),
                                         ),
                                       ),
                                       const SizedBox(height: 16),
@@ -234,7 +246,9 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
             decoration: BoxDecoration(
               color: AppColors.button.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: AppColors.button.withValues(alpha: 0.45)),
+              border: Border.all(
+                color: AppColors.button.withValues(alpha: 0.45),
+              ),
             ),
             child: Text(
               '$count',
@@ -262,7 +276,10 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
         builder: (context, setStateDialog) => AlertDialog(
           backgroundColor: AppColors.background,
           shape: const RoundedRectangleBorder(),
-          title: Text('Cambiar rol', style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+          title: Text(
+            'Cambiar rol',
+            style: GoogleFonts.manrope(fontWeight: FontWeight.w700),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -275,8 +292,17 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
                     color: AppColors.button,
                     alignment: Alignment.center,
                     child: Text(
-                      user.nombre.trim().split(' ').map((e) => e.isNotEmpty ? e[0].toUpperCase() : '').take(2).join(),
-                      style: GoogleFonts.manrope(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13),
+                      user.nombre
+                          .trim()
+                          .split(' ')
+                          .map((e) => e.isNotEmpty ? e[0].toUpperCase() : '')
+                          .take(2)
+                          .join(),
+                      style: GoogleFonts.manrope(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -284,8 +310,20 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(user.nombre, style: GoogleFonts.manrope(fontWeight: FontWeight.w700, fontSize: 14)),
-                        Text(user.email, style: GoogleFonts.manrope(fontSize: 12, color: AppColors.textSecondary)),
+                        Text(
+                          user.nombre,
+                          style: GoogleFonts.manrope(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                          ),
+                        ),
+                        Text(
+                          user.email,
+                          style: GoogleFonts.manrope(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -297,7 +335,9 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
                 decoration: InputDecoration(
                   labelText: 'Nuevo rol',
                   labelStyle: GoogleFonts.manrope(fontSize: 13),
-                  border: const OutlineInputBorder(borderRadius: BorderRadius.zero),
+                  border: const OutlineInputBorder(
+                    borderRadius: BorderRadius.zero,
+                  ),
                   enabledBorder: const OutlineInputBorder(
                     borderRadius: BorderRadius.zero,
                     borderSide: BorderSide(color: AppColors.line),
@@ -306,25 +346,37 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
                     borderRadius: BorderRadius.zero,
                     borderSide: BorderSide(color: AppColors.button, width: 1.5),
                   ),
-                  prefixIcon: const Icon(Icons.vpn_key_outlined, color: AppColors.button),
+                  prefixIcon: const Icon(
+                    Icons.vpn_key_outlined,
+                    color: AppColors.button,
+                  ),
                   filled: true,
                   fillColor: Colors.white,
                 ),
                 style: GoogleFonts.manrope(color: AppColors.textPrimary),
                 items: _opcionesRol
-                    .map((r) => DropdownMenuItem(
-                          value: r,
-                          child: Text(_rolesEtiqueta[r] ?? r, style: GoogleFonts.manrope()),
-                        ))
+                    .map(
+                      (r) => DropdownMenuItem(
+                        value: r,
+                        child: Text(
+                          _rolesEtiqueta[r] ?? r,
+                          style: GoogleFonts.manrope(),
+                        ),
+                      ),
+                    )
                     .toList(),
-                onChanged: (v) => v != null ? setStateDialog(() => rolActual = v) : null,
+                onChanged: (v) =>
+                    v != null ? setStateDialog(() => rolActual = v) : null,
               ),
             ],
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text('Cancelar', style: GoogleFonts.manrope(color: AppColors.textSecondary)),
+              child: Text(
+                'Cancelar',
+                style: GoogleFonts.manrope(color: AppColors.textSecondary),
+              ),
             ),
             TextButton(
               onPressed: () async {
@@ -336,18 +388,32 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
                   if (ok) {
                     if (!mounted) return;
                     nav.pop();
-                    messenger.showSnackBar(SnackBar(
-                      content: Text('Rol actualizado a ${_rolesEtiqueta[rolActual] ?? rolActual}', style: GoogleFonts.manrope()),
-                      backgroundColor: AppColors.button,
-                    ));
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Rol actualizado a ${_rolesEtiqueta[rolActual] ?? rolActual}',
+                          style: GoogleFonts.manrope(),
+                        ),
+                        backgroundColor: AppColors.button,
+                      ),
+                    );
                   }
                 } catch (e) {
                   messenger.showSnackBar(
-                    SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
+                    SnackBar(
+                      content: Text('Error: $e'),
+                      backgroundColor: AppColors.error,
+                    ),
                   );
                 }
               },
-              child: Text('Guardar', style: GoogleFonts.manrope(fontWeight: FontWeight.w700, color: AppColors.button)),
+              child: Text(
+                'Guardar',
+                style: GoogleFonts.manrope(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.button,
+                ),
+              ),
             ),
           ],
         ),
@@ -366,7 +432,12 @@ class _RolTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final initials = usuario.nombre.isNotEmpty
-        ? usuario.nombre.trim().split(' ').map((e) => e.isNotEmpty ? e[0].toUpperCase() : '').take(2).join()
+        ? usuario.nombre
+              .trim()
+              .split(' ')
+              .map((e) => e.isNotEmpty ? e[0].toUpperCase() : '')
+              .take(2)
+              .join()
         : '?';
 
     final rolLabel = _labelRol(usuario.rolRaw);
@@ -401,7 +472,11 @@ class _RolTile extends StatelessWidget {
                   alignment: Alignment.center,
                   child: Text(
                     initials,
-                    style: GoogleFonts.manrope(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15),
+                    style: GoogleFonts.manrope(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 14),
@@ -411,15 +486,24 @@ class _RolTile extends StatelessWidget {
                     children: [
                       Text(
                         usuario.nombre,
-                        style: GoogleFonts.manrope(fontWeight: FontWeight.w700, fontSize: 14, color: Colors.white),
+                        style: GoogleFonts.manrope(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                          color: Colors.white,
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.button.withValues(alpha: 0.25),
                           borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: AppColors.button.withValues(alpha: 0.5)),
+                          border: Border.all(
+                            color: AppColors.button.withValues(alpha: 0.5),
+                          ),
                         ),
                         child: Text(
                           rolLabel.toUpperCase(),
@@ -435,7 +519,11 @@ class _RolTile extends StatelessWidget {
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.edit_outlined, color: Colors.white70, size: 22),
+                  icon: const Icon(
+                    Icons.edit_outlined,
+                    color: Colors.white70,
+                    size: 22,
+                  ),
                   onPressed: onEdit,
                 ),
                 const SizedBox(width: 4),

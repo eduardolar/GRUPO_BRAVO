@@ -41,16 +41,17 @@ class EmptyState extends StatelessWidget {
     this.subtitle,
     this.actionLabel,
     this.onAction,
-  })  : iconColor       = Colors.white38,
-        iconBackground  = null,
-        titleColor      = Colors.white60,
-        subtitleColor   = Colors.white38;
+  }) : iconColor = Colors.white38,
+       iconBackground = null,
+       titleColor = Colors.white60,
+       subtitleColor = Colors.white38;
 
   @override
   Widget build(BuildContext context) {
-    final resolvedIconColor      = iconColor      ?? AppColors.textSecondary.withValues(alpha: 0.35);
-    final resolvedTitleColor     = titleColor     ?? AppColors.textPrimary;
-    final resolvedSubtitleColor  = subtitleColor  ?? AppColors.textSecondary;
+    final resolvedIconColor =
+        iconColor ?? AppColors.textSecondary.withValues(alpha: 0.35);
+    final resolvedTitleColor = titleColor ?? AppColors.textPrimary;
+    final resolvedSubtitleColor = subtitleColor ?? AppColors.textSecondary;
 
     final iconWidget = iconBackground != null
         ? Container(
@@ -102,7 +103,8 @@ class EmptyState extends StatelessWidget {
                   foregroundColor: AppColors.button,
                   side: const BorderSide(color: AppColors.button),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
                 child: Text(actionLabel!),
               ),

@@ -39,26 +39,26 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
 
   Future<void> _mostrarFormCrearMesa() async {
     final mesa = await showGeneralDialog<Mesa>(
-  context: context,
-  barrierDismissible: true,
-  barrierLabel: '',
-  transitionDuration: const Duration(milliseconds: 260),
-  pageBuilder: (_, _, _) => const SizedBox.shrink(),
-  transitionBuilder: (context, animation, secondaryAnimation, child) {
-    final curved = CurvedAnimation(
-      parent: animation,
-      curve: Curves.easeOutBack,
-    );
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: '',
+      transitionDuration: const Duration(milliseconds: 260),
+      pageBuilder: (_, _, _) => const SizedBox.shrink(),
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        final curved = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutBack,
+        );
 
-    return FadeTransition(
-      opacity: animation,
-      child: ScaleTransition(
-        scale: curved,
-        child: const _DialogCrearMesa(),
-      ),
+        return FadeTransition(
+          opacity: animation,
+          child: ScaleTransition(
+            scale: curved,
+            child: const _DialogCrearMesa(),
+          ),
+        );
+      },
     );
-  },
-);
 
     if (mesa == null || !mounted) return;
     try {
@@ -154,7 +154,9 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
                     width: 22,
                     height: 22,
                     child: CircularProgressIndicator(
-                        color: AppColors.background, strokeWidth: 1.5),
+                      color: AppColors.background,
+                      strokeWidth: 1.5,
+                    ),
                   ),
                   SizedBox(height: 18),
                   Text(
@@ -175,9 +177,10 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
     }
 
     final grupos = _agruparPorUbicacion();
-    final orderedKeys = ['interior', 'terraza']
-        .where((k) => grupos.containsKey(k))
-        .toList();
+    final orderedKeys = [
+      'interior',
+      'terraza',
+    ].where((k) => grupos.containsKey(k)).toList();
 
     return Scaffold(
       backgroundColor: AppColors.shadow,
@@ -229,8 +232,11 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
                     children: [
                       GestureDetector(
                         onTap: () => Navigator.pop(context),
-                        child: const Icon(Icons.arrow_back_ios_new,
-                            color: AppColors.background, size: 18),
+                        child: const Icon(
+                          Icons.arrow_back_ios_new,
+                          color: AppColors.background,
+                          size: 18,
+                        ),
                       ),
                       const SizedBox(width: 14),
                       Expanded(
@@ -245,7 +251,10 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
                                 fontWeight: FontWeight.w700,
                                 letterSpacing: 1.5,
                                 shadows: const [
-                                  Shadow(color: AppColors.shadow, blurRadius: 8),
+                                  Shadow(
+                                    color: AppColors.shadow,
+                                    blurRadius: 8,
+                                  ),
                                 ],
                               ),
                             ),
@@ -272,12 +281,12 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Row(
                     children: [
-                      _LegendaDot(
-                          color: AppColors.button,
-                          label: 'Disponible'),
+                      _LegendaDot(color: AppColors.button, label: 'Disponible'),
                       const SizedBox(width: 20),
                       _LegendaDot(
-                          color: AppColors.iconPrimary, label: 'Ocupada'),
+                        color: AppColors.iconPrimary,
+                        label: 'Ocupada',
+                      ),
                     ],
                   ),
                 ),
@@ -291,8 +300,8 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
                     children: orderedKeys.map((ubicacion) {
                       final mesasGrupo = grupos[ubicacion]!;
-                      final titulo = ubicacion[0].toUpperCase() +
-                          ubicacion.substring(1);
+                      final titulo =
+                          ubicacion[0].toUpperCase() + ubicacion.substring(1);
 
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -326,16 +335,21 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
                             spacing: 20,
                             runSpacing: 24,
                             children: mesasGrupo
-                                .map((mesa) => _MesaCard(
-                                      mesa: mesa,
-                                      onTap: mesa.disponible
-                                          ? () => _confirmarMesa(mesa)
-                                          : null,
-                                    ))
+                                .map(
+                                  (mesa) => _MesaCard(
+                                    mesa: mesa,
+                                    onTap: mesa.disponible
+                                        ? () => _confirmarMesa(mesa)
+                                        : null,
+                                  ),
+                                )
                                 .toList(),
                           ),
                           const SizedBox(height: 20),
-                          const Divider(color: AppColors.shadow, thickness: 0.5),
+                          const Divider(
+                            color: AppColors.shadow,
+                            thickness: 0.5,
+                          ),
                           const SizedBox(height: 12),
                         ],
                       );
@@ -452,12 +466,9 @@ class _MesaPainter extends CustomPainter {
     final chairH = size.width * 0.075;
     final chairDist = tableRadius + chairH + 3.0;
 
-    final tableColor =
-        disponible ? AppColors.button : AppColors.iconPrimary;
-    final chairColor =
-        disponible ? AppColors.button : AppColors.iconPrimary;
-    final borderColor =
-        disponible ? AppColors.button : AppColors.iconPrimary;
+    final tableColor = disponible ? AppColors.button : AppColors.iconPrimary;
+    final chairColor = disponible ? AppColors.button : AppColors.iconPrimary;
+    final borderColor = disponible ? AppColors.button : AppColors.iconPrimary;
 
     // Sombra de la mesa
     final shadowPaint = Paint()
@@ -483,7 +494,10 @@ class _MesaPainter extends CustomPainter {
       final cy = center.dy + chairDist * sin(angle);
       final rect = RRect.fromRectAndRadius(
         Rect.fromCenter(
-            center: Offset(cx, cy), width: chairW * 2, height: chairH * 2),
+          center: Offset(cx, cy),
+          width: chairW * 2,
+          height: chairH * 2,
+        ),
         const Radius.circular(4),
       );
       canvas.drawRRect(rect, chairPaint);
@@ -593,8 +607,7 @@ class _DialogConfirmacion extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: AppColors.background,
                 borderRadius: BorderRadius.circular(8),
@@ -621,10 +634,13 @@ class _DialogConfirmacion extends StatelessWidget {
                       side: const BorderSide(color: AppColors.line),
                       padding: const EdgeInsets.symmetric(vertical: 13),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8)),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
-                    child: const Text('CANCELAR',
-                        style: TextStyle(fontSize: 11, letterSpacing: 1.2)),
+                    child: const Text(
+                      'CANCELAR',
+                      style: TextStyle(fontSize: 11, letterSpacing: 1.2),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -637,13 +653,17 @@ class _DialogConfirmacion extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(vertical: 13),
                       elevation: 0,
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8)),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
-                    child: const Text('CONFIRMAR',
-                        style: TextStyle(
-                            fontSize: 11,
-                            letterSpacing: 1.2,
-                            fontWeight: FontWeight.w600)),
+                    child: const Text(
+                      'CONFIRMAR',
+                      style: TextStyle(
+                        fontSize: 11,
+                        letterSpacing: 1.2,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -681,17 +701,16 @@ class _DialogCrearMesaState extends State<_DialogCrearMesa> {
   }
 
   void _autoQr() {
-  final n = _numeroCtrl.text.trim();
-  if (n.isEmpty) {
-    _qrCtrl.text = '';
-    return;
+    final n = _numeroCtrl.text.trim();
+    if (n.isEmpty) {
+      _qrCtrl.text = '';
+      return;
+    }
+
+    final prefijo = _ubicacion == 'interior' ? 'Mesa' : 'Terraza';
+
+    _qrCtrl.text = '${prefijo}_${n.padLeft(2, '0')}';
   }
-
-  final prefijo = _ubicacion == 'interior' ? 'Mesa' : 'Terraza';
-
-  _qrCtrl.text = '${prefijo}_${n.padLeft(2, '0')}';
-}
-
 
   void _confirmar() {
     if (!_formKey.currentState!.validate()) return;
@@ -744,7 +763,9 @@ class _DialogCrearMesaState extends State<_DialogCrearMesa> {
                 hint: 'Ej: 13',
                 keyboardType: TextInputType.number,
                 onChanged: (_) {
-                   WidgetsBinding.instance.addPostFrameCallback((_) => _autoQr());
+                  WidgetsBinding.instance.addPostFrameCallback(
+                    (_) => _autoQr(),
+                  );
                 },
                 validator: (v) {
                   if (v == null || v.trim().isEmpty) return 'Campo obligatorio';
@@ -752,7 +773,7 @@ class _DialogCrearMesaState extends State<_DialogCrearMesa> {
                   if (int.parse(v.trim()) <= 0) return 'Debe ser mayor que 0';
                   return null;
                 },
-            ),
+              ),
               const SizedBox(height: 14),
 
               _Campo(
@@ -823,10 +844,13 @@ class _DialogCrearMesaState extends State<_DialogCrearMesa> {
                         side: const BorderSide(color: AppColors.line),
                         padding: const EdgeInsets.symmetric(vertical: 13),
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8)),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
-                      child: const Text('CANCELAR',
-                          style: TextStyle(fontSize: 11, letterSpacing: 1.2)),
+                      child: const Text(
+                        'CANCELAR',
+                        style: TextStyle(fontSize: 11, letterSpacing: 1.2),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -839,13 +863,17 @@ class _DialogCrearMesaState extends State<_DialogCrearMesa> {
                         padding: const EdgeInsets.symmetric(vertical: 13),
                         elevation: 0,
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8)),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
-                      child: const Text('CREAR',
-                          style: TextStyle(
-                              fontSize: 11,
-                              letterSpacing: 1.2,
-                              fontWeight: FontWeight.w600)),
+                      child: const Text(
+                        'CREAR',
+                        style: TextStyle(
+                          fontSize: 11,
+                          letterSpacing: 1.2,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -904,11 +932,15 @@ class _Campo extends StatelessWidget {
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: const TextStyle(
-                color: AppColors.textSecondary, fontSize: 13),
+              color: AppColors.textSecondary,
+              fontSize: 13,
+            ),
             filled: true,
             fillColor: AppColors.background,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 12,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: const BorderSide(color: AppColors.line),
@@ -919,8 +951,7 @@ class _Campo extends StatelessWidget {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide:
-                  const BorderSide(color: AppColors.button, width: 1.5),
+              borderSide: const BorderSide(color: AppColors.button, width: 1.5),
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
@@ -976,4 +1007,3 @@ class _ChipUbicacion extends StatelessWidget {
     );
   }
 }
-

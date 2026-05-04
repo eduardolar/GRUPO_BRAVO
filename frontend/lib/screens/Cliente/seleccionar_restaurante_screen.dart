@@ -30,13 +30,10 @@ class _SeleccionarRestauranteScreenState
 
   void _seleccionar(Restaurante restaurante) {
     context.read<CartProvider>().seleccionarRestaurante(
-          id: restaurante.id,
-          nombre: restaurante.nombre,
-        );
-    Navigator.pushReplacement(
-      context,
-      AppRoute.slide(widget.siguiente),
+      id: restaurante.id,
+      nombre: restaurante.nombre,
     );
+    Navigator.pushReplacement(context, AppRoute.slide(widget.siguiente));
   }
 
   @override
@@ -116,10 +113,7 @@ class _SeleccionarRestauranteScreenState
           const SizedBox(height: 8),
           const Text(
             'Selecciona la sucursal donde te encuentras',
-            style: TextStyle(
-              color: Colors.white54,
-              fontSize: 13,
-            ),
+            style: TextStyle(color: Colors.white54, fontSize: 13),
           ),
           const SizedBox(height: 24),
         ],
@@ -150,8 +144,11 @@ class _SeleccionarRestauranteScreenState
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.wifi_off_rounded,
-                      size: 44, color: Colors.white30),
+                  const Icon(
+                    Icons.wifi_off_rounded,
+                    size: 44,
+                    color: Colors.white30,
+                  ),
                   const SizedBox(height: 14),
                   const Text(
                     'No se pudieron cargar los restaurantes',
@@ -160,9 +157,13 @@ class _SeleccionarRestauranteScreenState
                   ),
                   const SizedBox(height: 20),
                   TextButton.icon(
-                    onPressed: () => context.read<RestauranteProvider>().cargar(),
-                    icon: const Icon(Icons.refresh,
-                        color: Colors.white60, size: 18),
+                    onPressed: () =>
+                        context.read<RestauranteProvider>().cargar(),
+                    icon: const Icon(
+                      Icons.refresh,
+                      color: Colors.white60,
+                      size: 18,
+                    ),
                     label: const Text(
                       'Reintentar',
                       style: TextStyle(
@@ -213,7 +214,8 @@ class _RestauranteCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final abierto = restaurante.estaAbierto();
     final tieneHorario =
-        restaurante.horarioApertura != null && restaurante.horarioCierre != null;
+        restaurante.horarioApertura != null &&
+        restaurante.horarioCierre != null;
 
     return Material(
       color: Colors.transparent,
@@ -227,9 +229,7 @@ class _RestauranteCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.black.withValues(alpha: 0.42),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.11),
-            ),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.11)),
           ),
           child: Row(
             children: [
@@ -270,8 +270,11 @@ class _RestauranteCard extends StatelessWidget {
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          const Icon(Icons.place_outlined,
-                              size: 12, color: Colors.white38),
+                          const Icon(
+                            Icons.place_outlined,
+                            size: 12,
+                            color: Colors.white38,
+                          ),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
@@ -311,7 +314,9 @@ class _RestauranteCard extends StatelessWidget {
                           const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 2),
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: abierto
                                   ? AppColors.disp.withValues(alpha: 0.12)

@@ -28,8 +28,13 @@ void showAppInfo(
   double bottomMargin = 16,
   SnackBarAction? action,
 }) {
-  _show(context, message, AppColors.button,
-      bottomMargin: bottomMargin, action: action);
+  _show(
+    context,
+    message,
+    AppColors.button,
+    bottomMargin: bottomMargin,
+    action: action,
+  );
 }
 
 /// Convierte cualquier excepción en un mensaje legible para el usuario y la
@@ -40,7 +45,9 @@ void showAppInfo(
 /// que dejaba al usuario sin feedback de qué había pasado.
 void handleApiError(BuildContext context, Object error, {String? prefix}) {
   final mensaje = _mensajeUsuario(error);
-  final completo = prefix != null && prefix.isNotEmpty ? '$prefix: $mensaje' : mensaje;
+  final completo = prefix != null && prefix.isNotEmpty
+      ? '$prefix: $mensaje'
+      : mensaje;
   if (kDebugMode) debugPrint('handleApiError: $error');
   if (context.mounted) showAppError(context, completo);
 }
@@ -64,19 +71,21 @@ void _show(
 }) {
   ScaffoldMessenger.of(context)
     ..clearSnackBars()
-    ..showSnackBar(SnackBar(
-      content: Text(
-        message,
-        style: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.w600,
+    ..showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
         ),
+        backgroundColor: backgroundColor,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        margin: EdgeInsets.fromLTRB(16, 0, 16, bottomMargin),
+        duration: _kDuration,
+        action: action,
       ),
-      backgroundColor: backgroundColor,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      margin: EdgeInsets.fromLTRB(16, 0, 16, bottomMargin),
-      duration: _kDuration,
-      action: action,
-    ));
+    );
 }

@@ -40,10 +40,7 @@ class _QRScannerState extends State<QRScanner> {
         ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
-          child: Container(
-            height: 1,
-            color: Colors.white12,
-          ),
+          child: Container(height: 1, color: Colors.white12),
         ),
       ),
       body: Stack(
@@ -91,7 +88,9 @@ class _QRScannerState extends State<QRScanner> {
                   onTap: _introducirCodigoManual,
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 12),
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
                     decoration: BoxDecoration(
                       border: Border.all(color: Colors.white24),
                       color: Colors.black45,
@@ -99,8 +98,11 @@ class _QRScannerState extends State<QRScanner> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.keyboard,
-                            color: Colors.white54, size: 16),
+                        const Icon(
+                          Icons.keyboard,
+                          color: Colors.white54,
+                          size: 16,
+                        ),
                         const SizedBox(width: 8),
                         Text(
                           'INTRODUCIR CÓDIGO MANUAL',
@@ -131,27 +133,51 @@ class _QRScannerState extends State<QRScanner> {
     return [
       // Top-left
       Positioned(
-        top: 0, left: 0,
-        child: _Corner(size: size, stroke: stroke, color: color,
-            top: true, left: true),
+        top: 0,
+        left: 0,
+        child: _Corner(
+          size: size,
+          stroke: stroke,
+          color: color,
+          top: true,
+          left: true,
+        ),
       ),
       // Top-right
       Positioned(
-        top: 0, right: 0,
-        child: _Corner(size: size, stroke: stroke, color: color,
-            top: true, left: false),
+        top: 0,
+        right: 0,
+        child: _Corner(
+          size: size,
+          stroke: stroke,
+          color: color,
+          top: true,
+          left: false,
+        ),
       ),
       // Bottom-left
       Positioned(
-        bottom: 0, left: 0,
-        child: _Corner(size: size, stroke: stroke, color: color,
-            top: false, left: true),
+        bottom: 0,
+        left: 0,
+        child: _Corner(
+          size: size,
+          stroke: stroke,
+          color: color,
+          top: false,
+          left: true,
+        ),
       ),
       // Bottom-right
       Positioned(
-        bottom: 0, right: 0,
-        child: _Corner(size: size, stroke: stroke, color: color,
-            top: false, left: false),
+        bottom: 0,
+        right: 0,
+        child: _Corner(
+          size: size,
+          stroke: stroke,
+          color: color,
+          top: false,
+          left: false,
+        ),
       ),
     ];
   }
@@ -180,13 +206,17 @@ class _QRScannerState extends State<QRScanner> {
                 ),
               ),
               Container(
-                  height: 1, color: AppColors.line,
-                  margin: const EdgeInsets.symmetric(vertical: 14)),
+                height: 1,
+                color: AppColors.line,
+                margin: const EdgeInsets.symmetric(vertical: 14),
+              ),
               TextField(
                 controller: controller,
                 autofocus: true,
                 style: const TextStyle(
-                    color: AppColors.textPrimary, fontSize: 14),
+                  color: AppColors.textPrimary,
+                  fontSize: 14,
+                ),
                 decoration: const InputDecoration(
                   hintText: 'Ej: Mesa-001',
                   hintStyle: TextStyle(color: AppColors.textSecondary),
@@ -195,8 +225,10 @@ class _QRScannerState extends State<QRScanner> {
                     borderRadius: BorderRadius.zero,
                     borderSide: BorderSide(color: AppColors.button),
                   ),
-                  contentPadding:
-                      EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
                 ),
               ),
               const SizedBox(height: 20),
@@ -319,7 +351,11 @@ class _Corner extends StatelessWidget {
       height: size,
       child: CustomPaint(
         painter: _CornerPainter(
-            stroke: stroke, color: color, top: top, left: left),
+          stroke: stroke,
+          color: color,
+          top: top,
+          left: left,
+        ),
       ),
     );
   }
@@ -331,11 +367,12 @@ class _CornerPainter extends CustomPainter {
   final bool top;
   final bool left;
 
-  _CornerPainter(
-      {required this.stroke,
-      required this.color,
-      required this.top,
-      required this.left});
+  _CornerPainter({
+    required this.stroke,
+    required this.color,
+    required this.top,
+    required this.left,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {

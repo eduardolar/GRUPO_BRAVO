@@ -21,7 +21,9 @@ class ProductoPedido {
       nombre: mapa['nombre'] ?? mapa['producto_nombre'] ?? '',
       cantidad: mapa['cantidad'] ?? 1,
       precio: (mapa['precio'] ?? 0.0).toDouble(),
-      sin: (mapa['sin'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+      sin:
+          (mapa['sin'] as List<dynamic>?)?.map((e) => e.toString()).toList() ??
+          [],
       hecho: mapa['hecho'] == true,
     );
   }

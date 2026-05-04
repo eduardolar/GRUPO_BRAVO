@@ -32,7 +32,9 @@ class EventoAuditoria {
       proveedor: json['proveedor'] ?? '',
       estado: json['estado'] ?? '',
       ip: json['ip'] ?? '',
-      importe: json['importe'] != null ? (json['importe'] as num).toDouble() : null,
+      importe: json['importe'] != null
+          ? (json['importe'] as num).toDouble()
+          : null,
       moneda: json['moneda'],
       referencia: json['referencia'],
       detalle: json['detalle'],
@@ -47,20 +49,28 @@ class AuditoriaService {
     int limite = 100,
   }) async {
     final params = <String, String>{'limite': '$limite'};
-    if (proveedor != null && proveedor.isNotEmpty) params['proveedor'] = proveedor;
+    if (proveedor != null && proveedor.isNotEmpty) {
+      params['proveedor'] = proveedor;
+    }
     if (estado != null && estado.isNotEmpty) params['estado'] = estado;
 
-    final uri = Uri.parse('$baseUrl/payments/audit').replace(queryParameters: params);
-    final response = await http.get(uri, headers: {'Accept': 'application/json'});
+    final uri = Uri.parse(
+      '$baseUrl/payments/audit',
+    ).replace(queryParameters: params);
+    final response = await http.get(
+      uri,
+      headers: {'Accept': 'application/json'},
+    );
 
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
-      return data.map((j) => EventoAuditoria.fromJson(j as Map<String, dynamic>)).toList();
+      return data
+          .map((j) => EventoAuditoria.fromJson(j as Map<String, dynamic>))
+          .toList();
     }
     throw Exception('Error al cargar auditoría (${response.statusCode})');
   }
 }
-
 
 class EventoGeneral {
   final String fecha;
@@ -96,10 +106,13 @@ class AuditoriaGeneralService {
     final params = <String, String>{'limite': '$limite'};
     if (accion != null && accion.isNotEmpty) params['accion'] = accion;
 
-    final uri = Uri.parse('$baseUrl/usuarios/auditoria')
-        .replace(queryParameters: params);
-    final response =
-        await http.get(uri, headers: {'Accept': 'application/json'});
+    final uri = Uri.parse(
+      '$baseUrl/usuarios/auditoria',
+    ).replace(queryParameters: params);
+    final response = await http.get(
+      uri,
+      headers: {'Accept': 'application/json'},
+    );
 
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
@@ -107,6 +120,8 @@ class AuditoriaGeneralService {
           .map((j) => EventoGeneral.fromJson(j as Map<String, dynamic>))
           .toList();
     }
-    throw Exception('Error al cargar eventos de usuarios (${response.statusCode})');
+    throw Exception(
+      'Error al cargar eventos de usuarios (${response.statusCode})',
+    );
   }
 }

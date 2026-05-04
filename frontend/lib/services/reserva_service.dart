@@ -141,8 +141,9 @@ class ReservaService {
       await Future.delayed(const Duration(milliseconds: 300));
       final index = MockData.reservas.indexWhere((r) => r.id == reservaId);
       if (index >= 0) {
-        MockData.reservas[index] =
-            MockData.reservas[index].copyWith(comensales: comensales);
+        MockData.reservas[index] = MockData.reservas[index].copyWith(
+          comensales: comensales,
+        );
       }
       return true;
     }
@@ -185,7 +186,9 @@ class ReservaService {
     );
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
-      return data.map((m) => Reserva.fromMap(m as Map<String, dynamic>)).toList();
+      return data
+          .map((m) => Reserva.fromMap(m as Map<String, dynamic>))
+          .toList();
     }
     throw toApiException(response.statusCode, decodeBody(response));
   }

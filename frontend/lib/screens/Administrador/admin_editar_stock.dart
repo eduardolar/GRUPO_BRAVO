@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:frontend/components/Cliente/entrada_texto.dart';
 import '../../core/colors_style.dart';
 import '../../models/ingrediente_model.dart';
@@ -31,9 +31,11 @@ class _AdminEditarStockScreenState extends State<AdminEditarStockScreen> {
     super.initState();
     _nombreCtrl = TextEditingController(text: widget.ingrediente.nombre);
     _cantidadCtrl = TextEditingController(
-        text: widget.ingrediente.cantidadActual.toString());
-    _minimoCtrl =
-        TextEditingController(text: widget.ingrediente.stockMinimo.toString());
+      text: widget.ingrediente.cantidadActual.toString(),
+    );
+    _minimoCtrl = TextEditingController(
+      text: widget.ingrediente.stockMinimo.toString(),
+    );
 
     _categoriaSeleccionada = _categorias.contains(widget.ingrediente.categoria)
         ? widget.ingrediente.categoria
@@ -62,20 +64,17 @@ class _AdminEditarStockScreenState extends State<AdminEditarStockScreen> {
 
     setState(() => _estaGuardando = true);
     try {
-      await IngredienteService.actualizarIngrediente(
-        widget.ingrediente.id,
-        {
-          'nombre': _nombreCtrl.text.trim(),
-          'cantidadActual': double.parse(_cantidadCtrl.text.trim()),
-          'unidad': _unidadSeleccionada,
-          'stockMinimo': double.parse(_minimoCtrl.text.trim()),
-          'categoria': _categoriaSeleccionada,
-        },
-      );
+      await IngredienteService.actualizarIngrediente(widget.ingrediente.id, {
+        'nombre': _nombreCtrl.text.trim(),
+        'cantidadActual': double.parse(_cantidadCtrl.text.trim()),
+        'unidad': _unidadSeleccionada,
+        'stockMinimo': double.parse(_minimoCtrl.text.trim()),
+        'categoria': _categoriaSeleccionada,
+      });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Stock actualizado')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Stock actualizado')));
         Navigator.pop(context, true);
       }
     } catch (e) {
@@ -98,7 +97,8 @@ class _AdminEditarStockScreenState extends State<AdminEditarStockScreen> {
       builder: (ctx) => AlertDialog(
         title: const Text('Eliminar ingrediente'),
         content: Text(
-            '¿Seguro que quieres eliminar "${widget.ingrediente.nombre}"?'),
+          '¿Seguro que quieres eliminar "${widget.ingrediente.nombre}"?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -119,9 +119,9 @@ class _AdminEditarStockScreenState extends State<AdminEditarStockScreen> {
     try {
       await IngredienteService.eliminarIngrediente(widget.ingrediente.id);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ingrediente eliminado')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Ingrediente eliminado')));
         Navigator.pop(context, true);
       }
     } catch (e) {
@@ -177,11 +177,11 @@ class _AdminEditarStockScreenState extends State<AdminEditarStockScreen> {
                     flex: 1,
                     child: DropdownButtonFormField<String>(
                       initialValue: _unidadSeleccionada,
-                      decoration:
-                          const InputDecoration(labelText: 'Unidad'),
+                      decoration: const InputDecoration(labelText: 'Unidad'),
                       items: _unidades
-                          .map((u) =>
-                              DropdownMenuItem(value: u, child: Text(u)))
+                          .map(
+                            (u) => DropdownMenuItem(value: u, child: Text(u)),
+                          )
                           .toList(),
                       onChanged: (val) =>
                           setState(() => _unidadSeleccionada = val!),
@@ -202,8 +202,7 @@ class _AdminEditarStockScreenState extends State<AdminEditarStockScreen> {
                 initialValue: _categoriaSeleccionada,
                 decoration: const InputDecoration(labelText: 'Categoría'),
                 items: _categorias
-                    .map((c) =>
-                        DropdownMenuItem(value: c, child: Text(c)))
+                    .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                     .toList(),
                 onChanged: (val) =>
                     setState(() => _categoriaSeleccionada = val!),
@@ -248,7 +247,9 @@ class _AdminEditarStockScreenState extends State<AdminEditarStockScreen> {
                 width: 20,
                 height: 20,
                 child: CircularProgressIndicator(
-                    strokeWidth: 2, color: Colors.white),
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
               )
             : const Text("GUARDAR CAMBIOS"),
       ),

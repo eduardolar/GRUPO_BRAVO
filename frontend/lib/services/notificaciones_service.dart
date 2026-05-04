@@ -1,4 +1,5 @@
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb, TargetPlatform;
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, kIsWeb, TargetPlatform;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 /// Servicio singleton para notificaciones locales (no FCM).
@@ -28,15 +29,19 @@ class NotificacionesService {
       requestBadgePermission: true,
       requestSoundPermission: true,
     );
-    const initSettings =
-        InitializationSettings(android: androidInit, iOS: iosInit);
+    const initSettings = InitializationSettings(
+      android: androidInit,
+      iOS: iosInit,
+    );
 
     await _plugin.initialize(initSettings);
 
     // Android 13+ requiere pedir permiso explícito.
     if (defaultTargetPlatform == TargetPlatform.android) {
-      final android = _plugin.resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin>();
+      final android = _plugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
       await android?.requestNotificationsPermission();
     }
 
@@ -63,11 +68,14 @@ class NotificacionesService {
       presentBadge: true,
       presentSound: true,
     );
-    const details =
-        NotificationDetails(android: androidDetails, iOS: iosDetails);
+    const details = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
 
-    final referenciaCorta =
-        pedidoId.length > 6 ? pedidoId.substring(pedidoId.length - 6) : pedidoId;
+    final referenciaCorta = pedidoId.length > 6
+        ? pedidoId.substring(pedidoId.length - 6)
+        : pedidoId;
 
     await _plugin.show(
       notifId,

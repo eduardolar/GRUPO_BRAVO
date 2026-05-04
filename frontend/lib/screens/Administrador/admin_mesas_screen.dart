@@ -1,4 +1,4 @@
-﻿import 'dart:math';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/models/mesa_model.dart';
@@ -60,7 +60,7 @@ class _AdminMesasScreenState extends State<AdminMesasScreen> {
     );
 
     if (mesa == null || !mounted) return;
-    
+
     try {
       final nueva = await MesaService.crearMesa(
         numero: mesa.numero,
@@ -114,7 +114,10 @@ class _AdminMesasScreenState extends State<AdminMesasScreen> {
       } catch (e) {
         if (!mounted) return;
         messenger.showSnackBar(
-          SnackBar(content: Text('Error al eliminar la mesa: $e'), backgroundColor: AppColors.error),
+          SnackBar(
+            content: Text('Error al eliminar la mesa: $e'),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     } else if (accion == 'liberar') {
@@ -123,12 +126,17 @@ class _AdminMesasScreenState extends State<AdminMesasScreen> {
         if (!mounted) return;
         setState(() {
           final index = _mesas.indexWhere((m) => m.id == mesa.id);
-          if (index != -1) _mesas[index] = _mesas[index].copyWith(disponible: true);
+          if (index != -1) {
+            _mesas[index] = _mesas[index].copyWith(disponible: true);
+          }
         });
       } catch (e) {
         if (!mounted) return;
         messenger.showSnackBar(
-          SnackBar(content: Text('Error al liberar la mesa: $e'), backgroundColor: AppColors.error),
+          SnackBar(
+            content: Text('Error al liberar la mesa: $e'),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     } else if (accion == 'ocupar') {
@@ -137,12 +145,17 @@ class _AdminMesasScreenState extends State<AdminMesasScreen> {
         if (!mounted) return;
         setState(() {
           final index = _mesas.indexWhere((m) => m.id == mesa.id);
-          if (index != -1) _mesas[index] = _mesas[index].copyWith(disponible: false);
+          if (index != -1) {
+            _mesas[index] = _mesas[index].copyWith(disponible: false);
+          }
         });
       } catch (e) {
         if (!mounted) return;
         messenger.showSnackBar(
-          SnackBar(content: Text('Error al ocupar la mesa: $e'), backgroundColor: AppColors.error),
+          SnackBar(
+            content: Text('Error al ocupar la mesa: $e'),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     }
@@ -164,11 +177,16 @@ class _AdminMesasScreenState extends State<AdminMesasScreen> {
         body: Stack(
           children: [
             Positioned.fill(
-              child: Image.asset('assets/images/Bravo restaurante.jpg', fit: BoxFit.cover),
+              child: Image.asset(
+                'assets/images/Bravo restaurante.jpg',
+                fit: BoxFit.cover,
+              ),
             ),
             Positioned.fill(
               child: DecoratedBox(
-                decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.65)),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.65),
+                ),
               ),
             ),
             const Center(
@@ -176,13 +194,22 @@ class _AdminMesasScreenState extends State<AdminMesasScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   SizedBox(
-                    width: 22, height: 22,
-                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 1.5),
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 1.5,
+                    ),
                   ),
                   SizedBox(height: 18),
                   Text(
                     'CARGANDO MESAS',
-                    style: TextStyle(color: Colors.white60, fontSize: 10, letterSpacing: 3.0, fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                      color: Colors.white60,
+                      fontSize: 10,
+                      letterSpacing: 3.0,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
               ),
@@ -193,7 +220,10 @@ class _AdminMesasScreenState extends State<AdminMesasScreen> {
     }
 
     final grupos = _agruparPorUbicacion();
-    final orderedKeys = ['interior', 'terraza'].where((k) => grupos.containsKey(k)).toList();
+    final orderedKeys = [
+      'interior',
+      'terraza',
+    ].where((k) => grupos.containsKey(k)).toList();
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -205,13 +235,20 @@ class _AdminMesasScreenState extends State<AdminMesasScreen> {
         icon: const Icon(Icons.add, size: 20),
         label: const Text(
           'NUEVA MESA',
-          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.4),
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.4,
+          ),
         ),
       ),
       body: Stack(
         children: [
           Positioned.fill(
-            child: Image.asset('assets/images/Bravo restaurante.jpg', fit: BoxFit.cover),
+            child: Image.asset(
+              'assets/images/Bravo restaurante.jpg',
+              fit: BoxFit.cover,
+            ),
           ),
           Positioned.fill(
             child: DecoratedBox(
@@ -237,7 +274,11 @@ class _AdminMesasScreenState extends State<AdminMesasScreen> {
                     children: [
                       GestureDetector(
                         onTap: () => Navigator.pop(context),
-                        child: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 18),
+                        child: const Icon(
+                          Icons.arrow_back_ios_new,
+                          color: Colors.white,
+                          size: 18,
+                        ),
                       ),
                       const SizedBox(width: 14),
                       Expanded(
@@ -251,13 +292,19 @@ class _AdminMesasScreenState extends State<AdminMesasScreen> {
                                 fontSize: 22,
                                 fontWeight: FontWeight.w700,
                                 letterSpacing: 1.5,
-                                shadows: const [Shadow(color: Colors.black54, blurRadius: 8)],
+                                shadows: const [
+                                  Shadow(color: Colors.black54, blurRadius: 8),
+                                ],
                               ),
                             ),
                             const SizedBox(height: 4),
                             const Text(
                               'Toca una mesa para editarla o eliminarla',
-                              style: TextStyle(color: Colors.white70, fontSize: 11, letterSpacing: 0.4),
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 11,
+                                letterSpacing: 0.4,
+                              ),
                             ),
                           ],
                         ),
@@ -274,7 +321,10 @@ class _AdminMesasScreenState extends State<AdminMesasScreen> {
                     children: [
                       _LegendaDot(color: AppColors.button, label: 'Disponible'),
                       const SizedBox(width: 20),
-                      _LegendaDot(color: AppColors.iconPrimary, label: 'Ocupada'),
+                      _LegendaDot(
+                        color: AppColors.iconPrimary,
+                        label: 'Ocupada',
+                      ),
                     ],
                   ),
                 ),
@@ -287,7 +337,8 @@ class _AdminMesasScreenState extends State<AdminMesasScreen> {
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
                     children: orderedKeys.map((ubicacion) {
                       final mesasGrupo = grupos[ubicacion]!;
-                      final titulo = ubicacion[0].toUpperCase() + ubicacion.substring(1);
+                      final titulo =
+                          ubicacion[0].toUpperCase() + ubicacion.substring(1);
 
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -297,7 +348,8 @@ class _AdminMesasScreenState extends State<AdminMesasScreen> {
                             child: Row(
                               children: [
                                 Container(
-                                  width: 3, height: 16,
+                                  width: 3,
+                                  height: 16,
                                   decoration: BoxDecoration(
                                     color: AppColors.button,
                                     borderRadius: BorderRadius.circular(2),
@@ -307,7 +359,10 @@ class _AdminMesasScreenState extends State<AdminMesasScreen> {
                                 Text(
                                   titulo.toUpperCase(),
                                   style: const TextStyle(
-                                    color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 2.5,
+                                    color: Colors.white70,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 2.5,
                                   ),
                                 ),
                               ],
@@ -316,10 +371,14 @@ class _AdminMesasScreenState extends State<AdminMesasScreen> {
                           Wrap(
                             spacing: 20,
                             runSpacing: 24,
-                            children: mesasGrupo.map((mesa) => _MesaCard(
-                              mesa: mesa,
-                              onTap: () => _gestionarMesa(mesa), 
-                            )).toList(),
+                            children: mesasGrupo
+                                .map(
+                                  (mesa) => _MesaCard(
+                                    mesa: mesa,
+                                    onTap: () => _gestionarMesa(mesa),
+                                  ),
+                                )
+                                .toList(),
                           ),
                           const SizedBox(height: 20),
                           const Divider(color: Colors.white24, thickness: 0.5),
@@ -346,7 +405,9 @@ class _DialogGestionAdmin extends StatelessWidget {
   const _DialogGestionAdmin({required this.mesa});
 
   String get _ubicacionLabel {
-    return mesa.ubicacion == 'interior' ? 'Interior' : (mesa.ubicacion == 'terraza' ? 'Terraza' : mesa.ubicacion);
+    return mesa.ubicacion == 'interior'
+        ? 'Interior'
+        : (mesa.ubicacion == 'terraza' ? 'Terraza' : mesa.ubicacion);
   }
 
   @override
@@ -360,7 +421,8 @@ class _DialogGestionAdmin extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             SizedBox(
-              width: 84, height: 84,
+              width: 84,
+              height: 84,
               child: CustomPaint(
                 painter: _MesaPainter(
                   numero: mesa.numero,
@@ -373,68 +435,93 @@ class _DialogGestionAdmin extends StatelessWidget {
             Text(
               'GESTIONAR MESA ${mesa.numero}',
               style: GoogleFonts.playfairDisplay(
-                fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white, letterSpacing: 1.5,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+                letterSpacing: 1.5,
               ),
             ),
             const SizedBox(height: 6),
             Text(
               '$_ubicacionLabel · ${mesa.capacidad} personas',
-              style: const TextStyle(color: Colors.white70, fontSize: 13, letterSpacing: 0.3),
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 13,
+                letterSpacing: 0.3,
+              ),
             ),
             const SizedBox(height: 24),
-            
+
             // --- BOTONES DINÁMICOS SEGÚN EL ESTADO DE LA MESA ---
-            
+
             // 1. Si está ocupada -> Mostrar botón de LIBERAR
             if (!mesa.disponible)
               ElevatedButton.icon(
                 icon: const Icon(Icons.cleaning_services, size: 16),
-                label: const Text('MARCAR COMO LIBRE', style: TextStyle(letterSpacing: 1.2, fontSize: 11)),
+                label: const Text(
+                  'MARCAR COMO LIBRE',
+                  style: TextStyle(letterSpacing: 1.2, fontSize: 11),
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.button,
                   foregroundColor: Colors.white,
                   minimumSize: const Size(double.infinity, 45),
                   elevation: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
                 onPressed: () => Navigator.pop(context, 'liberar'),
               ),
-            
+
             // 2. Si está libre -> Mostrar botón de OCUPAR
             if (mesa.disponible)
               ElevatedButton.icon(
                 icon: const Icon(Icons.people_alt_outlined, size: 16),
-                label: const Text('MARCAR COMO OCUPADA', style: TextStyle(letterSpacing: 1.2, fontSize: 11)),
+                label: const Text(
+                  'MARCAR COMO OCUPADA',
+                  style: TextStyle(letterSpacing: 1.2, fontSize: 11),
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.error,
                   foregroundColor: Colors.white,
                   minimumSize: const Size(double.infinity, 45),
                   elevation: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
                 onPressed: () => Navigator.pop(context, 'ocupar'),
               ),
-              
+
             const SizedBox(height: 12),
 
             // 3. Botón de ELIMINAR siempre visible
             OutlinedButton.icon(
               icon: const Icon(Icons.delete_outline, size: 16),
-              label: const Text('ELIMINAR MESA', style: TextStyle(letterSpacing: 1.2, fontSize: 11)),
+              label: const Text(
+                'ELIMINAR MESA',
+                style: TextStyle(letterSpacing: 1.2, fontSize: 11),
+              ),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.error,
                 side: const BorderSide(color: AppColors.error),
                 minimumSize: const Size(double.infinity, 45),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
               onPressed: () => Navigator.pop(context, 'eliminar'),
             ),
-            
+
             const SizedBox(height: 16),
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancelar', style: TextStyle(color: Colors.white54)),
-            )
+              child: const Text(
+                'Cancelar',
+                style: TextStyle(color: Colors.white54),
+              ),
+            ),
           ],
         ),
       ),
@@ -449,7 +536,11 @@ class _MesaPainter extends CustomPainter {
   final int capacidad;
   final bool disponible;
 
-  const _MesaPainter({required this.numero, required this.capacidad, required this.disponible});
+  const _MesaPainter({
+    required this.numero,
+    required this.capacidad,
+    required this.disponible,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -468,8 +559,13 @@ class _MesaPainter extends CustomPainter {
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
     canvas.drawCircle(center + const Offset(2, 3), tableRadius, shadowPaint);
 
-    final angles = List.generate(capacidad, (i) => (2 * pi * i) / capacidad - pi / 2);
-    final chairPaint = Paint()..color = chairColor..style = PaintingStyle.fill;
+    final angles = List.generate(
+      capacidad,
+      (i) => (2 * pi * i) / capacidad - pi / 2,
+    );
+    final chairPaint = Paint()
+      ..color = chairColor
+      ..style = PaintingStyle.fill;
     final chairBorderPaint = Paint()
       ..color = borderColor.withValues(alpha: 0.5)
       ..style = PaintingStyle.stroke
@@ -479,18 +575,26 @@ class _MesaPainter extends CustomPainter {
       final cx = center.dx + chairDist * cos(angle);
       final cy = center.dy + chairDist * sin(angle);
       final rect = RRect.fromRectAndRadius(
-        Rect.fromCenter(center: Offset(cx, cy), width: chairW * 2, height: chairH * 2),
+        Rect.fromCenter(
+          center: Offset(cx, cy),
+          width: chairW * 2,
+          height: chairH * 2,
+        ),
         const Radius.circular(4),
       );
       canvas.drawRRect(rect, chairPaint);
       canvas.drawRRect(rect, chairBorderPaint);
     }
 
-    final tablePaint = Paint()..color = tableColor..style = PaintingStyle.fill;
+    final tablePaint = Paint()
+      ..color = tableColor
+      ..style = PaintingStyle.fill;
     canvas.drawCircle(center, tableRadius, tablePaint);
 
     final tableBorderPaint = Paint()
-      ..color = borderColor..style = PaintingStyle.stroke..strokeWidth = 2;
+      ..color = borderColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
     canvas.drawCircle(center, tableRadius, tableBorderPaint);
 
     final textSpan = TextSpan(
@@ -501,15 +605,25 @@ class _MesaPainter extends CustomPainter {
         fontWeight: FontWeight.bold,
       ),
     );
-    final textPainter = TextPainter(text: textSpan, textDirection: TextDirection.ltr);
+    final textPainter = TextPainter(
+      text: textSpan,
+      textDirection: TextDirection.ltr,
+    );
     textPainter.layout();
     textPainter.paint(
-      canvas, Offset(center.dx - textPainter.width / 2, center.dy - textPainter.height / 2),
+      canvas,
+      Offset(
+        center.dx - textPainter.width / 2,
+        center.dy - textPainter.height / 2,
+      ),
     );
   }
 
   @override
-  bool shouldRepaint(_MesaPainter old) => old.disponible != disponible || old.numero != numero || old.capacidad != capacidad;
+  bool shouldRepaint(_MesaPainter old) =>
+      old.disponible != disponible ||
+      old.numero != numero ||
+      old.capacidad != capacidad;
 }
 
 // ── Tarjeta de mesa ───────────────────────────────────────────────────────────
@@ -531,9 +645,14 @@ class _MesaCard extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             SizedBox(
-              width: 90, height: 90,
+              width: 90,
+              height: 90,
               child: CustomPaint(
-                painter: _MesaPainter(numero: mesa.numero, capacidad: mesa.capacidad, disponible: disponible),
+                painter: _MesaPainter(
+                  numero: mesa.numero,
+                  capacidad: mesa.capacidad,
+                  disponible: disponible,
+                ),
               ),
             ),
             const SizedBox(height: 6),
@@ -541,7 +660,9 @@ class _MesaCard extends StatelessWidget {
               disponible ? 'LIBRE' : 'OCUPADA',
               style: TextStyle(
                 color: disponible ? Colors.white : AppColors.iconPrimary,
-                fontSize: 9, fontWeight: FontWeight.w600, letterSpacing: 1.5,
+                fontSize: 9,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 1.5,
               ),
             ),
           ],
@@ -565,13 +686,18 @@ class _LegendaDot extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 10, height: 10,
+          width: 10,
+          height: 10,
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 6),
         Text(
           label,
-          style: const TextStyle(color: Colors.white70, fontSize: 11, letterSpacing: 0.5),
+          style: const TextStyle(
+            color: Colors.white70,
+            fontSize: 11,
+            letterSpacing: 0.5,
+          ),
         ),
       ],
     );
@@ -605,7 +731,10 @@ class _DialogCrearMesaState extends State<_DialogCrearMesa> {
 
   void _autoQr() {
     final n = _numeroCtrl.text.trim();
-    if (n.isEmpty) { _qrCtrl.text = ''; return; }
+    if (n.isEmpty) {
+      _qrCtrl.text = '';
+      return;
+    }
     final prefijo = _ubicacion == 'interior' ? 'Mesa' : 'Terraza';
     _qrCtrl.text = '${prefijo}_${n.padLeft(2, '0')}';
   }
@@ -615,9 +744,12 @@ class _DialogCrearMesaState extends State<_DialogCrearMesa> {
     Navigator.pop(
       context,
       Mesa(
-        id: '', numero: int.parse(_numeroCtrl.text.trim()),
+        id: '',
+        numero: int.parse(_numeroCtrl.text.trim()),
         capacidad: int.parse(_capacidadCtrl.text.trim()),
-        ubicacion: _ubicacion, codigoQr: _qrCtrl.text.trim(), disponible: true,
+        ubicacion: _ubicacion,
+        codigoQr: _qrCtrl.text.trim(),
+        disponible: true,
       ),
     );
   }
@@ -638,15 +770,27 @@ class _DialogCrearMesaState extends State<_DialogCrearMesa> {
               Text(
                 'NUEVA MESA',
                 style: GoogleFonts.playfairDisplay(
-                  fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white, letterSpacing: 1.5,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                  letterSpacing: 1.5,
                 ),
               ),
               const SizedBox(height: 4),
-              const Text('Rellena los datos para añadir la mesa', style: TextStyle(color: Colors.white70, fontSize: 12)),
+              const Text(
+                'Rellena los datos para añadir la mesa',
+                style: TextStyle(color: Colors.white70, fontSize: 12),
+              ),
               const SizedBox(height: 20),
               _Campo(
-                controller: _numeroCtrl, focusNode: _numeroFocus, label: 'Número de mesa', hint: 'Ej: 13', keyboardType: TextInputType.number,
-                onChanged: (_) => WidgetsBinding.instance.addPostFrameCallback((_) => _autoQr()),
+                controller: _numeroCtrl,
+                focusNode: _numeroFocus,
+                label: 'Número de mesa',
+                hint: 'Ej: 13',
+                keyboardType: TextInputType.number,
+                onChanged: (_) => WidgetsBinding.instance.addPostFrameCallback(
+                  (_) => _autoQr(),
+                ),
                 validator: (v) {
                   if (v == null || v.trim().isEmpty) return 'Campo obligatorio';
                   if (int.tryParse(v.trim()) == null) return 'Solo números';
@@ -656,7 +800,10 @@ class _DialogCrearMesaState extends State<_DialogCrearMesa> {
               ),
               const SizedBox(height: 14),
               _Campo(
-                controller: _capacidadCtrl, label: 'Capacidad (personas)', hint: 'Ej: 4', keyboardType: TextInputType.number,
+                controller: _capacidadCtrl,
+                label: 'Capacidad (personas)',
+                hint: 'Ej: 4',
+                keyboardType: TextInputType.number,
                 validator: (v) {
                   if (v == null || v.trim().isEmpty) return 'Campo obligatorio';
                   if (int.tryParse(v.trim()) == null) return 'Solo números';
@@ -665,25 +812,46 @@ class _DialogCrearMesaState extends State<_DialogCrearMesa> {
                 },
               ),
               const SizedBox(height: 14),
-              const Text('ZONA', style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: 1.5)),
+              const Text(
+                'ZONA',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 1.5,
+                ),
+              ),
               const SizedBox(height: 8),
               Row(
                 children: [
                   _ChipUbicacion(
-                    label: 'Interior', selected: _ubicacion == 'interior',
-                    onTap: () => setState(() { _ubicacion = 'interior'; _autoQr(); }),
+                    label: 'Interior',
+                    selected: _ubicacion == 'interior',
+                    onTap: () => setState(() {
+                      _ubicacion = 'interior';
+                      _autoQr();
+                    }),
                   ),
                   const SizedBox(width: 8),
                   _ChipUbicacion(
-                    label: 'Terraza', selected: _ubicacion == 'terraza',
-                    onTap: () => setState(() { _ubicacion = 'terraza'; _autoQr(); }),
+                    label: 'Terraza',
+                    selected: _ubicacion == 'terraza',
+                    onTap: () => setState(() {
+                      _ubicacion = 'terraza';
+                      _autoQr();
+                    }),
                   ),
                 ],
               ),
               const SizedBox(height: 14),
               _Campo(
-                controller: _qrCtrl, label: 'Código QR', hint: 'Ej: Mesa_13',
-                validator: (v) { if (v == null || v.trim().isEmpty) return 'Campo obligatorio'; return null; },
+                controller: _qrCtrl,
+                label: 'Código QR',
+                hint: 'Ej: Mesa_13',
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return 'Campo obligatorio';
+                  return null;
+                },
               ),
               const SizedBox(height: 24),
               Row(
@@ -692,10 +860,17 @@ class _DialogCrearMesaState extends State<_DialogCrearMesa> {
                     child: OutlinedButton(
                       onPressed: () => Navigator.pop(context),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white70, side: const BorderSide(color: Colors.white24),
-                        padding: const EdgeInsets.symmetric(vertical: 13), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        foregroundColor: Colors.white70,
+                        side: const BorderSide(color: Colors.white24),
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
-                      child: const Text('CANCELAR', style: TextStyle(fontSize: 11, letterSpacing: 1.2)),
+                      child: const Text(
+                        'CANCELAR',
+                        style: TextStyle(fontSize: 11, letterSpacing: 1.2),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -703,10 +878,22 @@ class _DialogCrearMesaState extends State<_DialogCrearMesa> {
                     child: ElevatedButton(
                       onPressed: _confirmar,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.button, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 13),
-                        elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        backgroundColor: AppColors.button,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
-                      child: const Text('CREAR', style: TextStyle(fontSize: 11, letterSpacing: 1.2, fontWeight: FontWeight.w600)),
+                      child: const Text(
+                        'CREAR',
+                        style: TextStyle(
+                          fontSize: 11,
+                          letterSpacing: 1.2,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -731,8 +918,13 @@ class _Campo extends StatelessWidget {
   final void Function(String)? onChanged;
 
   const _Campo({
-    required this.controller, this.focusNode, required this.label, required this.hint,
-    this.keyboardType, this.validator, this.onChanged,
+    required this.controller,
+    this.focusNode,
+    required this.label,
+    required this.hint,
+    this.keyboardType,
+    this.validator,
+    this.onChanged,
   });
 
   @override
@@ -742,21 +934,50 @@ class _Campo extends StatelessWidget {
       children: [
         Text(
           label.toUpperCase(),
-          style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: 1.5),
+          style: const TextStyle(
+            color: Colors.white70,
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 1.5,
+          ),
         ),
         const SizedBox(height: 6),
         TextFormField(
-          controller: controller, focusNode: focusNode, keyboardType: keyboardType, validator: validator, onChanged: onChanged,
+          controller: controller,
+          focusNode: focusNode,
+          keyboardType: keyboardType,
+          validator: validator,
+          onChanged: onChanged,
           style: const TextStyle(color: Colors.white, fontSize: 14),
           decoration: InputDecoration(
-            hintText: hint, hintStyle: const TextStyle(color: Colors.white38, fontSize: 13),
-            filled: true, fillColor: Colors.black45,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Colors.white24)),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Colors.white24)),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.button, width: 1.5)),
-            errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.error)),
-            focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.error)),
+            hintText: hint,
+            hintStyle: const TextStyle(color: Colors.white38, fontSize: 13),
+            filled: true,
+            fillColor: Colors.black45,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 12,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Colors.white24),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Colors.white24),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: AppColors.button, width: 1.5),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: AppColors.error),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: AppColors.error),
+            ),
           ),
         ),
       ],
@@ -771,7 +992,11 @@ class _ChipUbicacion extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  const _ChipUbicacion({required this.label, required this.selected, required this.onTap});
+  const _ChipUbicacion({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -783,13 +1008,16 @@ class _ChipUbicacion extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected ? AppColors.button : Colors.black45,
           borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: selected ? AppColors.button : Colors.white24),
+          border: Border.all(
+            color: selected ? AppColors.button : Colors.white24,
+          ),
         ),
         child: Text(
           label,
           style: TextStyle(
             color: selected ? Colors.white : Colors.white70,
-            fontSize: 11, fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+            fontSize: 11,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
           ),
         ),
       ),

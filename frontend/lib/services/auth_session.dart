@@ -43,7 +43,10 @@ class AuthSession {
 
   /// Construye los headers HTTP estándar añadiendo `Authorization: Bearer`
   /// cuando hay sesión activa. Si [extra] colisiona, prevalece [extra].
-  static Map<String, String> headers({Map<String, String>? extra, bool json = true}) {
+  static Map<String, String> headers({
+    Map<String, String>? extra,
+    bool json = true,
+  }) {
     final h = <String, String>{};
     if (json) h['Content-Type'] = 'application/json';
     if (_token != null) h['Authorization'] = 'Bearer $_token';

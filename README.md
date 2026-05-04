@@ -71,11 +71,24 @@ Eventos mínimos: `payment_intent.succeeded`, `payment_intent.payment_failed`,
 `payment_intent.canceled`. Copia la `whsec_...` resultante en
 `STRIPE_WEBHOOK_SECRET` del `.env`.
 
-## Tests
+## Tests y CI
+
+Antes de pushear, reproduce la pipeline en local:
+
+```bash
+bash scripts/check-ci.sh        # Linux/Mac
+pwsh scripts/check-ci.ps1       # Windows
+```
+
+Si algún paso falla, el script imprime el comando exacto que lo arregla.
+Para más detalle ve a [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ```bash
 cd backend
-pytest
+pytest                          # tests del backend (66+)
+
+cd ../frontend
+flutter test                    # tests del frontend (100+)
 ```
 
 ## Estructura del proyecto

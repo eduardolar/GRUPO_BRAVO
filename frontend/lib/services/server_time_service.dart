@@ -52,7 +52,9 @@ class ServerTimeService {
       final serverTime = DateTime.parse(serverIso).toUtc();
       // Compensa la latencia: asume que el servidor respondió a mitad del RTT.
       final tMitad = tEnvio.add(
-        Duration(microseconds: tRecibido.difference(tEnvio).inMicroseconds ~/ 2),
+        Duration(
+          microseconds: tRecibido.difference(tEnvio).inMicroseconds ~/ 2,
+        ),
       );
       _offset = serverTime.difference(tMitad);
       _ultimaSync = tRecibido;

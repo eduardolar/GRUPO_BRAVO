@@ -7,8 +7,18 @@ import '../../../core/colors_style.dart';
 // -- Constantes de texto --
 const _diasAbrevH = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM'];
 const _mesesAbrevH = [
-  'ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN',
-  'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'
+  'ENE',
+  'FEB',
+  'MAR',
+  'ABR',
+  'MAY',
+  'JUN',
+  'JUL',
+  'AGO',
+  'SEP',
+  'OCT',
+  'NOV',
+  'DIC',
 ];
 
 class HistorialReservas extends StatefulWidget {
@@ -67,26 +77,36 @@ class _HistorialReservasState extends State<HistorialReservas> {
               headerBackgroundColor: AppColors.backgroundButton,
               headerForegroundColor: Colors.white,
               dayBackgroundColor: WidgetStateProperty.resolveWith((states) {
-                if (states.contains(WidgetState.selected)) return AppColors.button;
+                if (states.contains(WidgetState.selected)) {
+                  return AppColors.button;
+                }
                 return AppColors.backgroundButton;
               }),
               dayForegroundColor: WidgetStateProperty.all(Colors.white),
               todayBackgroundColor: WidgetStateProperty.resolveWith((states) {
-                if (states.contains(WidgetState.selected)) return AppColors.button;
+                if (states.contains(WidgetState.selected)) {
+                  return AppColors.button;
+                }
                 return AppColors.backgroundButton;
               }),
               todayForegroundColor: WidgetStateProperty.all(AppColors.button),
               todayBorder: BorderSide(color: AppColors.button, width: 1.5),
-              weekdayStyle: const TextStyle(color: Colors.white54, fontSize: 12),
+              weekdayStyle: const TextStyle(
+                color: Colors.white54,
+                fontSize: 12,
+              ),
               dayStyle: const TextStyle(fontSize: 13),
               yearBackgroundColor: WidgetStateProperty.resolveWith((states) {
-                if (states.contains(WidgetState.selected)) return AppColors.button;
+                if (states.contains(WidgetState.selected)) {
+                  return AppColors.button;
+                }
                 return AppColors.backgroundButton;
               }),
               yearForegroundColor: WidgetStateProperty.all(Colors.white),
             ),
-            dialogTheme:
-                const DialogThemeData(backgroundColor: AppColors.background),
+            dialogTheme: const DialogThemeData(
+              backgroundColor: AppColors.background,
+            ),
           ),
           child: child!,
         );
@@ -110,8 +130,7 @@ class _HistorialReservasState extends State<HistorialReservas> {
             ),
           ),
           Positioned.fill(
-            child: Container(
-                color: AppColors.shadow.withValues(alpha: 0.88)),
+            child: Container(color: AppColors.shadow.withValues(alpha: 0.88)),
           ),
           SafeArea(
             child: Column(
@@ -133,8 +152,11 @@ class _HistorialReservasState extends State<HistorialReservas> {
         children: [
           IconButton(
             tooltip: 'Volver',
-            icon: const Icon(Icons.arrow_back_ios_new,
-                color: Colors.white, size: 20),
+            icon: const Icon(
+              Icons.arrow_back_ios_new,
+              color: Colors.white,
+              size: 20,
+            ),
             onPressed: () => Navigator.pop(context),
           ),
           const Expanded(
@@ -197,8 +219,11 @@ class _HistorialReservasState extends State<HistorialReservas> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.error_outline,
-                          size: 48, color: Colors.white24),
+                      const Icon(
+                        Icons.error_outline,
+                        size: 48,
+                        color: Colors.white24,
+                      ),
                       const SizedBox(height: 12),
                       Text(
                         'Error: ${snapshot.error}',
@@ -211,8 +236,9 @@ class _HistorialReservasState extends State<HistorialReservas> {
                         child: const Text(
                           'Reintentar',
                           style: TextStyle(
-                              color: AppColors.button,
-                              fontWeight: FontWeight.bold),
+                            color: AppColors.button,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ],
@@ -222,10 +248,12 @@ class _HistorialReservasState extends State<HistorialReservas> {
 
               final busqueda = _textoBusqueda.trim().toLowerCase();
               final reservasFiltradas = (snapshot.data ?? []).where((r) {
-                final coincideFecha = r.fecha.year == _fechaSeleccionada.year &&
+                final coincideFecha =
+                    r.fecha.year == _fechaSeleccionada.year &&
                     r.fecha.month == _fechaSeleccionada.month &&
                     r.fecha.day == _fechaSeleccionada.day;
-                final coincideNombre = busqueda.isEmpty ||
+                final coincideNombre =
+                    busqueda.isEmpty ||
                     r.nombreCompleto.toLowerCase().contains(busqueda);
                 return coincideFecha && coincideNombre;
               }).toList();
@@ -240,8 +268,7 @@ class _HistorialReservasState extends State<HistorialReservas> {
                   physics: const BouncingScrollPhysics(),
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
                   itemCount: reservasFiltradas.length,
-                  itemBuilder: (_, i) =>
-                      _tarjetaReserva(reservasFiltradas[i]),
+                  itemBuilder: (_, i) => _tarjetaReserva(reservasFiltradas[i]),
                 ),
               );
             },
@@ -266,8 +293,10 @@ class _HistorialReservasState extends State<HistorialReservas> {
             const Icon(Icons.calendar_month, color: AppColors.button, size: 20),
             const SizedBox(width: 12),
             Text(
-              DateFormat('EEEE, d \'de\' MMMM \'de\' yyyy', 'es')
-                  .format(_fechaSeleccionada),
+              DateFormat(
+                'EEEE, d \'de\' MMMM \'de\' yyyy',
+                'es',
+              ).format(_fechaSeleccionada),
               style: const TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 14,
@@ -301,7 +330,9 @@ class _HistorialReservasState extends State<HistorialReservas> {
                 controller: _controladorBusqueda,
                 autofocus: true,
                 style: const TextStyle(
-                    color: AppColors.textPrimary, fontSize: 14),
+                  color: AppColors.textPrimary,
+                  fontSize: 14,
+                ),
                 decoration: const InputDecoration(
                   hintText: 'Nombre o apellido...',
                   hintStyle: TextStyle(color: AppColors.textSecondary),
@@ -318,8 +349,11 @@ class _HistorialReservasState extends State<HistorialReservas> {
                   _textoBusqueda = '';
                   _controladorBusqueda.clear();
                 }),
-                child: const Icon(Icons.close,
-                    color: AppColors.textSecondary, size: 18),
+                child: const Icon(
+                  Icons.close,
+                  color: AppColors.textSecondary,
+                  size: 18,
+                ),
               ),
           ],
         ),
@@ -332,13 +366,19 @@ class _HistorialReservasState extends State<HistorialReservas> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.event_busy_outlined,
-              size: 64, color: Colors.white24),
+          const Icon(
+            Icons.event_busy_outlined,
+            size: 64,
+            color: Colors.white24,
+          ),
           const SizedBox(height: 16),
           const Text(
             'No hay reservas para esta fecha',
             style: TextStyle(
-                color: Colors.white54, fontSize: 16, letterSpacing: 0.5),
+              color: Colors.white54,
+              fontSize: 16,
+              letterSpacing: 0.5,
+            ),
           ),
           const SizedBox(height: 24),
           TextButton(
@@ -346,7 +386,9 @@ class _HistorialReservasState extends State<HistorialReservas> {
             child: const Text(
               'Cambiar fecha',
               style: TextStyle(
-                  color: AppColors.button, fontWeight: FontWeight.bold),
+                color: AppColors.button,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ],
@@ -403,7 +445,9 @@ class _HistorialReservasState extends State<HistorialReservas> {
                   Text(
                     _diasAbrevH[reserva.fecha.weekday - 1],
                     style: const TextStyle(
-                        color: AppColors.textSecondary, fontSize: 10),
+                      color: AppColors.textSecondary,
+                      fontSize: 10,
+                    ),
                   ),
                 ],
               ),
@@ -441,8 +485,11 @@ class _HistorialReservasState extends State<HistorialReservas> {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        const Icon(Icons.access_time,
-                            size: 14, color: AppColors.textSecondary),
+                        const Icon(
+                          Icons.access_time,
+                          size: 14,
+                          color: AppColors.textSecondary,
+                        ),
                         const SizedBox(width: 5),
                         Text(
                           reserva.hora,
@@ -453,41 +500,54 @@ class _HistorialReservasState extends State<HistorialReservas> {
                           ),
                         ),
                         const SizedBox(width: 14),
-                        const Icon(Icons.people_outline,
-                            size: 14, color: AppColors.textSecondary),
+                        const Icon(
+                          Icons.people_outline,
+                          size: 14,
+                          color: AppColors.textSecondary,
+                        ),
                         const SizedBox(width: 5),
                         Text(
                           '${reserva.comensales}',
                           style: const TextStyle(
-                              color: AppColors.textPrimary, fontSize: 14),
+                            color: AppColors.textPrimary,
+                            fontSize: 14,
+                          ),
                         ),
                         if (reserva.numeroMesa != null) ...[
                           const SizedBox(width: 14),
-                          const Icon(Icons.table_bar,
-                              size: 14, color: AppColors.textSecondary),
+                          const Icon(
+                            Icons.table_bar,
+                            size: 14,
+                            color: AppColors.textSecondary,
+                          ),
                           const SizedBox(width: 5),
                           Text(
                             'Mesa ${reserva.numeroMesa}',
                             style: const TextStyle(
-                                color: AppColors.textPrimary, fontSize: 14),
+                              color: AppColors.textPrimary,
+                              fontSize: 14,
+                            ),
                           ),
                         ],
                       ],
                     ),
-                    if (reserva.notas != null &&
-                        reserva.notas!.isNotEmpty) ...[
+                    if (reserva.notas != null && reserva.notas!.isNotEmpty) ...[
                       const SizedBox(height: 8),
                       Row(
                         children: [
-                          const Icon(Icons.note_outlined,
-                              size: 13, color: AppColors.textSecondary),
+                          const Icon(
+                            Icons.note_outlined,
+                            size: 13,
+                            color: AppColors.textSecondary,
+                          ),
                           const SizedBox(width: 5),
                           Expanded(
                             child: Text(
                               reserva.notas!,
                               style: const TextStyle(
-                                  color: AppColors.textSecondary,
-                                  fontSize: 12),
+                                color: AppColors.textSecondary,
+                                fontSize: 12,
+                              ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -517,9 +577,14 @@ class _HistorialReservasState extends State<HistorialReservas> {
         children: [
           Icon(icono, size: 10, color: color),
           const SizedBox(width: 4),
-          Text(label,
-              style: TextStyle(
-                  color: color, fontSize: 11, fontWeight: FontWeight.bold)),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ],
       ),
     );
@@ -527,10 +592,14 @@ class _HistorialReservasState extends State<HistorialReservas> {
 
   Color _colorEstado(String estado) {
     switch (estado.toLowerCase()) {
-      case 'confirmada': return AppColors.disp;
-      case 'pendiente':  return Colors.orange;
-      case 'cancelada':  return AppColors.error;
-      default:           return const Color(0xFF3B82F6);
+      case 'confirmada':
+        return AppColors.disp;
+      case 'pendiente':
+        return Colors.orange;
+      case 'cancelada':
+        return AppColors.error;
+      default:
+        return const Color(0xFF3B82F6);
     }
   }
 }

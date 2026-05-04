@@ -51,7 +51,10 @@ class AuthService {
   }
 
   // Para enviar el código que el usuario recibe en su correo
-  static Future<Map<String, dynamic>> verificarLogin2FA(String correo, String codigo) async {
+  static Future<Map<String, dynamic>> verificarLogin2FA(
+    String correo,
+    String codigo,
+  ) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 500));
       return {'success': true, 'message': 'Código login verificado en Mock'};
@@ -206,7 +209,8 @@ class AuthService {
       throw toApiException(response.statusCode, decodeBody(response));
     }
   }
-static Future<void> reenviarLogin2FA({required String correo}) async {
+
+  static Future<void> reenviarLogin2FA({required String correo}) async {
     // Si estás usando los datos de prueba sin backend
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 500));
@@ -214,14 +218,18 @@ static Future<void> reenviarLogin2FA({required String correo}) async {
     }
 
     final response = await http.post(
-      Uri.parse('$baseUrl/reenviar-login-2fa'), // Endpoint específico para reenviar código de login 2FA
+      Uri.parse(
+        '$baseUrl/reenviar-login-2fa',
+      ), // Endpoint específico para reenviar código de login 2FA
       headers: AuthSession.headers(),
       body: jsonEncode({'correo': correo}),
     );
 
     if (response.statusCode != 200) {
       final error = jsonDecode(response.body);
-      throw Exception(error['detail'] ?? 'Error al reenviar el código de seguridad');
+      throw Exception(
+        error['detail'] ?? 'Error al reenviar el código de seguridad',
+      );
     }
   }
 
@@ -337,8 +345,10 @@ static Future<void> reenviarLogin2FA({required String correo}) async {
 
   static Future<Map<String, dynamic>> setup2fa({required String userId}) async {
     final response = await httpWithRetry(
-      () => http.post(Uri.parse('$baseUrl/usuarios/$userId/2fa/setup'),
-          headers: AuthSession.headers()),
+      () => http.post(
+        Uri.parse('$baseUrl/usuarios/$userId/2fa/setup'),
+        headers: AuthSession.headers(),
+      ),
       retry: false,
     );
     if (response.statusCode == 200) return jsonDecode(response.body);
@@ -357,7 +367,9 @@ static Future<void> reenviarLogin2FA({required String correo}) async {
       ),
       retry: false,
     );
-    if (response.statusCode == 200) return jsonDecode(response.body) as Map<String, dynamic>;
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    }
     throw toApiException(response.statusCode, decodeBody(response));
   }
 
@@ -373,7 +385,9 @@ static Future<void> reenviarLogin2FA({required String correo}) async {
       ),
       retry: false,
     );
-    if (response.statusCode == 200) return jsonDecode(response.body) as Map<String, dynamic>;
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    }
     throw toApiException(response.statusCode, decodeBody(response));
   }
 

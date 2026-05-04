@@ -4,7 +4,7 @@ class Restaurante {
   final String direccion;
   final String codigo;
   final String? horarioApertura; // "HH:MM" e.g. "09:00"
-  final String? horarioCierre;   // "HH:MM" e.g. "23:00"
+  final String? horarioCierre; // "HH:MM" e.g. "23:00"
   final bool activo;
 
   Restaurante({
@@ -23,10 +23,11 @@ class Restaurante {
       nombre: json['nombre'] ?? '',
       direccion: json['direccion'] ?? '',
       codigo: json['codigo'] ?? '',
-      horarioApertura: json['horarioApertura'] as String? ??
+      horarioApertura:
+          json['horarioApertura'] as String? ??
           json['horario_apertura'] as String?,
-      horarioCierre: json['horarioCierre'] as String? ??
-          json['horario_cierre'] as String?,
+      horarioCierre:
+          json['horarioCierre'] as String? ?? json['horario_cierre'] as String?,
       activo: json['activo'] != false,
     );
   }

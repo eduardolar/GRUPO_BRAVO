@@ -71,9 +71,11 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
     try {
       final dt = DateTime.parse(fecha).toLocal();
       final now = DateTime.now();
-      final diff = DateTime(now.year, now.month, now.day)
-          .difference(DateTime(dt.year, dt.month, dt.day))
-          .inDays;
+      final diff = DateTime(
+        now.year,
+        now.month,
+        now.day,
+      ).difference(DateTime(dt.year, dt.month, dt.day)).inDays;
       final hora =
           '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
       if (diff == 0) return 'Hoy · $hora';
@@ -213,8 +215,9 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final activos =
-        _pedidos.where((p) => _estadosActivos.contains(p.estado)).length;
+    final activos = _pedidos
+        .where((p) => _estadosActivos.contains(p.estado))
+        .length;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -276,8 +279,11 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
       pinned: true,
       leading: IconButton(
         tooltip: 'Volver',
-        icon: const Icon(Icons.arrow_back_ios_new_rounded,
-            color: AppColors.button, size: 20),
+        icon: const Icon(
+          Icons.arrow_back_ios_new_rounded,
+          color: AppColors.button,
+          size: 20,
+        ),
         onPressed: () => Navigator.pop(context),
       ),
       title: Text(
@@ -290,8 +296,11 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
       ),
       actions: [
         IconButton(
-          icon: const Icon(Icons.refresh_rounded,
-              color: AppColors.button, size: 22),
+          icon: const Icon(
+            Icons.refresh_rounded,
+            color: AppColors.button,
+            size: 22,
+          ),
           onPressed: _cargarPedidos,
           tooltip: 'Actualizar',
         ),
@@ -331,8 +340,11 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
               ),
             ),
           ),
-          Icon(Icons.chevron_right_rounded,
-              color: AppColors.button.withValues(alpha: 0.5), size: 18),
+          Icon(
+            Icons.chevron_right_rounded,
+            color: AppColors.button.withValues(alpha: 0.5),
+            size: 18,
+          ),
         ],
       ),
     );
@@ -341,9 +353,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
   // ── Chips de filtro ───────────────────────────────────────────────────────
 
   Widget _buildFiltros() {
-    final counts = <String, int>{
-      'todos': _pedidos.length,
-    };
+    final counts = <String, int>{'todos': _pedidos.length};
     for (final f in _filtros.skip(1)) {
       counts[f[0]] = _pedidos.where((p) => p.estado == f[0]).length;
     }
@@ -394,7 +404,9 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
                     const SizedBox(width: 5),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 1),
+                        horizontal: 6,
+                        vertical: 1,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.line,
                         borderRadius: BorderRadius.circular(10),
@@ -453,8 +465,8 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            onTap: () => setState(
-                () => _expandido = estaExpandido ? -1 : index),
+            onTap: () =>
+                setState(() => _expandido = estaExpandido ? -1 : index),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -471,12 +483,14 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
                             width: 50,
                             height: 50,
                             decoration: BoxDecoration(
-                              color:
-                                  colorEstado.withValues(alpha: 0.12),
+                              color: colorEstado.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(14),
                             ),
-                            child: Icon(_iconoEstado(pedido.estado),
-                                color: colorEstado, size: 24),
+                            child: Icon(
+                              _iconoEstado(pedido.estado),
+                              color: colorEstado,
+                              size: 24,
+                            ),
                           ),
                           if (esActivo)
                             Positioned(
@@ -489,7 +503,9 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
                                   color: colorEstado,
                                   shape: BoxShape.circle,
                                   border: Border.all(
-                                      color: AppColors.panel, width: 2),
+                                    color: AppColors.panel,
+                                    width: 2,
+                                  ),
                                 ),
                               ),
                             ),
@@ -560,8 +576,9 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
                         duration: const Duration(milliseconds: 300),
                         child: Icon(
                           Icons.keyboard_arrow_down_rounded,
-                          color: AppColors.textSecondary
-                              .withValues(alpha: 0.45),
+                          color: AppColors.textSecondary.withValues(
+                            alpha: 0.45,
+                          ),
                           size: 24,
                         ),
                       ),
@@ -672,10 +689,11 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.notes_rounded,
-                      size: 14,
-                      color:
-                          AppColors.textSecondary.withValues(alpha: 0.6)),
+                  Icon(
+                    Icons.notes_rounded,
+                    size: 14,
+                    color: AppColors.textSecondary.withValues(alpha: 0.6),
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -707,12 +725,14 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
                       tipoPago: pedido.metodoPago,
                       total: pedido.total,
                       items: pedido.productos
-                          .map((p) => {
-                                'nombre': p.nombre,
-                                'cantidad': p.cantidad,
-                                'precio': p.precio,
-                                'sin': p.sin,
-                              })
+                          .map(
+                            (p) => {
+                              'nombre': p.nombre,
+                              'cantidad': p.cantidad,
+                              'precio': p.precio,
+                              'sin': p.sin,
+                            },
+                          )
                           .toList(),
                     ),
                   ),
@@ -747,18 +767,15 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
   Widget _buildStatusStepper(String estadoActual) {
     if (estadoActual == 'cancelado') {
       return Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
           color: AppColors.error.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-              color: AppColors.error.withValues(alpha: 0.2)),
+          border: Border.all(color: AppColors.error.withValues(alpha: 0.2)),
         ),
         child: Row(
           children: [
-            Icon(Icons.cancel_rounded,
-                color: AppColors.error, size: 16),
+            Icon(Icons.cancel_rounded, color: AppColors.error, size: 16),
             const SizedBox(width: 8),
             Text(
               'Este pedido fue cancelado',
@@ -780,8 +797,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
       ['entregado', 'Entregado', 'check'],
     ];
 
-    final pasoActualIdx =
-        pasos.indexWhere((p) => p[0] == estadoActual);
+    final pasoActualIdx = pasos.indexWhere((p) => p[0] == estadoActual);
 
     final iconos = [
       Icons.receipt_rounded,
@@ -817,9 +833,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
               width: 34,
               height: 34,
               decoration: BoxDecoration(
-                color: completado || actual
-                    ? AppColors.button
-                    : AppColors.line,
+                color: completado || actual ? AppColors.button : AppColors.line,
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -1015,9 +1029,11 @@ class _InfoChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon,
-              size: 14,
-              color: AppColors.textSecondary.withValues(alpha: 0.7)),
+          Icon(
+            icon,
+            size: 14,
+            color: AppColors.textSecondary.withValues(alpha: 0.7),
+          ),
           const SizedBox(width: 6),
           Text(
             label,
@@ -1098,9 +1114,10 @@ class _PulsingDotState extends State<_PulsingDot>
       vsync: this,
       duration: const Duration(milliseconds: 900),
     )..repeat(reverse: true);
-    _scale = Tween(begin: 0.8, end: 1.2).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
-    );
+    _scale = Tween(
+      begin: 0.8,
+      end: 1.2,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
   }
 
   @override
@@ -1116,10 +1133,7 @@ class _PulsingDotState extends State<_PulsingDot>
       child: Container(
         width: 8,
         height: 8,
-        decoration: BoxDecoration(
-          color: widget.color,
-          shape: BoxShape.circle,
-        ),
+        decoration: BoxDecoration(color: widget.color, shape: BoxShape.circle),
       ),
     );
   }

@@ -5,6 +5,6 @@ class MockCategories {
     'Pizzas',
     'Bebidas',
     'Postres',
-    'Snacks'
+    'Snacks',
   ];
 }

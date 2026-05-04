@@ -3,11 +3,7 @@ class Categoria {
   final String nombre;
   final String? icono;
 
-  Categoria({
-    required this.id,
-    required this.nombre,
-    this.icono,
-  });
+  Categoria({required this.id, required this.nombre, this.icono});
 
   factory Categoria.fromJson(Map<String, dynamic> json) {
     return Categoria(
@@ -18,10 +14,6 @@ class Categoria {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'nombre': nombre,
-      'icono': icono,
-    };
+    return {'id': id, 'nombre': nombre, 'icono': icono};
   }
 }

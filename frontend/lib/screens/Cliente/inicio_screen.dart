@@ -50,8 +50,7 @@ class _InicioScreenState extends State<InicioScreen> {
     final sessionId = params['stripe_session'];
     if (sessionId == null || sessionId.isEmpty) return;
     _stripeSessionId = sessionId;
-    _stripeEntrega =
-        Uri.decodeQueryComponent(params['entrega'] ?? 'Tu pedido');
+    _stripeEntrega = Uri.decodeQueryComponent(params['entrega'] ?? 'Tu pedido');
     _stripeTotal = double.tryParse(params['total'] ?? '0') ?? 0;
   }
 
@@ -71,8 +70,9 @@ class _InicioScreenState extends State<InicioScreen> {
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
     try {
-      final pagado =
-          await ApiService.verificarCheckoutSession(sessionId: sessionId);
+      final pagado = await ApiService.verificarCheckoutSession(
+        sessionId: sessionId,
+      );
       if (!mounted || !pagado) return;
       await ApiService.actualizarEstadoPago(referenciaPago: sessionId);
       if (!mounted) return;
@@ -91,7 +91,9 @@ class _InicioScreenState extends State<InicioScreen> {
       if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
-          content: const Text('No pudimos verificar el pago. Inténtalo de nuevo.'),
+          content: const Text(
+            'No pudimos verificar el pago. Inténtalo de nuevo.',
+          ),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
           shape: const RoundedRectangleBorder(borderRadius: _kRadius),
@@ -139,8 +141,7 @@ class _Splash extends StatefulWidget {
   State<_Splash> createState() => _SplashState();
 }
 
-class _SplashState extends State<_Splash>
-    with SingleTickerProviderStateMixin {
+class _SplashState extends State<_Splash> with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
   late final Animation<double> _logoOpacity;
   late final Animation<double> _logoScale;
@@ -227,10 +228,7 @@ class _SplashState extends State<_Splash>
               opacity: _logoOpacity,
               child: ScaleTransition(
                 scale: _logoScale,
-                child: _LogoCircular(
-                  asset: _kBackgroundAsset,
-                  size: 168,
-                ),
+                child: _LogoCircular(asset: _kBackgroundAsset, size: 168),
               ),
             ),
             const SizedBox(height: 30),
@@ -355,9 +353,7 @@ class _ContenidoInicio extends StatelessWidget {
       appBar: BravoAppBar(title: tituloRestaurante, isRoot: true),
       body: const SingleChildScrollView(
         physics: BouncingScrollPhysics(),
-        child: Column(
-          children: [_HeroSection(), _FooterQuote()],
-        ),
+        child: Column(children: [_HeroSection(), _FooterQuote()]),
       ),
     );
   }
@@ -410,8 +406,9 @@ class _HeroSection extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
           child: Center(
             child: ConstrainedBox(
-              constraints:
-                  const BoxConstraints(maxWidth: _kHeroMaxContentWidth),
+              constraints: const BoxConstraints(
+                maxWidth: _kHeroMaxContentWidth,
+              ),
               child: const Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -426,9 +423,7 @@ class _HeroSection extends StatelessWidget {
                       fontSize: 38,
                       height: 1.1,
                       fontWeight: FontWeight.bold,
-                      shadows: [
-                        Shadow(color: Colors.black87, blurRadius: 15),
-                      ],
+                      shadows: [Shadow(color: Colors.black87, blurRadius: 15)],
                     ),
                   ),
                   SizedBox(height: 35),
@@ -501,11 +496,7 @@ class _BotonesPrincipales extends StatelessWidget {
     );
   }
 
-  void _abrirCarta(
-    BuildContext context,
-    AuthProvider auth,
-    CartProvider cart,
-  ) {
+  void _abrirCarta(BuildContext context, AuthProvider auth, CartProvider cart) {
     if (!auth.estaAutenticado) {
       Navigator.push(context, AppRoute.slide(const LoginScreen()));
       return;
@@ -566,9 +557,7 @@ class _BotonesPrincipales extends StatelessWidget {
       navigator.push(
         auth.estaAutenticado
             ? AppRoute.slide(const CartaScreen())
-            : AppRoute.slideUp(
-                const LoginScreen(destino: DestinoLogin.menu),
-              ),
+            : AppRoute.slideUp(const LoginScreen(destino: DestinoLogin.menu)),
       );
     } catch (e) {
       messenger
@@ -601,8 +590,9 @@ class _BotonAccion extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fondo =
-        isPrimary ? AppColors.button : Colors.black.withValues(alpha: 0.55);
+    final fondo = isPrimary
+        ? AppColors.button
+        : Colors.black.withValues(alpha: 0.55);
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Material(
@@ -614,8 +604,7 @@ class _BotonAccion extends StatelessWidget {
           onTap: onPressed,
           borderRadius: _kRadius,
           child: Container(
-            padding:
-                const EdgeInsets.symmetric(vertical: 18, horizontal: 24),
+            padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 24),
             decoration: BoxDecoration(
               borderRadius: _kRadius,
               border: isPrimary ? null : Border.all(color: Colors.white24),

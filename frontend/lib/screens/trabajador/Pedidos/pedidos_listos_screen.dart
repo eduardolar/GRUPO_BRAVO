@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/models/pedido_model.dart';
@@ -36,8 +36,10 @@ class _PedidosListosScreenState extends State<PedidosListosScreen> {
 
   Future<void> _cargar() async {
     try {
-      final restauranteId =
-          context.read<AuthProvider>().usuarioActual?.restauranteId;
+      final restauranteId = context
+          .read<AuthProvider>()
+          .usuarioActual
+          ?.restauranteId;
       final todos = await ApiService.obtenerTodosLosPedidos(
         restauranteId: restauranteId,
         estado: 'listo',
@@ -114,13 +116,11 @@ class _PedidosListosScreenState extends State<PedidosListosScreen> {
             if (!_cargando && _pedidos.isNotEmpty) ...[
               const SizedBox(width: 10),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
                   color: _kBlue.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                      color: _kBlue.withValues(alpha: 0.4)),
+                  border: Border.all(color: _kBlue.withValues(alpha: 0.4)),
                 ),
                 child: Text(
                   '${_pedidos.length}',
@@ -154,10 +154,11 @@ class _PedidosListosScreenState extends State<PedidosListosScreen> {
       ),
       body: _cargando
           ? const Center(
-              child: CircularProgressIndicator(color: AppColors.button))
+              child: CircularProgressIndicator(color: AppColors.button),
+            )
           : _pedidos.isEmpty
-              ? _buildVacio()
-              : _buildLista(),
+          ? _buildVacio()
+          : _buildLista(),
     );
   }
 
@@ -262,9 +263,7 @@ class _TarjetaPedidoListo extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.panel,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: _kBlue.withValues(alpha: 0.3),
-        ),
+        border: Border.all(color: _kBlue.withValues(alpha: 0.3)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.06),
@@ -341,8 +340,7 @@ class _TarjetaPedidoListo extends StatelessWidget {
             decoration: BoxDecoration(
               color: _kBlue.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                  color: _kBlue.withValues(alpha: 0.3)),
+              border: Border.all(color: _kBlue.withValues(alpha: 0.3)),
             ),
             child: const Text(
               'LISTO',
@@ -405,8 +403,9 @@ class _TarjetaPedidoListo extends StatelessWidget {
                         Text(
                           'Sin: ${p.sin.join(', ')}',
                           style: TextStyle(
-                            color:
-                                AppColors.textSecondary.withValues(alpha: 0.6),
+                            color: AppColors.textSecondary.withValues(
+                              alpha: 0.6,
+                            ),
                             fontSize: 11,
                             fontStyle: FontStyle.italic,
                           ),
@@ -435,8 +434,11 @@ class _TarjetaPedidoListo extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(Icons.notes_outlined,
-                size: 13, color: AppColors.textSecondary),
+            const Icon(
+              Icons.notes_outlined,
+              size: 13,
+              color: AppColors.textSecondary,
+            ),
             const SizedBox(width: 6),
             Expanded(
               child: Text(

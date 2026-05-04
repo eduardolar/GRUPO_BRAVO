@@ -21,7 +21,9 @@ class _HomeCocineroState extends State<HomeCocinero> {
         duration: const Duration(milliseconds: 600),
         child: _isAppReady
             ? const _HomeContent()
-            : _SimpleSplash(onFinished: () => setState(() => _isAppReady = true)),
+            : _SimpleSplash(
+                onFinished: () => setState(() => _isAppReady = true),
+              ),
       ),
     );
   }
@@ -72,17 +74,11 @@ class _HomeContent extends StatelessWidget {
       appBar: const BravoAppBar(title: 'RESTAURANTE BRAVO'),
       body: const SingleChildScrollView(
         physics: BouncingScrollPhysics(),
-        child: Column(
-          children: [
-            _HeroSection(),
-            _FooterQuote(),
-          ],
-        ),
+        child: Column(children: [_HeroSection(), _FooterQuote()]),
       ),
     );
   }
 }
-
 
 // ── HERO ─────────────────────────────────────────────────────────
 class _HeroSection extends StatelessWidget {

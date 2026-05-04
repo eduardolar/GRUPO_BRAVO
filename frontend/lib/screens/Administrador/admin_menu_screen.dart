@@ -65,7 +65,9 @@ class _AdminMenuScreenState extends State<AdminMenuScreen>
   void _reordenarProductos(int oldIndex, int newIndex) async {
     if (newIndex > oldIndex) newIndex--;
     final categoria = _categorias[_selectedCategoryIndex];
-    final filtrados = _productos.where((p) => p.categoria == categoria).toList();
+    final filtrados = _productos
+        .where((p) => p.categoria == categoria)
+        .toList();
     final otros = _productos.where((p) => p.categoria != categoria).toList();
     final original = List<Producto>.from(_productos);
     final reordenados = List<Producto>.from(filtrados);
@@ -73,7 +75,9 @@ class _AdminMenuScreenState extends State<AdminMenuScreen>
     reordenados.insert(newIndex, moved);
     setState(() => _productos = [...reordenados, ...otros]);
     try {
-      await ApiService.reordenarProductos(reordenados.map((p) => p.id).toList());
+      await ApiService.reordenarProductos(
+        reordenados.map((p) => p.id).toList(),
+      );
     } catch (_) {
       if (mounted) setState(() => _productos = original);
     }
@@ -123,9 +127,7 @@ class _AdminMenuScreenState extends State<AdminMenuScreen>
                 Expanded(
                   child: _cargando
                       ? const Center(
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                          ),
+                          child: CircularProgressIndicator(color: Colors.white),
                         )
                       : AnimatedBuilder(
                           animation: _tabController,
@@ -307,8 +309,9 @@ class _AdminMenuScreenState extends State<AdminMenuScreen>
                                     child: Container(
                                       padding: const EdgeInsets.all(6),
                                       decoration: BoxDecoration(
-                                        color: Colors.black
-                                            .withValues(alpha: 0.45),
+                                        color: Colors.black.withValues(
+                                          alpha: 0.45,
+                                        ),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: const Icon(
@@ -364,8 +367,7 @@ class _AdminMenuScreenState extends State<AdminMenuScreen>
                   _categorias[index],
                   style: TextStyle(
                     color: isSelected ? Colors.white : Colors.white70,
-                    fontWeight:
-                        isSelected ? FontWeight.w700 : FontWeight.w500,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                   ),
                 ),
               ),
@@ -509,13 +511,13 @@ class _ProductoAdminCard extends StatelessWidget {
   }
 
   Widget _imgFallback() => Container(
-        color: Colors.black38,
-        child: Icon(
-          Icons.restaurant,
-          color: Colors.white.withValues(alpha: 0.20),
-          size: 32,
-        ),
-      );
+    color: Colors.black38,
+    child: Icon(
+      Icons.restaurant,
+      color: Colors.white.withValues(alpha: 0.20),
+      size: 32,
+    ),
+  );
 }
 
 class _EditarPill extends StatelessWidget {
@@ -532,9 +534,7 @@ class _EditarPill extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.button,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.25),
-          ),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.35),

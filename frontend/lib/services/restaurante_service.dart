@@ -50,10 +50,7 @@ class RestauranteService {
     String? horarioCierre,
   }) async {
     try {
-      final body = <String, dynamic>{
-        'nombre': nombre,
-        'direccion': direccion,
-      };
+      final body = <String, dynamic>{'nombre': nombre, 'direccion': direccion};
       if (horarioApertura != null) body['horario_apertura'] = horarioApertura;
       if (horarioCierre != null) body['horario_cierre'] = horarioCierre;
 
@@ -70,7 +67,6 @@ class RestauranteService {
       return false;
     }
   }
-
 
   Future<bool> toggleActivo(String id, bool activo) async {
     try {

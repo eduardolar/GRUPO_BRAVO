@@ -10,7 +10,10 @@ const bool usarApiReal = true;
 /// En producción, pasa la URL completa mediante dart-define:
 ///   flutter run --dart-define=API_BASE_URL=https://api.grupobravo.com
 /// Sin el flag, usa la URL de desarrollo local según plataforma.
-const String _apiBaseUrlOverride = String.fromEnvironment('API_BASE_URL', defaultValue: '');
+const String _apiBaseUrlOverride = String.fromEnvironment(
+  'API_BASE_URL',
+  defaultValue: '',
+);
 
 String get baseUrl {
   if (_apiBaseUrlOverride.isNotEmpty) return '$_apiBaseUrlOverride/api/v1';
@@ -27,5 +30,6 @@ String get baseUrl {
 /// Si no se pasa el flag, se usa la clave de test por defecto.
 const String stripePublishableKey = String.fromEnvironment(
   'STRIPE_PK',
-  defaultValue: 'pk_test_51TOw8VAyHSG5POXsDtUQMKCwyJ5SUdFWc7eyNMsrIq4NsxbhX6kaZLSOZb3B1K0mncosU5pg3bWLqPP4XDFzuB4u00p4DnMegH',
+  defaultValue:
+      'pk_test_51TOw8VAyHSG5POXsDtUQMKCwyJ5SUdFWc7eyNMsrIq4NsxbhX6kaZLSOZb3B1K0mncosU5pg3bWLqPP4XDFzuB4u00p4DnMegH',
 );

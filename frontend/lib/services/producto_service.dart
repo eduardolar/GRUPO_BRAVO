@@ -89,9 +89,7 @@ class ProductoService {
     }
     final response = await httpWithRetry(
       () => http.put(
-        Uri.parse(
-          '$baseUrl/categorias/${Uri.encodeComponent(nombreActual)}',
-        ),
+        Uri.parse('$baseUrl/categorias/${Uri.encodeComponent(nombreActual)}'),
         headers: _jsonHeaders,
         body: jsonEncode({'nombre': limpio}),
       ),
@@ -167,8 +165,7 @@ class ProductoService {
   static Future<Producto> crearProducto(Map<String, dynamic> datos) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 200));
-      final id =
-          'p_${DateTime.now().millisecondsSinceEpoch.toRadixString(36)}';
+      final id = 'p_${DateTime.now().millisecondsSinceEpoch.toRadixString(36)}';
       final producto = Producto.fromMap({...datos, 'id': id});
       MockData.productos.add(producto);
       return producto;

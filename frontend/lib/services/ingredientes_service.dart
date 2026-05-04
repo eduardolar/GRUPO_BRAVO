@@ -23,25 +23,99 @@ class IngredienteService {
   static const List<String> unidades = ['kg', 'l', 'g', 'unidades'];
 
   static final List<Ingrediente> _mockIngredientes = [
-    Ingrediente(id: '1', nombre: 'Carne de Vacuno', cantidadActual: 30, unidad: 'kg', stockMinimo: 10, categoria: 'Carnes'),
-    Ingrediente(id: '2', nombre: 'Pechuga de Pollo', cantidadActual: 20, unidad: 'kg', stockMinimo: 8, categoria: 'Carnes'),
-    Ingrediente(id: '3', nombre: 'Tomate', cantidadActual: 50, unidad: 'kg', stockMinimo: 10, categoria: 'Verduras'),
-    Ingrediente(id: '4', nombre: 'Lechuga', cantidadActual: 20, unidad: 'kg', stockMinimo: 5, categoria: 'Verduras'),
-    Ingrediente(id: '5', nombre: 'Queso Cheddar', cantidadActual: 15, unidad: 'kg', stockMinimo: 4, categoria: 'Lácteos'),
-    Ingrediente(id: '6', nombre: 'Pan de Hamburguesa', cantidadActual: 100, unidad: 'unidades', stockMinimo: 20, categoria: 'Panadería'),
-    Ingrediente(id: '7', nombre: 'Ketchup', cantidadActual: 20, unidad: 'l', stockMinimo: 5, categoria: 'Salsas y Condimentos'),
-    Ingrediente(id: '8', nombre: 'Sal', cantidadActual: 10, unidad: 'kg', stockMinimo: 2, categoria: 'Especias'),
-    Ingrediente(id: '9', nombre: 'Gambas', cantidadActual: 3, unidad: 'kg', stockMinimo: 4, categoria: 'Mariscos y Pescados'),
-    Ingrediente(id: '10', nombre: 'Patatas', cantidadActual: 80, unidad: 'kg', stockMinimo: 20, categoria: 'Almidones y Cereales'),
+    Ingrediente(
+      id: '1',
+      nombre: 'Carne de Vacuno',
+      cantidadActual: 30,
+      unidad: 'kg',
+      stockMinimo: 10,
+      categoria: 'Carnes',
+    ),
+    Ingrediente(
+      id: '2',
+      nombre: 'Pechuga de Pollo',
+      cantidadActual: 20,
+      unidad: 'kg',
+      stockMinimo: 8,
+      categoria: 'Carnes',
+    ),
+    Ingrediente(
+      id: '3',
+      nombre: 'Tomate',
+      cantidadActual: 50,
+      unidad: 'kg',
+      stockMinimo: 10,
+      categoria: 'Verduras',
+    ),
+    Ingrediente(
+      id: '4',
+      nombre: 'Lechuga',
+      cantidadActual: 20,
+      unidad: 'kg',
+      stockMinimo: 5,
+      categoria: 'Verduras',
+    ),
+    Ingrediente(
+      id: '5',
+      nombre: 'Queso Cheddar',
+      cantidadActual: 15,
+      unidad: 'kg',
+      stockMinimo: 4,
+      categoria: 'Lácteos',
+    ),
+    Ingrediente(
+      id: '6',
+      nombre: 'Pan de Hamburguesa',
+      cantidadActual: 100,
+      unidad: 'unidades',
+      stockMinimo: 20,
+      categoria: 'Panadería',
+    ),
+    Ingrediente(
+      id: '7',
+      nombre: 'Ketchup',
+      cantidadActual: 20,
+      unidad: 'l',
+      stockMinimo: 5,
+      categoria: 'Salsas y Condimentos',
+    ),
+    Ingrediente(
+      id: '8',
+      nombre: 'Sal',
+      cantidadActual: 10,
+      unidad: 'kg',
+      stockMinimo: 2,
+      categoria: 'Especias',
+    ),
+    Ingrediente(
+      id: '9',
+      nombre: 'Gambas',
+      cantidadActual: 3,
+      unidad: 'kg',
+      stockMinimo: 4,
+      categoria: 'Mariscos y Pescados',
+    ),
+    Ingrediente(
+      id: '10',
+      nombre: 'Patatas',
+      cantidadActual: 80,
+      unidad: 'kg',
+      stockMinimo: 20,
+      categoria: 'Almidones y Cereales',
+    ),
   ];
 
-  static Future<List<Ingrediente>> obtenerIngredientes({String? restauranteId}) async {
+  static Future<List<Ingrediente>> obtenerIngredientes({
+    String? restauranteId,
+  }) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 300));
       return List.from(_mockIngredientes);
     }
     final uri = Uri.parse('$baseUrl/ingredientes').replace(
-      queryParameters: restauranteId != null ? {'restaurante_id': restauranteId} : null,
+      queryParameters: restauranteId != null
+          ? {'restaurante_id': restauranteId}
+          : null,
     );
     final response = await httpWithRetry(() => http.get(uri));
     if (response.statusCode == 200) {
@@ -51,7 +125,8 @@ class IngredienteService {
     throw toApiException(response.statusCode, decodeBody(response));
   }
 
-  static Future<Map<String, List<Ingrediente>>> obtenerIngredientesPorCategoria({String? restauranteId}) async {
+  static Future<Map<String, List<Ingrediente>>>
+  obtenerIngredientesPorCategoria({String? restauranteId}) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 300));
       final Map<String, List<Ingrediente>> agrupados = {};
@@ -61,13 +136,19 @@ class IngredienteService {
       return agrupados;
     }
     final uri = Uri.parse('$baseUrl/ingredientes/por-categoria').replace(
-      queryParameters: restauranteId != null ? {'restaurante_id': restauranteId} : null,
+      queryParameters: restauranteId != null
+          ? {'restaurante_id': restauranteId}
+          : null,
     );
     final response = await httpWithRetry(() => http.get(uri));
     if (response.statusCode == 200) {
-      final Map<String, dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
+      final Map<String, dynamic> data = jsonDecode(
+        utf8.decode(response.bodyBytes),
+      );
       return data.map((key, value) {
-        final lista = (value as List).map((json) => Ingrediente.fromJson(json)).toList();
+        final lista = (value as List)
+            .map((json) => Ingrediente.fromJson(json))
+            .toList();
         return MapEntry(key, lista);
       });
     }
@@ -88,7 +169,10 @@ class IngredienteService {
     }
   }
 
-  static Future<void> actualizarIngrediente(String id, Map<String, dynamic> datos) async {
+  static Future<void> actualizarIngrediente(
+    String id,
+    Map<String, dynamic> datos,
+  ) async {
     final response = await httpWithRetry(
       () => http.put(
         Uri.parse('$baseUrl/ingredientes/$id'),
@@ -112,13 +196,17 @@ class IngredienteService {
     }
   }
 
-  static Future<List<Ingrediente>> obtenerIngredientesStockBajo({String? restauranteId}) async {
+  static Future<List<Ingrediente>> obtenerIngredientesStockBajo({
+    String? restauranteId,
+  }) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 300));
       return _mockIngredientes.where((i) => i.stockBajo).toList();
     }
     final uri = Uri.parse('$baseUrl/ingredientes/stock-bajo').replace(
-      queryParameters: restauranteId != null ? {'restaurante_id': restauranteId} : null,
+      queryParameters: restauranteId != null
+          ? {'restaurante_id': restauranteId}
+          : null,
     );
     final response = await httpWithRetry(() => http.get(uri));
     if (response.statusCode == 200) {

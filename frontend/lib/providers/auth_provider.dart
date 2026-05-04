@@ -21,7 +21,9 @@ class AuthProvider with ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       final json = prefs.getString(_kSesionKey);
       if (json != null) {
-        _usuarioActual = Usuario.fromJson(jsonDecode(json) as Map<String, dynamic>);
+        _usuarioActual = Usuario.fromJson(
+          jsonDecode(json) as Map<String, dynamic>,
+        );
         notifyListeners();
       }
     } catch (e) {
@@ -55,9 +57,15 @@ class AuthProvider with ChangeNotifier {
 
   /// Devuelve un Map con la respuesta si requiere 2FA, o null si el login fue exitoso.
   /// Si devuelve un Map, contiene 'requires_2fa': true y 'correo' del usuario.
-  Future<Map<String, dynamic>?> iniciarSesion(String email, String contrasena) async {
+  Future<Map<String, dynamic>?> iniciarSesion(
+    String email,
+    String contrasena,
+  ) async {
     try {
-      final response = await AuthService.iniciarSesion(correo: email, contrasena: contrasena);
+      final response = await AuthService.iniciarSesion(
+        correo: email,
+        contrasena: contrasena,
+      );
       if (response['requires_2fa'] == true) {
         _pendingUserId2fa = response['user_id'] as String?;
         notifyListeners();
@@ -177,7 +185,9 @@ class AuthProvider with ChangeNotifier {
 
   Future<void> eliminarCuenta() async {
     if (_usuarioActual == null) throw Exception('No hay usuario autenticado');
-    final success = await AuthService.eliminarCuenta(userId: _usuarioActual!.id);
+    final success = await AuthService.eliminarCuenta(
+      userId: _usuarioActual!.id,
+    );
     if (!success) throw Exception('Error al eliminar la cuenta');
     _usuarioActual = null;
     AuthSession.limpiar();
@@ -217,7 +227,10 @@ class AuthProvider with ChangeNotifier {
 
   Future<List<String>> activar2fa(String codigo) async {
     if (_usuarioActual == null) throw Exception('No hay usuario autenticado');
-    final data = await AuthService.activar2fa(userId: _usuarioActual!.id, codigo: codigo);
+    final data = await AuthService.activar2fa(
+      userId: _usuarioActual!.id,
+      codigo: codigo,
+    );
     _usuarioActual = _usuarioActual!.copyWith(totpEnabled: true);
     notifyListeners();
     await _guardarSesion();
@@ -259,7 +272,10 @@ class AuthProvider with ChangeNotifier {
 
   Future<void> activarEmail2FA(String codigo) async {
     if (_usuarioActual == null) throw Exception('No hay usuario autenticado');
-    await AuthService.activarEmail2FA(userId: _usuarioActual!.id, codigo: codigo);
+    await AuthService.activarEmail2FA(
+      userId: _usuarioActual!.id,
+      codigo: codigo,
+    );
     _usuarioActual = _usuarioActual!.copyWith(emailDosFactoresEnabled: true);
     notifyListeners();
     await _guardarSesion();
@@ -267,11 +283,15 @@ class AuthProvider with ChangeNotifier {
 
   Future<void> desactivarEmail2FA(String codigo) async {
     if (_usuarioActual == null) throw Exception('No hay usuario autenticado');
-    await AuthService.desactivarEmail2FA(userId: _usuarioActual!.id, codigo: codigo);
+    await AuthService.desactivarEmail2FA(
+      userId: _usuarioActual!.id,
+      codigo: codigo,
+    );
     _usuarioActual = _usuarioActual!.copyWith(emailDosFactoresEnabled: false);
     notifyListeners();
     await _guardarSesion();
   }
+
   Future<bool> verificarLogin2FA(String correo, String codigo) async {
     try {
       final userData = await AuthService.verificarLogin2FA(correo, codigo);
@@ -283,6 +303,7 @@ class AuthProvider with ChangeNotifier {
       rethrow;
     }
   }
+
   Future<void> reenviarLogin2FA(String correo) async {
     try {
       await AuthService.reenviarLogin2FA(correo: correo);

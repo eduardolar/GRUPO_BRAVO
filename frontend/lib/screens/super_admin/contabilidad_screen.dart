@@ -39,16 +39,27 @@ class _ContabilidadScreenState extends State<ContabilidadScreen> {
   }
 
   Future<void> _cargar() async {
-    setState(() { _cargando = true; _error = null; });
+    setState(() {
+      _cargando = true;
+      _error = null;
+    });
     try {
       final datos = await PedidoService.obtenerTodosLosPedidos(
-        restauranteId: (widget.restauranteId?.isEmpty ?? true) ? null : widget.restauranteId,
+        restauranteId: (widget.restauranteId?.isEmpty ?? true)
+            ? null
+            : widget.restauranteId,
       );
       if (!mounted) return;
-      setState(() { _pedidos = datos; _cargando = false; });
+      setState(() {
+        _pedidos = datos;
+        _cargando = false;
+      });
     } catch (e) {
       if (!mounted) return;
-      setState(() { _cargando = false; _error = e.toString(); });
+      setState(() {
+        _cargando = false;
+        _error = e.toString();
+      });
     }
   }
 
@@ -60,7 +71,9 @@ class _ContabilidadScreenState extends State<ContabilidadScreen> {
       if (f == null) return false;
       switch (_periodo) {
         case 'hoy':
-          return f.year == ahora.year && f.month == ahora.month && f.day == ahora.day;
+          return f.year == ahora.year &&
+              f.month == ahora.month &&
+              f.day == ahora.day;
         case 'semana':
           final inicio = ahora.subtract(Duration(days: ahora.weekday - 1));
           final inicioSemana = DateTime(inicio.year, inicio.month, inicio.day);
@@ -82,11 +95,13 @@ class _ContabilidadScreenState extends State<ContabilidadScreen> {
 
   int get _totalPedidos => _pedidosFiltrados.length;
 
-  int get _pedidosCompletados =>
-      _pedidosFiltrados.where((p) => p.estado.toLowerCase() == 'entregado').length;
+  int get _pedidosCompletados => _pedidosFiltrados
+      .where((p) => p.estado.toLowerCase() == 'entregado')
+      .length;
 
-  int get _pedidosCancelados =>
-      _pedidosFiltrados.where((p) => p.estado.toLowerCase() == 'cancelado').length;
+  int get _pedidosCancelados => _pedidosFiltrados
+      .where((p) => p.estado.toLowerCase() == 'cancelado')
+      .length;
 
   double get _ticketMedio {
     final completados = _pedidosFiltrados
@@ -99,7 +114,9 @@ class _ContabilidadScreenState extends State<ContabilidadScreen> {
   // Ingresos por método de pago
   Map<String, double> get _porMetodoPago {
     final mapa = <String, double>{};
-    for (final p in _pedidosFiltrados.where((p) => p.estado.toLowerCase() != 'cancelado')) {
+    for (final p in _pedidosFiltrados.where(
+      (p) => p.estado.toLowerCase() != 'cancelado',
+    )) {
       final metodo = p.metodoPago.isEmpty ? 'Sin especificar' : p.metodoPago;
       mapa[metodo] = (mapa[metodo] ?? 0) + p.total;
     }
@@ -112,7 +129,9 @@ class _ContabilidadScreenState extends State<ContabilidadScreen> {
   // Ingresos por tipo de entrega
   Map<String, double> get _porTipoEntrega {
     final mapa = <String, double>{};
-    for (final p in _pedidosFiltrados.where((p) => p.estado.toLowerCase() != 'cancelado')) {
+    for (final p in _pedidosFiltrados.where(
+      (p) => p.estado.toLowerCase() != 'cancelado',
+    )) {
       final tipo = _normalizarTipo(p.tipoEntrega);
       mapa[tipo] = (mapa[tipo] ?? 0) + p.total;
     }
@@ -124,7 +143,9 @@ class _ContabilidadScreenState extends State<ContabilidadScreen> {
 
   String _normalizarTipo(String tipo) {
     final t = tipo.toLowerCase();
-    if (t.contains('mesa') || t.contains('local') || t.contains('comer')) return 'Local / Mesa';
+    if (t.contains('mesa') || t.contains('local') || t.contains('comer')) {
+      return 'Local / Mesa';
+    }
     if (t.contains('domicilio') || t.contains('delivery')) return 'Domicilio';
     if (t.contains('recog') || t.contains('pickup')) return 'Recogida';
     return tipo.isEmpty ? 'Sin especificar' : tipo;
@@ -133,12 +154,15 @@ class _ContabilidadScreenState extends State<ContabilidadScreen> {
   // Top 5 productos más vendidos (por cantidad)
   List<MapEntry<String, int>> get _topProductos {
     final mapa = <String, int>{};
-    for (final p in _pedidosFiltrados.where((p) => p.estado.toLowerCase() != 'cancelado')) {
+    for (final p in _pedidosFiltrados.where(
+      (p) => p.estado.toLowerCase() != 'cancelado',
+    )) {
       for (final prod in p.productos) {
         mapa[prod.nombre] = (mapa[prod.nombre] ?? 0) + prod.cantidad;
       }
     }
-    final sorted = mapa.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    final sorted = mapa.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
     return sorted.take(5).toList();
   }
 
@@ -149,7 +173,10 @@ class _ContabilidadScreenState extends State<ContabilidadScreen> {
       body: Stack(
         children: [
           Positioned.fill(
-            child: Image.asset('assets/images/Bravo restaurante.jpg', fit: BoxFit.cover),
+            child: Image.asset(
+              'assets/images/Bravo restaurante.jpg',
+              fit: BoxFit.cover,
+            ),
           ),
           Positioned.fill(
             child: Container(
@@ -179,7 +206,11 @@ class _ContabilidadScreenState extends State<ContabilidadScreen> {
             top: 20,
             left: 10,
             child: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+              icon: const Icon(
+                Icons.arrow_back_ios_new,
+                color: Colors.white,
+                size: 20,
+              ),
               onPressed: () => Navigator.pop(context),
             ),
           ),
@@ -189,10 +220,18 @@ class _ContabilidadScreenState extends State<ContabilidadScreen> {
             child: IconButton(
               icon: _cargando
                   ? const SizedBox(
-                      width: 18, height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 1.8, color: AppColors.button),
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 1.8,
+                        color: AppColors.button,
+                      ),
                     )
-                  : const Icon(Icons.refresh_rounded, color: Colors.white70, size: 22),
+                  : const Icon(
+                      Icons.refresh_rounded,
+                      color: Colors.white70,
+                      size: 22,
+                    ),
               onPressed: _cargando ? null : _cargar,
             ),
           ),
@@ -245,8 +284,12 @@ class _ContabilidadScreenState extends State<ContabilidadScreen> {
               margin: const EdgeInsets.only(right: 8),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               decoration: BoxDecoration(
-                color: selected ? AppColors.button : Colors.white.withValues(alpha: 0.07),
-                border: Border.all(color: selected ? AppColors.button : Colors.white12),
+                color: selected
+                    ? AppColors.button
+                    : Colors.white.withValues(alpha: 0.07),
+                border: Border.all(
+                  color: selected ? AppColors.button : Colors.white12,
+                ),
               ),
               child: Text(
                 _etiquetasPeriodo[p]!,
@@ -265,20 +308,32 @@ class _ContabilidadScreenState extends State<ContabilidadScreen> {
 
   Widget _buildCuerpo() {
     if (_cargando) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.button));
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.button),
+      );
     }
     if (_error != null) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.wifi_off_outlined, color: Colors.white24, size: 48),
+            const Icon(
+              Icons.wifi_off_outlined,
+              color: Colors.white24,
+              size: 48,
+            ),
             const SizedBox(height: 12),
-            Text('Error al cargar datos', style: GoogleFonts.manrope(color: Colors.white38)),
+            Text(
+              'Error al cargar datos',
+              style: GoogleFonts.manrope(color: Colors.white38),
+            ),
             const SizedBox(height: 16),
             TextButton(
               onPressed: _cargar,
-              child: Text('Reintentar', style: GoogleFonts.manrope(color: AppColors.button)),
+              child: Text(
+                'Reintentar',
+                style: GoogleFonts.manrope(color: AppColors.button),
+              ),
             ),
           ],
         ),
@@ -303,56 +358,75 @@ class _ContabilidadScreenState extends State<ContabilidadScreen> {
                   // KPI grid 2x2
                   Row(
                     children: [
-                      Expanded(child: _KpiCard(
-                        icon: Icons.euro_rounded,
-                        label: 'INGRESOS',
-                        value: '${_ingresos.toStringAsFixed(2)} €',
-                        sub: lista.isEmpty ? 'Sin pedidos' : '$_totalPedidos pedido${_totalPedidos != 1 ? 's' : ''}',
-                        highlight: true,
-                      )),
+                      Expanded(
+                        child: _KpiCard(
+                          icon: Icons.euro_rounded,
+                          label: 'INGRESOS',
+                          value: '${_ingresos.toStringAsFixed(2)} €',
+                          sub: lista.isEmpty
+                              ? 'Sin pedidos'
+                              : '$_totalPedidos pedido${_totalPedidos != 1 ? 's' : ''}',
+                          highlight: true,
+                        ),
+                      ),
                       const SizedBox(width: 12),
-                      Expanded(child: _KpiCard(
-                        icon: Icons.show_chart_rounded,
-                        label: 'TICKET MEDIO',
-                        value: '${_ticketMedio.toStringAsFixed(2)} €',
-                        sub: 'por pedido',
-                      )),
+                      Expanded(
+                        child: _KpiCard(
+                          icon: Icons.show_chart_rounded,
+                          label: 'TICKET MEDIO',
+                          value: '${_ticketMedio.toStringAsFixed(2)} €',
+                          sub: 'por pedido',
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 12),
                   Row(
                     children: [
-                      Expanded(child: _KpiCard(
-                        icon: Icons.check_circle_outline,
-                        label: 'COMPLETADOS',
-                        value: '$_pedidosCompletados',
-                        sub: 'entregados',
-                      )),
+                      Expanded(
+                        child: _KpiCard(
+                          icon: Icons.check_circle_outline,
+                          label: 'COMPLETADOS',
+                          value: '$_pedidosCompletados',
+                          sub: 'entregados',
+                        ),
+                      ),
                       const SizedBox(width: 12),
-                      Expanded(child: _KpiCard(
-                        icon: Icons.cancel_outlined,
-                        label: 'CANCELADOS',
-                        value: '$_pedidosCancelados',
-                        sub: 'no facturados',
-                        danger: _pedidosCancelados > 0,
-                      )),
+                      Expanded(
+                        child: _KpiCard(
+                          icon: Icons.cancel_outlined,
+                          label: 'CANCELADOS',
+                          value: '$_pedidosCancelados',
+                          sub: 'no facturados',
+                          danger: _pedidosCancelados > 0,
+                        ),
+                      ),
                     ],
                   ),
 
                   if (lista.isNotEmpty) ...[
                     const SizedBox(height: 28),
-                    _buildSeccionHeader('MÉTODO DE PAGO', Icons.payment_outlined),
+                    _buildSeccionHeader(
+                      'MÉTODO DE PAGO',
+                      Icons.payment_outlined,
+                    ),
                     const SizedBox(height: 12),
                     ..._buildBarras(_porMetodoPago, _ingresos),
 
                     const SizedBox(height: 28),
-                    _buildSeccionHeader('TIPO DE ENTREGA', Icons.delivery_dining_outlined),
+                    _buildSeccionHeader(
+                      'TIPO DE ENTREGA',
+                      Icons.delivery_dining_outlined,
+                    ),
                     const SizedBox(height: 12),
                     ..._buildBarras(_porTipoEntrega, _ingresos),
 
                     if (_topProductos.isNotEmpty) ...[
                       const SizedBox(height: 28),
-                      _buildSeccionHeader('TOP PRODUCTOS', Icons.restaurant_menu_outlined),
+                      _buildSeccionHeader(
+                        'TOP PRODUCTOS',
+                        Icons.restaurant_menu_outlined,
+                      ),
                       const SizedBox(height: 12),
                       ..._buildTopProductos(),
                     ],
@@ -362,11 +436,18 @@ class _ContabilidadScreenState extends State<ContabilidadScreen> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.bar_chart_outlined, size: 64, color: Colors.white24),
+                          const Icon(
+                            Icons.bar_chart_outlined,
+                            size: 64,
+                            color: Colors.white24,
+                          ),
                           const SizedBox(height: 16),
                           Text(
                             'Sin datos para este período',
-                            style: GoogleFonts.manrope(color: Colors.white38, fontSize: 14),
+                            style: GoogleFonts.manrope(
+                              color: Colors.white38,
+                              fontSize: 14,
+                            ),
                           ),
                         ],
                       ),
@@ -435,24 +516,26 @@ class _ContabilidadScreenState extends State<ContabilidadScreen> {
               ],
             ),
             const SizedBox(height: 6),
-            LayoutBuilder(builder: (_, constraints) {
-              return Stack(
-                children: [
-                  Container(
-                    height: 6,
-                    width: constraints.maxWidth,
-                    color: Colors.white.withValues(alpha: 0.08),
-                  ),
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 600),
-                    curve: Curves.easeOut,
-                    height: 6,
-                    width: constraints.maxWidth * pct,
-                    color: AppColors.button,
-                  ),
-                ],
-              );
-            }),
+            LayoutBuilder(
+              builder: (_, constraints) {
+                return Stack(
+                  children: [
+                    Container(
+                      height: 6,
+                      width: constraints.maxWidth,
+                      color: Colors.white.withValues(alpha: 0.08),
+                    ),
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 600),
+                      curve: Curves.easeOut,
+                      height: 6,
+                      width: constraints.maxWidth * pct,
+                      color: AppColors.button,
+                    ),
+                  ],
+                );
+              },
+            ),
           ],
         ),
       );
@@ -515,26 +598,28 @@ class _ContabilidadScreenState extends State<ContabilidadScreen> {
                     ],
                   ),
                   const SizedBox(height: 5),
-                  LayoutBuilder(builder: (_, constraints) {
-                    return Stack(
-                      children: [
-                        Container(
-                          height: 4,
-                          width: constraints.maxWidth,
-                          color: Colors.white.withValues(alpha: 0.08),
-                        ),
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 600),
-                          curve: Curves.easeOut,
-                          height: 4,
-                          width: constraints.maxWidth * pct,
-                          color: i == 0
-                              ? AppColors.button
-                              : AppColors.button.withValues(alpha: 0.5),
-                        ),
-                      ],
-                    );
-                  }),
+                  LayoutBuilder(
+                    builder: (_, constraints) {
+                      return Stack(
+                        children: [
+                          Container(
+                            height: 4,
+                            width: constraints.maxWidth,
+                            color: Colors.white.withValues(alpha: 0.08),
+                          ),
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 600),
+                            curve: Curves.easeOut,
+                            height: 4,
+                            width: constraints.maxWidth * pct,
+                            color: i == 0
+                                ? AppColors.button
+                                : AppColors.button.withValues(alpha: 0.5),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
                 ],
               ),
             ),
@@ -565,15 +650,19 @@ class _KpiCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bg = highlight ? AppColors.button : Colors.white.withValues(alpha: 0.07);
+    final bg = highlight
+        ? AppColors.button
+        : Colors.white.withValues(alpha: 0.07);
     final borderColor = highlight
         ? AppColors.button
         : danger
-            ? AppColors.error.withValues(alpha: 0.4)
-            : Colors.white12;
+        ? AppColors.error.withValues(alpha: 0.4)
+        : Colors.white12;
     final colorP = Colors.white;
     final colorS = highlight ? Colors.white60 : Colors.white38;
-    final colorI = highlight ? Colors.white70 : (danger ? AppColors.error : AppColors.button);
+    final colorI = highlight
+        ? Colors.white70
+        : (danger ? AppColors.error : AppColors.button);
 
     return Container(
       padding: const EdgeInsets.all(16),

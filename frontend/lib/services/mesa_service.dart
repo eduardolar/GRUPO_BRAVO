@@ -117,7 +117,9 @@ class MesaService {
       await Future.delayed(const Duration(milliseconds: 200));
       final index = MockData.mesas.indexWhere((m) => m.id == mesaId);
       if (index != -1) {
-        MockData.mesas[index] = MockData.mesas[index].copyWith(disponible: false);
+        MockData.mesas[index] = MockData.mesas[index].copyWith(
+          disponible: false,
+        );
       }
       return;
     }
@@ -141,8 +143,9 @@ class MesaService {
       await Future.delayed(const Duration(milliseconds: 200));
       final index = MockData.mesas.indexWhere((m) => m.id == mesaId);
       if (index != -1) {
-        MockData.mesas[index] =
-            MockData.mesas[index].copyWith(disponible: true);
+        MockData.mesas[index] = MockData.mesas[index].copyWith(
+          disponible: true,
+        );
       }
       return;
     }

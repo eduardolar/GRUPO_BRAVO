@@ -8,10 +8,10 @@ import '../../services/producto_service.dart';
 import '../../core/colors_style.dart';
 
 // ─── Colores locales ─────────────────────────────────────────────────────────
-const _kGreen      = Color(0xFF34C759);
-const _kOrange     = Color(0xFFFF9500);
-const _kRed        = Color(0xFFFF3B30);
-const _kAccent     = AppColors.button;
+const _kGreen = Color(0xFF34C759);
+const _kOrange = Color(0xFFFF9500);
+const _kRed = Color(0xFFFF3B30);
+const _kAccent = AppColors.button;
 
 /// Elemento de edición: guarda el estado mutable de un producto.
 class _ItemEdicion {
@@ -52,16 +52,16 @@ class CatalogoMasivoScreen extends StatefulWidget {
 
 class _CatalogoMasivoScreenState extends State<CatalogoMasivoScreen> {
   // ─── Estado ──────────────────────────────────────────────────────────────
-  List<_ItemEdicion> _items       = [];
-  List<String>       _categorias  = [];
-  bool               _cargando    = true;
-  String?            _error;
-  String             _busqueda    = '';
-  bool               _guardando   = false;
-  final Set<String>  _catExpandidas = {};
+  List<_ItemEdicion> _items = [];
+  List<String> _categorias = [];
+  bool _cargando = true;
+  String? _error;
+  String _busqueda = '';
+  bool _guardando = false;
+  final Set<String> _catExpandidas = {};
 
   final TextEditingController _buscadorCtrl = TextEditingController();
-  final ScrollController      _scroll       = ScrollController();
+  final ScrollController _scroll = ScrollController();
 
   // ─── Ciclo de vida ───────────────────────────────────────────────────────
   @override
@@ -82,13 +82,16 @@ class _CatalogoMasivoScreenState extends State<CatalogoMasivoScreen> {
 
   // ─── Carga ───────────────────────────────────────────────────────────────
   Future<void> _cargar() async {
-    setState(() { _cargando = true; _error = null; });
+    setState(() {
+      _cargando = true;
+      _error = null;
+    });
     try {
       final results = await Future.wait([
         ProductoService.obtenerProductos(),
         ProductoService.obtenerCategorias(),
       ]);
-      final productos  = results[0] as List<Producto>;
+      final productos = results[0] as List<Producto>;
       final categorias = results[1] as List<String>;
 
       // Dispose old items
@@ -103,13 +106,16 @@ class _CatalogoMasivoScreenState extends State<CatalogoMasivoScreen> {
       }
 
       setState(() {
-        _categorias   = cats;
-        _items        = productos.map((p) => _ItemEdicion(p)).toList();
+        _categorias = cats;
+        _items = productos.map((p) => _ItemEdicion(p)).toList();
         _catExpandidas.addAll(cats); // todas abiertas por defecto
-        _cargando     = false;
+        _cargando = false;
       });
     } catch (e) {
-      setState(() { _error = e.toString(); _cargando = false; });
+      setState(() {
+        _error = e.toString();
+        _cargando = false;
+      });
     }
   }
 
@@ -118,12 +124,9 @@ class _CatalogoMasivoScreenState extends State<CatalogoMasivoScreen> {
     return _items.where((it) {
       if (it.original.categoria != categoria) return false;
       if (_busqueda.isEmpty) return true;
-      return it.original.nombre
-          .toLowerCase()
-          .contains(_busqueda.toLowerCase());
+      return it.original.nombre.toLowerCase().contains(_busqueda.toLowerCase());
     }).toList();
   }
-
 
   int get _totalSucio => _items.where((it) => it.sucio).length;
 
@@ -140,14 +143,17 @@ class _CatalogoMasivoScreenState extends State<CatalogoMasivoScreen> {
           final nuevoPrecio =
               double.tryParse(it.precioCtrl.text) ?? it.original.precio;
           final datos = it.original.toMap()
-            ..['precio']        = nuevoPrecio
+            ..['precio'] = nuevoPrecio
             ..['estaDisponible'] = it.disponible
-            ..['disponible']    = it.disponible;
+            ..['disponible'] = it.disponible;
           await ProductoService.actualizarProducto(it.original.id, datos);
           return _ResultadoGuardado(nombre: it.original.nombre, ok: true);
         } catch (e) {
           return _ResultadoGuardado(
-              nombre: it.original.nombre, ok: false, error: e.toString());
+            nombre: it.original.nombre,
+            ok: false,
+            error: e.toString(),
+          );
         }
       }),
     );
@@ -188,20 +194,26 @@ class _CatalogoMasivoScreenState extends State<CatalogoMasivoScreen> {
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: AppColors.background,
-        title: const Text('Descartar cambios',
-            style: TextStyle(color: AppColors.textPrimary)),
+        title: const Text(
+          'Descartar cambios',
+          style: TextStyle(color: AppColors.textPrimary),
+        ),
         content: Text(
           'Se perderán $_totalSucio cambio(s) sin guardar.',
           style: const TextStyle(color: AppColors.textSecondary),
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancelar',
-                  style: TextStyle(color: AppColors.textSecondary))),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text(
+              'Cancelar',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+          ),
           TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Descartar', style: TextStyle(color: _kRed))),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Descartar', style: TextStyle(color: _kRed)),
+          ),
         ],
       ),
     );
@@ -246,8 +258,7 @@ class _CatalogoMasivoScreenState extends State<CatalogoMasivoScreen> {
 
   Widget _buildBody() {
     if (_cargando) {
-      return const Center(
-          child: CircularProgressIndicator(color: _kAccent));
+      return const Center(child: CircularProgressIndicator(color: _kAccent));
     }
     if (_error != null) {
       return Center(
@@ -256,9 +267,11 @@ class _CatalogoMasivoScreenState extends State<CatalogoMasivoScreen> {
           children: [
             const Icon(Icons.error_outline_rounded, color: _kRed, size: 48),
             const SizedBox(height: 12),
-            Text(_error!,
-                style: const TextStyle(color: Colors.white70),
-                textAlign: TextAlign.center),
+            Text(
+              _error!,
+              style: const TextStyle(color: Colors.white70),
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
               onPressed: _cargar,
@@ -275,25 +288,35 @@ class _CatalogoMasivoScreenState extends State<CatalogoMasivoScreen> {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
-          child: Row(children: [
-            Container(width: 3, height: 18, color: AppColors.button),
-            const SizedBox(width: 10),
-            const Text('EDICIÓN MASIVA',
+          child: Row(
+            children: [
+              Container(width: 3, height: 18, color: AppColors.button),
+              const SizedBox(width: 10),
+              const Text(
+                'EDICIÓN MASIVA',
                 style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white70,
-                    letterSpacing: 2)),
-            const Spacer(),
-            if (_totalSucio > 0)
-              TextButton.icon(
-                onPressed: _guardando ? null : _descartarTodo,
-                icon: const Icon(Icons.undo_rounded,
-                    color: _kOrange, size: 18),
-                label: const Text('Descartar',
-                    style: TextStyle(color: _kOrange, fontSize: 13)),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white70,
+                  letterSpacing: 2,
+                ),
               ),
-          ]),
+              const Spacer(),
+              if (_totalSucio > 0)
+                TextButton.icon(
+                  onPressed: _guardando ? null : _descartarTodo,
+                  icon: const Icon(
+                    Icons.undo_rounded,
+                    color: _kOrange,
+                    size: 18,
+                  ),
+                  label: const Text(
+                    'Descartar',
+                    style: TextStyle(color: _kOrange, fontSize: 13),
+                  ),
+                ),
+            ],
+          ),
         ),
         _buildBuscador(),
         _buildResumenBarra(),
@@ -304,16 +327,21 @@ class _CatalogoMasivoScreenState extends State<CatalogoMasivoScreen> {
             child: ListView(
               controller: _scroll,
               padding: const EdgeInsets.only(
-                  left: 16, right: 16, top: 8, bottom: 100),
+                left: 16,
+                right: 16,
+                top: 8,
+                bottom: 100,
+              ),
               children: [
                 for (final cat in _categorias) _buildCategoria(cat),
                 if (_items.isEmpty)
                   const Padding(
                     padding: EdgeInsets.only(top: 80),
                     child: Center(
-                      child: Text('Sin productos',
-                          style:
-                              TextStyle(color: Colors.white60, fontSize: 16)),
+                      child: Text(
+                        'Sin productos',
+                        style: TextStyle(color: Colors.white60, fontSize: 16),
+                      ),
                     ),
                   ),
               ],
@@ -339,12 +367,16 @@ class _CatalogoMasivoScreenState extends State<CatalogoMasivoScreen> {
             decoration: InputDecoration(
               hintText: 'Buscar producto…',
               hintStyle: const TextStyle(color: Colors.white60),
-              prefixIcon:
-                  const Icon(Icons.search_rounded, color: Colors.white70),
+              prefixIcon: const Icon(
+                Icons.search_rounded,
+                color: Colors.white70,
+              ),
               suffixIcon: _busqueda.isNotEmpty
                   ? IconButton(
-                      icon: const Icon(Icons.clear_rounded,
-                          color: Colors.white70),
+                      icon: const Icon(
+                        Icons.clear_rounded,
+                        color: Colors.white70,
+                      ),
                       onPressed: () {
                         _buscadorCtrl.clear();
                         setState(() => _busqueda = '');
@@ -354,7 +386,9 @@ class _CatalogoMasivoScreenState extends State<CatalogoMasivoScreen> {
               filled: true,
               fillColor: Colors.white.withValues(alpha: 0.08),
               contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16, vertical: 12),
+                horizontal: 16,
+                vertical: 12,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: const BorderSide(color: Colors.white24),
@@ -376,22 +410,31 @@ class _CatalogoMasivoScreenState extends State<CatalogoMasivoScreen> {
 
   // ─── Barra de resumen ─────────────────────────────────────────────────────
   Widget _buildResumenBarra() {
-    final total  = _items.length;
-    final sucio  = _totalSucio;
+    final total = _items.length;
+    final sucio = _totalSucio;
     final dispon = _items.where((it) => it.disponible).length;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
       child: Row(
         children: [
-          _StatChip(label: '$total productos',
-              icon: Icons.restaurant_menu_rounded, color: Colors.white70),
+          _StatChip(
+            label: '$total productos',
+            icon: Icons.restaurant_menu_rounded,
+            color: Colors.white70,
+          ),
           const SizedBox(width: 8),
-          _StatChip(label: '$dispon disponibles',
-              icon: Icons.check_circle_outline_rounded, color: _kGreen),
+          _StatChip(
+            label: '$dispon disponibles',
+            icon: Icons.check_circle_outline_rounded,
+            color: _kGreen,
+          ),
           const SizedBox(width: 8),
           if (sucio > 0)
-            _StatChip(label: '$sucio sin guardar',
-                icon: Icons.edit_note_rounded, color: _kOrange),
+            _StatChip(
+              label: '$sucio sin guardar',
+              icon: Icons.edit_note_rounded,
+              color: _kOrange,
+            ),
         ],
       ),
     );
@@ -399,7 +442,7 @@ class _CatalogoMasivoScreenState extends State<CatalogoMasivoScreen> {
 
   // ─── Sección de categoría ─────────────────────────────────────────────────
   Widget _buildCategoria(String categoria) {
-    final items    = _filtrar(categoria);
+    final items = _filtrar(categoria);
     if (_busqueda.isNotEmpty && items.isEmpty) return const SizedBox.shrink();
 
     final expandida = _catExpandidas.contains(categoria);
@@ -436,42 +479,58 @@ class _CatalogoMasivoScreenState extends State<CatalogoMasivoScreen> {
                     borderRadius: BorderRadius.circular(20),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 13),
+                        horizontal: 16,
+                        vertical: 13,
+                      ),
                       child: Row(
                         children: [
-                          const Icon(Icons.folder_rounded,
-                              color: _kAccent, size: 20),
+                          const Icon(
+                            Icons.folder_rounded,
+                            color: _kAccent,
+                            size: 20,
+                          ),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
                               categoria.isEmpty ? 'Sin categoría' : categoria,
                               style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 15),
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 15,
+                              ),
                             ),
                           ),
                           if (suciosCat > 0) ...[
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 2),
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
                               decoration: BoxDecoration(
                                 color: _kOrange.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(
-                                    color: _kOrange.withValues(alpha: 0.3)),
+                                  color: _kOrange.withValues(alpha: 0.3),
+                                ),
                               ),
-                              child: Text('$suciosCat editado(s)',
-                                  style: const TextStyle(
-                                      color: _kOrange,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600)),
+                              child: Text(
+                                '$suciosCat editado(s)',
+                                style: const TextStyle(
+                                  color: _kOrange,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                             ),
                             const SizedBox(width: 8),
                           ],
-                          Text('${items.length}',
-                              style: const TextStyle(
-                                  color: Colors.white60, fontSize: 13)),
+                          Text(
+                            '${items.length}',
+                            style: const TextStyle(
+                              color: Colors.white60,
+                              fontSize: 13,
+                            ),
+                          ),
                           const SizedBox(width: 6),
                           Icon(
                             expandida
@@ -518,12 +577,13 @@ class _CatalogoMasivoScreenState extends State<CatalogoMasivoScreen> {
               width: 18,
               height: 18,
               child: CircularProgressIndicator(
-                  color: Colors.white, strokeWidth: 2))
+                color: Colors.white,
+                strokeWidth: 2,
+              ),
+            )
           : const Icon(Icons.save_rounded),
       label: Text(
-        _guardando
-            ? 'Guardando…'
-            : 'Aplicar cambios ($_totalSucio)',
+        _guardando ? 'Guardando…' : 'Aplicar cambios ($_totalSucio)',
         style: const TextStyle(fontWeight: FontWeight.w600),
       ),
     );
@@ -534,7 +594,7 @@ class _CatalogoMasivoScreenState extends State<CatalogoMasivoScreen> {
 
 class _FilaProducto extends StatefulWidget {
   final _ItemEdicion item;
-  final VoidCallback  onChanged;
+  final VoidCallback onChanged;
 
   const _FilaProducto({required this.item, required this.onChanged});
 
@@ -545,14 +605,12 @@ class _FilaProducto extends StatefulWidget {
 class _FilaProductoState extends State<_FilaProducto> {
   @override
   Widget build(BuildContext context) {
-    final it     = widget.item;
-    final sucio  = it.sucio;
+    final it = widget.item;
+    final sucio = it.sucio;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
-      color: sucio
-          ? _kOrange.withValues(alpha: 0.05)
-          : Colors.transparent,
+      color: sucio ? _kOrange.withValues(alpha: 0.05) : Colors.transparent,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
         children: [
@@ -570,7 +628,8 @@ class _FilaProductoState extends State<_FilaProducto> {
           // Imagen o placeholder
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: it.original.imagenUrl != null &&
+            child:
+                it.original.imagenUrl != null &&
                     it.original.imagenUrl!.isNotEmpty
                 ? CachedNetworkImage(
                     imageUrl: it.original.imagenUrl!,
@@ -611,27 +670,33 @@ class _FilaProductoState extends State<_FilaProducto> {
             width: 80,
             child: TextField(
               controller: it.precioCtrl,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
               ],
               textAlign: TextAlign.right,
               style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600),
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
               onChanged: (_) {
                 setState(() {});
                 widget.onChanged();
               },
               decoration: InputDecoration(
                 prefixText: '€ ',
-                prefixStyle:
-                    const TextStyle(color: Colors.white60, fontSize: 12),
+                prefixStyle: const TextStyle(
+                  color: Colors.white60,
+                  fontSize: 12,
+                ),
                 isDense: true,
                 contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 8, vertical: 8),
+                  horizontal: 8,
+                  vertical: 8,
+                ),
                 filled: true,
                 fillColor: Colors.white.withValues(alpha: 0.08),
                 border: OutlineInputBorder(
@@ -641,12 +706,12 @@ class _FilaProductoState extends State<_FilaProducto> {
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide(
-                      color: sucio ? _kOrange : Colors.white24),
+                    color: sucio ? _kOrange : Colors.white24,
+                  ),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide:
-                      const BorderSide(color: _kAccent, width: 1.5),
+                  borderSide: const BorderSide(color: _kAccent, width: 1.5),
                 ),
               ),
             ),
@@ -668,12 +733,11 @@ class _FilaProductoState extends State<_FilaProducto> {
   }
 
   Widget _placeholder() => Container(
-        width: 44,
-        height: 44,
-        color: Colors.white.withValues(alpha: 0.08),
-        child: const Icon(Icons.fastfood_rounded,
-            color: Colors.white60, size: 22),
-      );
+    width: 44,
+    height: 44,
+    color: Colors.white.withValues(alpha: 0.08),
+    child: const Icon(Icons.fastfood_rounded, color: Colors.white60, size: 22),
+  );
 }
 
 // ─── Widgets auxiliares ───────────────────────────────────────────────────────
@@ -713,8 +777,11 @@ class _StatChip extends StatelessWidget {
   final String label;
   final IconData icon;
   final Color color;
-  const _StatChip(
-      {required this.label, required this.icon, required this.color});
+  const _StatChip({
+    required this.label,
+    required this.icon,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -730,11 +797,14 @@ class _StatChip extends StatelessWidget {
         children: [
           Icon(icon, color: color, size: 13),
           const SizedBox(width: 5),
-          Text(label,
-              style: TextStyle(
-                  color: color,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500)),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ],
       ),
     );

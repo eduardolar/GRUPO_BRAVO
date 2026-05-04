@@ -14,11 +14,7 @@ class BravoAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
   final bool isRoot;
 
-  const BravoAppBar({
-    super.key,
-    required this.title,
-    this.isRoot = false,
-  });
+  const BravoAppBar({super.key, required this.title, this.isRoot = false});
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +45,9 @@ class BravoAppBar extends StatelessWidget implements PreferredSizeWidget {
               } else {
                 Navigator.push(
                   context,
-                  AppRoute.slideUp(const LoginScreen(mostrarActivarCuenta: true)),
+                  AppRoute.slideUp(
+                    const LoginScreen(mostrarActivarCuenta: true),
+                  ),
                 );
               }
             },

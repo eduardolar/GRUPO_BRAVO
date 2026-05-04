@@ -28,16 +28,16 @@ enum _Paso { confirmar, entrega, pago }
 
 extension on _Paso {
   String get titulo => switch (this) {
-        _Paso.confirmar => 'CONFIRMAR',
-        _Paso.entrega => 'ENTREGA',
-        _Paso.pago => 'PAGO',
-      };
+    _Paso.confirmar => 'CONFIRMAR',
+    _Paso.entrega => 'ENTREGA',
+    _Paso.pago => 'PAGO',
+  };
 
   _Paso? get anterior => switch (this) {
-        _Paso.confirmar => null,
-        _Paso.entrega => _Paso.confirmar,
-        _Paso.pago => _Paso.entrega,
-      };
+    _Paso.confirmar => null,
+    _Paso.entrega => _Paso.confirmar,
+    _Paso.pago => _Paso.entrega,
+  };
 }
 
 class PantallaOpcionesEntrega extends StatefulWidget {
@@ -71,8 +71,9 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
   void initState() {
     super.initState();
     final cart = context.read<CartProvider>();
-    _entregaSeleccionada =
-        cart.tienemesa ? OpcionEntrega.enMesa : OpcionEntrega.domicilio;
+    _entregaSeleccionada = cart.tienemesa
+        ? OpcionEntrega.enMesa
+        : OpcionEntrega.domicilio;
   }
 
   @override
@@ -123,18 +124,18 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
   }
 
   String _tipoEntregaLabel(OpcionEntrega e) => switch (e) {
-        OpcionEntrega.domicilio => 'Entrega a domicilio',
-        OpcionEntrega.recoger => 'Recoger en restaurante',
-        OpcionEntrega.enMesa => 'Comer en el local',
-      };
+    OpcionEntrega.domicilio => 'Entrega a domicilio',
+    OpcionEntrega.recoger => 'Recoger en restaurante',
+    OpcionEntrega.enMesa => 'Comer en el local',
+  };
 
   String _tipoPagoLabel(MetodoPago m) => switch (m) {
-        MetodoPago.efectivo => 'Efectivo',
-        MetodoPago.tarjeta => 'Tarjeta',
-        MetodoPago.googlePay => 'Google Pay',
-        MetodoPago.paypal => 'PayPal',
-        MetodoPago.applePay => 'Apple Pay',
-      };
+    MetodoPago.efectivo => 'Efectivo',
+    MetodoPago.tarjeta => 'Tarjeta',
+    MetodoPago.googlePay => 'Google Pay',
+    MetodoPago.paypal => 'PayPal',
+    MetodoPago.applePay => 'Apple Pay',
+  };
 
   Future<bool> _confirmarSalida() async {
     final cart = context.read<CartProvider>();
@@ -209,17 +210,17 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
                     child: AnimatedSwitcher(
                       duration: _kAnimMed,
                       transitionBuilder: (child, animation) => SlideTransition(
-                        position: Tween<Offset>(
-                          begin: const Offset(0.06, 0),
-                          end: Offset.zero,
-                        ).animate(
-                          CurvedAnimation(
-                            parent: animation,
-                            curve: Curves.easeOut,
-                          ),
-                        ),
-                        child:
-                            FadeTransition(opacity: animation, child: child),
+                        position:
+                            Tween<Offset>(
+                              begin: const Offset(0.06, 0),
+                              end: Offset.zero,
+                            ).animate(
+                              CurvedAnimation(
+                                parent: animation,
+                                curve: Curves.easeOut,
+                              ),
+                            ),
+                        child: FadeTransition(opacity: animation, child: child),
                       ),
                       child: KeyedSubtree(
                         key: ValueKey(_paso),
@@ -232,8 +233,9 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
                     cargando: _estaCargando,
                     costeEnvio: _costeEnvio(),
                     onSiguiente: switch (_paso) {
-                      _Paso.confirmar =>
-                        () => setState(() => _paso = _Paso.entrega),
+                      _Paso.confirmar => () => setState(
+                        () => _paso = _Paso.entrega,
+                      ),
                       _Paso.entrega => _irAPago,
                       _Paso.pago => _confirmarPedido,
                     },
@@ -303,8 +305,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
                       ..clearSnackBars()
                       ..showSnackBar(
                         SnackBar(
-                          content:
-                              Text('${removed.producto.nombre} eliminado'),
+                          content: Text('${removed.producto.nombre} eliminado'),
                           action: SnackBarAction(
                             label: 'DESHACER',
                             onPressed: () => cart.addItem(
@@ -385,8 +386,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
                     titulo: 'Recoger en local',
                     subtitulo: 'Listo cuando llegues · ~20-30 min',
                     coste: 'Gratis',
-                    seleccionada:
-                        _entregaSeleccionada == OpcionEntrega.recoger,
+                    seleccionada: _entregaSeleccionada == OpcionEntrega.recoger,
                     onTap: () => setState(
                       () => _entregaSeleccionada = OpcionEntrega.recoger,
                     ),
@@ -517,8 +517,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
             _DireccionOption(
               icono: Icons.home_outlined,
               titulo: 'Dirección registrada',
-              subtitulo:
-                  dir.isNotEmpty ? dir : 'No tienes dirección guardada',
+              subtitulo: dir.isNotEmpty ? dir : 'No tienes dirección guardada',
               seleccionada:
                   _direccionSeleccionada == OpcionDireccion.registrada,
               onTap: () => setState(
@@ -535,9 +534,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
               onTap: () async {
                 await Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => const DireccionScreen(),
-                  ),
+                  MaterialPageRoute(builder: (_) => const DireccionScreen()),
                 );
                 if (!mounted) return;
                 setState(
@@ -661,30 +658,34 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       tipoEntregaStr = _tipoEntregaLabel(_entregaSeleccionada);
 
       final items = cart.items.values
-          .map((item) => {
-                'producto_id': item.producto.id,
-                'nombre': item.producto.nombre,
-                'cantidad': item.cantidad,
-                'precio': item.producto.precio,
-                if (item.ingredientesExcluidos.isNotEmpty)
-                  'sin': item.ingredientesExcluidos,
-              })
+          .map(
+            (item) => {
+              'producto_id': item.producto.id,
+              'nombre': item.producto.nombre,
+              'cantidad': item.cantidad,
+              'precio': item.producto.precio,
+              if (item.ingredientesExcluidos.isNotEmpty)
+                'sin': item.ingredientesExcluidos,
+            },
+          )
           .toList();
 
       itemsResumen = cart.items.values
-          .map((item) => {
-                'nombre': item.producto.nombre,
-                'cantidad': item.cantidad,
-                'precio': item.producto.precio,
-                if (item.ingredientesExcluidos.isNotEmpty)
-                  'sin': item.ingredientesExcluidos,
-              })
+          .map(
+            (item) => {
+              'nombre': item.producto.nombre,
+              'cantidad': item.cantidad,
+              'precio': item.producto.precio,
+              if (item.ingredientesExcluidos.isNotEmpty)
+                'sin': item.ingredientesExcluidos,
+            },
+          )
           .toList();
 
       final direccionEntrega = _entregaSeleccionada == OpcionEntrega.domicilio
           ? (_direccionSeleccionada == OpcionDireccion.registrada
-              ? (auth.usuarioActual?.direccion ?? '')
-              : _controladorDireccion.text.trim())
+                ? (auth.usuarioActual?.direccion ?? '')
+                : _controladorDireccion.text.trim())
           : null;
 
       // 1. Crear sesión Stripe
@@ -692,7 +693,8 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       final session = await ApiService.crearCheckoutSession(
         total: total,
         currency: 'eur',
-        successUrl: '$origin/?stripe_session={CHECKOUT_SESSION_ID}'
+        successUrl:
+            '$origin/?stripe_session={CHECKOUT_SESSION_ID}'
             '&entrega=${Uri.encodeComponent(tipoEntregaStr)}'
             '&total=$totalStr',
         cancelUrl: '$origin/?stripe_cancel=1',
@@ -824,7 +826,8 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       final captura = await ApiService.capturarOrdenPaypal(orderId: orderId);
       final status = (captura['status'] ?? '').toString().toUpperCase();
 
-      final completado = status == 'COMPLETED' ||
+      final completado =
+          status == 'COMPLETED' ||
           captura['success'] == true ||
           captura['approved'] == true;
 
@@ -856,20 +859,22 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
 
     final direccionEntrega = _entregaSeleccionada == OpcionEntrega.domicilio
         ? (_direccionSeleccionada == OpcionDireccion.registrada
-            ? (auth.usuarioActual?.direccion ?? '')
-            : _controladorDireccion.text.trim())
+              ? (auth.usuarioActual?.direccion ?? '')
+              : _controladorDireccion.text.trim())
         : null;
 
     try {
       final items = cart.items.values
-          .map((item) => {
-                'producto_id': item.producto.id,
-                'nombre': item.producto.nombre,
-                'cantidad': item.cantidad,
-                'precio': item.producto.precio,
-                if (item.ingredientesExcluidos.isNotEmpty)
-                  'sin': item.ingredientesExcluidos,
-              })
+          .map(
+            (item) => {
+              'producto_id': item.producto.id,
+              'nombre': item.producto.nombre,
+              'cantidad': item.cantidad,
+              'precio': item.producto.precio,
+              if (item.ingredientesExcluidos.isNotEmpty)
+                'sin': item.ingredientesExcluidos,
+            },
+          )
           .toList();
 
       if (_entregaSeleccionada != OpcionEntrega.enMesa) {
@@ -877,13 +882,15 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       }
 
       final itemsResumen = cart.items.values
-          .map((item) => {
-                'nombre': item.producto.nombre,
-                'cantidad': item.cantidad,
-                'precio': item.producto.precio,
-                if (item.ingredientesExcluidos.isNotEmpty)
-                  'sin': item.ingredientesExcluidos,
-              })
+          .map(
+            (item) => {
+              'nombre': item.producto.nombre,
+              'cantidad': item.cantidad,
+              'precio': item.producto.precio,
+              if (item.ingredientesExcluidos.isNotEmpty)
+                'sin': item.ingredientesExcluidos,
+            },
+          )
           .toList();
 
       final resultado = await ApiService.crearPedido(
@@ -901,10 +908,9 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
             : null,
         notas: _controladorNotas.text.trim(),
         referenciaPago: referenciaPago,
-        estadoPago: estadoPago ??
-            (_pagoSeleccionado == MetodoPago.efectivo
-                ? 'pendiente'
-                : 'pagado'),
+        estadoPago:
+            estadoPago ??
+            (_pagoSeleccionado == MetodoPago.efectivo ? 'pendiente' : 'pagado'),
         restauranteId: cart.restauranteId,
       );
 
@@ -962,8 +968,10 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
                   ? null
                   : _autorizarGooglePayFrontend,
               child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 16,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -1244,7 +1252,8 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       }
 
       if (!pagado) {
-        pagado = applePayStatus == 'succeeded' ||
+        pagado =
+            applePayStatus == 'succeeded' ||
             applePayStatus == 'paid' ||
             applePayStatus == 'completed';
       }
@@ -1254,7 +1263,8 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       }
 
       await _crearPedidoFinal(
-        referenciaPago: paymentIntentId ??
+        referenciaPago:
+            paymentIntentId ??
             applePayInit['id']?.toString() ??
             'applepay_success',
         estadoPago: 'pagado',
@@ -1510,9 +1520,7 @@ class _OverlayCargando extends StatelessWidget {
     return const ColoredBox(
       color: Color(0x8C000000),
       child: SizedBox.expand(
-        child: Center(
-          child: CircularProgressIndicator(color: Colors.white),
-        ),
+        child: Center(child: CircularProgressIndicator(color: Colors.white)),
       ),
     );
   }
@@ -1535,7 +1543,11 @@ class _StepIndicator extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
       child: Row(
         children: [
-          _StepDot(label: 'Confirmar', activo: pasoIdx == 0, hecho: pasoIdx > 0),
+          _StepDot(
+            label: 'Confirmar',
+            activo: pasoIdx == 0,
+            hecho: pasoIdx > 0,
+          ),
           _Linea(activa: pasoIdx > 0),
           _StepDot(label: 'Entrega', activo: pasoIdx == 1, hecho: pasoIdx > 1),
           _Linea(activa: pasoIdx > 1),
@@ -1557,9 +1569,7 @@ class _Linea extends StatelessWidget {
         duration: const Duration(milliseconds: 350),
         height: 1,
         margin: const EdgeInsets.symmetric(horizontal: 10),
-        color: activa
-            ? AppColors.button
-            : Colors.white.withValues(alpha: 0.20),
+        color: activa ? AppColors.button : Colors.white.withValues(alpha: 0.20),
       ),
     );
   }
@@ -1612,8 +1622,7 @@ class _StepDot extends StatelessWidget {
         Text(
           label.toUpperCase(),
           style: TextStyle(
-            color:
-                filled ? Colors.white : Colors.white.withValues(alpha: 0.35),
+            color: filled ? Colors.white : Colors.white.withValues(alpha: 0.35),
             fontSize: 8,
             letterSpacing: 1.2,
             fontWeight: filled ? FontWeight.w700 : FontWeight.w400,
@@ -1723,8 +1732,9 @@ class _BottomBar extends StatelessWidget {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.button,
                     foregroundColor: Colors.white,
-                    disabledBackgroundColor:
-                        AppColors.button.withValues(alpha: 0.5),
+                    disabledBackgroundColor: AppColors.button.withValues(
+                      alpha: 0.5,
+                    ),
                     minimumSize: const Size.fromHeight(50),
                     shape: const RoundedRectangleBorder(borderRadius: _kRadius),
                     elevation: 0,
@@ -1739,9 +1749,7 @@ class _BottomBar extends StatelessWidget {
                           ),
                         )
                       : Text(
-                          paso != _Paso.pago
-                              ? 'CONTINUAR'
-                              : 'CONFIRMAR PEDIDO',
+                          paso != _Paso.pago ? 'CONTINUAR' : 'CONFIRMAR PEDIDO',
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 13,
@@ -1847,8 +1855,10 @@ class _EntregaCard extends StatelessWidget {
               const SizedBox(width: 10),
               AnimatedContainer(
                 duration: _kAnimFast,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(6),
                   color: seleccionada
@@ -2046,8 +2056,11 @@ class _DireccionOption extends StatelessWidget {
                 ),
               ),
               if (seleccionada)
-                const Icon(Icons.check_circle,
-                    size: 16, color: AppColors.button),
+                const Icon(
+                  Icons.check_circle,
+                  size: 16,
+                  color: AppColors.button,
+                ),
             ],
           ),
         ),
@@ -2130,8 +2143,9 @@ class _StripeCheckoutDialogState extends State<_StripeCheckoutDialog> {
       ),
       actions: [
         TextButton(
-          onPressed:
-              _verificando ? null : () => Navigator.of(context).pop(false),
+          onPressed: _verificando
+              ? null
+              : () => Navigator.of(context).pop(false),
           child: const Text(
             'Cancelar',
             style: TextStyle(color: AppColors.textSecondary),
@@ -2291,13 +2305,13 @@ class _ArticuloCard extends StatelessWidget {
   }
 
   Widget _imgFallback() => Container(
-        color: Colors.white.withValues(alpha: 0.10),
-        child: Icon(
-          Icons.restaurant,
-          color: Colors.white.withValues(alpha: 0.20),
-          size: 28,
-        ),
-      );
+    color: Colors.white.withValues(alpha: 0.10),
+    child: Icon(
+      Icons.restaurant,
+      color: Colors.white.withValues(alpha: 0.20),
+      size: 28,
+    ),
+  );
 }
 
 class _StepperCard extends StatelessWidget {
@@ -2418,13 +2432,34 @@ class _LogoGooglePayButton extends StatelessWidget {
               fontWeight: FontWeight.w700,
             ),
             children: [
-              TextSpan(text: 'G', style: TextStyle(color: Color(0xFF4285F4))),
-              TextSpan(text: 'o', style: TextStyle(color: Color(0xFFEA4335))),
-              TextSpan(text: 'o', style: TextStyle(color: Color(0xFFFBBC05))),
-              TextSpan(text: 'g', style: TextStyle(color: Color(0xFF4285F4))),
-              TextSpan(text: 'l', style: TextStyle(color: Color(0xFF34A853))),
-              TextSpan(text: 'e', style: TextStyle(color: Color(0xFFEA4335))),
-              TextSpan(text: ' Pay', style: TextStyle(color: Colors.white)),
+              TextSpan(
+                text: 'G',
+                style: TextStyle(color: Color(0xFF4285F4)),
+              ),
+              TextSpan(
+                text: 'o',
+                style: TextStyle(color: Color(0xFFEA4335)),
+              ),
+              TextSpan(
+                text: 'o',
+                style: TextStyle(color: Color(0xFFFBBC05)),
+              ),
+              TextSpan(
+                text: 'g',
+                style: TextStyle(color: Color(0xFF4285F4)),
+              ),
+              TextSpan(
+                text: 'l',
+                style: TextStyle(color: Color(0xFF34A853)),
+              ),
+              TextSpan(
+                text: 'e',
+                style: TextStyle(color: Color(0xFFEA4335)),
+              ),
+              TextSpan(
+                text: ' Pay',
+                style: TextStyle(color: Colors.white),
+              ),
             ],
           ),
         ),

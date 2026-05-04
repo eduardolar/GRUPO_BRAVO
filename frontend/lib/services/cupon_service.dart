@@ -10,7 +10,8 @@ class CuponService {
 
   static Future<List<Cupon>> listar({bool soloActivos = false}) async {
     final uri = Uri.parse(
-        '$baseUrl/cupones${soloActivos ? '?solo_activos=true' : ''}');
+      '$baseUrl/cupones${soloActivos ? '?solo_activos=true' : ''}',
+    );
     final res = await httpWithRetry(() => http.get(uri));
     if (res.statusCode == 200) {
       return (jsonDecode(res.body) as List)
@@ -40,8 +41,11 @@ class CuponService {
       if (fechaFin != null && fechaFin.isNotEmpty) 'fecha_fin': fechaFin,
     };
     final res = await httpWithRetry(
-      () => http.post(Uri.parse('$baseUrl/cupones'),
-          headers: _headers, body: jsonEncode(body)),
+      () => http.post(
+        Uri.parse('$baseUrl/cupones'),
+        headers: _headers,
+        body: jsonEncode(body),
+      ),
       retry: false,
     );
     if (res.statusCode == 200 || res.statusCode == 201) {
@@ -68,8 +72,11 @@ class CuponService {
       'fecha_fin': ?fechaFin,
     };
     final res = await httpWithRetry(
-      () => http.put(Uri.parse('$baseUrl/cupones/$id'),
-          headers: _headers, body: jsonEncode(body)),
+      () => http.put(
+        Uri.parse('$baseUrl/cupones/$id'),
+        headers: _headers,
+        body: jsonEncode(body),
+      ),
       retry: false,
     );
     if (res.statusCode == 200) return Cupon.fromJson(jsonDecode(res.body));
@@ -79,8 +86,9 @@ class CuponService {
   static Future<void> toggleActivo(String id, bool activo) async {
     final res = await httpWithRetry(
       () => http.patch(
-          Uri.parse('$baseUrl/cupones/$id/activo?activo=$activo'),
-          headers: _headers),
+        Uri.parse('$baseUrl/cupones/$id/activo?activo=$activo'),
+        headers: _headers,
+      ),
       retry: false,
     );
     if (res.statusCode != 200) {
@@ -90,8 +98,7 @@ class CuponService {
 
   static Future<void> eliminar(String id) async {
     final res = await httpWithRetry(
-      () => http.delete(Uri.parse('$baseUrl/cupones/$id'),
-          headers: _headers),
+      () => http.delete(Uri.parse('$baseUrl/cupones/$id'), headers: _headers),
       retry: false,
     );
     if (res.statusCode != 200 && res.statusCode != 204) {

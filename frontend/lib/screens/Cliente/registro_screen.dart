@@ -54,8 +54,10 @@ class _RegistroScreenState extends State<RegistroScreen> {
 
   String? _validarEmail(String? v) {
     if (v == null || v.trim().isEmpty) return 'Campo requerido';
-    final regex =
-        RegExp(r'^[\w.+\-]+@[\w\-]+\.[a-z]{2,}$', caseSensitive: false);
+    final regex = RegExp(
+      r'^[\w.+\-]+@[\w\-]+\.[a-z]{2,}$',
+      caseSensitive: false,
+    );
     if (!regex.hasMatch(v.trim())) return 'Correo electrónico no válido';
     return null;
   }
@@ -117,8 +119,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
       if (!mounted) return;
       navigator.push(
         MaterialPageRoute(
-          builder: (_) =>
-              VerificacionScreen(email: _emailCtrl.text.trim()),
+          builder: (_) => VerificacionScreen(email: _emailCtrl.text.trim()),
         ),
       );
     } catch (e) {
@@ -182,8 +183,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
           icono: Icons.lock_outline,
           esContrasena: true,
           mostrarTexto: _ocultarPass,
-          alPresionarIcono: () =>
-              setState(() => _ocultarPass = !_ocultarPass),
+          alPresionarIcono: () => setState(() => _ocultarPass = !_ocultarPass),
           autofillHints: const [AutofillHints.newPassword],
           controlador: _passwordCtrl,
           validador: _validarContrasena,
@@ -385,7 +385,10 @@ class _ConsentimientoRgpd extends StatelessWidget {
             Expanded(
               child: Text.rich(
                 TextSpan(
-                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                  ),
                   children: [
                     const TextSpan(text: 'He leído y acepto la '),
                     TextSpan(
@@ -396,7 +399,9 @@ class _ConsentimientoRgpd extends StatelessWidget {
                         decorationColor: AppColors.gold,
                       ),
                     ),
-                    const TextSpan(text: ' y el tratamiento de mis datos conforme al RGPD.'),
+                    const TextSpan(
+                      text: ' y el tratamiento de mis datos conforme al RGPD.',
+                    ),
                   ],
                 ),
               ),
@@ -443,10 +448,8 @@ class _DireccionField extends StatelessWidget {
           decoration: InputDecoration(
             labelText: 'Dirección de entrega',
             labelStyle: const TextStyle(color: AppColors.textSecondary),
-            prefixIcon:
-                const Icon(Icons.map_outlined, color: AppColors.gold),
-            suffixIcon:
-                const Icon(Icons.chevron_right, color: AppColors.gold),
+            prefixIcon: const Icon(Icons.map_outlined, color: AppColors.gold),
+            suffixIcon: const Icon(Icons.chevron_right, color: AppColors.gold),
             filled: true,
             fillColor: AppColors.panel,
             enabledBorder: _border(AppColors.line),

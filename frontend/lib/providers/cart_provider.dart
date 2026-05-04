@@ -39,12 +39,21 @@ class CartProvider with ChangeNotifier {
 
   int get itemCount => _items.length;
 
-  int get totalQuantity => _items.values.fold(0, (sum, item) => sum + item.cantidad);
+  int get totalQuantity =>
+      _items.values.fold(0, (sum, item) => sum + item.cantidad);
 
-  double get totalPrice => _items.values.fold(0.0, (sum, item) => sum + item.subtotal);
+  double get totalPrice =>
+      _items.values.fold(0.0, (sum, item) => sum + item.subtotal);
 
-  void addItem(Producto producto, {List<String> ingredientesExcluidos = const [], int cantidad = 1}) {
-    final key = CartItem(producto: producto, ingredientesExcluidos: ingredientesExcluidos).key;
+  void addItem(
+    Producto producto, {
+    List<String> ingredientesExcluidos = const [],
+    int cantidad = 1,
+  }) {
+    final key = CartItem(
+      producto: producto,
+      ingredientesExcluidos: ingredientesExcluidos,
+    ).key;
     if (_items.containsKey(key)) {
       _items[key]!.cantidad += cantidad;
     } else {
