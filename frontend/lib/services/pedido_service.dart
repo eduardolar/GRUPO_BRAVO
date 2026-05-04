@@ -80,7 +80,7 @@ class PedidoService {
     final response = await httpWithRetry(
       () => http.get(
         Uri.parse('$baseUrl/pedidos?userId=$userId'),
-        headers: {'Accept': 'application/json'},
+        headers: AuthSession.headers(extra: {'Accept': 'application/json'}),
       ),
     );
 
@@ -129,7 +129,7 @@ class PedidoService {
     final response = await httpWithRetry(
       () => http.get(
         Uri.parse('$baseUrl/pedidos?mesaId=$mesaId'),
-        headers: {'Accept': 'application/json'},
+        headers: AuthSession.headers(extra: {'Accept': 'application/json'}),
       ),
     );
 
@@ -266,7 +266,7 @@ class PedidoService {
     final response = await httpWithRetry(
       () => http.get(
         Uri.parse('$baseUrl/pedidos/$pedidoId'),
-        headers: {'Accept': 'application/json'},
+        headers: AuthSession.headers(extra: {'Accept': 'application/json'}),
       ),
     );
 
@@ -298,7 +298,10 @@ class PedidoService {
       '$baseUrl/pedidos',
     ).replace(queryParameters: params.isEmpty ? null : params);
     final response = await httpWithRetry(
-      () => http.get(uri, headers: {'Accept': 'application/json'}),
+      () => http.get(
+        uri,
+        headers: AuthSession.headers(extra: {'Accept': 'application/json'}),
+      ),
     );
 
     if (response.statusCode == 200) {

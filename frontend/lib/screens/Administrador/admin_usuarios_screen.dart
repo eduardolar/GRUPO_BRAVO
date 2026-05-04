@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../core/colors_style.dart'; // Ajusta la ruta si es necesario
+import 'package:provider/provider.dart';
+import '../../core/colors_style.dart';
 import '../../models/usuario_model.dart';
+import '../../providers/auth_provider.dart';
 import '../../services/usuario_service.dart';
 
 class AdminUsuariosScreen extends StatefulWidget {
@@ -27,18 +29,31 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
     setState(() {
       _cargando = true;
     });
+    // Capturamos antes del await: usar context tras async gap está prohibido.
+    final miRestaurante = context
+        .read<AuthProvider>()
+        .usuarioActual
+        ?.restauranteId;
     try {
       final todos = await _usuarioService.obtenerTodos();
+      if (!mounted) return;
+      // Restringimos al restaurante del administrador actual: nunca debe ver
+      // empleados ni clientes de otras sucursales.
       setState(() {
-        // Mostramos todos los usuarios, ocultando solo a los superadmins por seguridad
-        _usuarios = todos
-            .where((u) => u.rol != RolUsuario.superadministrador)
-            .toList();
+        _usuarios = todos.where((u) {
+          if (u.rol == RolUsuario.superadministrador) return false;
+          if (miRestaurante == null || miRestaurante.isEmpty) return true;
+          // Si el usuario no tiene restaurante asignado lo mostramos (legacy);
+          // en otro caso debe coincidir con el del admin.
+          final r = u.restauranteId;
+          if (r == null || r.isEmpty) return true;
+          return r == miRestaurante;
+        }).toList();
       });
-    } catch (e) {
+    } catch (_) {
       _showSnackBar("Error al conectar con la base de datos");
     } finally {
-      setState(() => _cargando = false);
+      if (mounted) setState(() => _cargando = false);
     }
   }
 

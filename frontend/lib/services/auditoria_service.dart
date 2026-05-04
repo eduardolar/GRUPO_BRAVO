@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'api_config.dart';
+import 'auth_session.dart';
 
 class EventoAuditoria {
   final String fecha;
@@ -59,7 +60,7 @@ class AuditoriaService {
     ).replace(queryParameters: params);
     final response = await http.get(
       uri,
-      headers: {'Accept': 'application/json'},
+      headers: AuthSession.headers(extra: {'Accept': 'application/json'}),
     );
 
     if (response.statusCode == 200) {
@@ -111,7 +112,7 @@ class AuditoriaGeneralService {
     ).replace(queryParameters: params);
     final response = await http.get(
       uri,
-      headers: {'Accept': 'application/json'},
+      headers: AuthSession.headers(extra: {'Accept': 'application/json'}),
     );
 
     if (response.statusCode == 200) {

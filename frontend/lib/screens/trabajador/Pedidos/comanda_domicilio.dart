@@ -106,23 +106,6 @@ class _CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
           letterSpacing: 2.0,
         ),
       ),
-      actions: [
-        Padding(
-          padding: const EdgeInsets.only(right: 16.0),
-          child: IconButton(
-            icon: CircleAvatar(
-              backgroundColor: Colors.white24,
-              radius: 18,
-              child: Icon(
-                Icons.inventory_2_outlined,
-                color: Colors.white,
-                size: 20,
-              ),
-            ),
-            onPressed: () {},
-          ),
-        ),
-      ],
     );
   }
 

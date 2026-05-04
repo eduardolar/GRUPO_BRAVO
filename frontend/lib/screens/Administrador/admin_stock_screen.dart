@@ -26,6 +26,7 @@ class AdminStockScreen extends StatefulWidget {
 class _AdminStockScreenState extends State<AdminStockScreen> {
   List<Ingrediente> _todos = [];
   bool _cargando = true;
+  String? _errorCarga;
   String _categoriaActiva = 'Todos';
   String _busqueda = '';
   final _busquedaCtrl = TextEditingController();
@@ -52,7 +53,10 @@ class _AdminStockScreenState extends State<AdminStockScreen> {
 
   Future<void> _cargar() async {
     if (!mounted) return;
-    setState(() => _cargando = true);
+    setState(() {
+      _cargando = true;
+      _errorCarga = null;
+    });
     try {
       final lista = await IngredienteService.obtenerIngredientes(
         restauranteId: _restauranteId,
@@ -63,9 +67,12 @@ class _AdminStockScreenState extends State<AdminStockScreen> {
         _todos = lista.where((i) => i.id.isNotEmpty && seen.add(i.id)).toList();
         _cargando = false;
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
-      setState(() => _cargando = false);
+      setState(() {
+        _cargando = false;
+        _errorCarga = e.toString();
+      });
     }
   }
 
@@ -158,6 +165,8 @@ class _AdminStockScreenState extends State<AdminStockScreen> {
                             color: AppColors.button,
                           ),
                         )
+                      : _errorCarga != null
+                      ? _buildErrorState()
                       : filtrados.isEmpty
                       ? _buildEmpty()
                       : RefreshIndicator(
@@ -353,6 +362,38 @@ class _AdminStockScreenState extends State<AdminStockScreen> {
             textAlign: TextAlign.center,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, size: 52, color: AppColors.error),
+            const SizedBox(height: 12),
+            const Text(
+              'No se pudo cargar el inventario',
+              style: TextStyle(color: Colors.white),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              _errorCarga ?? '',
+              style: const TextStyle(color: Colors.white54, fontSize: 12),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: _cargar,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Reintentar'),
+            ),
+          ],
+        ),
       ),
     );
   }

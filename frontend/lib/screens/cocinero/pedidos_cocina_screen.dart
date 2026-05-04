@@ -261,9 +261,17 @@ class _PedidosCocinaScreenState extends State<PedidosCocinaScreen> {
         _reproducirAlerta();
       }
       _primeraCarga = false;
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       setState(() => _cargando = false);
+      // Solo notificamos en la primera carga: durante el polling normal,
+      // un fallo puntual no debería saturar al cocinero con SnackBars.
+      if (_primeraCarga) {
+        _showSnack('No se pudieron cargar los pedidos: $e');
+        _primeraCarga = false;
+      } else {
+        debugPrint('pedidos_cocina poll fallido: $e');
+      }
     }
   }
 
