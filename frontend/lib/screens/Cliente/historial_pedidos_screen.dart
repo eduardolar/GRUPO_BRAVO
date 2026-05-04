@@ -293,6 +293,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen>
       elevation: 0,
       pinned: true,
       leading: IconButton(
+        tooltip: 'Volver',
         icon: const Icon(Icons.arrow_back_ios_new_rounded,
             color: AppColors.button, size: 20),
         onPressed: () => Navigator.pop(context),

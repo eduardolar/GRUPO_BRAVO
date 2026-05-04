@@ -401,6 +401,7 @@ class _MenuScreenState extends State<MenuScreen> {
                       ),
                       const SizedBox(width: 12),
                       IconButton(
+                        tooltip: 'Mi perfil',
                         icon: const CircleAvatar(
                           backgroundColor: Colors.white24,
                           radius: 18,
@@ -451,58 +452,67 @@ class _MenuScreenState extends State<MenuScreen> {
 
                 // Lista de productos
                 Expanded(
-                  child: filtered.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.restaurant_menu_outlined,
-                                  size: 36, color: Colors.white30),
-                              const SizedBox(height: 14),
-                              const Text(
-                                'SIN PLATOS DISPONIBLES',
-                                style: TextStyle(
-                                  color: Colors.white60,
-                                  fontSize: 10,
-                                  letterSpacing: 3.0,
-                                  fontWeight: FontWeight.w500,
+                  child: RefreshIndicator(
+                    onRefresh: _cargarDatos,
+                    color: AppColors.button,
+                    child: filtered.isEmpty
+                        ? SingleChildScrollView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            child: SizedBox(
+                              height: 200,
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.restaurant_menu_outlined,
+                                      size: 36, color: Colors.white30),
+                                  const SizedBox(height: 14),
+                                  const Text(
+                                    'SIN PLATOS DISPONIBLES',
+                                    style: TextStyle(
+                                      color: Colors.white60,
+                                      fontSize: 10,
+                                      letterSpacing: 3.0,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                        : LayoutBuilder(
+                            builder: (context, constraints) {
+                              final width = constraints.maxWidth;
+                              final columns = width >= 900
+                                  ? 3
+                                  : width >= 600
+                                      ? 2
+                                      : 1;
+                              return GridView.builder(
+                                physics: const AlwaysScrollableScrollPhysics(
+                                    parent: BouncingScrollPhysics()),
+                                padding: const EdgeInsets.fromLTRB(
+                                    16, 4, 16, 128),
+                                gridDelegate:
+                                    SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: columns,
+                                  crossAxisSpacing: 16,
+                                  mainAxisSpacing: 16,
+                                  mainAxisExtent: 342,
                                 ),
-                              ),
-                            ],
+                                itemCount: filtered.length,
+                                itemBuilder: (context, index) {
+                                  final p = filtered[index];
+                                  return ProductoCard(
+                                    product: p,
+                                    onAdd: () =>
+                                        _mostrarDetalle(context, p),
+                                    compactAdd: true,
+                                  );
+                                },
+                              );
+                            },
                           ),
-                        )
-                      : LayoutBuilder(
-                          builder: (context, constraints) {
-                            final width = constraints.maxWidth;
-                            final columns = width >= 900
-                                ? 3
-                                : width >= 600
-                                    ? 2
-                                    : 1;
-                            return GridView.builder(
-                              physics: const BouncingScrollPhysics(),
-                              padding: const EdgeInsets.fromLTRB(
-                                  16, 4, 16, 128),
-                              gridDelegate:
-                                  SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: columns,
-                                crossAxisSpacing: 16,
-                                mainAxisSpacing: 16,
-                                mainAxisExtent: 342,
-                              ),
-                              itemCount: filtered.length,
-                              itemBuilder: (context, index) {
-                                final p = filtered[index];
-                                return ProductoCard(
-                                  product: p,
-                                  onAdd: () =>
-                                      _mostrarDetalle(context, p),
-                                  compactAdd: true,
-                                );
-                              },
-                            );
-                          },
-                        ),
+                  ),
                 ),
               ],
             ),

@@ -545,6 +545,7 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
       child: Row(
         children: [
           IconButton(
+            tooltip: 'Volver',
             icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
             onPressed: () => Navigator.pop(context),
           ),
@@ -561,6 +562,7 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
             ),
           ),
           IconButton(
+            tooltip: 'Mi perfil',
             icon: const Icon(Icons.person_outline, color: Colors.white, size: 26),
             onPressed: () => Navigator.push(
                 context, MaterialPageRoute(builder: (_) => const PerfilScreen())),
@@ -690,7 +692,7 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
             Text(
               hoy ? 'HOY' : _diasAbrev[fecha.weekday - 1],
               style: TextStyle(
-                color: seleccionada ? Colors.white70 : Colors.white38,
+                color: seleccionada ? Colors.white : Colors.white60,
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 1,
@@ -699,8 +701,8 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
             const SizedBox(height: 4),
             Text(
               '${fecha.day}',
-              style: TextStyle(
-                color: seleccionada ? Colors.white : Colors.white,
+              style: const TextStyle(
+                color: Colors.white,
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
                 height: 1,
@@ -710,7 +712,7 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
             Text(
               _mesesAbrev[fecha.month - 1],
               style: TextStyle(
-                color: seleccionada ? Colors.white60 : Colors.white24,
+                color: seleccionada ? Colors.white70 : Colors.white54,
                 fontSize: 10,
                 letterSpacing: 0.5,
               ),

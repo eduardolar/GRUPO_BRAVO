@@ -272,6 +272,7 @@ class _DireccionScreenState extends State<DireccionScreen> {
           contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
           border: InputBorder.none,
           suffixIcon: IconButton(
+            tooltip: 'Buscar dirección',
             icon: const Icon(Icons.search),
             onPressed: () => _buscarDireccionEscrita(_searchController.text),
           ),

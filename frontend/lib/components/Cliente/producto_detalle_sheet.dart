@@ -201,6 +201,7 @@ class _ProductoDetalleSheetState extends State<ProductoDetalleSheet> {
                               icon: _cantidad == 1
                                   ? Icons.delete_outline
                                   : Icons.remove,
+                              tooltip: _cantidad == 1 ? 'Eliminar' : 'Quitar uno',
                               onTap: () {
                                 if (_cantidad > 1) {
                                   setState(() => _cantidad--);
@@ -225,6 +226,7 @@ class _ProductoDetalleSheetState extends State<ProductoDetalleSheet> {
                             ),
                             _StepBtn(
                               icon: Icons.add,
+                              tooltip: 'Añadir uno',
                               onTap: () => setState(() => _cantidad++),
                             ),
                           ],
@@ -272,17 +274,21 @@ class _ProductoDetalleSheetState extends State<ProductoDetalleSheet> {
 class _StepBtn extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
-  const _StepBtn({required this.icon, required this.onTap});
+  final String tooltip;
+  const _StepBtn({required this.icon, required this.onTap, required this.tooltip});
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 44,
-        height: 50,
-        color: AppColors.panel,
-        child: Icon(icon, size: 18, color: AppColors.textPrimary),
+    return Tooltip(
+      message: tooltip,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 44,
+          height: 50,
+          color: AppColors.panel,
+          child: Icon(icon, size: 18, color: AppColors.textPrimary),
+        ),
       ),
     );
   }

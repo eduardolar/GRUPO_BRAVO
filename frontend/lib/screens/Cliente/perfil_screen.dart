@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show TextInputFormatter, LengthLimitingTextInputFormatter;
 import 'package:frontend/screens/cliente/login_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -603,6 +604,20 @@ class _PerfilScreenState extends State<PerfilScreen> {
     );
   }
 
+  Future<void> _recargarPerfil() async {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    await auth.cargarSesion();
+    if (!mounted) return;
+    final usuario = auth.usuarioActual;
+    setState(() {
+      _nombreController.text = usuario?.nombre ?? '';
+      _emailController.text = usuario?.email ?? '';
+      _telefonoController.text = usuario?.telefono ?? '';
+      _direccionController.text = usuario?.direccion ?? '';
+      _hayCambios = false;
+    });
+  }
+
   // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
@@ -634,8 +649,12 @@ class _PerfilScreenState extends State<PerfilScreen> {
               children: [
                 _buildAppBar(),
                 Expanded(
-                  child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
+                  child: RefreshIndicator(
+                    onRefresh: _recargarPerfil,
+                    color: AppColors.button,
+                    child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(
+                        parent: BouncingScrollPhysics()),
                     padding:
                         const EdgeInsets.symmetric(horizontal: 24),
                     child: Form(
@@ -651,6 +670,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                             'Nombre completo',
                             _nombreController,
                             Icons.person_outline,
+                            autofillHints: const [AutofillHints.name],
                             validator: (v) {
                               if (v == null || v.trim().isEmpty) {
                                 return 'El nombre es obligatorio';
@@ -667,6 +687,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                             _emailController,
                             Icons.email_outlined,
                             keyboardType: TextInputType.emailAddress,
+                            autofillHints: const [AutofillHints.email],
                             validator: (v) {
                               if (v == null || v.trim().isEmpty) {
                                 return 'El email es obligatorio';
@@ -684,6 +705,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
                             _telefonoController,
                             Icons.phone_outlined,
                             keyboardType: TextInputType.phone,
+                            autofillHints: const [AutofillHints.telephoneNumber],
+                            inputFormatters: [LengthLimitingTextInputFormatter(15)],
                             validator: (v) {
                               if (v == null || v.trim().isEmpty) {
                                 return 'El teléfono es obligatorio';
@@ -829,6 +852,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       ),
                     ),
                   ),
+                  ),
                 ),
               ],
             ),
@@ -944,12 +968,18 @@ class _PerfilScreenState extends State<PerfilScreen> {
     TextInputType? keyboardType,
     bool readOnly = false,
     Widget? suffixIcon,
+    List<String>? autofillHints,
+    TextInputAction textInputAction = TextInputAction.next,
+    List<TextInputFormatter>? inputFormatters,
   }) {
     return TextFormField(
       controller: controller,
       validator: validator,
       keyboardType: keyboardType,
       readOnly: readOnly,
+      autofillHints: autofillHints,
+      textInputAction: textInputAction,
+      inputFormatters: inputFormatters,
       style: GoogleFonts.manrope(color: Colors.white, fontSize: 15),
       decoration: InputDecoration(
         labelText: label,

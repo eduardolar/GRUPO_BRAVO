@@ -100,7 +100,15 @@ class _SimpleSplashState extends State<_SimpleSplash> {
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(seconds: 2), widget.onFinished);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _preloadAndFinish());
+  }
+
+  Future<void> _preloadAndFinish() async {
+    await Future.wait([
+      precacheImage(const AssetImage('assets/images/Bravo restaurante.jpg'), context),
+      Future.delayed(const Duration(milliseconds: 800)),
+    ]);
+    if (mounted) widget.onFinished();
   }
 
   @override

@@ -168,6 +168,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         EntradaTexto(
           etiqueta: 'Nombre completo',
           icono: Icons.person_outline,
+          autofillHints: const [AutofillHints.name],
           controlador: _nombreCtrl,
           validador: (v) =>
               (v == null || v.trim().isEmpty) ? 'Campo requerido' : null,
@@ -178,6 +179,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           etiqueta: 'Correo electrónico',
           icono: Icons.email_outlined,
           tipoTeclado: TextInputType.emailAddress,
+          autofillHints: const [AutofillHints.email],
           controlador: _emailCtrl,
           validador: _validarEmail,
         ),
@@ -190,6 +192,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           mostrarTexto: _ocultarPass,
           alPresionarIcono: () =>
               setState(() => _ocultarPass = !_ocultarPass),
+          autofillHints: const [AutofillHints.newPassword],
           controlador: _passwordCtrl,
           validador: _validarContrasena,
         ),
@@ -207,6 +210,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           mostrarTexto: _ocultarConfirm,
           alPresionarIcono: () =>
               setState(() => _ocultarConfirm = !_ocultarConfirm),
+          autofillHints: const [AutofillHints.newPassword],
           controlador: _confirmCtrl,
           validador: _validarConfirmar,
         ),
@@ -216,6 +220,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           etiqueta: 'Teléfono',
           icono: Icons.phone_android_outlined,
           tipoTeclado: TextInputType.phone,
+          autofillHints: const [AutofillHints.telephoneNumber],
           controlador: _telefonoCtrl,
           validador: _validarTelefono,
         ),
