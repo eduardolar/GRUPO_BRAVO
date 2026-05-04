@@ -646,6 +646,8 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
         cart.desasignarMesa();
       }
 
+      final restauranteId = cart.restauranteId;
+
       final resultado = await ApiService.crearPedido(
         userId: auth.usuarioActual?.id ?? '',
         items: items,
@@ -662,6 +664,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
         notas: _controladorNotas.text.trim(),
         referenciaPago: sessionId,
         estadoPago: 'pendiente_stripe',
+        restauranteId: restauranteId,
       );
 
       final pedidoId =
