@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Query
 from exceptions import AppError, NotFoundError, ConflictError, ValidacionError
-from datetime import datetime
+from datetime import datetime, timezone
 from bson import ObjectId
 from fastapi_mail import FastMail, MessageSchema, MessageType
 from pydantic import BaseModel
@@ -14,6 +14,18 @@ from routes.auth import conf
 
 router = APIRouter(prefix="/pedidos", tags=["Pedidos"])
 logger = logging.getLogger("uvicorn")
+
+
+# ── Server time (sincroniza cronómetros del cliente) ─────────────────────────
+
+@router.get("/server-time")
+def obtener_server_time():
+    """Devuelve la hora actual del servidor en UTC ISO 8601.
+
+    El cliente la usa para calcular un offset y mantener sus cronómetros
+    alineados con el servidor, independientemente de la hora del dispositivo.
+    """
+    return {"server_time": datetime.now(timezone.utc).isoformat()}
 
 
 # ── Helpers de stock ──────────────────────────────────────────────────────────
@@ -246,7 +258,7 @@ async def crear_pedido(pedido: PedidoCrear):
         "metodo_pago": pedido.metodoPago,
         "total": total_calculado,
         "notas": pedido.notas,
-        "fecha": datetime.now().isoformat(),
+        "fecha": datetime.now(timezone.utc).isoformat(),
         "estado": "pendiente",
         "referencia_pago": pedido.referenciaPago,
         "estado_pago": pedido.estadoPago or "pendiente",
