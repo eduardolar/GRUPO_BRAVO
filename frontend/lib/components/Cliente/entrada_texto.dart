@@ -12,6 +12,7 @@ class EntradaTexto extends StatelessWidget {
   final TextEditingController? controlador;
   final List<String>? autofillHints;
   final TextInputAction textInputAction;
+  final bool readOnly;
 
   const EntradaTexto({
     super.key,
@@ -25,6 +26,7 @@ class EntradaTexto extends StatelessWidget {
     this.controlador,
     this.autofillHints,
     this.textInputAction = TextInputAction.next,
+    this.readOnly = false,
   });
 
   @override
@@ -45,7 +47,9 @@ class EntradaTexto extends StatelessWidget {
           // Solo muestra el botón del ojo si el campo se marcó como contraseña
           suffixIcon: esContrasena
               ? IconButton(
-                  tooltip: mostrarTexto! ? 'Ocultar contraseña' : 'Mostrar contraseña',
+                  tooltip: mostrarTexto!
+                      ? 'Ocultar contraseña'
+                      : 'Mostrar contraseña',
                   icon: Icon(
                     mostrarTexto!
                         ? Icons.visibility_off_outlined

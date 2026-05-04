@@ -1,16 +1,18 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:async';
+import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:geolocator/geolocator.dart'; // Para 'Position'
-import '../../core/colors_style.dart';
-import '../../services/location_service.dart'; // Para 'LocationService'
 import 'package:provider/provider.dart';
-import '../../services/usuario_service.dart'; // Para 'UsuarioService' y actualizar la dirección del usuario
-import '../../providers/auth_provider.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart' as http;
 import 'package:flutter_typeahead/flutter_typeahead.dart';
-import 'dart:async'; // Para 'Timer' y evitar llamadas excesivas a la API
+
+// TUS COMPONENTES Y SERVICIOS
+import '../../core/colors_style.dart';
+import '../../providers/auth_provider.dart';
+import '../../services/usuario_service.dart';
+import '../../services/location_service.dart';
 import '../../components/Cliente/auth_scaffold.dart';
 import '../../components/Cliente/auth_header.dart';
 import '../../components/Cliente/entrada_texto.dart';
@@ -18,7 +20,6 @@ import '../../components/Cliente/primary_button.dart';
 
 class DireccionScreen extends StatefulWidget {
   final bool soloSeleccionar;
-
   const DireccionScreen({super.key, this.soloSeleccionar = false});
 
   @override
@@ -26,37 +27,30 @@ class DireccionScreen extends StatefulWidget {
 }
 
 class _DireccionScreenState extends State<DireccionScreen> {
-  // VARIABLES INICIALES
-  LatLng _puntoActual = const LatLng(40.416775, -3.703790); // Madrid
+  // --- CONTROLADORES Y ESTADO ---
+  final MapController _mapController = MapController();
+  final TextEditingController _pisoPuertaController = TextEditingController();
+  final TextEditingController _direccionController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
+
+  LatLng _puntoActual = const LatLng(41.6488, -0.8891); // Zaragoza por defecto
   String _direccionTexto = "Cargando...";
   bool _cargando = false;
   Timer? _debounceTimer;
-
-  final MapController _mapController = MapController();
-  final TextEditingController _searchController = TextEditingController();
-  final TextEditingController _pisoPuertaController = TextEditingController();
-  final TextEditingController _direccionController = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    _obtenerDireccionDesdeCoords(_puntoActual);
-  }
 
   @override
   void dispose() {
     _debounceTimer?.cancel();
     _pisoPuertaController.dispose();
     _direccionController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
-  // 1. TRADUCIR COORDENADAS A TEXTO
+  // --- LÓGICA 1: OBTENER DIRECCIÓN DESDE COORDENADAS (Nominatim) ---
   Future<void> _obtenerDireccionDesdeCoords(LatLng coords) async {
-    setState(() => _cargando = true);
-
     final url = Uri.parse(
-      'https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.latitude}&lon=${coords.longitude}&zoom=18&addressdetails=1',
+      'https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.latitude}&lon=${coords.longitude}',
     );
 
     try {
@@ -65,87 +59,44 @@ class _DireccionScreenState extends State<DireccionScreen> {
         final data = json.decode(response.body);
         final addr = data['address'];
 
-        // validacion CLAVE
         if (addr != null) {
+          String calle =
+              addr['road'] ??
+              addr['pedestrian'] ??
+              addr['path'] ??
+              "Calle sin nombre";
+          String numero = addr['house_number'] ?? "s/n";
+          String ciudad = addr['city'] ?? addr['town'] ?? addr['village'] ?? "";
+          String cp = addr['postcode'] ?? "";
+
           setState(() {
-            // ordenar los componentes de la dirección de forma lógica
-            String calle =
-                addr['road'] ??
-                addr['pedestrian'] ??
-                addr['path'] ??
-                "Calle sin nombre";
-            String numero = addr['house_number'] ?? "s/n";
-            String ciudad =
-                addr['city'] ?? addr['town'] ?? addr['village'] ?? "";
-            String cp = addr['postcode'] ?? "";
-            // orden lógico: calle + número...
             _direccionTexto = "$calle $numero, $cp $ciudad";
-            _direccionController.text = _direccionTexto;
+            _direccionController.text =
+                _direccionTexto; // Actualiza la caja visual
           });
         }
       } else {
-        setState(() => _direccionController.text = "Ubicación no disponible");
+        _setDireccionError();
       }
     } catch (e) {
-      setState(() => _direccionController.text = "Ubicación no disponible");
-    } finally {
-      setState(() => _cargando = false);
+      _setDireccionError();
     }
   }
 
-  // --- 2. MOVER EL MAPA
+  void _setDireccionError() {
+    setState(() {
+      _direccionTexto = "Ubicación no disponible";
+      _direccionController.text = _direccionTexto;
+    });
+  }
+
+  // --- LÓGICA 2: MOVIMIENTO Y GPS ---
   void _moverMapa(LatLng destino) {
     _mapController.move(destino, 17);
+    setState(() => _puntoActual = destino);
     _obtenerDireccionDesdeCoords(destino);
   }
 
-  // --- 3. BUSCAR POR TEXTO ---
-  Future<void> _buscarDireccionEscrita(String texto) async {
-    if (texto.isEmpty) return;
-    setState(() => _cargando = true);
-
-    final url = Uri.parse(
-      'https://nominatim.openstreetmap.org/search?q=${Uri.encodeComponent(texto)}&format=json&limit=1',
-    );
-
-    try {
-      final response = await http.get(url, headers: {'User-Agent': 'BravoApp'});
-      final data = json.decode(response.body);
-
-      if (data.isNotEmpty) {
-        double lat = double.parse(data[0]['lat']);
-        double lon = double.parse(data[0]['lon']);
-        _moverMapa(LatLng(lat, lon));
-        _searchController.clear();
-      }
-    } catch (e) {
-      debugPrint("Error buscando: $e");
-    } finally {
-      setState(() => _cargando = false);
-    }
-  }
-
-  //
-  Future<List<dynamic>> _obtenerSugerencias(String query) async {
-    if (query.length < 3)
-      return []; // Evitar consultas con muy pocos caracteres
-
-    final url = Uri.parse(
-      'https://nominatim.openstreetmap.org/search?q=${Uri.encodeComponent(query)}&format=json&limit=5&addressdetails=1',
-    );
-
-    try {
-      final response = await http.get(url, headers: {'User-Agent': 'BravoApp'});
-      if (response.statusCode == 200) {
-        return json.decode(response.body) as List;
-      }
-    } catch (e) {
-      debugPrint("Error obteniendo sugerencias: $e");
-    }
-    return [];
-  }
-
-  // --- LÓGICA 2: GPS
   Future<void> _obtenerUbicacionGPS() async {
     final locationService = LocationService();
     try {
@@ -158,12 +109,11 @@ class _DireccionScreenState extends State<DireccionScreen> {
     }
   }
 
-  // --- LÓGICA 3: GUARDADO (Protección MongoDB contra errores) ---
+  // --- LÓGICA 3: GUARDADO SEGURO (Protección MongoDB) ---
   Future<void> _confirmarYGuardar() async {
-    // Bloqueo de seguridad: No guardamos basura en la BD
     if (_direccionTexto.contains("no disponible") ||
         _direccionTexto == "Cargando...") {
-      _mostrarError("Selecciona una ubicación válida antes de guardar.");
+      _mostrarError("Por favor, selecciona una ubicación válida.");
       return;
     }
 
@@ -180,14 +130,14 @@ class _DireccionScreenState extends State<DireccionScreen> {
       if (widget.soloSeleccionar) {
         Navigator.pop(context, {
           'direccion': direccionFinal,
-          'lat': _puntoActual.latitude,
-          'lng': _puntoActual.longitude,
+          'latitud': _puntoActual.latitude,
+          'longitud': _puntoActual.longitude,
         });
         return;
       }
 
       final userId = auth.usuarioActual?.id;
-      if (userId == null) throw "Sesión expirada";
+      if (userId == null) throw "Sesión no válida";
 
       bool exito = await usuarioService.actualizarDireccion(
         userId: userId,
@@ -202,10 +152,16 @@ class _DireccionScreenState extends State<DireccionScreen> {
           nuevaLat: _puntoActual.latitude,
           nuevaLon: _puntoActual.longitude,
         );
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("¡Dirección guardada!"),
+            backgroundColor: Colors.green,
+          ),
+        );
         Navigator.pop(context);
       }
     } catch (e) {
-      _mostrarError("Error al guardar: $e");
+      _mostrarError("Error: $e");
     } finally {
       if (mounted) setState(() => _cargando = false);
     }
@@ -213,20 +169,21 @@ class _DireccionScreenState extends State<DireccionScreen> {
 
   void _mostrarError(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: AppColors.error),
+      SnackBar(content: Text(msg), backgroundColor: Colors.redAccent),
     );
   }
 
+  // --- DISEÑO ---
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
 
     return ClienteAuthScaffold(
       maxWidth: double.infinity,
-      padding: EdgeInsets.zero,
+      padding: EdgeInsets.zero, // Mapa de borde a borde
       child: Column(
         children: [
-          // SECCIÓN MAPA (Tamaño fijo para evitar errores de renderizado)
+          // 1. MAPA (45% del alto de pantalla)
           SizedBox(
             height: size.height * 0.45,
             child: Stack(
@@ -237,20 +194,15 @@ class _DireccionScreenState extends State<DireccionScreen> {
                     initialCenter: _puntoActual,
                     initialZoom: 17,
                     onPositionChanged: (pos, hasGesture) {
-                      setState(
-                        () => _puntoActual = pos.center!,
-                      ); // Movimiento visual fluido
+                      setState(() => _puntoActual = pos.center!);
                       if (hasGesture) {
                         _debounceTimer?.cancel();
                         _debounceTimer = Timer(
                           const Duration(milliseconds: 500),
                           () {
-                            _obtenerDireccionDesdeCoords(
-                              pos.center!,
-                            ); // Llamada a API con retraso
+                            _obtenerDireccionDesdeCoords(pos.center!);
                           },
                         );
-                        _obtenerDireccionDesdeCoords(position.center);
                       }
                     },
                   ),
@@ -268,46 +220,46 @@ class _DireccionScreenState extends State<DireccionScreen> {
                           child: const Icon(
                             Icons.location_on,
                             color: Colors.red,
-                            size: 40,
+                            size: 45,
                           ),
-                          width: 80,
-                          height: 80,
-                          child: const Icon(Icons.location_on, color: AppColors.error, size: 45),
                         ),
                       ],
                     ),
                   ],
                 ),
-                // Barra de búsqueda (Estilo Login)
+                // Barra de búsqueda flotante
                 Positioned(
                   top: 10,
-                  left: 10,
-                  right: 10,
+                  left: 15,
+                  right: 15,
                   child: _buildBarraBusqueda(),
                 ),
               ],
             ),
           ),
 
-          // SECCIÓN FORMULARIO (Diseño idéntico al Login)
+          // 2. FORMULARIO (Padding lateral para textos)
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 25),
             child: Column(
               children: [
                 const AuthHeader(
-                  titulo: 'Tu dirección de entrega es:',
-                  // subtitulo: 'Confirma dónde enviaremos tu pedido',
+                  titulo: 'Tu Dirección',
+                  subtitulo: 'Confirma dónde enviaremos tu pedido',
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 25),
 
+                // Caja de Dirección Detectada (SOLO LECTURA)
                 EntradaTexto(
-                  etiqueta: 'Dirección detectada',
+                  etiqueta: 'Dirección actual',
                   icono: Icons.map_outlined,
                   controlador: _direccionController,
-                  readOnly: true,
+                  readOnly: true, // El cambio que hicimos en el componente
                 ),
+
                 const SizedBox(height: 15),
 
+                // Caja de Piso/Puerta (EDITABLE)
                 EntradaTexto(
                   etiqueta: 'Piso, Puerta, Bloque...',
                   icono: Icons.apartment,
@@ -316,7 +268,7 @@ class _DireccionScreenState extends State<DireccionScreen> {
 
                 const SizedBox(height: 15),
 
-                // Botón GPS sutil
+                // Botón GPS
                 TextButton.icon(
                   onPressed: _cargando ? null : _obtenerUbicacionGPS,
                   icon: const Icon(
@@ -330,63 +282,16 @@ class _DireccionScreenState extends State<DireccionScreen> {
                       color: Colors.white70,
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-          // PARTE INFERIOR: INFO Y ACCIONES
-          Expanded(
-            flex: 1,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              color: Colors.white,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  const Icon(Icons.location_searching_rounded, size: 40, color: Colors.grey),
-                  if (_cargando) const LinearProgressIndicator(),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    child: Text(
-                      _direccionTexto,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-
-                  // BOTÓN GPS
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: OutlinedButton.icon(
-                      icon: const Icon(Icons.my_location),
-                      label: const Text("USAR MI UBICACIÓN ACTUAL"),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF3B82F6),
-                        side: const BorderSide(color: Color(0xFF3B82F6)),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                      ),
-                      onPressed: _cargando ? null : () async {
-                        final gpsMessenger = ScaffoldMessenger.of(context);
-                        final LocationService locationService = LocationService();
-                        try {
-                          Position? position = await locationService.obtenerUbicacionActual();
-                          if (position != null) {
-                            _moverMapa(LatLng(position.latitude, position.longitude));
-                          }
-                        } catch (e) {
-                          if (!mounted) return;
-                          gpsMessenger.showSnackBar(
-                            SnackBar(content: Text("Error de GPS: $e"))
-                          );
-                        }
-                      },
                     ),
                   ),
                 ),
 
-                const SizedBox(height: 30),
+                const SizedBox(height: 25),
 
+                // Botón Principal
                 PrimaryButton(
                   label: 'CONFIRMAR Y GUARDAR',
                   isLoading: _cargando,
-                  // El botón se desactiva solo si la dirección es inválida
                   onPressed:
                       (_direccionTexto.contains("no disponible") ||
                           _direccionTexto == "Cargando...")
@@ -394,68 +299,6 @@ class _DireccionScreenState extends State<DireccionScreen> {
                       : _confirmarYGuardar,
                 ),
               ],
-  ElevatedButton(
-  style: ElevatedButton.styleFrom(
-    backgroundColor: AppColors.backgroundButton,
-    minimumSize: const Size(double.infinity, 55),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-  ),
-  onPressed: _cargando ? null : () async {
-    final messenger = ScaffoldMessenger.of(context);
-    final navigator = Navigator.of(context);
-    if (widget.soloSeleccionar) {
-      navigator.pop({
-        'direccion': _direccionTexto,
-        'latitud': _puntoActual.latitude,
-        'longitud': _puntoActual.longitude,
-      });
-      return;
-    }
-
-    setState(() => _cargando = true);
-
-    final auth = Provider.of<AuthProvider>(context, listen: false);
-    final usuarioService = UsuarioService();
-    final userId = auth.usuarioActual?.id;
-
-    if (userId == null) {
-      _mostrarError("Sesión no válida. Vuelve a loguearte.");
-      return;
-    }
-
-    try {
-      bool exito = await usuarioService.actualizarDireccion(
-        userId: userId,
-        direccion: _direccionTexto,
-        latitud: _puntoActual.latitude,
-        longitud: _puntoActual.longitude,
-      );
-
-      if (exito) {
-        auth.actualizarDireccionLocal(
-          nuevaDir: _direccionTexto,
-          nuevaLat: _puntoActual.latitude,
-          nuevaLon: _puntoActual.longitude,
-        );
-
-        if (!mounted) return;
-        messenger.showSnackBar(
-          const SnackBar(content: Text("¡Ubicación guardada con éxito!"), backgroundColor: AppColors.disp),
-        );
-        navigator.pop();
-      } else {
-        _mostrarError("El servidor no pudo guardar la dirección.");
-      }
-    } catch (e) {
-      _mostrarError("Error de conexión: $e");
-    } finally {
-      if (mounted) setState(() => _cargando = false);
-    }
-  },
-  child: const Text("CONFIRMAR Y GUARDAR", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-)
-                ],
-              ),
             ),
           ),
         ],
@@ -463,93 +306,63 @@ class _DireccionScreenState extends State<DireccionScreen> {
     );
   }
 
+  // --- BUSCADOR (Sugerencias) ---
   Widget _buildBarraBusqueda() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 5),
-      child: TypeAheadField(
-        // --- NUEVO: TypeAheadField para autocompletar direcciones
-        builder: (context, controller, focusNode) {
-          return TextField(
-            controller: controller,
-            focusNode: focusNode,
-            autofocus: false,
-            decoration: InputDecoration(
-              hintText: "Escribe tu calle...",
-              prefixIcon: const Icon(Icons.search, color: Colors.grey),
-              filled: true,
-              fillColor: Colors.white,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 20,
-                vertical: 15,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(15),
-                borderSide: BorderSide.none,
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(15),
-                borderSide: BorderSide(color: Colors.grey.withOpacity(0.2)),
-              ),
-            ),
-          );
-        },
-
-        //llama a la API mientras se escribe
-        suggestionsCallback: (search) => _obtenerSugerencias(search),
-        itemBuilder: (context, suggestion) {
-          return ListTile(
-            leading: const Icon(Icons.location_on_outlined, color: Colors.grey),
-            title: Text(
-              suggestion['display_name'],
-              style: const TextStyle(fontSize: 13),
-            ),
-          );
-        },
-        // lo que pasa al seleccionar una sugerencia
-        onSelected: (suggestion) {
-          double lat = double.parse(suggestion['lat']);
-          double lon = double.parse(suggestion['lon']);
-          LatLng nuevaUbicacion = LatLng(lat, lon);
-
-          // Mover el mapa a la posición seleccionada
-          _moverMapa(nuevaUbicacion);
-          // Limpiar el campo de búsqueda
-          _searchController.clear();
-        },
-        emptyBuilder: (context) => const Padding(
-          padding: EdgeInsets.all(16),
-          child: Text("No se encontraron direcciones"),
-        ),
-      ),
-    );
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(30),
-        boxShadow: const [BoxShadow(blurRadius: 10, color: Colors.black26)],
-      ),
-      child: TextField(
-        controller: _searchController,
+    // 1. AÑADIMOS EL TIPO AQUÍ <Map<String, dynamic>>
+    return TypeAheadField<Map<String, dynamic>>(
+      builder: (context, controller, focusNode) => TextField(
+        controller: controller,
+        focusNode: focusNode,
         decoration: InputDecoration(
-          hintText: "Buscar otra calle...",
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-          border: InputBorder.none,
-          suffixIcon: IconButton(
-            tooltip: 'Buscar dirección',
-            icon: const Icon(Icons.search),
-            onPressed: () => _buscarDireccionEscrita(_searchController.text),
+          hintText: "Escribe tu calle...",
+          prefixIcon: const Icon(Icons.search),
+          filled: true,
+          fillColor: Colors.white,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(15),
+            borderSide: BorderSide.none,
           ),
         ),
-        onSubmitted: _buscarDireccionEscrita,
       ),
-    );
-  }
 
-  void _mostrarError(String mensaje) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text(mensaje),
-      backgroundColor: AppColors.error,
-    ),
-  );
+      suggestionsCallback: (search) async {
+        if (search.length < 3) return [];
+        final url = Uri.parse(
+          'https://nominatim.openstreetmap.org/search?format=json&q=$search&limit=5',
+        );
+        final response = await http.get(
+          url,
+          headers: {'User-Agent': 'BravoApp'},
+        );
+
+        if (response.statusCode == 200) {
+          final List<dynamic> data = json.decode(response.body);
+          // Convertimos explícitamente a una lista de Mapas
+          return data.map((item) => item as Map<String, dynamic>).toList();
+        }
+        return [];
+      },
+
+      // 2. AQUÍ TAMBIÉN ESPECIFICAMOS EL MAPA
+      itemBuilder: (context, Map<String, dynamic> suggestion) {
+        return ListTile(
+          title: Text(
+            suggestion['display_name']?.toString() ?? "Dirección sin nombre",
+            style: const TextStyle(fontSize: 12),
+          ),
+        );
+      },
+
+      // 3. Y AQUÍ TAMBIÉN
+      onSelected: (Map<String, dynamic> suggestion) {
+        _moverMapa(
+          LatLng(
+            double.parse(suggestion['lat'].toString()),
+            double.parse(suggestion['lon'].toString()),
+          ),
+        );
+        _searchController.clear();
+      },
+    );
   }
 }
