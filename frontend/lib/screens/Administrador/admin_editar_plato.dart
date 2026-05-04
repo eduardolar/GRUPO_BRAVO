@@ -3,7 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/models/ingrediente_model.dart';
 import 'package:frontend/models/producto_model.dart';
+import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/services/api_service.dart';
+import 'package:provider/provider.dart';
 
 const _kSheetBg = Color(0xFF1A1A1A);
 const _kBorder = Color(0x33FFFFFF); // white 20%
@@ -278,6 +280,13 @@ class _EditorProductoSheetState extends State<_EditorProductoSheet> {
       }).toList();
 
       final imagen = _imagen.text.trim();
+      // Sucursal del admin actual: al crear, el producto se asigna a su
+      // restaurante; al editar, conservamos el del producto original
+      // (puede pertenecer a otra sucursal si lo está gestionando un
+      // super admin desde otra pantalla).
+      final restauranteId =
+          widget.producto?.restauranteId ??
+          context.read<AuthProvider>().usuarioActual?.restauranteId;
       final datos = <String, dynamic>{
         'nombre': _nombre.text.trim(),
         'descripcion': _descripcion.text.trim(),
@@ -286,6 +295,8 @@ class _EditorProductoSheetState extends State<_EditorProductoSheet> {
         'imagen': imagen,
         'disponible': _disponible,
         'ingredientes': ingredientes,
+        if (restauranteId != null && restauranteId.isNotEmpty)
+          'restaurante_id': restauranteId,
       };
 
       if (_esEdicion) {

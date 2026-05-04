@@ -2,12 +2,16 @@ import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:frontend/components/bravo_app_bar.dart';
+import 'package:frontend/core/app_snackbar.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/models/producto_model.dart';
+import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/screens/Administrador/admin_categorias_tab.dart';
 import 'package:frontend/screens/Administrador/admin_editar_plato.dart';
 import 'package:frontend/services/api_service.dart';
+import 'package:frontend/services/producto_service.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 
 class AdminMenuScreen extends StatefulWidget {
   const AdminMenuScreen({super.key});
@@ -24,6 +28,7 @@ class _AdminMenuScreenState extends State<AdminMenuScreen>
   List<String> _categorias = [];
   List<Producto> _productos = [];
   bool _cargando = true;
+  String? _errorCarga;
 
   @override
   void initState() {
@@ -43,10 +48,22 @@ class _AdminMenuScreenState extends State<AdminMenuScreen>
 
   Future<void> _cargarDatos() async {
     if (!mounted) return;
-    setState(() => _cargando = true);
+    setState(() {
+      _cargando = true;
+      _errorCarga = null;
+    });
+    // Restringimos el listado a la sucursal del admin actual: nunca debe
+    // ver/editar productos de otras sucursales del Grupo. Si no tiene
+    // restaurante asignado (caso legacy) cae a la lista global.
+    final restauranteId = context
+        .read<AuthProvider>()
+        .usuarioActual
+        ?.restauranteId;
     try {
       final categorias = await ApiService.obtenerCategorias();
-      final productos = await ApiService.obtenerProductos();
+      final productos = await ProductoService.obtenerProductos(
+        restauranteId: restauranteId,
+      );
       if (!mounted) return;
       setState(() {
         _categorias = categorias;
@@ -56,9 +73,12 @@ class _AdminMenuScreenState extends State<AdminMenuScreen>
         }
         _cargando = false;
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
-      setState(() => _cargando = false);
+      setState(() {
+        _cargando = false;
+        _errorCarga = e.toString();
+      });
     }
   }
 
@@ -78,8 +98,11 @@ class _AdminMenuScreenState extends State<AdminMenuScreen>
       await ApiService.reordenarProductos(
         reordenados.map((p) => p.id).toList(),
       );
-    } catch (_) {
-      if (mounted) setState(() => _productos = original);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _productos = original);
+        showAppError(context, 'No se pudo guardar el orden: $e');
+      }
     }
   }
 
@@ -128,6 +151,43 @@ class _AdminMenuScreenState extends State<AdminMenuScreen>
                   child: _cargando
                       ? const Center(
                           child: CircularProgressIndicator(color: Colors.white),
+                        )
+                      : _errorCarga != null
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.error_outline,
+                                  color: AppColors.error,
+                                  size: 48,
+                                ),
+                                const SizedBox(height: 12),
+                                const Text(
+                                  'No se pudo cargar la carta',
+                                  style: TextStyle(color: Colors.white),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  _errorCarga!,
+                                  style: const TextStyle(
+                                    color: Colors.white54,
+                                    fontSize: 12,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 16),
+                                ElevatedButton.icon(
+                                  onPressed: _cargarDatos,
+                                  icon: const Icon(Icons.refresh),
+                                  label: const Text('Reintentar'),
+                                ),
+                              ],
+                            ),
+                          ),
                         )
                       : AnimatedBuilder(
                           animation: _tabController,

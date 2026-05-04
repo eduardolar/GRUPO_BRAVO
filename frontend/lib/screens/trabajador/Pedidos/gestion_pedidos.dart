@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/core/colors_style.dart';
+import 'package:frontend/core/app_snackbar.dart';
 import 'package:frontend/screens/trabajador/Pedidos/comanda_domicilio.dart';
+import 'package:frontend/screens/trabajador/Pedidos/pedidos_listos_screen.dart';
 
 class GestionPedidos extends StatefulWidget {
   const GestionPedidos({super.key});
@@ -105,23 +107,6 @@ class _CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
           letterSpacing: 2.0,
         ),
       ),
-      actions: [
-        Padding(
-          padding: const EdgeInsets.only(right: 16.0),
-          child: IconButton(
-            icon: CircleAvatar(
-              backgroundColor: Colors.white24,
-              radius: 18,
-              child: Icon(
-                Icons.receipt_long_outlined,
-                color: Colors.white,
-                size: 20,
-              ),
-            ),
-            onPressed: () {},
-          ),
-        ),
-      ],
     );
   }
 
@@ -234,6 +219,10 @@ class _HeroSectionPedidos extends StatelessWidget {
 class _ActionButtonsPedidos extends StatelessWidget {
   const _ActionButtonsPedidos();
 
+  void _proximamente(BuildContext context, String accion) {
+    showAppInfo(context, '$accion: próximamente disponible');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -249,19 +238,24 @@ class _ActionButtonsPedidos extends StatelessWidget {
           },
         ),
         _MainButton(
+          icon: Icons.list_alt_outlined,
+          label: "Pedidos listos",
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const PedidosListosScreen()),
+            );
+          },
+        ),
+        _MainButton(
           icon: Icons.edit_outlined,
           label: "Modificar un pedido",
-          onPressed: () {},
+          onPressed: () => _proximamente(context, 'Modificar un pedido'),
         ),
         _MainButton(
           icon: Icons.delete_outline,
           label: "Eliminar un pedido",
-          onPressed: () {},
-        ),
-        _MainButton(
-          icon: Icons.list_alt_outlined,
-          label: "Lista de pedidos",
-          onPressed: () {},
+          onPressed: () => _proximamente(context, 'Eliminar un pedido'),
         ),
       ],
     );

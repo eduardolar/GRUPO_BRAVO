@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/core/colors_style.dart';
+import 'package:frontend/core/app_snackbar.dart';
 import 'package:frontend/screens/trabajador/Pedidos/pedidos_listos_screen.dart';
 import 'package:frontend/screens/trabajador/servicio_trabajador/sacar_cuenta.dart';
 import 'package:frontend/screens/trabajador/servicio_trabajador/seleccion_mesa.dart';
@@ -107,23 +108,6 @@ class _CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
           letterSpacing: 2.0,
         ),
       ),
-      actions: [
-        Padding(
-          padding: const EdgeInsets.only(right: 16.0),
-          child: IconButton(
-            icon: CircleAvatar(
-              backgroundColor: Colors.white24,
-              radius: 18,
-              child: Icon(
-                Icons.room_service_outlined,
-                color: Colors.white,
-                size: 20,
-              ),
-            ),
-            onPressed: () {},
-          ),
-        ),
-      ],
     );
   }
 
@@ -261,7 +245,15 @@ class _ActionButtonsServicio extends StatelessWidget {
         _MainButton(
           icon: Icons.attach_money_outlined,
           label: "Añadir a la cuenta",
-          onPressed: () {},
+          onPressed: () {
+            // Para añadir items hay que elegir primero la mesa: la pantalla
+            // SeleccionMesa muestra el flujo completo y permite continuar.
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SeleccionMesa()),
+            );
+            showAppInfo(context, 'Selecciona la mesa para añadir items');
+          },
         ),
         _MainButton(
           icon: Icons.calculate_outlined,

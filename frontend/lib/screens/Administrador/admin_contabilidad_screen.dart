@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../core/colors_style.dart';
 import '../../models/pedido_model.dart';
+import '../../providers/auth_provider.dart';
 import '../../services/pedido_service.dart';
 import 'package:intl/intl.dart';
 
@@ -13,10 +15,33 @@ class AdminContabilidadScreen extends StatefulWidget {
 }
 
 class _AdminContabilidadScreenState extends State<AdminContabilidadScreen> {
-  DateTime _fechaInicio = DateTime.now();
+  DateTime _fechaInicio = DateTime.now().subtract(const Duration(days: 30));
   DateTime _fechaFin = DateTime.now();
 
   final DateFormat _dateFormat = DateFormat('dd/MM/yyyy');
+
+  late Future<List<Pedido>> _pedidosFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _pedidosFuture = _cargarPedidos();
+  }
+
+  Future<List<Pedido>> _cargarPedidos() {
+    // Filtra por el restaurante del admin para no mezclar sucursales.
+    final restauranteId = context
+        .read<AuthProvider>()
+        .usuarioActual
+        ?.restauranteId;
+    return PedidoService.obtenerTodosLosPedidos(restauranteId: restauranteId);
+  }
+
+  Future<void> _refrescar() async {
+    setState(() {
+      _pedidosFuture = _cargarPedidos();
+    });
+  }
 
   // Función única que abre el calendario pequeño para Desde o Hasta
   Future<void> _seleccionarFecha(BuildContext context, bool esInicio) async {
@@ -85,6 +110,13 @@ class _AdminContabilidadScreenState extends State<AdminContabilidadScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
+        actions: [
+          IconButton(
+            tooltip: 'Refrescar',
+            onPressed: _refrescar,
+            icon: const Icon(Icons.refresh, color: Colors.white),
+          ),
+        ],
       ),
       body: Stack(
         children: [
@@ -120,12 +152,51 @@ class _AdminContabilidadScreenState extends State<AdminContabilidadScreen> {
 
                 Expanded(
                   child: FutureBuilder<List<Pedido>>(
-                    future: PedidoService.obtenerTodosLosPedidos(),
+                    future: _pedidosFuture,
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
                         return const Center(
                           child: CircularProgressIndicator(
                             color: AppColors.button,
+                          ),
+                        );
+                      }
+
+                      if (snapshot.hasError) {
+                        return Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.error_outline,
+                                  color: AppColors.error,
+                                  size: 48,
+                                ),
+                                const SizedBox(height: 12),
+                                const Text(
+                                  'No se pudo cargar la contabilidad',
+                                  style: TextStyle(color: Colors.white),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '${snapshot.error}',
+                                  style: const TextStyle(
+                                    color: Colors.white54,
+                                    fontSize: 12,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 16),
+                                ElevatedButton.icon(
+                                  onPressed: _refrescar,
+                                  icon: const Icon(Icons.refresh),
+                                  label: const Text('Reintentar'),
+                                ),
+                              ],
+                            ),
                           ),
                         );
                       }

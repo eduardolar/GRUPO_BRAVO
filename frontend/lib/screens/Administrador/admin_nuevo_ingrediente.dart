@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/components/Cliente/entrada_texto.dart';
+import 'package:provider/provider.dart';
 import '../../core/colors_style.dart';
+import '../../providers/auth_provider.dart';
 import '../../services/ingredientes_service.dart';
 
 class AdminNuevoIngredienteScreen extends StatefulWidget {
@@ -34,6 +36,13 @@ class _AdminNuevoIngredienteScreenState
   Future<void> _crearIngrediente() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _estaGuardando = true);
+    // Sucursal del admin actual: el ingrediente se asigna SIEMPRE al
+    // restaurante del usuario que lo está creando. Sin esto el ingrediente
+    // quedaba huérfano y los pedidos de su sucursal no podían descontarlo.
+    final restauranteId = context
+        .read<AuthProvider>()
+        .usuarioActual
+        ?.restauranteId;
     try {
       await IngredienteService.crearIngrediente({
         'nombre': _nombreCtrl.text.trim(),
@@ -41,6 +50,9 @@ class _AdminNuevoIngredienteScreenState
         'cantidad_actual': double.parse(_cantidadCtrl.text.trim()),
         'unidad': _unidadSeleccionada,
         'stock_minimo': double.parse(_minimoCtrl.text.trim()),
+        // El backend acepta `restauranteId` (camelCase) en IngredienteCrear.
+        if (restauranteId != null && restauranteId.isNotEmpty)
+          'restauranteId': restauranteId,
       });
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
