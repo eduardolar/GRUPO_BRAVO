@@ -1,5 +1,7 @@
 ﻿import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../components/Cliente/skeleton.dart';
+import '../../core/app_snackbar.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../core/colors_style.dart';
@@ -497,11 +499,11 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
   }
 
   void _snack(String msg, {bool error = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg),
-      backgroundColor: error ? AppColors.error : AppColors.disp,
-      behavior: SnackBarBehavior.floating,
-    ));
+    if (error) {
+      showAppError(context, msg);
+    } else {
+      showAppSuccess(context, msg);
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -1641,9 +1643,9 @@ class _SkeletonReservasState extends State<_SkeletonReservas>
               padding: const EdgeInsets.fromLTRB(20, 28, 20, 14),
               child: Row(
                 children: [
-                  _caja(96, 11),
+                  const SkeletonBlock.dark(width: 96, height: 11),
                   const SizedBox(width: 10),
-                  _caja(22, 22, radio: 11),
+                  const SkeletonBlock.dark(width: 22, height: 22, borderRadius: 11),
                 ],
               ),
             ),
@@ -1663,7 +1665,7 @@ class _SkeletonReservasState extends State<_SkeletonReservas>
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 14),
-              child: _caja(80, 11),
+              child: const SkeletonBlock.dark(width: 80, height: 11),
             ),
           ),
           SliverPadding(
@@ -1676,23 +1678,6 @@ class _SkeletonReservasState extends State<_SkeletonReservas>
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  /// Caja con pulso dorado
-  Widget _caja(double w, double h, {double radio = 6}) {
-    final t = Curves.easeInOut.transform(_ctrl.value);
-    return Container(
-      width: w,
-      height: h,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(radio),
-        color: Color.lerp(
-          Colors.white.withValues(alpha: 0.05),
-          AppColors.button.withValues(alpha: 0.20),
-          t,
-        ),
       ),
     );
   }
@@ -1735,12 +1720,12 @@ class _SkeletonReservasState extends State<_SkeletonReservas>
                 padding: const EdgeInsets.symmetric(vertical: 20),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _caja(30, 28, radio: 4),
-                    const SizedBox(height: 6),
-                    _caja(22, 10, radio: 3),
-                    const SizedBox(height: 4),
-                    _caja(18, 9, radio: 3),
+                  children: const [
+                    SkeletonBlock.dark(width: 30, height: 28, borderRadius: 4),
+                    SizedBox(height: 6),
+                    SkeletonBlock.dark(width: 22, height: 10, borderRadius: 3),
+                    SizedBox(height: 4),
+                    SkeletonBlock.dark(width: 18, height: 9, borderRadius: 3),
                   ],
                 ),
               ),
@@ -1751,18 +1736,18 @@ class _SkeletonReservasState extends State<_SkeletonReservas>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
+                      const Row(
                         children: [
-                          _caja(56, 20, radio: 6),
-                          const SizedBox(width: 8),
-                          _caja(68, 20, radio: 6),
+                          SkeletonBlock.dark(width: 56, height: 20),
+                          SizedBox(width: 8),
+                          SkeletonBlock.dark(width: 68, height: 20),
                         ],
                       ),
                       const SizedBox(height: 10),
-                      _caja(double.infinity, 14, radio: 4),
+                      const SkeletonBlock.dark(height: 14, borderRadius: 4),
                       if (notas) ...[
                         const SizedBox(height: 8),
-                        _caja(120, 11, radio: 4),
+                        const SkeletonBlock.dark(width: 120, height: 11, borderRadius: 4),
                       ],
                     ],
                   ),

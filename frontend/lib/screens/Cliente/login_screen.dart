@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:frontend/core/app_routes.dart';
+import 'package:frontend/core/app_snackbar.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/models/usuario_model.dart';
@@ -174,7 +175,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final password = _passwordController.text;
 
     if (email.isEmpty || password.isEmpty) {
-      _showSnackBar('Por favor, completa todos los campos');
+      showAppError(context, 'Por favor, completa todos los campos');
       return;
     }
 
@@ -191,7 +192,7 @@ class _LoginScreenState extends State<LoginScreen> {
       // 2. CASO 2FA: Si la respuesta indica que requiere verificación por correo
       if (respuesta != null && respuesta['requires_2fa'] == true) {
         final emailParaVerificar = respuesta['correo'] ?? email; // Usar el email del formulario si no viene en la respuesta
-        _showSnackBar('¡Revisa tu bandeja de entrada! Te hemos enviado un código.', isError: false);
+        showAppSuccess(context, '¡Revisa tu bandeja de entrada! Te hemos enviado un código.');
 
         Navigator.push(
           context,
@@ -209,7 +210,7 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
     } catch (e) {
-      if (mounted) _showSnackBar('Error: ${e.toString()}');
+      if (mounted) showAppError(context, 'Error: ${e.toString()}');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -245,21 +246,4 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-void _showSnackBar(String message, {bool isError = true}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          message, 
-          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)
-        ),
-        // Si isError es true pinta tu AppColors.error, si es false pinta el verde
-        backgroundColor: isError ? AppColors.error : const Color.fromARGB(255, 16, 230, 27),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-        margin: const EdgeInsets.all(16),
-      ),
-    );
-  }
 }

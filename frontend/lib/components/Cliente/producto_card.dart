@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../models/producto_model.dart';
@@ -38,29 +39,24 @@ class ProductoCard extends StatelessWidget {
           SizedBox(
             height: 170,
             width: double.infinity,
-            child: product.imagenUrl != null && product.imagenUrl!.isNotEmpty
-                ? Image.network(
-                    product.imagenUrl!,
-                    fit: BoxFit.cover,
-                    loadingBuilder: (context, child, progress) {
-                      if (progress == null) return child;
-                      return Container(
-                        color: AppColors.background,
-                        child: Center(
-                          child: SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 1.5,
-                              color: AppColors.button,
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                    errorBuilder: (context, err, stack) => const _ImagePlaceholder(),
-                  )
-                : const _ImagePlaceholder(),
+            child: CachedNetworkImage(
+              imageUrl: product.imagenUrl ?? '',
+              fit: BoxFit.cover,
+              placeholder: (_, __) => Container(
+                color: AppColors.background,
+                child: const Center(
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 1.5,
+                      color: AppColors.button,
+                    ),
+                  ),
+                ),
+              ),
+              errorWidget: (_, __, ___) => const _ImagePlaceholder(),
+            ),
           ),
 
           // Separador horizontal editorial
