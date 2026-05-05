@@ -7,7 +7,7 @@ import 'http_client.dart';
 import 'auth_session.dart';
 
 class MesaService {
-  static Future<List<Mesa>> obtenerMesas() async {
+  static Future<List<Mesa>> obtenerMesas({String? restauranteId}) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 300));
       return List.from(MockData.mesas);
@@ -18,7 +18,16 @@ class MesaService {
     );
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
-      return data.map((m) => Mesa.fromMap(m as Map<String, dynamic>)).toList();
+      final mesas = data.map((m) => Mesa.fromMap(m as Map<String, dynamic>)).toList();
+
+      // El backend no filtra por restaurante, pero el código QR lleva
+      // los últimos 6 caracteres del restauranteId en mayúsculas como sufijo:
+      // Ej: restauranteId "69de6289c4e3ea3a8c771e6d" → QR termina en "_771E6D"
+      if (restauranteId != null && restauranteId.length >= 6) {
+        final sufijo = '_${restauranteId.substring(restauranteId.length - 6).toUpperCase()}';
+        return mesas.where((m) => m.codigoQr.toUpperCase().endsWith(sufijo)).toList();
+      }
+      return mesas;
     }
     throw toApiException(response.statusCode, decodeBody(response));
   }
