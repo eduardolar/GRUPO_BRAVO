@@ -738,12 +738,36 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       if (!mounted) return;
       setState(() => _estaCargando = false);
 
-      // 3. Abrir Stripe en otra pestaña
-      await launchUrl(Uri.parse(checkoutUrl), webOnlyWindowName: '_blank');
+      // 3. Abrir Stripe Checkout.
+      //
+      //    En **web**: redirect en la misma pestaña (`_self`). Es el
+      //    comportamiento natural de Stripe Checkout: tras pagar redirige
+      //    a `success_url`, que es la home con `?stripe_session=...`. La
+      //    propia home (inicio_screen._verificarStripeRedirect) detecta
+      //    el retorno y abre `PedidoConfirmadoScreen`. Por tanto el código
+      //    que viene después NO se ejecuta en web — vaciamos el carrito
+      //    aquí porque la página se va.
+      //
+      //    En **móvil/desktop**: navegador externo + diálogo de
+      //    verificación al volver. Aquí el carrito se vacía solo si el
+      //    pago se confirma.
+      if (kIsWeb) {
+        context.read<CartProvider>().clearCart();
+        await launchUrl(
+          Uri.parse(checkoutUrl),
+          webOnlyWindowName: '_self',
+        );
+        return;
+      }
+
+      await launchUrl(
+        Uri.parse(checkoutUrl),
+        mode: LaunchMode.externalApplication,
+      );
 
       if (!mounted) return;
 
-      // 4. Diálogo de verificación
+      // 4. Diálogo de verificación (solo móvil/desktop).
       final confirmado = await showDialog<bool>(
         context: context,
         barrierDismissible: false,
