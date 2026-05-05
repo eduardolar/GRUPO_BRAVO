@@ -1,12 +1,17 @@
 import 'dart:ui';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:frontend/components/bravo_app_bar.dart';
+import 'package:frontend/core/app_snackbar.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/models/producto_model.dart';
+import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/screens/Administrador/admin_categorias_tab.dart';
 import 'package:frontend/screens/Administrador/admin_editar_plato.dart';
 import 'package:frontend/services/api_service.dart';
+import 'package:frontend/services/producto_service.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 
 class AdminMenuScreen extends StatefulWidget {
   const AdminMenuScreen({super.key});
@@ -23,6 +28,7 @@ class _AdminMenuScreenState extends State<AdminMenuScreen>
   List<String> _categorias = [];
   List<Producto> _productos = [];
   bool _cargando = true;
+  String? _errorCarga;
 
   @override
   void initState() {
@@ -42,10 +48,22 @@ class _AdminMenuScreenState extends State<AdminMenuScreen>
 
   Future<void> _cargarDatos() async {
     if (!mounted) return;
-    setState(() => _cargando = true);
+    setState(() {
+      _cargando = true;
+      _errorCarga = null;
+    });
+    // Restringimos el listado a la sucursal del admin actual: nunca debe
+    // ver/editar productos de otras sucursales del Grupo. Si no tiene
+    // restaurante asignado (caso legacy) cae a la lista global.
+    final restauranteId = context
+        .read<AuthProvider>()
+        .usuarioActual
+        ?.restauranteId;
     try {
       final categorias = await ApiService.obtenerCategorias();
-      final productos = await ApiService.obtenerProductos();
+      final productos = await ProductoService.obtenerProductos(
+        restauranteId: restauranteId,
+      );
       if (!mounted) return;
       setState(() {
         _categorias = categorias;
@@ -55,16 +73,21 @@ class _AdminMenuScreenState extends State<AdminMenuScreen>
         }
         _cargando = false;
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
-      setState(() => _cargando = false);
+      setState(() {
+        _cargando = false;
+        _errorCarga = e.toString();
+      });
     }
   }
 
   void _reordenarProductos(int oldIndex, int newIndex) async {
     if (newIndex > oldIndex) newIndex--;
     final categoria = _categorias[_selectedCategoryIndex];
-    final filtrados = _productos.where((p) => p.categoria == categoria).toList();
+    final filtrados = _productos
+        .where((p) => p.categoria == categoria)
+        .toList();
     final otros = _productos.where((p) => p.categoria != categoria).toList();
     final original = List<Producto>.from(_productos);
     final reordenados = List<Producto>.from(filtrados);
@@ -72,9 +95,14 @@ class _AdminMenuScreenState extends State<AdminMenuScreen>
     reordenados.insert(newIndex, moved);
     setState(() => _productos = [...reordenados, ...otros]);
     try {
-      await ApiService.reordenarProductos(reordenados.map((p) => p.id).toList());
-    } catch (_) {
-      if (mounted) setState(() => _productos = original);
+      await ApiService.reordenarProductos(
+        reordenados.map((p) => p.id).toList(),
+      );
+    } catch (e) {
+      if (mounted) {
+        setState(() => _productos = original);
+        showAppError(context, 'No se pudo guardar el orden: $e');
+      }
     }
   }
 
@@ -122,8 +150,43 @@ class _AdminMenuScreenState extends State<AdminMenuScreen>
                 Expanded(
                   child: _cargando
                       ? const Center(
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
+                          child: CircularProgressIndicator(color: Colors.white),
+                        )
+                      : _errorCarga != null
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.error_outline,
+                                  color: AppColors.error,
+                                  size: 48,
+                                ),
+                                const SizedBox(height: 12),
+                                const Text(
+                                  'No se pudo cargar la carta',
+                                  style: TextStyle(color: Colors.white),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  _errorCarga!,
+                                  style: const TextStyle(
+                                    color: Colors.white54,
+                                    fontSize: 12,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 16),
+                                ElevatedButton.icon(
+                                  onPressed: _cargarDatos,
+                                  icon: const Icon(Icons.refresh),
+                                  label: const Text('Reintentar'),
+                                ),
+                              ],
+                            ),
                           ),
                         )
                       : AnimatedBuilder(
@@ -306,8 +369,9 @@ class _AdminMenuScreenState extends State<AdminMenuScreen>
                                     child: Container(
                                       padding: const EdgeInsets.all(6),
                                       decoration: BoxDecoration(
-                                        color: Colors.black
-                                            .withValues(alpha: 0.45),
+                                        color: Colors.black.withValues(
+                                          alpha: 0.45,
+                                        ),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: const Icon(
@@ -363,8 +427,7 @@ class _AdminMenuScreenState extends State<AdminMenuScreen>
                   _categorias[index],
                   style: TextStyle(
                     color: isSelected ? Colors.white : Colors.white70,
-                    fontWeight:
-                        isSelected ? FontWeight.w700 : FontWeight.w500,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                   ),
                 ),
               ),
@@ -402,14 +465,11 @@ class _ProductoAdminCard extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             if (imagen != null && imagen.isNotEmpty)
-              Image.network(
-                imagen,
+              CachedNetworkImage(
+                imageUrl: imagen,
                 fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => _imgFallback(),
-                loadingBuilder: (_, child, progress) {
-                  if (progress == null) return child;
-                  return _imgFallback();
-                },
+                errorWidget: (_, _, _) => _imgFallback(),
+                placeholder: (_, _) => _imgFallback(),
               )
             else
               _imgFallback(),
@@ -511,13 +571,13 @@ class _ProductoAdminCard extends StatelessWidget {
   }
 
   Widget _imgFallback() => Container(
-        color: Colors.black38,
-        child: Icon(
-          Icons.restaurant,
-          color: Colors.white.withValues(alpha: 0.20),
-          size: 32,
-        ),
-      );
+    color: Colors.black38,
+    child: Icon(
+      Icons.restaurant,
+      color: Colors.white.withValues(alpha: 0.20),
+      size: 32,
+    ),
+  );
 }
 
 class _EditarPill extends StatelessWidget {
@@ -534,9 +594,7 @@ class _EditarPill extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.button,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.25),
-          ),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.35),

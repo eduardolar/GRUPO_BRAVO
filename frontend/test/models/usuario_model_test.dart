@@ -97,13 +97,13 @@ void main() {
 
   group('Usuario rol parsing', () {
     Usuario parseRol(String rol) => Usuario.fromJson({
-          'id': 'u1',
-          'nombre': 'Test',
-          'correo': 'test@test.com',
-          'telefono': '',
-          'direccion': '',
-          'rol': rol,
-        });
+      'id': 'u1',
+      'nombre': 'Test',
+      'correo': 'test@test.com',
+      'telefono': '',
+      'direccion': '',
+      'rol': rol,
+    });
 
     test('superadmin → superadministrador', () {
       expect(parseRol('superadmin').rol, RolUsuario.superadministrador);

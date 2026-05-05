@@ -36,6 +36,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
     _direccionController = TextEditingController(
       text: usuario?.direccion ?? '',
     );
+    _direccionController = TextEditingController(
+      text: usuario?.direccion ?? '',
+    );
 
     _telefonoController.addListener(_detectarCambios);
     _direccionController.addListener(_detectarCambios);
@@ -121,9 +124,19 @@ class _PerfilScreenState extends State<PerfilScreen> {
               color: Colors.redAccent,
               size: 26,
             ),
+            Icon(
+              Icons.warning_amber_rounded,
+              color: Colors.redAccent,
+              size: 26,
+            ),
             SizedBox(width: 10),
             Text(
               'Eliminar cuenta',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 18,
@@ -149,6 +162,13 @@ class _PerfilScreenState extends State<PerfilScreen> {
                     shape: const RoundedRectangleBorder(
                       borderRadius: BorderRadius.zero,
                     ),
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: BorderRadius.zero,
+                    ),
+                  ),
+                  child: const Text(
+                    'CANCELAR',
+                    style: TextStyle(fontSize: 13, letterSpacing: 1),
                   ),
                   child: const Text(
                     'CANCELAR',
@@ -170,7 +190,18 @@ class _PerfilScreenState extends State<PerfilScreen> {
                     shape: const RoundedRectangleBorder(
                       borderRadius: BorderRadius.zero,
                     ),
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: BorderRadius.zero,
+                    ),
                     elevation: 0,
+                  ),
+                  child: const Text(
+                    'ELIMINAR',
+                    style: TextStyle(
+                      fontSize: 13,
+                      letterSpacing: 1,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   child: const Text(
                     'ELIMINAR',
@@ -232,6 +263,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
           padding: EdgeInsets.only(
             bottom: MediaQuery.of(ctx).viewInsets.bottom,
           ),
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
+          ),
           child: Container(
             decoration: const BoxDecoration(
               color: AppColors.gold,
@@ -252,11 +286,23 @@ class _PerfilScreenState extends State<PerfilScreen> {
                         color: Colors.white24,
                         borderRadius: BorderRadius.circular(2),
                       ),
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 20),
                   const Text(
                     'Desactivar 2FA',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'Playfair Display',
+                    ),
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 20,
@@ -271,6 +317,10 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       color: Colors.white.withValues(alpha: 0.6),
                       fontSize: 13,
                     ),
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.6),
+                      fontSize: 13,
+                    ),
                   ),
                   const SizedBox(height: 20),
                   _campoSheet(
@@ -279,6 +329,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
                     oculto: false,
                     onToggle: () {},
                     validator: (v) {
+                      if (v == null || v.trim().length != 6) {
+                        return 'Introduce el código de 6 dígitos';
+                      }
                       if (v == null || v.trim().length != 6) {
                         return 'Introduce el código de 6 dígitos';
                       }
@@ -297,8 +350,57 @@ class _PerfilScreenState extends State<PerfilScreen> {
                         shape: const RoundedRectangleBorder(
                           borderRadius: BorderRadius.zero,
                         ),
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: BorderRadius.zero,
+                        ),
                         elevation: 0,
                       ),
+                      onPressed: cargando
+                          ? null
+                          : () async {
+                              if (!formKey.currentState!.validate()) return;
+                              setSheet(() => cargando = true);
+                              try {
+                                final auth = Provider.of<AuthProvider>(
+                                  context,
+                                  listen: false,
+                                );
+                                await auth.desactivar2fa(
+                                  codigoCtrl.text.trim(),
+                                );
+                                if (ctx.mounted) Navigator.pop(ctx);
+                                if (mounted) {
+                                  setState(() {});
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        '2FA desactivado correctamente',
+                                      ),
+                                      backgroundColor: Colors.green,
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                if (ctx.mounted) {
+                                  setSheet(() => cargando = false);
+                                }
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        e.toString().replaceAll(
+                                          'Exception: ',
+                                          '',
+                                        ),
+                                      ),
+                                      backgroundColor: AppColors.error,
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                }
+                              }
+                            },
                       onPressed: cargando
                           ? null
                           : () async {
@@ -362,6 +464,22 @@ class _PerfilScreenState extends State<PerfilScreen> {
                                 fontSize: 13,
                               ),
                             ),
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Text(
+                              'DESACTIVAR 2FA',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.5,
+                                fontSize: 13,
+                              ),
+                            ),
                     ),
                   ),
                 ],
@@ -392,6 +510,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
           padding: EdgeInsets.only(
             bottom: MediaQuery.of(ctx).viewInsets.bottom,
           ),
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
+          ),
           child: Container(
             decoration: const BoxDecoration(
               color: AppColors.gold,
@@ -407,6 +528,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
                   // Handle
                   Center(
                     child: Container(
+                      width: 40,
+                      height: 4,
                       width: 40,
                       height: 4,
                       decoration: BoxDecoration(
@@ -434,6 +557,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
                     validator: (v) => (v == null || v.isEmpty)
                         ? 'Introduce tu contraseña actual'
                         : null,
+                    validator: (v) => (v == null || v.isEmpty)
+                        ? 'Introduce tu contraseña actual'
+                        : null,
                   ),
                   const SizedBox(height: 12),
                   _campoSheet(
@@ -445,7 +571,16 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       if (v == null || v.isEmpty) {
                         return 'Introduce la nueva contraseña';
                       }
+                      if (v == null || v.isEmpty) {
+                        return 'Introduce la nueva contraseña';
+                      }
                       if (v.length < 8) return 'Mínimo 8 caracteres';
+                      if (!RegExp(r'[A-Z]').hasMatch(v)) {
+                        return 'Falta una mayúscula';
+                      }
+                      if (!RegExp(r'[0-9]').hasMatch(v)) {
+                        return 'Falta un número';
+                      }
                       if (!RegExp(r'[A-Z]').hasMatch(v)) {
                         return 'Falta una mayúscula';
                       }
@@ -465,6 +600,11 @@ class _PerfilScreenState extends State<PerfilScreen> {
                     validator: (v) => v != nuevaCtrl.text
                         ? 'Las contraseñas no coinciden'
                         : null,
+                    onToggle: () =>
+                        setSheet(() => verConfirmar = !verConfirmar),
+                    validator: (v) => v != nuevaCtrl.text
+                        ? 'Las contraseñas no coinciden'
+                        : null,
                   ),
                   const SizedBox(height: 24),
                   SizedBox(
@@ -478,8 +618,57 @@ class _PerfilScreenState extends State<PerfilScreen> {
                         shape: const RoundedRectangleBorder(
                           borderRadius: BorderRadius.zero,
                         ),
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: BorderRadius.zero,
+                        ),
                         elevation: 0,
                       ),
+                      onPressed: cargando
+                          ? null
+                          : () async {
+                              if (!formKey.currentState!.validate()) return;
+                              setSheet(() => cargando = true);
+                              try {
+                                final auth = Provider.of<AuthProvider>(
+                                  context,
+                                  listen: false,
+                                );
+                                await auth.cambiarContrasena(
+                                  passwordActual: actualCtrl.text,
+                                  nuevaPassword: nuevaCtrl.text,
+                                );
+                                if (ctx.mounted) Navigator.pop(ctx);
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Contraseña actualizada correctamente',
+                                      ),
+                                      backgroundColor: Colors.green,
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                if (ctx.mounted) {
+                                  setSheet(() => cargando = false);
+                                }
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        e.toString().replaceAll(
+                                          'Exception: ',
+                                          '',
+                                        ),
+                                      ),
+                                      backgroundColor: AppColors.error,
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                }
+                              }
+                            },
                       onPressed: cargando
                           ? null
                           : () async {
@@ -543,6 +732,22 @@ class _PerfilScreenState extends State<PerfilScreen> {
                                 fontSize: 13,
                               ),
                             ),
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Text(
+                              'CAMBIAR CONTRASEÑA',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.5,
+                                fontSize: 13,
+                              ),
+                            ),
                     ),
                   ),
                 ],
@@ -577,7 +782,21 @@ class _PerfilScreenState extends State<PerfilScreen> {
           color: AppColors.button,
           size: 20,
         ),
+        labelStyle: TextStyle(
+          color: Colors.white.withValues(alpha: 0.5),
+          fontSize: 14,
+        ),
+        prefixIcon: const Icon(
+          Icons.lock_outline,
+          color: AppColors.button,
+          size: 20,
+        ),
         suffixIcon: IconButton(
+          icon: Icon(
+            oculto ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+            color: Colors.white38,
+            size: 20,
+          ),
           icon: Icon(
             oculto ? Icons.visibility_off_outlined : Icons.visibility_outlined,
             color: Colors.white38,
@@ -608,12 +827,20 @@ class _PerfilScreenState extends State<PerfilScreen> {
           horizontal: 16,
           vertical: 14,
         ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final usuario = Provider.of<AuthProvider>(
+      context,
+      listen: false,
+    ).usuarioActual;
     final usuario = Provider.of<AuthProvider>(
       context,
       listen: false,
@@ -632,6 +859,10 @@ class _PerfilScreenState extends State<PerfilScreen> {
         children: [
           // Fondo
           Positioned.fill(
+            child: Image.asset(
+              'assets/images/Bravo restaurante.jpg',
+              fit: BoxFit.cover,
+            ),
             child: Image.asset(
               'assets/images/Bravo restaurante.jpg',
               fit: BoxFit.cover,
@@ -663,7 +894,17 @@ class _PerfilScreenState extends State<PerfilScreen> {
                             _nombreController.text,
                             Icons.person_outline,
                           ),
+                          _buildCampoInfo(
+                            'Nombre completo',
+                            _nombreController.text,
+                            Icons.person_outline,
+                          ),
                           const SizedBox(height: 12),
+                          _buildCampoInfo(
+                            'Correo electrónico',
+                            _emailController.text,
+                            Icons.email_outlined,
+                          ),
                           _buildCampoInfo(
                             'Correo electrónico',
                             _emailController.text,
@@ -674,8 +915,20 @@ class _PerfilScreenState extends State<PerfilScreen> {
                             'Teléfono',
                             _telefonoController,
                             Icons.phone_outlined,
+                          _buildCampo(
+                            'Teléfono',
+                            _telefonoController,
+                            Icons.phone_outlined,
                             keyboardType: TextInputType.phone,
                             validator: (v) {
+                              if (v == null || v.trim().isEmpty) {
+                                return 'El teléfono es obligatorio';
+                              }
+                              if (!RegExp(
+                                r'^\+?\d{6,15}$',
+                              ).hasMatch(v.trim())) {
+                                return 'Teléfono no válido';
+                              }
                               if (v == null || v.trim().isEmpty) {
                                 return 'El teléfono es obligatorio';
                               }
@@ -699,7 +952,15 @@ class _PerfilScreenState extends State<PerfilScreen> {
                                   color: AppColors.button,
                                   size: 20,
                                 ),
+                                suffixIcon: const Icon(
+                                  Icons.chevron_right,
+                                  color: AppColors.button,
+                                  size: 20,
+                                ),
                                 validator: (v) {
+                                  if (v == null || v.trim().isEmpty) {
+                                    return 'La dirección es obligatoria';
+                                  }
                                   if (v == null || v.trim().isEmpty) {
                                     return 'La dirección es obligatoria';
                                   }
@@ -718,12 +979,20 @@ class _PerfilScreenState extends State<PerfilScreen> {
                               onPressed: (_hayCambios && !_isLoading)
                                   ? _guardarCambios
                                   : null,
+                              onPressed: (_hayCambios && !_isLoading)
+                                  ? _guardarCambios
+                                  : null,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.button,
                                 disabledBackgroundColor: Colors.white
                                     .withValues(alpha: 0.08),
+                                disabledBackgroundColor: Colors.white
+                                    .withValues(alpha: 0.08),
                                 foregroundColor: Colors.white,
                                 disabledForegroundColor: Colors.white38,
+                                shape: const RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.zero,
+                                ),
                                 shape: const RoundedRectangleBorder(
                                   borderRadius: BorderRadius.zero,
                                 ),
@@ -738,7 +1007,23 @@ class _PerfilScreenState extends State<PerfilScreen> {
                                         strokeWidth: 2,
                                       ),
                                     )
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                        strokeWidth: 2,
+                                      ),
+                                    )
                                   : Text(
+                                      _hayCambios
+                                          ? 'GUARDAR CAMBIOS'
+                                          : 'SIN CAMBIOS',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 2,
+                                        fontSize: 13,
+                                      ),
                                       _hayCambios
                                           ? 'GUARDAR CAMBIOS'
                                           : 'SIN CAMBIOS',
@@ -765,6 +1050,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
                             builder: (_, auth, _) {
                               final totp2fa =
                                   auth.usuarioActual?.totpEnabled ?? false;
+                              final totp2fa =
+                                  auth.usuarioActual?.totpEnabled ?? false;
                               return _buildAccion2fa(habilitado: totp2fa);
                             },
                           ),
@@ -773,6 +1060,13 @@ class _PerfilScreenState extends State<PerfilScreen> {
                             _buildAccion(
                               icono: Icons.receipt_long_outlined,
                               label: 'Historial de pedidos',
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      const HistorialPedidosScreen(),
+                                ),
+                              ),
                               onTap: () => Navigator.push(
                                 context,
                                 MaterialPageRoute(
@@ -791,8 +1085,15 @@ class _PerfilScreenState extends State<PerfilScreen> {
                                 context,
                                 listen: false,
                               ).cerrarSesion();
+                              await Provider.of<AuthProvider>(
+                                context,
+                                listen: false,
+                              ).cerrarSesion();
                               if (!context.mounted) return;
                               Navigator.of(context).pushAndRemoveUntil(
+                                MaterialPageRoute(
+                                  builder: (_) => const HomeTrabajador(),
+                                ),
                                 MaterialPageRoute(
                                   builder: (_) => const HomeTrabajador(),
                                 ),
@@ -827,6 +1128,11 @@ class _PerfilScreenState extends State<PerfilScreen> {
       child: Row(
         children: [
           IconButton(
+            icon: const Icon(
+              Icons.arrow_back_ios_new,
+              color: Colors.white,
+              size: 20,
+            ),
             icon: const Icon(
               Icons.arrow_back_ios_new,
               color: Colors.white,
@@ -895,6 +1201,10 @@ class _PerfilScreenState extends State<PerfilScreen> {
                   color: Colors.white.withValues(alpha: 0.5),
                   fontSize: 13,
                 ),
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.5),
+                  fontSize: 13,
+                ),
               ),
             ],
           ),
@@ -943,6 +1253,10 @@ class _PerfilScreenState extends State<PerfilScreen> {
                     color: Colors.white.withValues(alpha: 0.5),
                     fontSize: 12,
                   ),
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.5),
+                    fontSize: 12,
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -978,6 +1292,10 @@ class _PerfilScreenState extends State<PerfilScreen> {
           color: Colors.white.withValues(alpha: 0.5),
           fontSize: 14,
         ),
+        labelStyle: TextStyle(
+          color: Colors.white.withValues(alpha: 0.5),
+          fontSize: 14,
+        ),
         prefixIcon: Icon(icono, color: AppColors.button, size: 20),
         suffixIcon: suffixIcon,
         filled: true,
@@ -1003,6 +1321,10 @@ class _PerfilScreenState extends State<PerfilScreen> {
           horizontal: 16,
           vertical: 14,
         ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
       ),
     );
   }
@@ -1023,6 +1345,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
               habilitado
                   ? Icons.verified_user_outlined
                   : Icons.security_outlined,
+              habilitado
+                  ? Icons.verified_user_outlined
+                  : Icons.security_outlined,
               color: habilitado ? Colors.greenAccent : Colors.white70,
               size: 20,
             ),
@@ -1038,13 +1363,24 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
                     ),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     habilitado
                         ? 'Activada — toca para desactivar'
                         : 'No activada — toca para activar',
+                    habilitado
+                        ? 'Activada — toca para desactivar'
+                        : 'No activada — toca para activar',
                     style: TextStyle(
+                      color: habilitado
+                          ? Colors.greenAccent.withValues(alpha: 0.8)
+                          : Colors.white38,
                       color: habilitado
                           ? Colors.greenAccent.withValues(alpha: 0.8)
                           : Colors.white38,
@@ -1080,10 +1416,18 @@ class _PerfilScreenState extends State<PerfilScreen> {
             color: color == Colors.redAccent
                 ? Colors.redAccent.withValues(alpha: 0.3)
                 : Colors.white12,
+            color: color == Colors.redAccent
+                ? Colors.redAccent.withValues(alpha: 0.3)
+                : Colors.white12,
           ),
         ),
         child: Row(
           children: [
+            Icon(
+              icono,
+              color: color == Colors.white ? Colors.white70 : color,
+              size: 20,
+            ),
             Icon(
               icono,
               color: color == Colors.white ? Colors.white70 : color,
@@ -1099,6 +1443,13 @@ class _PerfilScreenState extends State<PerfilScreen> {
                   fontWeight: FontWeight.w500,
                 ),
               ),
+            ),
+            Icon(
+              Icons.chevron_right,
+              color: color == Colors.white
+                  ? Colors.white24
+                  : color.withValues(alpha: 0.5),
+              size: 20,
             ),
             Icon(
               Icons.chevron_right,

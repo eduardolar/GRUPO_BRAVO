@@ -16,29 +16,29 @@ enum _EstadoVisual { enCurso, entregado, cancelado }
 
 extension on _EstadoVisual {
   Color get colorPrimario => switch (this) {
-        _EstadoVisual.cancelado => AppColors.error,
-        _EstadoVisual.entregado => AppColors.disp,
-        _EstadoVisual.enCurso => AppColors.button,
-      };
+    _EstadoVisual.cancelado => AppColors.error,
+    _EstadoVisual.entregado => AppColors.disp,
+    _EstadoVisual.enCurso => AppColors.button,
+  };
 
   IconData get iconoCabecera => switch (this) {
-        _EstadoVisual.cancelado => Icons.close,
-        _EstadoVisual.entregado => Icons.check_circle_outline,
-        _EstadoVisual.enCurso => Icons.check,
-      };
+    _EstadoVisual.cancelado => Icons.close,
+    _EstadoVisual.entregado => Icons.check_circle_outline,
+    _EstadoVisual.enCurso => Icons.check,
+  };
 
   String get titulo => switch (this) {
-        _EstadoVisual.cancelado => 'PEDIDO CANCELADO',
-        _EstadoVisual.entregado => 'PEDIDO ENTREGADO',
-        _EstadoVisual.enCurso => 'PEDIDO CONFIRMADO',
-      };
+    _EstadoVisual.cancelado => 'PEDIDO CANCELADO',
+    _EstadoVisual.entregado => 'PEDIDO ENTREGADO',
+    _EstadoVisual.enCurso => 'PEDIDO CONFIRMADO',
+  };
 
   String get subtitulo => switch (this) {
-        _EstadoVisual.cancelado => 'Este pedido ha sido cancelado.',
-        _EstadoVisual.entregado => '¡Que lo disfrutes!',
-        _EstadoVisual.enCurso =>
-          'Tu pedido se ha procesado con éxito.\nEstamos preparándolo.',
-      };
+    _EstadoVisual.cancelado => 'Este pedido ha sido cancelado.',
+    _EstadoVisual.entregado => '¡Que lo disfrutes!',
+    _EstadoVisual.enCurso =>
+      'Tu pedido se ha procesado con éxito.\nEstamos preparándolo.',
+  };
 }
 
 class _TipoEntregaInfo {
@@ -98,8 +98,7 @@ class PedidoConfirmadoScreen extends StatefulWidget {
   });
 
   @override
-  State<PedidoConfirmadoScreen> createState() =>
-      _PedidoConfirmadoScreenState();
+  State<PedidoConfirmadoScreen> createState() => _PedidoConfirmadoScreenState();
 }
 
 class _PedidoConfirmadoScreenState extends State<PedidoConfirmadoScreen>
@@ -183,9 +182,7 @@ class _PedidoConfirmadoScreenState extends State<PedidoConfirmadoScreen>
       (icono: Icons.receipt_long_outlined, label: 'Recibido'),
       (icono: Icons.restaurant_outlined, label: 'En preparación'),
       (
-        icono: esDomicilio
-            ? Icons.delivery_dining
-            : Icons.storefront_outlined,
+        icono: esDomicilio ? Icons.delivery_dining : Icons.storefront_outlined,
         label: esDomicilio ? 'En camino' : 'Listo',
       ),
       (
@@ -226,7 +223,10 @@ class _PedidoConfirmadoScreenState extends State<PedidoConfirmadoScreen>
             SafeArea(
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  final maxW = constraints.maxWidth.clamp(0.0, 520.0);
+                  // 640 da más respiración en escritorio sin que el resumen
+                  // (con sus filas etiqueta + valor) se quede comprimido.
+                  // En móvil el clamp deja que ocupe todo el ancho.
+                  final maxW = constraints.maxWidth.clamp(0.0, 640.0);
                   final hPad = (constraints.maxWidth - maxW) / 2 + 24.0;
 
                   return FadeTransition(
@@ -236,10 +236,7 @@ class _PedidoConfirmadoScreenState extends State<PedidoConfirmadoScreen>
                       padding: EdgeInsets.fromLTRB(hPad, 48, hPad, 32),
                       child: Column(
                         children: [
-                          _IconoCabecera(
-                            visual: visual,
-                            scale: _scaleAnim,
-                          ),
+                          _IconoCabecera(visual: visual, scale: _scaleAnim),
                           const SizedBox(height: 28),
                           _Titulo(visual: visual),
                           const SizedBox(height: 6),
@@ -296,6 +293,10 @@ class _FondoConVelado extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Subimos el alpha (0.92 → 0.97) para que el logo no compita con el
+    // contenido translúcido. En móvil casi no se nota; en escritorio,
+    // donde la imagen se zoomea con BoxFit.cover, el logo grande dejaba
+    // de funcionar como fondo y empezaba a leerse como contenido.
     return Positioned.fill(
       child: RepaintBoundary(
         child: Stack(
@@ -311,8 +312,8 @@ class _FondoConVelado extends StatelessWidget {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Colors.black.withValues(alpha: 0.78),
-                    Colors.black.withValues(alpha: 0.90),
+                    Colors.black.withValues(alpha: 0.92),
+                    Colors.black.withValues(alpha: 0.97),
                   ],
                 ),
               ),
@@ -472,9 +473,9 @@ class _PanelDetalles extends StatelessWidget {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
+        color: Colors.white.withValues(alpha: 0.07),
         borderRadius: _kRadius,
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
       ),
       child: Column(
         children: [
@@ -491,8 +492,7 @@ class _PanelDetalles extends StatelessWidget {
           ),
           _Separador(),
           Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
             child: Row(
               children: [
                 Text(
@@ -627,9 +627,9 @@ class _SeguimientoWidget extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 18),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
+        color: Colors.white.withValues(alpha: 0.07),
         borderRadius: _kRadius,
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -675,8 +675,9 @@ class _SeguimientoWidget extends StatelessWidget {
                             ? Colors.white.withValues(alpha: 0.85)
                             : Colors.white.withValues(alpha: 0.30),
                         fontSize: 9,
-                        fontWeight:
-                            p.actual ? FontWeight.w700 : FontWeight.w400,
+                        fontWeight: p.actual
+                            ? FontWeight.w700
+                            : FontWeight.w400,
                         letterSpacing: 0.3,
                       ),
                       child: Text(p.label, textAlign: TextAlign.center),
@@ -698,8 +699,9 @@ class _StepCircle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final activado = paso.hecho || paso.actual;
-    final color =
-        activado ? AppColors.button : Colors.white.withValues(alpha: 0.20);
+    final color = activado
+        ? AppColors.button
+        : Colors.white.withValues(alpha: 0.20);
     return AnimatedContainer(
       duration: _kStepAnimDuration,
       curve: Curves.easeOutCubic,
@@ -738,16 +740,15 @@ class _ResumenArticulos extends StatelessWidget {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
+        color: Colors.white.withValues(alpha: 0.07),
         borderRadius: _kRadius,
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
             child: Text(
               'RESUMEN DEL PEDIDO',
               style: TextStyle(
@@ -762,10 +763,7 @@ class _ResumenArticulos extends StatelessWidget {
           for (int i = 0; i < items.length; i++) ...[
             _FilaItem(item: items[i]),
             if (i < items.length - 1)
-              Container(
-                height: 1,
-                color: Colors.white.withValues(alpha: 0.06),
-              ),
+              Container(height: 1, color: Colors.white.withValues(alpha: 0.06)),
           ],
         ],
       ),

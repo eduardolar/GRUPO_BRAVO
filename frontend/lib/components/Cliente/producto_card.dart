@@ -118,7 +118,9 @@ class ProductoCard extends StatelessWidget {
                       disabled: false,
                       onTap: () {
                         final now = DateTime.now();
-                        if (now.difference(_lastTap).inMilliseconds < 300) return;
+                        if (now.difference(_lastTap).inMilliseconds < 300) {
+                          return;
+                        }
                         _lastTap = now;
                         onAdd();
                       },
@@ -184,7 +186,9 @@ class ProductoCard extends StatelessWidget {
                         if (quantity > 0) ...[
                           Expanded(
                             child: Tooltip(
-                              message: quantity == 1 ? 'Eliminar del carrito' : 'Quitar uno',
+                              message: quantity == 1
+                                  ? 'Eliminar del carrito'
+                                  : 'Quitar uno',
                               child: GestureDetector(
                                 onTap: onRemove,
                                 child: Container(
@@ -204,7 +208,9 @@ class ProductoCard extends StatelessWidget {
                           Container(
                             width: 44,
                             height: 48,
-                            color: AppColors.backgroundButton.withValues(alpha: 0.8),
+                            color: AppColors.backgroundButton.withValues(
+                              alpha: 0.8,
+                            ),
                             alignment: Alignment.center,
                             child: Text(
                               '$quantity',
@@ -222,7 +228,10 @@ class ProductoCard extends StatelessWidget {
                             child: GestureDetector(
                               onTap: () {
                                 final now = DateTime.now();
-                                if (now.difference(_lastTap).inMilliseconds < 300) return;
+                                if (now.difference(_lastTap).inMilliseconds <
+                                    300) {
+                                  return;
+                                }
                                 _lastTap = now;
                                 onAdd();
                               },
@@ -276,16 +285,10 @@ class _ImagePlaceholder extends StatelessWidget {
     return Container(
       color: AppColors.background,
       child: const Center(
-        child: Icon(
-          Icons.restaurant,
-          color: AppColors.line,
-          size: 36,
-        ),
+        child: Icon(Icons.restaurant, color: AppColors.line, size: 36),
       ),
     );
   }
-
-
 }
 
 class _AddButton extends StatelessWidget {

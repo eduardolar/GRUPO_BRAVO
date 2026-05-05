@@ -1,7 +1,8 @@
 ﻿import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
-import 'package:flutter/material.dart';
+import 'dart:io' show SocketException;
+
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 /// Typed HTTP error. [statusCode] == 0 means a network-level failure
@@ -115,6 +116,38 @@ Future<http.Response> httpWithRetry(
         );
       }
       await Future.delayed(Duration(seconds: attempt));
+    } on http.ClientException catch (e) {
+      // Web: SocketException no existe, los errores de red llegan como
+      // ClientException con mensajes tipo "Failed to fetch", "XMLHttpRequest
+      // error" o "Connection closed before full header was received".
+      if (kDebugMode) debugPrint('httpWithRetry · ClientException: $e');
+      if (!retry || attempt >= maxAttempts) {
+        throw ApiException(0, _mensajeErrorRed(e));
+      }
+      await Future.delayed(Duration(seconds: attempt));
     }
   }
+}
+
+/// Mensaje en castellano explicando una `ClientException`. Como en web
+/// "Failed to fetch" puede deberse a backend caído, CORS, certificado,
+/// extensión de navegador... añadimos pistas accionables.
+String _mensajeErrorRed(http.ClientException e) {
+  final msg = e.message.toLowerCase();
+  if (msg.contains('failed to fetch') ||
+      msg.contains('xmlhttprequest') ||
+      msg.contains('network error')) {
+    if (kIsWeb) {
+      return 'No se pudo conectar al servidor.\n'
+          'Verifica que el backend está en marcha y que CORS permite tu origen.';
+    }
+    return 'No hay conexión con el servidor. Inténtalo de nuevo.';
+  }
+  if (msg.contains('connection') && msg.contains('refused')) {
+    return 'El servidor rechazó la conexión. ¿Está el backend levantado?';
+  }
+  if (msg.contains('connection closed')) {
+    return 'Conexión interrumpida. Reintenta en unos segundos.';
+  }
+  return 'Error de red: ${e.message}';
 }

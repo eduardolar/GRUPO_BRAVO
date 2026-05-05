@@ -1,14 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/models/reserva_model.dart';
+import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/services/reserva_service.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../../../core/colors_style.dart';
 
 // ── Constantes de texto ──
 const _diasAbrev = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM'];
 const _mesesAbrev = [
-  'ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN',
-  'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'
+  'ENE',
+  'FEB',
+  'MAR',
+  'ABR',
+  'MAY',
+  'JUN',
+  'JUL',
+  'AGO',
+  'SEP',
+  'OCT',
+  'NOV',
+  'DIC',
 ];
 
 /// ─────────────────────────────────────────────────────────────
@@ -42,8 +54,9 @@ class _EditarReservaDialogState extends State<EditarReservaDialog> {
       text: DateFormat('dd/MM/yyyy').format(widget.reserva.fecha),
     );
     _horaController = TextEditingController(text: widget.reserva.hora);
-    _comensalesController =
-        TextEditingController(text: widget.reserva.comensales.toString());
+    _comensalesController = TextEditingController(
+      text: widget.reserva.comensales.toString(),
+    );
     _notasController = TextEditingController(text: widget.reserva.notas ?? '');
     _turno = widget.reserva.turno;
   }
@@ -91,8 +104,7 @@ class _EditarReservaDialogState extends State<EditarReservaDialog> {
     final hora = _horaController.text;
     final comensales =
         int.tryParse(_comensalesController.text) ?? widget.reserva.comensales;
-    final notas =
-        _notasController.text.isEmpty ? null : _notasController.text;
+    final notas = _notasController.text.isEmpty ? null : _notasController.text;
     final turno = _turno ?? widget.reserva.turno;
 
     final updatedReserva = widget.reserva.copyWith(
@@ -111,7 +123,9 @@ class _EditarReservaDialogState extends State<EditarReservaDialog> {
     return InputDecoration(
       labelText: label,
       labelStyle: const TextStyle(
-          color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+        color: AppColors.textSecondary,
+        fontWeight: FontWeight.w500,
+      ),
       filled: true,
       fillColor: AppColors.background,
       enabledBorder: OutlineInputBorder(
@@ -176,16 +190,24 @@ class _EditarReservaDialogState extends State<EditarReservaDialog> {
               dropdownColor: AppColors.panel,
               decoration: _inputDecoration('Turno'),
               style: const TextStyle(
-                  color: AppColors.textPrimary, fontSize: 15),
+                color: AppColors.textPrimary,
+                fontSize: 15,
+              ),
               items: const [
                 DropdownMenuItem(
-                    value: 'comida',
-                    child: Text('Comida',
-                        style: TextStyle(color: AppColors.textPrimary))),
+                  value: 'comida',
+                  child: Text(
+                    'Comida',
+                    style: TextStyle(color: AppColors.textPrimary),
+                  ),
+                ),
                 DropdownMenuItem(
-                    value: 'cena',
-                    child: Text('Cena',
-                        style: TextStyle(color: AppColors.textPrimary))),
+                  value: 'cena',
+                  child: Text(
+                    'Cena',
+                    style: TextStyle(color: AppColors.textPrimary),
+                  ),
+                ),
               ],
               onChanged: (value) => setState(() => _turno = value),
             ),
@@ -200,7 +222,9 @@ class _EditarReservaDialogState extends State<EditarReservaDialog> {
           child: const Text(
             'CANCELAR',
             style: TextStyle(
-                color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
         TextButton(
@@ -208,7 +232,9 @@ class _EditarReservaDialogState extends State<EditarReservaDialog> {
           child: const Text(
             'GUARDAR',
             style: TextStyle(
-                color: AppColors.button, fontWeight: FontWeight.bold),
+              color: AppColors.button,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
       ],
@@ -228,16 +254,34 @@ class ModificarReservas extends StatefulWidget {
 
 class _ModificarReservasState extends State<ModificarReservas> {
   late Future<List<Reserva>> _reservasFuture;
+  bool _cargado = false;
 
   @override
   void initState() {
     super.initState();
-    _reservasFuture = ReservaService.obtenerReservasFuturas();
+    // Future inicial vacío: la carga real ocurre en didChangeDependencies
+    // cuando el contexto está listo para leer la sucursal del trabajador.
+    _reservasFuture = Future.value(<Reserva>[]);
   }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_cargado) {
+      _cargado = true;
+      _refreshReservas();
+    }
+  }
+
+  String? get _restauranteId =>
+      context.read<AuthProvider>().usuarioActual?.restauranteId;
 
   void _refreshReservas() {
     setState(() {
-      _reservasFuture = ReservaService.obtenerReservasFuturas();
+      // Aislamos por sucursal: el trabajador solo ve reservas de su local.
+      _reservasFuture = ReservaService.obtenerReservasFuturas(
+        restauranteId: _restauranteId,
+      );
     });
   }
 
@@ -288,8 +332,7 @@ class _ModificarReservasState extends State<ModificarReservas> {
             ),
           ),
           Positioned.fill(
-            child: Container(
-                color: AppColors.shadow.withValues(alpha: 0.88)),
+            child: Container(color: AppColors.shadow.withValues(alpha: 0.88)),
           ),
           SafeArea(
             child: Column(
@@ -311,8 +354,11 @@ class _ModificarReservasState extends State<ModificarReservas> {
         children: [
           IconButton(
             tooltip: 'Volver',
-            icon: const Icon(Icons.arrow_back_ios_new,
-                color: Colors.white, size: 20),
+            icon: const Icon(
+              Icons.arrow_back_ios_new,
+              color: Colors.white,
+              size: 20,
+            ),
             onPressed: () => Navigator.pop(context),
           ),
           const Expanded(
@@ -372,13 +418,19 @@ class _ModificarReservasState extends State<ModificarReservas> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.event_busy_outlined,
-              size: 64, color: Colors.white24),
+          const Icon(
+            Icons.event_busy_outlined,
+            size: 64,
+            color: Colors.white24,
+          ),
           const SizedBox(height: 16),
           const Text(
             'No hay reservas futuras',
             style: TextStyle(
-                color: Colors.white54, fontSize: 16, letterSpacing: 0.5),
+              color: Colors.white54,
+              fontSize: 16,
+              letterSpacing: 0.5,
+            ),
           ),
           const SizedBox(height: 24),
           TextButton(
@@ -386,7 +438,9 @@ class _ModificarReservasState extends State<ModificarReservas> {
             child: const Text(
               'Reintentar',
               style: TextStyle(
-                  color: AppColors.button, fontWeight: FontWeight.bold),
+                color: AppColors.button,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ],
@@ -442,7 +496,9 @@ class _ModificarReservasState extends State<ModificarReservas> {
                     Text(
                       _diasAbrev[reserva.fecha.weekday - 1],
                       style: const TextStyle(
-                          color: AppColors.textSecondary, fontSize: 10),
+                        color: AppColors.textSecondary,
+                        fontSize: 10,
+                      ),
                     ),
                   ],
                 ),
@@ -473,19 +529,25 @@ class _ModificarReservasState extends State<ModificarReservas> {
                               color: AppColors.button.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
-                                  color: AppColors.button
-                                      .withValues(alpha: 0.3)),
+                                color: AppColors.button.withValues(alpha: 0.3),
+                              ),
                             ),
-                            child: const Icon(Icons.edit_outlined,
-                                color: AppColors.button, size: 16),
+                            child: const Icon(
+                              Icons.edit_outlined,
+                              color: AppColors.button,
+                              size: 16,
+                            ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 10),
                       Row(
                         children: [
-                          const Icon(Icons.access_time,
-                              size: 14, color: AppColors.textSecondary),
+                          const Icon(
+                            Icons.access_time,
+                            size: 14,
+                            color: AppColors.textSecondary,
+                          ),
                           const SizedBox(width: 5),
                           Text(
                             reserva.hora,
@@ -496,23 +558,33 @@ class _ModificarReservasState extends State<ModificarReservas> {
                             ),
                           ),
                           const SizedBox(width: 14),
-                          const Icon(Icons.people_outline,
-                              size: 14, color: AppColors.textSecondary),
+                          const Icon(
+                            Icons.people_outline,
+                            size: 14,
+                            color: AppColors.textSecondary,
+                          ),
                           const SizedBox(width: 5),
                           Text(
                             '${reserva.comensales}',
                             style: const TextStyle(
-                                color: AppColors.textPrimary, fontSize: 14),
+                              color: AppColors.textPrimary,
+                              fontSize: 14,
+                            ),
                           ),
                           if (reserva.numeroMesa != null) ...[
                             const SizedBox(width: 14),
-                            const Icon(Icons.table_bar,
-                                size: 14, color: AppColors.textSecondary),
+                            const Icon(
+                              Icons.table_bar,
+                              size: 14,
+                              color: AppColors.textSecondary,
+                            ),
                             const SizedBox(width: 5),
                             Text(
                               'Mesa ${reserva.numeroMesa}',
                               style: const TextStyle(
-                                  color: AppColors.textPrimary, fontSize: 14),
+                                color: AppColors.textPrimary,
+                                fontSize: 14,
+                              ),
                             ),
                           ],
                         ],
@@ -522,15 +594,19 @@ class _ModificarReservasState extends State<ModificarReservas> {
                         const SizedBox(height: 8),
                         Row(
                           children: [
-                            const Icon(Icons.note_outlined,
-                                size: 13, color: AppColors.textSecondary),
+                            const Icon(
+                              Icons.note_outlined,
+                              size: 13,
+                              color: AppColors.textSecondary,
+                            ),
                             const SizedBox(width: 5),
                             Expanded(
                               child: Text(
                                 reserva.notas!,
                                 style: const TextStyle(
-                                    color: AppColors.textSecondary,
-                                    fontSize: 12),
+                                  color: AppColors.textSecondary,
+                                  fontSize: 12,
+                                ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),

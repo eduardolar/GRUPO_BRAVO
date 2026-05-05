@@ -1,13 +1,25 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:frontend/models/reserva_model.dart';
+import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/services/reserva_service.dart';
+import 'package:provider/provider.dart';
 import '../../../core/colors_style.dart';
 
 // ── Constantes de texto ──
 const _diasAbrevB = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM'];
 const _mesesAbrevB = [
-  'ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN',
-  'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'
+  'ENE',
+  'FEB',
+  'MAR',
+  'ABR',
+  'MAY',
+  'JUN',
+  'JUL',
+  'AGO',
+  'SEP',
+  'OCT',
+  'NOV',
+  'DIC',
 ];
 
 class BorrarReservas extends StatefulWidget {
@@ -23,12 +35,31 @@ class _BorrarReservasState extends State<BorrarReservas> {
   @override
   void initState() {
     super.initState();
-    _reservasFuture = ReservaService.obtenerReservasFuturas();
+    // Future inicial; se rellena en didChangeDependencies cuando ya tenemos
+    // acceso al provider para leer la sucursal del trabajador.
+    _reservasFuture = Future.value(<Reserva>[]);
   }
+
+  bool _cargado = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_cargado) {
+      _cargado = true;
+      _refreshReservas();
+    }
+  }
+
+  String? get _restauranteId =>
+      context.read<AuthProvider>().usuarioActual?.restauranteId;
 
   void _refreshReservas() {
     setState(() {
-      _reservasFuture = ReservaService.obtenerReservasFuturas();
+      // Aislamos por sucursal: el trabajador solo ve reservas de su local.
+      _reservasFuture = ReservaService.obtenerReservasFuturas(
+        restauranteId: _restauranteId,
+      );
     });
   }
 
@@ -57,7 +88,9 @@ class _BorrarReservasState extends State<BorrarReservas> {
             child: const Text(
               'CANCELAR',
               style: TextStyle(
-                  color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           TextButton(
@@ -90,7 +123,9 @@ class _BorrarReservasState extends State<BorrarReservas> {
             child: const Text(
               'ELIMINAR',
               style: TextStyle(
-                  color: AppColors.error, fontWeight: FontWeight.bold),
+                color: AppColors.error,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ],
@@ -111,8 +146,7 @@ class _BorrarReservasState extends State<BorrarReservas> {
             ),
           ),
           Positioned.fill(
-            child: Container(
-                color: AppColors.shadow.withValues(alpha: 0.88)),
+            child: Container(color: AppColors.shadow.withValues(alpha: 0.88)),
           ),
           SafeArea(
             child: Column(
@@ -134,8 +168,11 @@ class _BorrarReservasState extends State<BorrarReservas> {
         children: [
           IconButton(
             tooltip: 'Volver',
-            icon: const Icon(Icons.arrow_back_ios_new,
-                color: Colors.white, size: 20),
+            icon: const Icon(
+              Icons.arrow_back_ios_new,
+              color: Colors.white,
+              size: 20,
+            ),
             onPressed: () => Navigator.pop(context),
           ),
           const Expanded(
@@ -195,13 +232,19 @@ class _BorrarReservasState extends State<BorrarReservas> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.event_busy_outlined,
-              size: 64, color: Colors.white24),
+          const Icon(
+            Icons.event_busy_outlined,
+            size: 64,
+            color: Colors.white24,
+          ),
           const SizedBox(height: 16),
           const Text(
             'No hay reservas futuras',
             style: TextStyle(
-                color: Colors.white54, fontSize: 16, letterSpacing: 0.5),
+              color: Colors.white54,
+              fontSize: 16,
+              letterSpacing: 0.5,
+            ),
           ),
           const SizedBox(height: 24),
           TextButton(
@@ -209,7 +252,9 @@ class _BorrarReservasState extends State<BorrarReservas> {
             child: const Text(
               'Reintentar',
               style: TextStyle(
-                  color: AppColors.button, fontWeight: FontWeight.bold),
+                color: AppColors.button,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ],
@@ -265,7 +310,9 @@ class _BorrarReservasState extends State<BorrarReservas> {
                     Text(
                       _diasAbrevB[reserva.fecha.weekday - 1],
                       style: const TextStyle(
-                          color: AppColors.textSecondary, fontSize: 10),
+                        color: AppColors.textSecondary,
+                        fontSize: 10,
+                      ),
                     ),
                   ],
                 ),
@@ -296,19 +343,25 @@ class _BorrarReservasState extends State<BorrarReservas> {
                               color: AppColors.error.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
-                                  color: AppColors.error
-                                      .withValues(alpha: 0.3)),
+                                color: AppColors.error.withValues(alpha: 0.3),
+                              ),
                             ),
-                            child: const Icon(Icons.delete_outline,
-                                color: AppColors.error, size: 16),
+                            child: const Icon(
+                              Icons.delete_outline,
+                              color: AppColors.error,
+                              size: 16,
+                            ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 10),
                       Row(
                         children: [
-                          const Icon(Icons.access_time,
-                              size: 14, color: AppColors.textSecondary),
+                          const Icon(
+                            Icons.access_time,
+                            size: 14,
+                            color: AppColors.textSecondary,
+                          ),
                           const SizedBox(width: 5),
                           Text(
                             reserva.hora,
@@ -319,23 +372,33 @@ class _BorrarReservasState extends State<BorrarReservas> {
                             ),
                           ),
                           const SizedBox(width: 14),
-                          const Icon(Icons.people_outline,
-                              size: 14, color: AppColors.textSecondary),
+                          const Icon(
+                            Icons.people_outline,
+                            size: 14,
+                            color: AppColors.textSecondary,
+                          ),
                           const SizedBox(width: 5),
                           Text(
                             '${reserva.comensales}',
                             style: const TextStyle(
-                                color: AppColors.textPrimary, fontSize: 14),
+                              color: AppColors.textPrimary,
+                              fontSize: 14,
+                            ),
                           ),
                           if (reserva.numeroMesa != null) ...[
                             const SizedBox(width: 14),
-                            const Icon(Icons.table_bar,
-                                size: 14, color: AppColors.textSecondary),
+                            const Icon(
+                              Icons.table_bar,
+                              size: 14,
+                              color: AppColors.textSecondary,
+                            ),
                             const SizedBox(width: 5),
                             Text(
                               'Mesa ${reserva.numeroMesa}',
                               style: const TextStyle(
-                                  color: AppColors.textPrimary, fontSize: 14),
+                                color: AppColors.textPrimary,
+                                fontSize: 14,
+                              ),
                             ),
                           ],
                         ],
@@ -345,15 +408,19 @@ class _BorrarReservasState extends State<BorrarReservas> {
                         const SizedBox(height: 8),
                         Row(
                           children: [
-                            const Icon(Icons.note_outlined,
-                                size: 13, color: AppColors.textSecondary),
+                            const Icon(
+                              Icons.note_outlined,
+                              size: 13,
+                              color: AppColors.textSecondary,
+                            ),
                             const SizedBox(width: 5),
                             Expanded(
                               child: Text(
                                 reserva.notas!,
                                 style: const TextStyle(
-                                    color: AppColors.textSecondary,
-                                    fontSize: 12),
+                                  color: AppColors.textSecondary,
+                                  fontSize: 12,
+                                ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),

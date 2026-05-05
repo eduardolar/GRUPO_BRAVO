@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:frontend/components/bravo_app_bar.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/screens/trabajador/Pedidos/gestion_pedidos.dart';
@@ -24,7 +24,9 @@ class _HomeTrabajadorState extends State<HomeTrabajador> {
         duration: const Duration(milliseconds: 600),
         child: _isAppReady
             ? const _HomeContent()
-            : _SimpleSplash(onFinished: () => setState(() => _isAppReady = true)),
+            : _SimpleSplash(
+                onFinished: () => setState(() => _isAppReady = true),
+              ),
       ),
     );
   }
@@ -54,7 +56,8 @@ class _SimpleSplashState extends State<_SimpleSplash> {
         child: TweenAnimationBuilder<double>(
           tween: Tween(begin: 0.8, end: 1.0),
           duration: const Duration(milliseconds: 800),
-          builder: (context, value, child) => Transform.scale(scale: value, child: child),
+          builder: (context, value, child) =>
+              Transform.scale(scale: value, child: child),
           child: Image.asset('assets/images/Bravo restaurante.jpg', width: 220),
         ),
       ),
@@ -74,17 +77,11 @@ class _HomeContent extends StatelessWidget {
       appBar: const BravoAppBar(title: "RESTAURANTE BRAVO"),
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
-        child: Column(
-          children: [
-            const _HeroSection(),
-            const _FooterQuote(),
-          ],
-        ),
+        child: Column(children: [const _HeroSection(), const _FooterQuote()]),
       ),
     );
   }
 }
-
 
 // ── SECCIÓN HERO (CENTRADA Y RESPONSIVA) ──────────────────────────
 class _HeroSection extends StatelessWidget {
@@ -118,9 +115,9 @@ class _HeroSection extends StatelessWidget {
                 end: Alignment.bottomCenter,
                 stops: const [0.0, 0.3, 0.7, 1.0],
                 colors: [
-                  Colors.black.withValues(alpha:0.3),
+                  Colors.black.withValues(alpha: 0.3),
                   Colors.transparent,
-                  Colors.black.withValues(alpha:0.75),
+                  Colors.black.withValues(alpha: 0.75),
                   AppColors.background,
                 ],
               ),
@@ -252,7 +249,9 @@ class _MainButton extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Material(
-        color: isPrimary ? AppColors.button : Colors.black.withValues(alpha:0.55),
+        color: isPrimary
+            ? AppColors.button
+            : Colors.black.withValues(alpha: 0.55),
         child: InkWell(
           onTap: onPressed,
           child: Container(
@@ -275,7 +274,11 @@ class _MainButton extends StatelessWidget {
                     ),
                   ),
                 ),
-                const Icon(Icons.chevron_right, color: Colors.white54, size: 18),
+                const Icon(
+                  Icons.chevron_right,
+                  color: Colors.white54,
+                  size: 18,
+                ),
               ],
             ),
           ),
@@ -305,7 +308,11 @@ class _FooterQuote extends StatelessWidget {
           ),
           child: Column(
             children: [
-              Icon(Icons.format_quote, color: AppColors.button.withValues(alpha:0.4), size: 30),
+              Icon(
+                Icons.format_quote,
+                color: AppColors.button.withValues(alpha: 0.4),
+                size: 30,
+              ),
               const SizedBox(height: 16),
               const Text(
                 "Excelencia en cada servicio.",

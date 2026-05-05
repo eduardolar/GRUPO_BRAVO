@@ -21,8 +21,10 @@ class OtpFields extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         const gaps = 5 * 8.0;
-        final fieldWidth =
-            ((constraints.maxWidth - gaps) / 6).clamp(36.0, 52.0);
+        final fieldWidth = ((constraints.maxWidth - gaps) / 6).clamp(
+          36.0,
+          52.0,
+        );
         return Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: List.generate(6, (index) {
@@ -49,8 +51,10 @@ class OtpFields extends StatelessWidget {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
-                    borderSide:
-                        const BorderSide(color: AppColors.button, width: 2),
+                    borderSide: const BorderSide(
+                      color: AppColors.button,
+                      width: 2,
+                    ),
                   ),
                 ),
                 onChanged: (value) {

@@ -4,20 +4,39 @@ import '../models/mesa_model.dart';
 import '../data/mock_data.dart';
 import 'api_config.dart';
 import 'http_client.dart';
+import 'auth_session.dart';
 
 class MesaService {
-  static Future<List<Mesa>> obtenerMesas() async {
+  static Future<List<Mesa>> obtenerMesas({String? restauranteId}) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 300));
-      return List.from(MockData.mesas);
+      var lista = List<Mesa>.from(MockData.mesas);
+      if (restauranteId != null && restauranteId.isNotEmpty) {
+        lista = lista.where((m) => m.restauranteId == restauranteId).toList();
+      }
+      return lista;
     }
 
+    final uri = Uri.parse('$baseUrl/mesas').replace(
+      queryParameters: (restauranteId != null && restauranteId.isNotEmpty)
+          ? {'restauranteId': restauranteId}
+          : null,
+    );
     final response = await httpWithRetry(
-      () => http.get(Uri.parse('$baseUrl/mesas')),
+      () => http.get(uri, headers: AuthSession.headers()),
     );
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
-      return data.map((m) => Mesa.fromMap(m as Map<String, dynamic>)).toList();
+      final mesas = data.map((m) => Mesa.fromMap(m as Map<String, dynamic>)).toList();
+
+      // El backend no filtra por restaurante, pero el código QR lleva
+      // los últimos 6 caracteres del restauranteId en mayúsculas como sufijo:
+      // Ej: restauranteId "69de6289c4e3ea3a8c771e6d" → QR termina en "_771E6D"
+      if (restauranteId != null && restauranteId.length >= 6) {
+        final sufijo = '_${restauranteId.substring(restauranteId.length - 6).toUpperCase()}';
+        return mesas.where((m) => m.codigoQr.toUpperCase().endsWith(sufijo)).toList();
+      }
+      return mesas;
     }
     throw toApiException(response.statusCode, decodeBody(response));
   }
@@ -44,7 +63,7 @@ class MesaService {
     final response = await httpWithRetry(
       () => http.post(
         Uri.parse('$baseUrl/mesas/validar-qr'),
-        headers: {'Content-Type': 'application/json'},
+        headers: AuthSession.headers(),
         body: jsonEncode({'codigoQr': codigoQr}),
       ),
       retry: false,
@@ -59,6 +78,7 @@ class MesaService {
     required int capacidad,
     required String ubicacion,
     required String codigoQr,
+    String? restauranteId,
   }) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 200));
@@ -69,6 +89,7 @@ class MesaService {
         ubicacion: ubicacion,
         disponible: true,
         codigoQr: codigoQr,
+        restauranteId: restauranteId,
       );
       MockData.mesas.add(nueva);
       return nueva;
@@ -77,12 +98,14 @@ class MesaService {
     final response = await httpWithRetry(
       () => http.post(
         Uri.parse('$baseUrl/mesas'),
-        headers: {'Content-Type': 'application/json'},
+        headers: AuthSession.headers(),
         body: jsonEncode({
           'numero': numero,
           'capacidad': capacidad,
           'ubicacion': ubicacion,
           'codigoQr': codigoQr,
+          if (restauranteId != null && restauranteId.isNotEmpty)
+            'restauranteId': restauranteId,
         }),
       ),
       retry: false,
@@ -102,7 +125,10 @@ class MesaService {
     }
 
     final response = await httpWithRetry(
-      () => http.delete(Uri.parse('$baseUrl/mesas/$mesaId')),
+      () => http.delete(
+        Uri.parse('$baseUrl/mesas/$mesaId'),
+        headers: AuthSession.headers(),
+      ),
       retry: false,
     );
 
@@ -116,7 +142,9 @@ class MesaService {
       await Future.delayed(const Duration(milliseconds: 200));
       final index = MockData.mesas.indexWhere((m) => m.id == mesaId);
       if (index != -1) {
-        MockData.mesas[index] = MockData.mesas[index].copyWith(disponible: false);
+        MockData.mesas[index] = MockData.mesas[index].copyWith(
+          disponible: false,
+        );
       }
       return;
     }
@@ -124,7 +152,7 @@ class MesaService {
     final response = await httpWithRetry(
       () => http.patch(
         Uri.parse('$baseUrl/mesas/$mesaId'),
-        headers: {'Content-Type': 'application/json'},
+        headers: AuthSession.headers(),
         body: jsonEncode({'disponible': false}),
       ),
       retry: false,
@@ -140,8 +168,9 @@ class MesaService {
       await Future.delayed(const Duration(milliseconds: 200));
       final index = MockData.mesas.indexWhere((m) => m.id == mesaId);
       if (index != -1) {
-        MockData.mesas[index] =
-            MockData.mesas[index].copyWith(disponible: true);
+        MockData.mesas[index] = MockData.mesas[index].copyWith(
+          disponible: true,
+        );
       }
       return;
     }
@@ -149,7 +178,7 @@ class MesaService {
     final response = await httpWithRetry(
       () => http.patch(
         Uri.parse('$baseUrl/mesas/$mesaId'),
-        headers: {'Content-Type': 'application/json'},
+        headers: AuthSession.headers(),
         body: jsonEncode({'disponible': true}),
       ),
       retry: false,

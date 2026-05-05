@@ -15,7 +15,8 @@ import 'package:frontend/screens/cliente/reservar_mesa_screen.dart';
 import 'package:frontend/screens/cocinero/home_screen_cocinero.dart';
 import 'package:frontend/screens/home_screen_trabajador.dart';
 import 'package:frontend/screens/super_admin/home_screen_super_admin.dart';
-import 'package:frontend/screens/cliente/seleccionar_restaurante_screen.dart' as sel_rest_cliente;
+import 'package:frontend/screens/cliente/seleccionar_restaurante_screen.dart'
+    as sel_rest_cliente;
 import 'package:frontend/screens/Administrador/admin_home_screen.dart';
 import 'package:frontend/screens/super_admin/activar_cuenta_screen.dart';
 
@@ -135,8 +136,10 @@ class _LoginScreenState extends State<LoginScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text('¿Aún no tienes cuenta?',
-                style: TextStyle(color: Colors.white60)),
+            const Text(
+              '¿Aún no tienes cuenta?',
+              style: TextStyle(color: Colors.white60),
+            ),
             TextButton(
               onPressed: () => Navigator.push(
                 context,
@@ -145,7 +148,9 @@ class _LoginScreenState extends State<LoginScreen> {
               child: const Text(
                 'Regístrate',
                 style: TextStyle(
-                    color: AppColors.button, fontWeight: FontWeight.bold),
+                  color: AppColors.button,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ],
@@ -157,8 +162,11 @@ class _LoginScreenState extends State<LoginScreen> {
               context,
               AppRoute.slide(const ActivarCuentaScreen()),
             ),
-            icon: const Icon(Icons.vpn_key_outlined,
-                size: 16, color: Colors.white54),
+            icon: const Icon(
+              Icons.vpn_key_outlined,
+              size: 16,
+              color: Colors.white54,
+            ),
             label: const Text(
               '¿Eres nuevo empleado? Activa tu cuenta',
               style: TextStyle(color: Colors.white54, fontSize: 13),
@@ -183,7 +191,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      
+
       // 1. Intentamos el login
       final respuesta = await authProvider.iniciarSesion(email, password);
 
@@ -191,15 +199,23 @@ class _LoginScreenState extends State<LoginScreen> {
 
       // 2. CASO 2FA: Si la respuesta indica que requiere verificación por correo
       if (respuesta != null && respuesta['requires_2fa'] == true) {
-        final emailParaVerificar = respuesta['correo'] ?? email; // Usar el email del formulario si no viene en la respuesta
-        showAppSuccess(context, '¡Revisa tu bandeja de entrada! Te hemos enviado un código.');
+        final emailParaVerificar =
+            respuesta['correo'] ??
+            email; // Usar el email del formulario si no viene en la respuesta
+        showAppSuccess(
+          context,
+          '¡Revisa tu bandeja de entrada! Te hemos enviado un código.',
+        );
 
         Navigator.push(
           context,
-          AppRoute.slide(VerificacionScreen(
-            email: emailParaVerificar,
-            esModo2FA: true, // Bandera para que la pantalla sepa que es LOGIN y no registro
-          )),
+          AppRoute.slide(
+            VerificacionScreen(
+              email: emailParaVerificar,
+              esModo2FA:
+                  true, // Bandera para que la pantalla sepa que es LOGIN y no registro
+            ),
+          ),
         );
         return;
       }
@@ -208,7 +224,6 @@ class _LoginScreenState extends State<LoginScreen> {
       if (authProvider.usuarioActual != null) {
         _navigateToRoleHome(authProvider.usuarioActual!);
       }
-
     } catch (e) {
       if (mounted) showAppError(context, 'Error: ${e.toString()}');
     } finally {
@@ -245,5 +260,4 @@ class _LoginScreenState extends State<LoginScreen> {
       (route) => false,
     );
   }
-
 }

@@ -1,4 +1,10 @@
-enum RolUsuario { cliente, trabajador, cocinero, administrador, superadministrador }
+enum RolUsuario {
+  cliente,
+  trabajador,
+  cocinero,
+  administrador,
+  superadministrador,
+}
 
 class Usuario {
   final String id;
@@ -45,7 +51,8 @@ class Usuario {
       rol: rol ?? this.rol,
       restauranteId: restauranteId ?? this.restauranteId,
       totpEnabled: totpEnabled ?? this.totpEnabled,
-      emailDosFactoresEnabled: emailDosFactoresEnabled ?? this.emailDosFactoresEnabled,
+      emailDosFactoresEnabled:
+          emailDosFactoresEnabled ?? this.emailDosFactoresEnabled,
       activo: activo ?? this.activo,
     );
   }
@@ -74,10 +81,15 @@ class Usuario {
       contrasena: json['password_hash'] ?? json['contrasena'] ?? '',
       telefono: json['telefono'] ?? '',
       direccion: json['direccion'] ?? '',
-      latitud: json['latitud'] != null ? double.parse(json['latitud'].toString()) : null,
-      longitud: json['longitud'] != null ? double.parse(json['longitud'].toString()) : null,
+      latitud: json['latitud'] != null
+          ? double.parse(json['latitud'].toString())
+          : null,
+      longitud: json['longitud'] != null
+          ? double.parse(json['longitud'].toString())
+          : null,
       rol: _parseRol(json['rol']),
-      restauranteId: (json['restauranteId'] ?? json['restaurante_id'])?.toString(),
+      restauranteId: (json['restauranteId'] ?? json['restaurante_id'])
+          ?.toString(),
       totpEnabled: json['totp_enabled'] == true,
       emailDosFactoresEnabled: json['email_2fa_enabled'] == true,
       activo: json['activo'] != false,

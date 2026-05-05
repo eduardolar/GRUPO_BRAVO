@@ -43,9 +43,10 @@ class SucursalDetailScreen extends StatelessWidget {
         label: Text(
           'NUEVO EMPLEADO',
           style: GoogleFonts.manrope(
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.5),
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.5,
+          ),
         ),
       ),
       body: Container(
@@ -107,41 +108,49 @@ class SucursalDetailScreen extends StatelessWidget {
                     Center(
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 640),
-                        child: Column(children: [
-                          _GlassTile(
-                            icon: Icons.people_outline_rounded,
-                            titulo: 'Trabajadores',
-                            subtitulo:
-                                'Cocineros, camareros y personal de sala',
-                            onTap: () => _ir(
+                        child: Column(
+                          children: [
+                            _GlassTile(
+                              icon: Icons.people_outline_rounded,
+                              titulo: 'Trabajadores',
+                              subtitulo:
+                                  'Cocineros, camareros y personal de sala',
+                              onTap: () => _ir(
                                 context,
                                 GestionUsuariosScreen(
-                                    rolAFiltrar: 'trabajador',
-                                    restauranteId: restauranteId)),
-                          ),
-                          const SizedBox(height: 12),
-                          _GlassTile(
-                            icon: Icons.admin_panel_settings_outlined,
-                            titulo: 'Administradores',
-                            subtitulo: 'Gestores de esta sucursal',
-                            onTap: () => _ir(
+                                  rolAFiltrar: 'trabajador',
+                                  restauranteId: restauranteId,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            _GlassTile(
+                              icon: Icons.admin_panel_settings_outlined,
+                              titulo: 'Administradores',
+                              subtitulo: 'Gestores de esta sucursal',
+                              onTap: () => _ir(
                                 context,
                                 GestionUsuariosScreen(
-                                    rolAFiltrar: 'administrador',
-                                    restauranteId: restauranteId)),
-                          ),
-                          const SizedBox(height: 12),
-                          _GlassTile(
-                            icon: Icons.security_outlined,
-                            titulo: 'Permisos y Roles',
-                            subtitulo:
-                                'Configuración de accesos del personal',
-                            onTap: () => _ir(
+                                  rolAFiltrar: 'administrador',
+                                  restauranteId: restauranteId,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            _GlassTile(
+                              icon: Icons.security_outlined,
+                              titulo: 'Permisos y Roles',
+                              subtitulo:
+                                  'Configuración de accesos del personal',
+                              onTap: () => _ir(
                                 context,
                                 GestionRolesScreen(
-                                    restauranteId: restauranteId)),
-                          ),
-                        ]),
+                                  restauranteId: restauranteId,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ]),
@@ -158,31 +167,37 @@ class SucursalDetailScreen extends StatelessWidget {
                     Center(
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 640),
-                        child: Column(children: [
-                          _GlassTile(
-                            icon: Icons.receipt_long_outlined,
-                            titulo: 'Pedidos',
-                            subtitulo:
-                                'Activos, historial y estados de comandas',
-                            onTap: () => _ir(
+                        child: Column(
+                          children: [
+                            _GlassTile(
+                              icon: Icons.receipt_long_outlined,
+                              titulo: 'Pedidos',
+                              subtitulo:
+                                  'Activos, historial y estados de comandas',
+                              onTap: () => _ir(
                                 context,
                                 PedidosActivosScreen(
-                                    restauranteId: restauranteId,
-                                    restauranteNombre: restauranteNombre)),
-                          ),
-                          const SizedBox(height: 12),
-                          _GlassTile(
-                            icon: Icons.euro_outlined,
-                            titulo: 'Contabilidad',
-                            subtitulo:
-                                'Ingresos, métodos de pago y productos',
-                            onTap: () => _ir(
+                                  restauranteId: restauranteId,
+                                  restauranteNombre: restauranteNombre,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            _GlassTile(
+                              icon: Icons.euro_outlined,
+                              titulo: 'Contabilidad',
+                              subtitulo:
+                                  'Ingresos, métodos de pago y productos',
+                              onTap: () => _ir(
                                 context,
                                 ContabilidadScreen(
-                                    restauranteId: restauranteId,
-                                    restauranteNombre: restauranteNombre)),
-                          ),
-                        ]),
+                                  restauranteId: restauranteId,
+                                  restauranteNombre: restauranteNombre,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ]),
@@ -199,16 +214,21 @@ class SucursalDetailScreen extends StatelessWidget {
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(24, 28, 24, 8),
-        child: Row(children: [
-          Container(width: 3, height: 18, color: AppColors.button),
-          const SizedBox(width: 10),
-          Text(label,
+        child: Row(
+          children: [
+            Container(width: 3, height: 18, color: AppColors.button),
+            const SizedBox(width: 10),
+            Text(
+              label,
               style: GoogleFonts.manrope(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white70,
-                  letterSpacing: 2)),
-        ]),
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: Colors.white70,
+                letterSpacing: 2,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -230,7 +250,8 @@ class _KpiSectionState extends State<_KpiSection> {
   void initState() {
     super.initState();
     _futuro = PedidoService.obtenerTodosLosPedidos(
-        restauranteId: widget.restauranteId);
+      restauranteId: widget.restauranteId,
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final prov = context.read<UsuarioProvider>();
       if (prov.usuarios.isEmpty && !prov.cargando) prov.cargar();
@@ -246,96 +267,119 @@ class _KpiSectionState extends State<_KpiSection> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<UsuarioProvider>(builder: (_, up, _) {
-      final personal = up.usuarios.where((u) {
-        final idDB = (u.restauranteId ?? '').toString().trim().toLowerCase();
-        return idDB == widget.restauranteId.trim().toLowerCase() &&
-            u.rolRaw != 'cliente' &&
-            u.rolRaw != 'superadministrador';
-      }).length;
+    return Consumer<UsuarioProvider>(
+      builder: (_, up, _) {
+        final personal = up.usuarios.where((u) {
+          final idDB = (u.restauranteId ?? '').toString().trim().toLowerCase();
+          return idDB == widget.restauranteId.trim().toLowerCase() &&
+              u.rolRaw != 'cliente' &&
+              u.rolRaw != 'superadministrador';
+        }).length;
 
-      return FutureBuilder<List<Pedido>>(
-        future: _futuro,
-        builder: (_, snap) {
-          final cargando = snap.connectionState == ConnectionState.waiting;
-          final hoy = snap.hasData
-              ? snap.data!.where((p) => _esHoy(p.fecha)).toList()
-              : <Pedido>[];
-          final ingresos = hoy.fold(0.0, (s, p) => s + p.total);
-          final ticket = hoy.isEmpty ? 0.0 : ingresos / hoy.length;
+        return FutureBuilder<List<Pedido>>(
+          future: _futuro,
+          builder: (_, snap) {
+            final cargando = snap.connectionState == ConnectionState.waiting;
+            final hoy = snap.hasData
+                ? snap.data!.where((p) => _esHoy(p.fecha)).toList()
+                : <Pedido>[];
+            final ingresos = hoy.fold(0.0, (s, p) => s + p.total);
+            final ticket = hoy.isEmpty ? 0.0 : ingresos / hoy.length;
 
-          return Padding(
-            padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 640),
-                child: Column(
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 640),
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(children: [
-                        Container(
-                            width: 3, height: 18, color: AppColors.button),
-                        const SizedBox(width: 10),
-                        Text('RESUMEN DE HOY',
-                            style: GoogleFonts.manrope(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
-                                color: Colors.white70,
-                                letterSpacing: 2)),
-                        if (cargando) ...[
+                      Row(
+                        children: [
+                          Container(
+                            width: 3,
+                            height: 18,
+                            color: AppColors.button,
+                          ),
                           const SizedBox(width: 10),
-                          const SizedBox(
+                          Text(
+                            'RESUMEN DE HOY',
+                            style: GoogleFonts.manrope(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white70,
+                              letterSpacing: 2,
+                            ),
+                          ),
+                          if (cargando) ...[
+                            const SizedBox(width: 10),
+                            const SizedBox(
                               width: 12,
                               height: 12,
                               child: CircularProgressIndicator(
-                                  strokeWidth: 1.5,
-                                  color: AppColors.button)),
+                                strokeWidth: 1.5,
+                                color: AppColors.button,
+                              ),
+                            ),
+                          ],
                         ],
-                      ]),
+                      ),
                       const SizedBox(height: 14),
-                      Row(children: [
-                        Expanded(
+                      Row(
+                        children: [
+                          Expanded(
                             child: _KpiGlassCard(
-                                icon: Icons.badge_outlined,
-                                label: 'PERSONAL',
-                                value: personal.toString(),
-                                sub: 'empleados activos')),
-                        const SizedBox(width: 12),
-                        Expanded(
+                              icon: Icons.badge_outlined,
+                              label: 'PERSONAL',
+                              value: personal.toString(),
+                              sub: 'empleados activos',
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
                             child: _KpiGlassCard(
-                                icon: Icons.receipt_long_outlined,
-                                label: 'PEDIDOS HOY',
-                                value:
-                                    cargando ? '-' : hoy.length.toString(),
-                                sub: 'en el día')),
-                      ]),
+                              icon: Icons.receipt_long_outlined,
+                              label: 'PEDIDOS HOY',
+                              value: cargando ? '-' : hoy.length.toString(),
+                              sub: 'en el día',
+                            ),
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 12),
-                      Row(children: [
-                        Expanded(
+                      Row(
+                        children: [
+                          Expanded(
                             child: _KpiGlassCard(
-                                icon: Icons.euro_outlined,
-                                label: 'INGRESOS HOY',
-                                value: cargando
-                                    ? '-'
-                                    : ingresos.toStringAsFixed(2),
-                                sub: 'euros facturados',
-                                highlight: true)),
-                        const SizedBox(width: 12),
-                        Expanded(
+                              icon: Icons.euro_outlined,
+                              label: 'INGRESOS HOY',
+                              value: cargando
+                                  ? '-'
+                                  : ingresos.toStringAsFixed(2),
+                              sub: 'euros facturados',
+                              highlight: true,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
                             child: _KpiGlassCard(
-                                icon: Icons.show_chart_rounded,
-                                label: 'TICKET MEDIO',
-                                value:
-                                    cargando ? '-' : ticket.toStringAsFixed(2),
-                                sub: 'euros por pedido')),
-                      ]),
-                    ]),
+                              icon: Icons.show_chart_rounded,
+                              label: 'TICKET MEDIO',
+                              value: cargando ? '-' : ticket.toStringAsFixed(2),
+                              sub: 'euros por pedido',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
-          );
-        },
-      );
-    });
+            );
+          },
+        );
+      },
+    );
   }
 }
 
@@ -346,61 +390,73 @@ class _SucursalHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(children: [
-      Positioned.fill(
-        child: Image.asset('assets/images/Bravo restaurante.jpg',
-            fit: BoxFit.cover),
-      ),
-      Positioned.fill(
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              stops: const [0.0, 0.35, 0.70, 1.0],
-              colors: [
-                Colors.black.withValues(alpha: 0.55),
-                Colors.black.withValues(alpha: 0.20),
-                Colors.black.withValues(alpha: 0.70),
-                Colors.black.withValues(alpha: 0.95),
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: Image.asset(
+            'assets/images/Bravo restaurante.jpg',
+            fit: BoxFit.cover,
+          ),
+        ),
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                stops: const [0.0, 0.35, 0.70, 1.0],
+                colors: [
+                  Colors.black.withValues(alpha: 0.55),
+                  Colors.black.withValues(alpha: 0.20),
+                  Colors.black.withValues(alpha: 0.70),
+                  Colors.black.withValues(alpha: 0.95),
+                ],
+              ),
+            ),
+          ),
+        ),
+        SafeArea(
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.white60),
+                  ),
+                  child: Text(
+                    'SUCURSAL',
+                    style: GoogleFonts.manrope(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 4,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  nombre.toUpperCase(),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontFamily: 'Playfair Display',
+                    color: Colors.white,
+                    fontSize: 30,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 2,
+                    shadows: [Shadow(color: Colors.black54, blurRadius: 16)],
+                  ),
+                ),
               ],
             ),
           ),
         ),
-      ),
-      SafeArea(
-        child: Center(
-          child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-                  decoration: BoxDecoration(
-                      border: Border.all(color: Colors.white60)),
-                  child: Text('SUCURSAL',
-                      style: GoogleFonts.manrope(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 4)),
-                ),
-                const SizedBox(height: 20),
-                Text(nombre.toUpperCase(),
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                        fontFamily: 'Playfair Display',
-                        color: Colors.white,
-                        fontSize: 30,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 2,
-                        shadows: [
-                          Shadow(color: Colors.black54, blurRadius: 16)
-                        ])),
-              ]),
-        ),
-      ),
-    ]);
+      ],
+    );
   }
 }
 
@@ -410,11 +466,12 @@ class _GlassTile extends StatelessWidget {
   final String titulo;
   final String subtitulo;
   final VoidCallback onTap;
-  const _GlassTile(
-      {required this.icon,
-      required this.titulo,
-      required this.subtitulo,
-      required this.onTap});
+  const _GlassTile({
+    required this.icon,
+    required this.titulo,
+    required this.subtitulo,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -440,38 +497,51 @@ class _GlassTile extends StatelessWidget {
               onTap: onTap,
               child: Padding(
                 padding: const EdgeInsets.all(20),
-                child: Row(children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.button.withValues(alpha: 0.2),
-                      shape: BoxShape.circle,
-                      border: Border.all(
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.button.withValues(alpha: 0.2),
+                        shape: BoxShape.circle,
+                        border: Border.all(
                           color: AppColors.button.withValues(alpha: 0.5),
-                          width: 1),
+                          width: 1,
+                        ),
+                      ),
+                      child: Icon(icon, color: AppColors.button, size: 22),
                     ),
-                    child: Icon(icon, color: AppColors.button, size: 22),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
+                    const SizedBox(width: 16),
+                    Expanded(
                       child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                        Text(titulo,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            titulo,
                             style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 4),
-                        Text(subtitulo,
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            subtitulo,
                             style: TextStyle(
-                                fontSize: 12,
-                                color:
-                                    Colors.white.withValues(alpha: 0.65))),
-                      ])),
-                  Icon(Icons.chevron_right,
-                      color: Colors.white.withValues(alpha: 0.3), size: 22),
-                ]),
+                              fontSize: 12,
+                              color: Colors.white.withValues(alpha: 0.65),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      Icons.chevron_right,
+                      color: Colors.white.withValues(alpha: 0.3),
+                      size: 22,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -485,12 +555,13 @@ class _KpiGlassCard extends StatelessWidget {
   final IconData icon;
   final String label, value, sub;
   final bool highlight;
-  const _KpiGlassCard(
-      {required this.icon,
-      required this.label,
-      required this.value,
-      required this.sub,
-      this.highlight = false});
+  const _KpiGlassCard({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.sub,
+    this.highlight = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -513,35 +584,50 @@ class _KpiGlassCard extends StatelessWidget {
             ),
           ),
           child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(children: [
-                  Icon(icon,
-                      size: 15,
-                      color: highlight
-                          ? Colors.white
-                          : AppColors.button.withValues(alpha: 0.95)),
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    icon,
+                    size: 15,
+                    color: highlight
+                        ? Colors.white
+                        : AppColors.button.withValues(alpha: 0.95),
+                  ),
                   const SizedBox(width: 6),
                   Flexible(
-                      child: Text(label,
-                          style: GoogleFonts.manrope(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white.withValues(alpha: 0.7),
-                              letterSpacing: 1.5))),
-                ]),
-                const SizedBox(height: 10),
-                Text(value,
-                    style: GoogleFonts.manrope(
-                        fontSize: 22,
+                    child: Text(
+                      label,
+                      style: GoogleFonts.manrope(
+                        fontSize: 9,
                         fontWeight: FontWeight.w800,
-                        color: Colors.white)),
-                const SizedBox(height: 2),
-                Text(sub,
-                    style: GoogleFonts.manrope(
-                        fontSize: 11,
-                        color: Colors.white.withValues(alpha: 0.65))),
-              ]),
+                        color: Colors.white.withValues(alpha: 0.7),
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                value,
+                style: GoogleFonts.manrope(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                sub,
+                style: GoogleFonts.manrope(
+                  fontSize: 11,
+                  color: Colors.white.withValues(alpha: 0.65),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

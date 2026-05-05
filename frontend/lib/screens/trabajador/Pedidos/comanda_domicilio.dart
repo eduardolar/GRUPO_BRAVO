@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/screens/trabajador/Pedidos/pedido_domicilio.dart';
 import 'package:frontend/screens/trabajador/servicio_trabajador/seleccion_mesa.dart';
@@ -21,7 +21,9 @@ class _SeleccionPedidoState extends State<SeleccionPedido> {
         duration: const Duration(milliseconds: 600),
         child: _isAppReady
             ? const _StockContent()
-            : _SimpleSplash(onFinished: () => setState(() => _isAppReady = true)),
+            : _SimpleSplash(
+                onFinished: () => setState(() => _isAppReady = true),
+              ),
       ),
     );
   }
@@ -76,12 +78,7 @@ class _StockContent extends StatelessWidget {
       appBar: const _CustomAppBar(),
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
-        child: Column(
-          children: const [
-            _HeroSectionStock(),
-            _FooterQuote(),
-          ],
-        ),
+        child: Column(children: const [_HeroSectionStock(), _FooterQuote()]),
       ),
     );
   }
@@ -109,20 +106,6 @@ class _CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
           letterSpacing: 2.0,
         ),
       ),
-      actions: [
-        Padding(
-          padding: const EdgeInsets.only(right: 16.0),
-          child: IconButton(
-            icon: CircleAvatar(
-              backgroundColor: Colors.white24,
-              radius: 18,
-              child: Icon(Icons.inventory_2_outlined,
-                  color: Colors.white, size: 20),
-            ),
-            onPressed: () {},
-          ),
-        ),
-      ],
     );
   }
 
@@ -162,9 +145,9 @@ class _HeroSectionStock extends StatelessWidget {
                 end: Alignment.bottomCenter,
                 stops: const [0.0, 0.3, 0.7, 1.0],
                 colors: [
-                  Colors.black.withValues(alpha:0.3),
+                  Colors.black.withValues(alpha: 0.3),
                   Colors.transparent,
-                  Colors.black.withValues(alpha:0.75),
+                  Colors.black.withValues(alpha: 0.75),
                   AppColors.background,
                 ],
               ),
@@ -183,12 +166,16 @@ class _HeroSectionStock extends StatelessWidget {
                 children: [
                   // BADGE GRANATE
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.backgroundButton,
-                      border:
-                          Border.all(color: AppColors.background, width: 1.5),
+                      border: Border.all(
+                        color: AppColors.background,
+                        width: 1.5,
+                      ),
                     ),
                     child: const Text(
                       "GESTIÓN DE PEDIDOS",
@@ -212,9 +199,7 @@ class _HeroSectionStock extends StatelessWidget {
                       fontSize: 38,
                       height: 1.1,
                       fontWeight: FontWeight.bold,
-                      shadows: [
-                        Shadow(color: Colors.black87, blurRadius: 15),
-                      ],
+                      shadows: [Shadow(color: Colors.black87, blurRadius: 15)],
                     ),
                   ),
 
@@ -257,8 +242,7 @@ class _ActionButtonsStock extends StatelessWidget {
           onPressed: () {
             Navigator.push(
               context,
-              MaterialPageRoute(
-                  builder: (context) => const PedidoDomicilio()),
+              MaterialPageRoute(builder: (context) => const PedidoDomicilio()),
             );
           },
         ),
@@ -306,8 +290,11 @@ class _MainButton extends StatelessWidget {
                     ),
                   ),
                 ),
-                const Icon(Icons.chevron_right,
-                    color: Colors.white54, size: 18),
+                const Icon(
+                  Icons.chevron_right,
+                  color: Colors.white54,
+                  size: 18,
+                ),
               ],
             ),
           ),
@@ -339,8 +326,11 @@ class _FooterQuote extends StatelessWidget {
           ),
           child: Column(
             children: [
-              Icon(Icons.format_quote,
-                  color: AppColors.button.withValues(alpha:0.4), size: 30),
+              Icon(
+                Icons.format_quote,
+                color: AppColors.button.withValues(alpha: 0.4),
+                size: 30,
+              ),
               const SizedBox(height: 16),
               const Text(
                 "Control y precisión en cada pedido.",

@@ -1,15 +1,15 @@
 [
   {
-    "nombre": "Leslie Gonzales",
-    "email": "leslie@ejemplo.com",
-    "telefono": "622111222",
+    "nombre": "Cliente Demo Uno",
+    "email": "demo1@example.com",
+    "telefono": "600000001",
     "puntos_fidelidad": 150,
-    "notas": "Alérgica a los frutos secos"
+    "notas": "Datos sintéticos: NO usar en producción"
   },
   {
-    "nombre": "Pablo de Francisco",
-    "email": "pablo@ejemplo.com",
-    "telefono": "633444555",
+    "nombre": "Cliente Demo Dos",
+    "email": "demo2@example.com",
+    "telefono": "600000002",
     "puntos_fidelidad": 50
   }
 ]

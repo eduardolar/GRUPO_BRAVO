@@ -51,7 +51,12 @@ void main() {
 
   group('ProductoPedido.toMap', () {
     test('serializa todos los campos', () {
-      final p = ProductoPedido(nombre: 'Pizza', cantidad: 2, precio: 10.0, sin: ['sal']);
+      final p = ProductoPedido(
+        nombre: 'Pizza',
+        cantidad: 2,
+        precio: 10.0,
+        sin: ['sal'],
+      );
       final map = p.toMap();
 
       expect(map['nombre'], 'Pizza');

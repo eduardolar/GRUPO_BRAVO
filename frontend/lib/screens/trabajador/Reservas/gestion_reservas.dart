@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/screens/trabajador/Reservas/borrar_reservas.dart';
 import 'package:frontend/screens/trabajador/Reservas/historial_reservas.dart';
@@ -23,7 +23,9 @@ class _GestionReservasState extends State<GestionReservas> {
         duration: const Duration(milliseconds: 600),
         child: _isAppReady
             ? const _ReservasContent()
-            : _SimpleSplash(onFinished: () => setState(() => _isAppReady = true)),
+            : _SimpleSplash(
+                onFinished: () => setState(() => _isAppReady = true),
+              ),
       ),
     );
   }
@@ -78,12 +80,7 @@ class _ReservasContent extends StatelessWidget {
       appBar: const _CustomAppBar(),
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
-        child: Column(
-          children: const [
-            _HeroSectionReservas(),
-            _FooterQuote(),
-          ],
-        ),
+        child: Column(children: const [_HeroSectionReservas(), _FooterQuote()]),
       ),
     );
   }
@@ -111,20 +108,6 @@ class _CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
           letterSpacing: 2.0,
         ),
       ),
-      actions: [
-        Padding(
-          padding: const EdgeInsets.only(right: 16.0),
-          child: IconButton(
-            icon: CircleAvatar(
-              backgroundColor: Colors.white24,
-              radius: 18,
-              child: Icon(Icons.calendar_month_outlined,
-                  color: Colors.white, size: 20),
-            ),
-            onPressed: () {},
-          ),
-        ),
-      ],
     );
   }
 
@@ -164,9 +147,9 @@ class _HeroSectionReservas extends StatelessWidget {
                 end: Alignment.bottomCenter,
                 stops: const [0.0, 0.3, 0.7, 1.0],
                 colors: [
-                  Colors.black.withValues(alpha:0.3),
+                  Colors.black.withValues(alpha: 0.3),
                   Colors.transparent,
-                  Colors.black.withValues(alpha:0.75),
+                  Colors.black.withValues(alpha: 0.75),
                   AppColors.background,
                 ],
               ),
@@ -195,9 +178,7 @@ class _HeroSectionReservas extends StatelessWidget {
                       fontSize: 38,
                       height: 1.1,
                       fontWeight: FontWeight.bold,
-                      shadows: [
-                        Shadow(color: Colors.black87, blurRadius: 15)
-                      ],
+                      shadows: [Shadow(color: Colors.black87, blurRadius: 15)],
                     ),
                   ),
 
@@ -249,7 +230,9 @@ class _ActionButtonsReservas extends StatelessWidget {
           onPressed: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const ReservaMesaTrabajador()),
+              MaterialPageRoute(
+                builder: (context) => const ReservaMesaTrabajador(),
+              ),
             );
           },
         ),
@@ -259,7 +242,9 @@ class _ActionButtonsReservas extends StatelessWidget {
           onPressed: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const ModificarReservas()),
+              MaterialPageRoute(
+                builder: (context) => const ModificarReservas(),
+              ),
             );
           },
         ),
@@ -279,7 +264,9 @@ class _ActionButtonsReservas extends StatelessWidget {
           onPressed: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const HistorialReservas()),
+              MaterialPageRoute(
+                builder: (context) => const HistorialReservas(),
+              ),
             );
           },
         ),
@@ -327,8 +314,11 @@ class _MainButton extends StatelessWidget {
                     ),
                   ),
                 ),
-                const Icon(Icons.chevron_right,
-                    color: Colors.white54, size: 18),
+                const Icon(
+                  Icons.chevron_right,
+                  color: Colors.white54,
+                  size: 18,
+                ),
               ],
             ),
           ),
@@ -360,8 +350,11 @@ class _FooterQuote extends StatelessWidget {
           ),
           child: Column(
             children: [
-              Icon(Icons.format_quote,
-                  color: AppColors.button.withValues(alpha:0.4), size: 30),
+              Icon(
+                Icons.format_quote,
+                color: AppColors.button.withValues(alpha: 0.4),
+                size: 30,
+              ),
               const SizedBox(height: 16),
               const Text(
                 "Organización y excelencia en cada reserva.",

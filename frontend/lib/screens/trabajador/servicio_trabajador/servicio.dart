@@ -1,6 +1,7 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/screens/trabajador/Pedidos/pedidos_listos_screen.dart';
+import 'package:frontend/screens/trabajador/servicio_trabajador/modificar_comanda.dart';
 import 'package:frontend/screens/trabajador/servicio_trabajador/sacar_cuenta.dart';
 import 'package:frontend/screens/trabajador/servicio_trabajador/seleccion_mesa.dart';
 
@@ -22,7 +23,9 @@ class _ServicioTrabajadorState extends State<ServicioTrabajador> {
         duration: const Duration(milliseconds: 600),
         child: _isAppReady
             ? const _ServicioContent()
-            : _SimpleSplash(onFinished: () => setState(() => _isAppReady = true)),
+            : _SimpleSplash(
+                onFinished: () => setState(() => _isAppReady = true),
+              ),
       ),
     );
   }
@@ -77,12 +80,7 @@ class _ServicioContent extends StatelessWidget {
       appBar: const _CustomAppBar(),
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
-        child: Column(
-          children: const [
-            _HeroSectionServicio(),
-            _FooterQuote(),
-          ],
-        ),
+        child: Column(children: const [_HeroSectionServicio(), _FooterQuote()]),
       ),
     );
   }
@@ -110,20 +108,6 @@ class _CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
           letterSpacing: 2.0,
         ),
       ),
-      actions: [
-        Padding(
-          padding: const EdgeInsets.only(right: 16.0),
-          child: IconButton(
-            icon: CircleAvatar(
-              backgroundColor: Colors.white24,
-              radius: 18,
-              child: Icon(Icons.room_service_outlined,
-                  color: Colors.white, size: 20),
-            ),
-            onPressed: () {},
-          ),
-        ),
-      ],
     );
   }
 
@@ -163,9 +147,9 @@ class _HeroSectionServicio extends StatelessWidget {
                 end: Alignment.bottomCenter,
                 stops: const [0.0, 0.3, 0.7, 1.0],
                 colors: [
-                  Colors.black.withValues(alpha:0.3),
+                  Colors.black.withValues(alpha: 0.3),
                   Colors.transparent,
-                  Colors.black.withValues(alpha:0.75),
+                  Colors.black.withValues(alpha: 0.75),
                   AppColors.background,
                 ],
               ),
@@ -194,9 +178,7 @@ class _HeroSectionServicio extends StatelessWidget {
                       fontSize: 38,
                       height: 1.1,
                       fontWeight: FontWeight.bold,
-                      shadows: [
-                        Shadow(color: Colors.black87, blurRadius: 15)
-                      ],
+                      shadows: [Shadow(color: Colors.black87, blurRadius: 15)],
                     ),
                   ),
 
@@ -261,10 +243,13 @@ class _ActionButtonsServicio extends StatelessWidget {
           },
         ),
         _MainButton(
-          icon: Icons.attach_money_outlined,
-          label: "Añadir a la cuenta",
+          icon: Icons.edit_outlined,
+          label: "Modificar comanda",
           onPressed: () {
-            
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const ModificarComanda()),
+            );
           },
         ),
         _MainButton(
@@ -321,8 +306,11 @@ class _MainButton extends StatelessWidget {
                     ),
                   ),
                 ),
-                const Icon(Icons.chevron_right,
-                    color: Colors.white54, size: 18),
+                const Icon(
+                  Icons.chevron_right,
+                  color: Colors.white54,
+                  size: 18,
+                ),
               ],
             ),
           ),
@@ -354,8 +342,11 @@ class _FooterQuote extends StatelessWidget {
           ),
           child: Column(
             children: [
-              Icon(Icons.format_quote,
-                  color: AppColors.button.withValues(alpha:0.4), size: 30),
+              Icon(
+                Icons.format_quote,
+                color: AppColors.button.withValues(alpha: 0.4),
+                size: 30,
+              ),
               const SizedBox(height: 16),
               const Text(
                 "Excelencia en cada mesa.",

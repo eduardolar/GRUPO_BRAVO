@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:frontend/core/colors_style.dart';
 
 /// Componente AppBar mejorado para mantener consistencia
@@ -136,7 +136,9 @@ class MenuButton extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Material(
-        color: isPrimary ? AppColors.button : Colors.black.withValues(alpha:0.55),
+        color: isPrimary
+            ? AppColors.button
+            : Colors.black.withValues(alpha: 0.55),
         child: InkWell(
           onTap: onPressed,
           child: Container(
@@ -172,7 +174,11 @@ class MenuButton extends StatelessWidget {
                     ],
                   ),
                 ),
-                const Icon(Icons.chevron_right, color: Colors.white54, size: 18),
+                const Icon(
+                  Icons.chevron_right,
+                  color: Colors.white54,
+                  size: 18,
+                ),
               ],
             ),
           ),

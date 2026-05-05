@@ -53,7 +53,11 @@ class UsuarioProvider with ChangeNotifier {
     return ok;
   }
 
-  Future<bool> editar(String id, {required String nombre, required String correo}) async {
+  Future<bool> editar(
+    String id, {
+    required String nombre,
+    required String correo,
+  }) async {
     final ok = await _service.editarUsuario(id, nombre: nombre, correo: correo);
     if (ok) await cargar();
     return ok;
@@ -62,7 +66,9 @@ class UsuarioProvider with ChangeNotifier {
   Future<bool> toggleActivo(String id, bool nuevoEstado) async {
     final ok = await _service.editarUsuario(id, activo: nuevoEstado);
     if (ok) {
-      _usuarios = _usuarios.map((u) => u.id == id ? u.copyWith(activo: nuevoEstado) : u).toList();
+      _usuarios = _usuarios
+          .map((u) => u.id == id ? u.copyWith(activo: nuevoEstado) : u)
+          .toList();
       notifyListeners();
     }
     return ok;

@@ -46,6 +46,7 @@ class UsuarioRegistro(BaseModel):
     direccion: str
     rol: str = "cliente"
     restauranteId: Optional[str] = None
+    consentimiento_rgpd: bool = False
 
     @field_validator("password")
     @classmethod
@@ -177,6 +178,10 @@ class ProductoCrear(BaseModel):
     imagen: Optional[str] = None
     disponible: bool = True
     ingredientes: list = []
+    # ID de la sucursal a la que pertenece el producto. Si lo omites al
+    # editar, el documento conserva el restaurante_id que ya tenía: no lo
+    # sobreescribimos con None desde la capa de ruta.
+    restaurante_id: Optional[str] = None
 
     #Validacion para verficar login 2 FA.
 class VerificarLogin2FA(BaseModel):

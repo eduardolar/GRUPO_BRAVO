@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../../core/colors_style.dart';
 
 class TarjetaOpcionPago extends StatelessWidget {
@@ -20,11 +20,11 @@ class TarjetaOpcionPago extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Lógica visual para diferenciar marcas
-    Color colorIcono = AppColors.button; // Color por defecto 
-    if (seleccionada) { 
+    Color colorIcono = AppColors.button; // Color por defecto
+    if (seleccionada) {
       if (titulo.contains('PayPal')) colorIcono = Colors.blue.shade800;
       if (titulo.contains('Google')) colorIcono = AppColors.disp;
-    } 
+    }
 
     return GestureDetector(
       onTap: alPulsar,
@@ -44,14 +44,16 @@ class TarjetaOpcionPago extends StatelessWidget {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: seleccionada
-                    ? colorIcono.withValues(alpha: 0.1) // Fondo suave del color de la marca
+                    ? colorIcono.withValues(
+                        alpha: 0.1,
+                      ) // Fondo suave del color de la marca
                     : AppColors.line.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(
                 icono,
                 // Aplicamos el color especial para Google/PayPal
-                color: seleccionada ? colorIcono : AppColors.iconPrimary, 
+                color: seleccionada ? colorIcono : AppColors.iconPrimary,
                 size: 24,
               ),
             ),

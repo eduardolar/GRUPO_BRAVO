@@ -4,6 +4,7 @@ import '../models/pedido_model.dart';
 import '../data/mock_data.dart';
 import 'api_config.dart';
 import 'http_client.dart';
+import 'auth_session.dart';
 
 class PedidoService {
   static Future<Map<String, dynamic>> crearPedido({
@@ -44,10 +45,7 @@ class PedidoService {
     final response = await httpWithRetry(
       () => http.post(
         Uri.parse('$baseUrl/pedidos'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        headers: AuthSession.headers(extra: {'Accept': 'application/json'}),
         body: jsonEncode({
           'userId': userId,
           'items': items,
@@ -82,7 +80,7 @@ class PedidoService {
     final response = await httpWithRetry(
       () => http.get(
         Uri.parse('$baseUrl/pedidos?userId=$userId'),
-        headers: {'Accept': 'application/json'},
+        headers: AuthSession.headers(extra: {'Accept': 'application/json'}),
       ),
     );
 
@@ -109,14 +107,8 @@ class PedidoService {
     final response = await httpWithRetry(
       () => http.patch(
         Uri.parse('$baseUrl/pedidos/$pedidoId'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: jsonEncode({
-          'items': items,
-          'total': totalExtra,
-        }),
+        headers: AuthSession.headers(extra: {'Accept': 'application/json'}),
+        body: jsonEncode({'items': items, 'total': totalExtra}),
       ),
       retry: false,
     );
@@ -127,7 +119,8 @@ class PedidoService {
   }
 
   static Future<Map<String, dynamic>?> obtenerPedidoActivoPorMesa(
-      String mesaId) async {
+    String mesaId,
+  ) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 300));
       return null;
@@ -136,7 +129,7 @@ class PedidoService {
     final response = await httpWithRetry(
       () => http.get(
         Uri.parse('$baseUrl/pedidos?mesaId=$mesaId'),
-        headers: {'Accept': 'application/json'},
+        headers: AuthSession.headers(extra: {'Accept': 'application/json'}),
       ),
     );
 
@@ -164,10 +157,7 @@ class PedidoService {
     final response = await httpWithRetry(
       () => http.patch(
         Uri.parse('$baseUrl/pedidos/$pedidoId'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        headers: AuthSession.headers(extra: {'Accept': 'application/json'}),
         body: jsonEncode({
           'estadoPago': 'pagado',
           'estado': 'entregado',
@@ -191,10 +181,7 @@ class PedidoService {
       final response = await httpWithRetry(
         () => http.post(
           Uri.parse('$baseUrl/pedidos'),
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
+          headers: AuthSession.headers(extra: {'Accept': 'application/json'}),
           body: jsonEncode({
             'userId': '',
             'items': items,
@@ -214,6 +201,7 @@ class PedidoService {
       return false;
     }
   }
+
   static Future<void> actualizarEstadoPedido({
     required String pedidoId,
     required String estado,
@@ -226,10 +214,7 @@ class PedidoService {
     final response = await httpWithRetry(
       () => http.patch(
         Uri.parse('$baseUrl/pedidos/$pedidoId/estado'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        headers: AuthSession.headers(extra: {'Accept': 'application/json'}),
         body: jsonEncode({'estado': estado}),
       ),
       retry: false,
@@ -256,10 +241,7 @@ class PedidoService {
     final response = await httpWithRetry(
       () => http.patch(
         Uri.parse('$baseUrl/pedidos/$pedidoId/items/$itemIndex/hecho'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        headers: AuthSession.headers(extra: {'Accept': 'application/json'}),
         body: jsonEncode({'hecho': hecho}),
       ),
       retry: false,
@@ -284,7 +266,7 @@ class PedidoService {
     final response = await httpWithRetry(
       () => http.get(
         Uri.parse('$baseUrl/pedidos/$pedidoId'),
-        headers: {'Accept': 'application/json'},
+        headers: AuthSession.headers(extra: {'Accept': 'application/json'}),
       ),
     );
 
@@ -301,18 +283,25 @@ class PedidoService {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 400));
       var pedidos = MockData.pedidos.map((m) => Pedido.fromMap(m)).toList();
-      if (estado != null) pedidos = pedidos.where((p) => p.estado == estado).toList();
+      if (estado != null) {
+        pedidos = pedidos.where((p) => p.estado == estado).toList();
+      }
       return pedidos;
     }
 
     final params = <String, String>{};
-    if (restauranteId != null && restauranteId.isNotEmpty) params['restauranteId'] = restauranteId;
+    if (restauranteId != null && restauranteId.isNotEmpty) {
+      params['restauranteId'] = restauranteId;
+    }
     if (estado != null) params['estado'] = estado;
-    final uri = Uri.parse('$baseUrl/pedidos').replace(
-      queryParameters: params.isEmpty ? null : params,
-    );
+    final uri = Uri.parse(
+      '$baseUrl/pedidos',
+    ).replace(queryParameters: params.isEmpty ? null : params);
     final response = await httpWithRetry(
-      () => http.get(uri, headers: {'Accept': 'application/json'}),
+      () => http.get(
+        uri,
+        headers: AuthSession.headers(extra: {'Accept': 'application/json'}),
+      ),
     );
 
     if (response.statusCode == 200) {
