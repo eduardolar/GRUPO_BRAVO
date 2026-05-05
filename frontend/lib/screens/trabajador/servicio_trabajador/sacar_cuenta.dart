@@ -30,16 +30,9 @@ class _SacarCuentaState extends State<SacarCuenta> {
   }
 
   Future<void> _cargarMesas() async {
-    // Aislamos por sucursal: el trabajador solo ve mesas ocupadas de su
-    // restaurante, nunca las de otra sucursal del Grupo.
-    final restauranteId = context
-        .read<AuthProvider>()
-        .usuarioActual
-        ?.restauranteId;
+    final restauranteId = context.read<AuthProvider>().usuarioActual?.restauranteId;
     try {
-      final todas = await MesaService.obtenerMesas(
-        restauranteId: restauranteId,
-      );
+      final todas = await MesaService.obtenerMesas(restauranteId: restauranteId);
       if (!mounted) return;
       setState(() {
         _mesasOcupadas = todas.where((m) => !m.disponible).toList();

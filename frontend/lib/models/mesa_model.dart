@@ -25,8 +25,7 @@ class Mesa {
       ubicacion: mapa['ubicacion'] ?? 'interior',
       disponible: mapa['disponible'] ?? true,
       codigoQr: mapa['codigoQr'] ?? mapa['codigo_qr'],
-      restauranteId: (mapa['restauranteId'] ?? mapa['restaurante_id'])
-          ?.toString(),
+      restauranteId: (mapa['restauranteId'] ?? mapa['restaurante_id'])?.toString(),
     );
   }
 
@@ -44,11 +43,7 @@ class Mesa {
     };
   }
 
-  Mesa copyWith({
-    bool? disponible,
-    String? codigoQr,
-    String? restauranteId,
-  }) {
+  Mesa copyWith({bool? disponible, String? codigoQr, String? restauranteId}) {
     return Mesa(
       id: id,
       numero: numero,

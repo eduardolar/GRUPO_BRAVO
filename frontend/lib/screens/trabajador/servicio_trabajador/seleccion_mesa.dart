@@ -34,12 +34,9 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
   }
 
   Future<void> _cargarMesas() async {
+    final restauranteId = context.read<AuthProvider>().usuarioActual?.restauranteId;
     try {
-      // Aislamos por sucursal: el trabajador solo ve y crea mesas de su
-      // restaurante.
-      final mesas = await MesaService.obtenerMesas(
-        restauranteId: _restauranteId,
-      );
+      final mesas = await MesaService.obtenerMesas(restauranteId: restauranteId);
       if (!mounted) return;
       setState(() {
         _mesas = mesas;
