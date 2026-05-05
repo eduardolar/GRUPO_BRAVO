@@ -305,36 +305,13 @@ class _CrearPedidosState extends State<CrearComanda> {
         _pedidoId = (resultado['id'] ?? resultado['_id'])?.toString();
       }
 
-    if (!mounted) return;
-    setState(() => _carrito.clear());
-    _showSnack(messenger, "Pedido enviado a cocina · puedes añadir más platos");
-    widget.onPedidoEnviado?.call();
-
-  } catch (e) {
-    if (!mounted) return;
-    // Si falla, deshacer el merge para no corromper el acumulado
-    for (final entry in _carrito.entries) {
-      final id = entry.key.id;
-      final item = _itemsAcumulados[id];
-      if (item != null) {
-        final nuevaCantidad = (item['cantidad'] as int) - entry.value;
-        if (nuevaCantidad <= 0) {
-          _itemsAcumulados.remove(id);
-        } else {
-          item['cantidad'] = nuevaCantidad;
-        }
-      }
-    }
-    _totalAcumulado -= _totalPrecio;
-    _showSnack(messenger, "Error al enviar pedido", error: true);
-  }
-}
       if (!mounted) return;
       setState(() => _carrito.clear());
       _showSnack(
         messenger,
         "Pedido enviado a cocina · puedes añadir más platos",
       );
+      widget.onPedidoEnviado?.call();
     } catch (e) {
       if (!mounted) return;
       // Si falla, deshacer el merge para no corromper el acumulado
