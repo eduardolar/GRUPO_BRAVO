@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/app_snackbar.dart';
@@ -12,8 +13,8 @@ import '../../providers/auth_provider.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/restaurante_provider.dart';
 import '../../services/api_service.dart';
-import '../../components/Cliente/reservar_mesa/chip_sucursal.dart';
 import '../../components/Cliente/reservar_mesa/confirmacion_sheet.dart';
+import '../../components/Cliente/reservar_mesa/opcion_sucursal.dart';
 import '../../components/Cliente/reservar_mesa/skeleton_reservas.dart';
 import '../../components/Cliente/reservar_mesa/utils.dart' as ru;
 import 'perfil_screen.dart';
@@ -648,62 +649,87 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
     );
   }
 
+  /// Cabecera unificada: back + título Playfair + perfil. Justo debajo, un
+  /// "selector" tipo pill clicable con la sucursal actual; al pulsarlo se
+  /// abre un bottom sheet con las sucursales activas (cuando hay más de una).
   Widget _buildAppBar() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-      child: Row(
-        children: [
-          IconButton(
-            tooltip: 'Volver',
-            icon: const Icon(
-              Icons.arrow_back_ios_new,
-              color: Colors.white,
-              size: 20,
-            ),
-            onPressed: () => Navigator.pop(context),
-          ),
-          const Expanded(
-            child: Text(
-              'RESERVAR MESA',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 2.5,
-                fontSize: 15,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 8, 4, 0),
+          child: Row(
+            children: [
+              IconButton(
+                tooltip: 'Volver',
+                icon: const Icon(
+                  Icons.arrow_back_ios_new,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                onPressed: () => Navigator.pop(context),
               ),
-            ),
+              const Spacer(),
+              IconButton(
+                tooltip: 'Mi perfil',
+                icon: const Icon(
+                  Icons.person_outline,
+                  color: Colors.white,
+                  size: 24,
+                ),
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const PerfilScreen()),
+                ),
+              ),
+            ],
           ),
-          IconButton(
-            tooltip: 'Mi perfil',
-            icon: const Icon(
-              Icons.person_outline,
-              color: Colors.white,
-              size: 26,
-            ),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const PerfilScreen()),
-            ),
+        ),
+        // Eyebrow + título Playfair + filete burdeos.
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 6),
+          child: Column(
+            children: [
+              Text(
+                'RESTAURANTE BRAVO',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.55),
+                  fontSize: 10,
+                  letterSpacing: 4,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Reservar mesa',
+                style: GoogleFonts.playfairDisplay(
+                  color: Colors.white,
+                  fontSize: 30,
+                  fontWeight: FontWeight.w700,
+                  height: 1.05,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(width: 28, height: 2, color: AppColors.button),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  /// Selector horizontal de sucursales. Se oculta cuando solo hay una activa
-  /// para no saturar la UI al cliente. Usa `Consumer` para reaccionar a la
-  /// carga del provider (mostrar el chip activo en cuanto llegue la lista).
+  /// Píldora con la sucursal actual. Si hay más de una activa, al tocarla
+  /// se abre un bottom sheet para elegir; si solo hay una, es informativa.
   Widget _buildSelectorSucursal() {
     return Consumer<RestauranteProvider>(
       builder: (_, prov, _) {
         final activas = prov.restaurantes.where((r) => r.activo).toList();
         if (prov.cargando && activas.isEmpty) {
           return const Padding(
-            padding: EdgeInsets.symmetric(vertical: 8),
+            padding: EdgeInsets.symmetric(vertical: 14),
             child: SizedBox(
-              height: 20,
-              width: 20,
+              height: 18,
+              width: 18,
               child: CircularProgressIndicator(
                 color: AppColors.button,
                 strokeWidth: 2,
@@ -711,42 +737,59 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
             ),
           );
         }
-        if (activas.length <= 1) {
-          // Una única sucursal: no tiene sentido mostrar selector. Solo el
-          // nombre como pista de contexto.
-          if (_restaurante != null) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Text(
-                _restaurante!.nombre.toUpperCase(),
-                style: const TextStyle(
-                  color: Colors.white60,
-                  fontSize: 10,
-                  letterSpacing: 1.6,
+        if (_restaurante == null) return const SizedBox(height: 14);
+
+        final clicable = activas.length > 1;
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(24, 14, 24, 4),
+          child: Center(
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(24),
+                onTap: clicable ? () => _abrirSelectorSucursal(activas) : null,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 9,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.07),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.18),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.storefront_rounded,
+                        color: AppColors.button,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _restaurante!.nombre,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.4,
+                        ),
+                      ),
+                      if (clicable) ...[
+                        const SizedBox(width: 6),
+                        Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          color: Colors.white.withValues(alpha: 0.7),
+                          size: 18,
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
               ),
-            );
-          }
-          return const SizedBox.shrink();
-        }
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
-          child: SizedBox(
-            height: 36,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              itemCount: activas.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 8),
-              itemBuilder: (_, i) {
-                final r = activas[i];
-                final activa = r.id == _restaurante?.id;
-                return ChipSucursalCliente(
-                  restaurante: r,
-                  activa: activa,
-                  onTap: () => _cambiarSucursal(r),
-                );
-              },
             ),
           ),
         );
@@ -754,26 +797,135 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
     );
   }
 
+  /// Bottom sheet con la lista de sucursales activas. Pulsar una llama a
+  /// [_cambiarSucursal] (que pide confirmación si hay carrito de otra).
+  Future<void> _abrirSelectorSucursal(List<Restaurante> activas) async {
+    HapticFeedback.selectionClick();
+    final elegida = await showModalBottomSheet<Restaurante>(
+      context: context,
+      backgroundColor: AppColors.panel,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.line,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                'Elige restaurante',
+                style: GoogleFonts.playfairDisplay(
+                  color: AppColors.textPrimary,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Tu reserva se hará en el local que elijas',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+              ...activas.map((r) {
+                final activa = r.id == _restaurante?.id;
+                return OpcionSucursal(
+                  restaurante: r,
+                  activa: activa,
+                  onTap: () => Navigator.pop(ctx, r),
+                );
+              }),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (elegida != null) await _cambiarSucursal(elegida);
+  }
+
+  /// Segmented control en píldora — más coherente con la estética que un
+  /// `TabBar` por defecto. El `TabController` sigue siendo el mismo para no
+  /// romper la lógica del resto del archivo.
   Widget _buildTabBar() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 30),
-      child: TabBar(
-        controller: _tabController,
-        indicatorColor: AppColors.button,
-        indicatorWeight: 2,
-        labelColor: Colors.white,
-        unselectedLabelColor: Colors.white38,
-        labelStyle: const TextStyle(
-          fontWeight: FontWeight.bold,
-          letterSpacing: 1.5,
-          fontSize: 13,
+      padding: const EdgeInsets.fromLTRB(24, 18, 24, 14),
+      child: AnimatedBuilder(
+        animation: _tabController,
+        builder: (_, _) {
+          final i = _tabController.index;
+          return Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.07),
+              borderRadius: BorderRadius.circular(30),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+            ),
+            child: Row(
+              children: [
+                _segmentoTab(
+                  'NUEVA RESERVA',
+                  activo: i == 0,
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    _tabController.animateTo(0);
+                  },
+                ),
+                _segmentoTab(
+                  'MIS RESERVAS',
+                  activo: i == 1,
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    _tabController.animateTo(1);
+                  },
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _segmentoTab(
+    String label, {
+    required bool activo,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOut,
+          height: 38,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: activo ? AppColors.button : Colors.transparent,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: activo ? Colors.white : Colors.white60,
+              fontSize: 11,
+              fontWeight: activo ? FontWeight.w800 : FontWeight.w600,
+              letterSpacing: 1.6,
+            ),
+          ),
         ),
-        unselectedLabelStyle: const TextStyle(fontSize: 13),
-        dividerColor: Colors.white12,
-        tabs: const [
-          Tab(text: 'NUEVA RESERVA'),
-          Tab(text: 'MIS RESERVAS'),
-        ],
       ),
     );
   }
@@ -841,7 +993,7 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
   // ── Strip de fechas ──
   Widget _buildFechaStrip() {
     return SizedBox(
-      height: 82,
+      height: 92,
       child: ListView.builder(
         controller: _dateScrollController,
         scrollDirection: Axis.horizontal,
@@ -856,6 +1008,7 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
   Widget _buildDateChip(DateTime fecha) {
     final seleccionada = _mismaFecha(fecha, _fechaSeleccionada);
     final hoy = _esHoy(fecha);
+    final esFinDeSemana = fecha.weekday >= 6; // 6 = sábado, 7 = domingo
 
     return GestureDetector(
       onTap: () => _seleccionarFecha(fecha),
@@ -863,16 +1016,27 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
         duration: const Duration(milliseconds: 220),
         curve: Curves.easeOut,
         width: _dateItemWidth - 4,
-        margin: const EdgeInsets.only(right: 4),
+        margin: const EdgeInsets.only(right: 6),
         decoration: BoxDecoration(
           color: seleccionada
               ? AppColors.button
-              : AppColors.panel.withValues(alpha: 0.13),
-          borderRadius: BorderRadius.circular(14),
+              : Colors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: seleccionada ? AppColors.button : Colors.white12,
-            width: seleccionada ? 2 : 1,
+            color: seleccionada
+                ? AppColors.button
+                : Colors.white.withValues(alpha: 0.12),
+            width: seleccionada ? 1.4 : 1,
           ),
+          boxShadow: seleccionada
+              ? [
+                  BoxShadow(
+                    color: AppColors.button.withValues(alpha: 0.45),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : null,
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -880,29 +1044,36 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
             Text(
               hoy ? 'HOY' : ru.kDiasAbrev[fecha.weekday - 1],
               style: TextStyle(
-                color: seleccionada ? Colors.white : Colors.white60,
+                color: seleccionada
+                    ? Colors.white
+                    : (esFinDeSemana
+                          ? AppColors.button.withValues(alpha: 0.9)
+                          : Colors.white60),
                 fontSize: 10,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1.4,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '${fecha.day}',
+              style: GoogleFonts.playfairDisplay(
+                color: Colors.white,
+                fontSize: 26,
                 fontWeight: FontWeight.w700,
-                letterSpacing: 1,
+                height: 1,
               ),
             ),
             const SizedBox(height: 4),
             Text(
-              '${fecha.day}',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                height: 1,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
               ru.kMesesAbrev[fecha.month - 1],
               style: TextStyle(
-                color: seleccionada ? Colors.white70 : Colors.white54,
-                fontSize: 10,
-                letterSpacing: 0.5,
+                color: seleccionada
+                    ? Colors.white.withValues(alpha: 0.85)
+                    : Colors.white54,
+                fontSize: 9,
+                letterSpacing: 1.2,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],
@@ -913,45 +1084,86 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
 
   // ── Turno toggle ──
   Widget _buildTurnoToggle() {
-    return Container(
-      height: 56,
-      decoration: BoxDecoration(
-        color: AppColors.panel.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white12),
-      ),
-      child: Row(
-        children: [
-          _buildTurnoSegmento('comida', 'Comida', Icons.wb_sunny_outlined),
-          _buildTurnoSegmento('cena', 'Cena', Icons.nightlight_outlined),
-        ],
-      ),
+    return Row(
+      children: [
+        _buildTurnoSegmento(
+          'comida',
+          'Comida',
+          'De 12:30 a 16:00',
+          Icons.wb_sunny_rounded,
+        ),
+        const SizedBox(width: 12),
+        _buildTurnoSegmento(
+          'cena',
+          'Cena',
+          'De 20:00 a 23:30',
+          Icons.nightlight_round,
+        ),
+      ],
     );
   }
 
-  Widget _buildTurnoSegmento(String turno, String label, IconData icono) {
+  Widget _buildTurnoSegmento(
+    String turno,
+    String label,
+    String horario,
+    IconData icono,
+  ) {
     final sel = _turnoSeleccionado == turno;
     return Expanded(
       child: GestureDetector(
         onTap: () => _cambiarTurno(turno),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          margin: const EdgeInsets.all(4),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
           decoration: BoxDecoration(
-            color: sel ? AppColors.button : Colors.transparent,
-            borderRadius: BorderRadius.circular(9),
+            color: sel
+                ? AppColors.button.withValues(alpha: 0.18)
+                : Colors.white.withValues(alpha: 0.04),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: sel
+                  ? AppColors.button
+                  : Colors.white.withValues(alpha: 0.12),
+              width: sel ? 1.4 : 1,
+            ),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icono, color: sel ? Colors.white : Colors.white38, size: 18),
-              const SizedBox(width: 8),
+              Container(
+                width: 32,
+                height: 32,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: sel
+                      ? AppColors.button
+                      : Colors.white.withValues(alpha: 0.08),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  icono,
+                  color: sel ? Colors.white : Colors.white60,
+                  size: 16,
+                ),
+              ),
+              const SizedBox(height: 10),
               Text(
                 label,
                 style: TextStyle(
-                  color: sel ? Colors.white : Colors.white38,
-                  fontWeight: sel ? FontWeight.bold : FontWeight.normal,
+                  color: Colors.white,
                   fontSize: 14,
+                  fontWeight: sel ? FontWeight.w800 : FontWeight.w600,
+                  letterSpacing: 0.3,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                horario,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: sel ? 0.7 : 0.45),
+                  fontSize: 11,
                 ),
               ),
             ],
@@ -1112,52 +1324,61 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
 
   // ── Contador comensales ──
   Widget _buildContadorComensales() {
+    final puedeRestar = _numComensales > 1;
+    final puedeSumar = _numComensales < _maxComensales;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
       decoration: BoxDecoration(
-        color: AppColors.panel.withValues(alpha: 0.92),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white24),
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
       ),
       child: Row(
         children: [
           _botonComensales(
-            Icons.remove,
+            Icons.remove_rounded,
             () => _cambiarComensales(-1),
-            _numComensales > 1,
+            puedeRestar,
           ),
-          const Spacer(),
-          Column(
-            children: [
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 200),
-                transitionBuilder: (child, anim) =>
-                    ScaleTransition(scale: anim, child: child),
-                child: Text(
-                  '$_numComensales',
-                  key: ValueKey(_numComensales),
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    height: 1,
+          Expanded(
+            child: Column(
+              children: [
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 220),
+                  transitionBuilder: (child, anim) => FadeTransition(
+                    opacity: anim,
+                    child: ScaleTransition(scale: anim, child: child),
+                  ),
+                  child: Text(
+                    '$_numComensales',
+                    key: ValueKey(_numComensales),
+                    style: GoogleFonts.playfairDisplay(
+                      color: Colors.white,
+                      fontSize: 44,
+                      fontWeight: FontWeight.w700,
+                      height: 1,
+                    ),
                   ),
                 ),
-              ),
-              Text(
-                _numComensales == 1 ? 'persona' : 'personas',
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 12,
+                const SizedBox(height: 4),
+                Text(
+                  _numComensales == 1
+                      ? 'persona'
+                      : '$_numComensales personas'.split(' ').last,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.55),
+                    fontSize: 11,
+                    letterSpacing: 1.4,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-          const Spacer(),
           _botonComensales(
-            Icons.add,
+            Icons.add_rounded,
             () => _cambiarComensales(1),
-            _numComensales < _maxComensales,
+            puedeSumar,
           ),
         ],
       ),
@@ -1169,19 +1390,23 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
       onTap: activo ? onTap : null,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        width: 44,
-        height: 44,
+        width: 48,
+        height: 48,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: activo
-              ? AppColors.button.withValues(alpha: 0.12)
-              : Colors.transparent,
-          border: Border.all(color: activo ? AppColors.button : AppColors.line),
+              ? AppColors.button
+              : Colors.white.withValues(alpha: 0.04),
+          border: Border.all(
+            color: activo
+                ? AppColors.button
+                : Colors.white.withValues(alpha: 0.15),
+          ),
         ),
         child: Icon(
           icono,
-          color: activo ? AppColors.button : AppColors.line,
-          size: 20,
+          color: activo ? Colors.white : Colors.white24,
+          size: 22,
         ),
       ),
     );
@@ -1241,9 +1466,9 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
 
   // ── Barra inferior sticky ──
   Widget _buildBarraConfirmar() {
-    final diasSemana = ru.kDiasAbrev[_fechaSeleccionada.weekday - 1];
-    final dia = _fechaSeleccionada.day;
-    final mes = ru.kMesesAbrev[_fechaSeleccionada.month - 1];
+    final diaTexto =
+        '${ru.kDiasAbrev[_fechaSeleccionada.weekday - 1]} '
+        '${_fechaSeleccionada.day} ${ru.kMesesAbrev[_fechaSeleccionada.month - 1]}';
 
     return Container(
       decoration: BoxDecoration(
@@ -1252,38 +1477,55 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
           end: Alignment.bottomCenter,
           colors: [
             Colors.transparent,
-            Colors.black.withValues(alpha: 0.65),
-            Colors.black.withValues(alpha: 0.95),
+            Colors.black.withValues(alpha: 0.6),
+            Colors.black.withValues(alpha: 0.97),
           ],
-          stops: const [0.0, 0.25, 1.0],
+          stops: const [0.0, 0.18, 1.0],
         ),
       ),
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Chips resumen
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
+          // Resumen unificado: una sola tarjeta con los 4 datos. Más legible
+          // y más coherente que la fila de chips dispares anterior.
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.07),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+            ),
             child: Row(
               children: [
-                _chipResumen(Icons.calendar_today, '$diasSemana $dia $mes'),
-                _chipResumen(
-                  _turnoSeleccionado == 'comida'
-                      ? Icons.wb_sunny_outlined
-                      : Icons.nightlight_outlined,
-                  _turnoSeleccionado == 'comida' ? 'Comida' : 'Cena',
+                Expanded(
+                  child: _datoResumen(
+                    icono: Icons.calendar_today_rounded,
+                    texto: diaTexto,
+                  ),
                 ),
-                _chipResumen(Icons.access_time, _hora(_horaSeleccionada)),
-                _chipResumen(Icons.people_outline, '$_numComensales pers.'),
+                _separador(),
+                Expanded(
+                  child: _datoResumen(
+                    icono: Icons.access_time_rounded,
+                    texto: _hora(_horaSeleccionada),
+                  ),
+                ),
+                _separador(),
+                Expanded(
+                  child: _datoResumen(
+                    icono: Icons.people_rounded,
+                    texto: '$_numComensales',
+                  ),
+                ),
               ],
             ),
           ),
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
-            height: 54,
-            child: ElevatedButton(
+            height: 56,
+            child: ElevatedButton.icon(
               onPressed: _isLoading ? null : _confirmarReserva,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.button,
@@ -1291,12 +1533,15 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
                 disabledBackgroundColor: AppColors.button.withValues(
                   alpha: 0.5,
                 ),
-                shape: const RoundedRectangleBorder(
-                  borderRadius: BorderRadius.zero,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
                 ),
                 elevation: 0,
               ),
-              child: _isLoading
+              icon: _isLoading
+                  ? const SizedBox.shrink()
+                  : const Icon(Icons.check_circle_outline_rounded, size: 18),
+              label: _isLoading
                   ? const SizedBox(
                       width: 22,
                       height: 22,
@@ -1308,9 +1553,9 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
                   : const Text(
                       'CONFIRMAR RESERVA',
                       style: TextStyle(
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w800,
                         letterSpacing: 2,
-                        fontSize: 14,
+                        fontSize: 13,
                       ),
                     ),
             ),
@@ -1320,28 +1565,33 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
     );
   }
 
-  Widget _chipResumen(IconData icono, String texto) {
-    return Container(
-      margin: const EdgeInsets.only(right: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white12),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icono, color: Colors.white60, size: 13),
-          const SizedBox(width: 5),
-          Text(
+  Widget _datoResumen({required IconData icono, required String texto}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(icono, color: AppColors.button, size: 14),
+        const SizedBox(width: 6),
+        Flexible(
+          child: Text(
             texto,
-            style: const TextStyle(color: Colors.white70, fontSize: 12),
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.3,
+            ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
+
+  Widget _separador() => Container(
+    width: 1,
+    height: 22,
+    color: Colors.white.withValues(alpha: 0.12),
+  );
 
   // ── TAB 2: Mis reservas ───────────────────────────────────────
   Widget _buildTabMisReservas() {
