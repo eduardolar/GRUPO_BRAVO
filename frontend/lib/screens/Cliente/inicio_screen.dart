@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:frontend/components/bravo_app_bar.dart';
 import 'package:frontend/core/app_routes.dart';
 import 'package:frontend/core/colors_style.dart';
+import 'package:frontend/core/url_helper.dart';
 import 'package:frontend/models/destino_login.dart';
 import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/providers/cart_provider.dart';
@@ -52,6 +53,11 @@ class _InicioScreenState extends State<InicioScreen> {
     _stripeSessionId = sessionId;
     _stripeEntrega = Uri.decodeQueryComponent(params['entrega'] ?? 'Tu pedido');
     _stripeTotal = double.tryParse(params['total'] ?? '0') ?? 0;
+    // Limpiamos la URL del navegador (`?stripe_session=…`) en cuanto la
+    // hemos leído. Sin esto, cada F5 / re-entrada al inicio_screen vuelve
+    // a parsear la sesión y vuelve a abrir PedidoConfirmadoScreen, aunque
+    // el cliente no haya hecho ningún pedido nuevo.
+    limpiarQueryParams();
   }
 
   void _onSplashFinished() {

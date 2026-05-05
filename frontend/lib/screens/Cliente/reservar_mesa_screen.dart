@@ -85,6 +85,12 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
 
   static const double _dateItemWidth = 64.0;
 
+  /// Ancho máximo del contenido. En móvil (<720px) se usa todo el ancho;
+  /// en web/desktop el contenido se centra para no estirarse a 1920px y
+  /// quedar absurdo. 720 es un compromiso: cabe la app sin sentirse
+  /// estrecha y queda elegante con márgenes en pantalla grande.
+  static const double _kMaxContentWidth = 720.0;
+
   @override
   void initState() {
     super.initState();
@@ -630,18 +636,29 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
             child: Container(color: AppColors.shadow.withValues(alpha: 0.88)),
           ),
           SafeArea(
-            child: Column(
-              children: [
-                _buildAppBar(),
-                _buildSelectorSucursal(),
-                _buildTabBar(),
-                Expanded(
-                  child: TabBarView(
-                    controller: _tabController,
-                    children: [_buildTabNuevaReserva(), _buildTabMisReservas()],
-                  ),
+            // Centrar y limitar el ancho. En móvil (≤720) se ocupa todo,
+            // en web/desktop el contenido se queda en 720 px con la imagen
+            // de fondo extendiéndose detrás a todo el viewport.
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: _kMaxContentWidth),
+                child: Column(
+                  children: [
+                    _buildAppBar(),
+                    _buildSelectorSucursal(),
+                    _buildTabBar(),
+                    Expanded(
+                      child: TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _buildTabNuevaReserva(),
+                          _buildTabMisReservas(),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ],
@@ -804,6 +821,9 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
     final elegida = await showModalBottomSheet<Restaurante>(
       context: context,
       backgroundColor: AppColors.panel,
+      // En web el bottom sheet se centra y limita al mismo ancho que el
+      // contenido principal, para mantener coherencia visual.
+      constraints: const BoxConstraints(maxWidth: _kMaxContentWidth),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
