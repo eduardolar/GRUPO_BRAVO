@@ -3,6 +3,7 @@ import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/core/app_snackbar.dart';
 import 'package:frontend/screens/trabajador/Pedidos/pedidos_listos_screen.dart';
 import 'package:frontend/screens/trabajador/servicio_trabajador/modificar_comanda.dart';
+import 'package:frontend/screens/trabajador/servicio_trabajador/modificar_comanda.dart';
 import 'package:frontend/screens/trabajador/servicio_trabajador/sacar_cuenta.dart';
 import 'package:frontend/screens/trabajador/servicio_trabajador/seleccion_mesa.dart';
 
@@ -246,7 +247,13 @@ class _ActionButtonsServicio extends StatelessWidget {
         _MainButton(
           icon: Icons.edit_outlined,
           label: "Modificar comanda",
+          icon: Icons.edit_outlined,
+          label: "Modificar comanda",
           onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const ModificarComanda()),
+            );
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const ModificarComanda()),
