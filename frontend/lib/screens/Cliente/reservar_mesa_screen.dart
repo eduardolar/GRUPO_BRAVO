@@ -1,16 +1,21 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
-import '../../components/Cliente/skeleton.dart';
-import '../../core/app_snackbar.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+
+import '../../core/app_snackbar.dart';
 import '../../core/colors_style.dart';
 import '../../models/reserva_model.dart';
 import '../../models/restaurante_model.dart';
-import '../../services/api_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/restaurante_provider.dart';
+import '../../services/api_service.dart';
+import '../../components/Cliente/reservar_mesa/chip_sucursal.dart';
+import '../../components/Cliente/reservar_mesa/confirmacion_sheet.dart';
+import '../../components/Cliente/reservar_mesa/skeleton_reservas.dart';
+import '../../components/Cliente/reservar_mesa/utils.dart' as ru;
 import 'perfil_screen.dart';
 
 class ReservarMesaScreen extends StatefulWidget {
@@ -79,46 +84,6 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
 
   static const double _dateItemWidth = 64.0;
 
-  // ── Constantes de texto ──
-  static const _diasAbrev = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM'];
-  static const _mesesAbrev = [
-    'ENE',
-    'FEB',
-    'MAR',
-    'ABR',
-    'MAY',
-    'JUN',
-    'JUL',
-    'AGO',
-    'SEP',
-    'OCT',
-    'NOV',
-    'DIC',
-  ];
-  static const _mesesCompletos = [
-    'enero',
-    'febrero',
-    'marzo',
-    'abril',
-    'mayo',
-    'junio',
-    'julio',
-    'agosto',
-    'septiembre',
-    'octubre',
-    'noviembre',
-    'diciembre',
-  ];
-  static const _diasCompletos = [
-    'Lunes',
-    'Martes',
-    'Miércoles',
-    'Jueves',
-    'Viernes',
-    'Sábado',
-    'Domingo',
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -152,35 +117,90 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
     super.dispose();
   }
 
-  // ── Horario del restaurante ──
+  // ── Selección de sucursal ─────────────────────────────────────────────────
+
+  /// Carga inicial: pide al provider la lista y preselecciona la del carrito
+  /// si existe; si no, la primera activa.
   Future<void> _loadRestaurante() async {
-    final cartRid = context.read<CartProvider>().restauranteId;
-    if (cartRid == null) return;
     try {
       final prov = context.read<RestauranteProvider>();
       if (prov.restaurantes.isEmpty) await prov.cargar();
       if (!mounted) return;
-      final matches = prov.restaurantes.where((r) => r.id == cartRid);
-      if (matches.isNotEmpty) {
-        setState(() => _restaurante = matches.first);
-        _cargarDisponibilidad();
+
+      final cartRid = context.read<CartProvider>().restauranteId;
+      final activas = prov.restaurantes.where((r) => r.activo).toList();
+      if (activas.isEmpty) return;
+
+      Restaurante? elegida;
+      if (cartRid != null) {
+        final matches = activas.where((r) => r.id == cartRid);
+        if (matches.isNotEmpty) elegida = matches.first;
       }
+      elegida ??= activas.first;
+
+      setState(() => _restaurante = elegida);
+      // Recalcular máximo de comensales y disponibilidad ya con la sucursal.
+      _cargarMaxComensales();
+      _cargarDisponibilidad();
     } catch (e) {
       debugPrint('$e');
     }
   }
 
-  static int _parseMins(String t) {
-    final parts = t.split(':');
-    return int.parse(parts[0]) * 60 + int.parse(parts[1]);
+  /// Cambio explícito de sucursal desde el selector. Si el cliente tiene
+  /// productos en el carrito de OTRA sucursal, le avisamos antes de
+  /// permitir el cambio (no vaciamos el carrito automáticamente — se respeta
+  /// el flujo de pedido si quiere seguir con él en su restaurante).
+  Future<void> _cambiarSucursal(Restaurante nueva) async {
+    if (_restaurante?.id == nueva.id) return;
+    final cart = context.read<CartProvider>();
+    final cartRid = cart.restauranteId;
+    if (cartRid != null && cartRid != nueva.id && cart.itemCount > 0) {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+          backgroundColor: AppColors.panel,
+          title: const Text(
+            'Cambiar de restaurante',
+            style: TextStyle(color: Colors.white),
+          ),
+          content: Text(
+            'Tu pedido en curso es de otro restaurante. '
+            'Si reservas en "${nueva.nombre}", tu pedido seguirá en su sitio '
+            '(no se borrará). ¿Continuar?',
+            style: const TextStyle(color: Colors.white70),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text(
+                'Cancelar',
+                style: TextStyle(color: Colors.white60),
+              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text(
+                'Cambiar',
+                style: TextStyle(color: AppColors.button),
+              ),
+            ),
+          ],
+        ),
+      );
+      if (ok != true || !mounted) return;
+    }
+    setState(() => _restaurante = nueva);
+    _cargarMaxComensales();
+    _cargarDisponibilidad();
   }
 
   bool _horaEnRango(TimeOfDay t) {
     final r = _restaurante;
     if (r?.horarioApertura == null || r?.horarioCierre == null) return true;
     final mins = t.hour * 60 + t.minute;
-    final apertura = _parseMins(r!.horarioApertura!);
-    final cierre = _parseMins(r.horarioCierre!);
+    final apertura = ru.parseMins(r!.horarioApertura!);
+    final cierre = ru.parseMins(r.horarioCierre!);
     if (cierre > apertura) {
       return mins >= apertura && mins < cierre;
     } else {
@@ -191,17 +211,13 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
   List<TimeOfDay> _horasFiltradas(String turno) =>
       _horasPorTurno[turno]!.where(_horaEnRango).toList();
 
-  // ── Helpers ──
-  String _hora(TimeOfDay t) =>
-      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
-
-  String _fechaLarga(DateTime d) =>
-      '${_diasCompletos[d.weekday - 1]}, ${d.day} de ${_mesesCompletos[d.month - 1]}';
-
-  bool _mismaFecha(DateTime a, DateTime b) =>
-      a.year == b.year && a.month == b.month && a.day == b.day;
-
-  bool _esHoy(DateTime d) => _mismaFecha(d, DateTime.now());
+  // Pequeños wrappers locales sobre ru.* para no tener que hacer search-and-
+  // replace en todas las referencias del archivo. Mantienen el método como
+  // miembro de la clase pero delegan en el módulo de utilidades.
+  String _hora(TimeOfDay t) => ru.formateoHora(t);
+  String _fechaLarga(DateTime d) => ru.fechaLarga(d);
+  bool _mismaFecha(DateTime a, DateTime b) => ru.mismaFecha(a, b);
+  bool _esHoy(DateTime d) => ru.esHoy(d);
 
   void _scrollToFechaSeleccionada({bool animate = true}) {
     final index = _fechas.indexWhere((d) => _mismaFecha(d, _fechaSeleccionada));
@@ -224,7 +240,11 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
   // ── Lógica ──
   Future<void> _cargarMaxComensales() async {
     try {
-      final mesas = await ApiService.obtenerMesas();
+      // Solo nos interesa el aforo de la sucursal elegida (no de todo el
+      // grupo). Si aún no hay seleccionada, no podemos saberlo.
+      final rid = _restaurante?.id;
+      if (rid == null) return;
+      final mesas = await ApiService.obtenerMesas(restauranteId: rid);
       if (mesas.isNotEmpty && mounted) {
         setState(
           () => _maxComensales = mesas
@@ -241,11 +261,14 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
     setState(() => _cargandoDisponibilidad = true);
     final horas = _horasFiltradas(_turnoSeleccionado);
     final resultado = <String, bool>{};
+    final rid = _restaurante?.id;
     for (final h in horas) {
       resultado[_hora(h)] = await ApiService.hayDisponibilidad(
         fecha: _fechaSeleccionada,
         hora: _hora(h),
         comensales: _numComensales,
+        // Filtra contra reservas y mesas SOLO de la sucursal elegida.
+        restauranteId: rid,
       );
     }
     if (!mounted) return;
@@ -565,7 +588,7 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (_) => _ConfirmacionSheet(
+      builder: (_) => ConfirmacionSheet(
         reserva: r,
         turno: _turnoSeleccionado,
         fechaLarga: _fechaLarga(_fechaSeleccionada),
@@ -609,6 +632,7 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
             child: Column(
               children: [
                 _buildAppBar(),
+                _buildSelectorSucursal(),
                 _buildTabBar(),
                 Expanded(
                   child: TabBarView(
@@ -664,6 +688,69 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
           ),
         ],
       ),
+    );
+  }
+
+  /// Selector horizontal de sucursales. Se oculta cuando solo hay una activa
+  /// para no saturar la UI al cliente. Usa `Consumer` para reaccionar a la
+  /// carga del provider (mostrar el chip activo en cuanto llegue la lista).
+  Widget _buildSelectorSucursal() {
+    return Consumer<RestauranteProvider>(
+      builder: (_, prov, _) {
+        final activas = prov.restaurantes.where((r) => r.activo).toList();
+        if (prov.cargando && activas.isEmpty) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: SizedBox(
+              height: 20,
+              width: 20,
+              child: CircularProgressIndicator(
+                color: AppColors.button,
+                strokeWidth: 2,
+              ),
+            ),
+          );
+        }
+        if (activas.length <= 1) {
+          // Una única sucursal: no tiene sentido mostrar selector. Solo el
+          // nombre como pista de contexto.
+          if (_restaurante != null) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Text(
+                _restaurante!.nombre.toUpperCase(),
+                style: const TextStyle(
+                  color: Colors.white60,
+                  fontSize: 10,
+                  letterSpacing: 1.6,
+                ),
+              ),
+            );
+          }
+          return const SizedBox.shrink();
+        }
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+          child: SizedBox(
+            height: 36,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              itemCount: activas.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 8),
+              itemBuilder: (_, i) {
+                final r = activas[i];
+                final activa = r.id == _restaurante?.id;
+                return ChipSucursalCliente(
+                  restaurante: r,
+                  activa: activa,
+                  onTap: () => _cambiarSucursal(r),
+                );
+              },
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -791,7 +878,7 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              hoy ? 'HOY' : _diasAbrev[fecha.weekday - 1],
+              hoy ? 'HOY' : ru.kDiasAbrev[fecha.weekday - 1],
               style: TextStyle(
                 color: seleccionada ? Colors.white : Colors.white60,
                 fontSize: 10,
@@ -811,7 +898,7 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
             ),
             const SizedBox(height: 2),
             Text(
-              _mesesAbrev[fecha.month - 1],
+              ru.kMesesAbrev[fecha.month - 1],
               style: TextStyle(
                 color: seleccionada ? Colors.white70 : Colors.white54,
                 fontSize: 10,
@@ -1154,9 +1241,9 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
 
   // ── Barra inferior sticky ──
   Widget _buildBarraConfirmar() {
-    final diasSemana = _diasAbrev[_fechaSeleccionada.weekday - 1];
+    final diasSemana = ru.kDiasAbrev[_fechaSeleccionada.weekday - 1];
     final dia = _fechaSeleccionada.day;
-    final mes = _mesesAbrev[_fechaSeleccionada.month - 1];
+    final mes = ru.kMesesAbrev[_fechaSeleccionada.month - 1];
 
     return Container(
       decoration: BoxDecoration(
@@ -1259,7 +1346,7 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
   // ── TAB 2: Mis reservas ───────────────────────────────────────
   Widget _buildTabMisReservas() {
     if (_cargandoReservas) {
-      return const _SkeletonReservas();
+      return const SkeletonReservas();
     }
 
     final ahora = DateTime.now();
@@ -1499,7 +1586,7 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
                       ),
                     ),
                     Text(
-                      _mesesAbrev[reserva.fecha.month - 1],
+                      ru.kMesesAbrev[reserva.fecha.month - 1],
                       style: TextStyle(
                         color: pasada
                             ? AppColors.textSecondary
@@ -1511,7 +1598,7 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      _diasAbrev[reserva.fecha.weekday - 1],
+                      ru.kDiasAbrev[reserva.fecha.weekday - 1],
                       style: const TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 10,
@@ -1687,299 +1774,5 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
       default:
         return const Color(0xFF3B82F6);
     }
-  }
-}
-
-// ── Bottom sheet de confirmación ──────────────────────────────────────────────
-class _ConfirmacionSheet extends StatelessWidget {
-  final Reserva reserva;
-  final String turno;
-  final String fechaLarga;
-  final VoidCallback onVerReservas;
-
-  const _ConfirmacionSheet({
-    required this.reserva,
-    required this.turno,
-    required this.fechaLarga,
-    required this.onVerReservas,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.panel,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      padding: const EdgeInsets.fromLTRB(28, 12, 28, 36),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: AppColors.line,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(height: 24),
-          Container(
-            width: 70,
-            height: 70,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.successBackground,
-            ),
-            child: const Icon(Icons.check, color: AppColors.disp, size: 36),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            '¡Reserva Confirmada!',
-            style: TextStyle(
-              fontFamily: 'Playfair Display',
-              color: AppColors.textPrimary,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Te esperamos en Bravo',
-            style: TextStyle(
-              color: AppColors.textSecondary.withValues(alpha: 0.8),
-            ),
-          ),
-          const SizedBox(height: 24),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.line),
-            ),
-            child: Column(
-              children: [
-                _fila(Icons.calendar_today, fechaLarga),
-                const Divider(color: AppColors.line, height: 16),
-                _fila(
-                  turno == 'comida'
-                      ? Icons.wb_sunny_outlined
-                      : Icons.nightlight_outlined,
-                  turno == 'comida' ? 'Turno de comida' : 'Turno de cena',
-                ),
-                const Divider(color: AppColors.line, height: 16),
-                _fila(Icons.access_time, reserva.hora),
-                const Divider(color: AppColors.line, height: 16),
-                _fila(Icons.people_outline, '${reserva.comensales} comensales'),
-                const Divider(color: AppColors.line, height: 16),
-                _fila(Icons.table_bar, 'Mesa ${reserva.numeroMesa ?? "-"}'),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            height: 54,
-            child: ElevatedButton(
-              onPressed: onVerReservas,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.button,
-                foregroundColor: Colors.white,
-                shape: const RoundedRectangleBorder(
-                  borderRadius: BorderRadius.zero,
-                ),
-                elevation: 0,
-              ),
-              child: const Text(
-                'VER MIS RESERVAS',
-                style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 2),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _fila(IconData icono, String texto) {
-    return Row(
-      children: [
-        Icon(icono, color: AppColors.button, size: 18),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            texto,
-            style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ── Skeleton loader para "Mis reservas" ──────────────────────────────────────
-class _SkeletonReservas extends StatefulWidget {
-  const _SkeletonReservas();
-
-  @override
-  State<_SkeletonReservas> createState() => _SkeletonReservasState();
-}
-
-class _SkeletonReservasState extends State<_SkeletonReservas>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1100),
-    )..repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _ctrl,
-      builder: (_, _) => CustomScrollView(
-        physics: const NeverScrollableScrollPhysics(),
-        slivers: [
-          // Label "PRÓXIMAS"
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 28, 20, 14),
-              child: Row(
-                children: [
-                  const SkeletonBlock.dark(width: 96, height: 11),
-                  const SizedBox(width: 10),
-                  const SkeletonBlock.dark(
-                    width: 22,
-                    height: 22,
-                    borderRadius: 11,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          // Tarjetas skeleton
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                _tarjeta(notas: false),
-                _tarjeta(notas: true),
-                _tarjeta(notas: false),
-              ]),
-            ),
-          ),
-          // Segunda sección
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 14),
-              child: const SkeletonBlock.dark(width: 80, height: 11),
-            ),
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                _tarjeta(notas: false, pasada: true),
-                _tarjeta(notas: false, pasada: true),
-              ]),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _tarjeta({required bool notas, bool pasada = false}) {
-    final t = Curves.easeInOut.transform(_ctrl.value);
-    final cardColor = Color.lerp(
-      AppColors.panel.withValues(alpha: pasada ? 0.40 : 0.55),
-      AppColors.panel.withValues(alpha: pasada ? 0.55 : 0.72),
-      t,
-    )!;
-    final colFecha = Color.lerp(
-      AppColors.button.withValues(alpha: pasada ? 0.03 : 0.05),
-      AppColors.button.withValues(alpha: pasada ? 0.07 : 0.12),
-      t,
-    )!;
-
-    return Opacity(
-      opacity: pasada ? 0.55 : 1.0,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(
-          color: cardColor,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.white10),
-        ),
-        child: IntrinsicHeight(
-          child: Row(
-            children: [
-              // ── Columna fecha ──
-              Container(
-                width: 70,
-                decoration: BoxDecoration(
-                  color: colFecha,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(14),
-                    bottomLeft: Radius.circular(14),
-                  ),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 20),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
-                    SkeletonBlock.dark(width: 30, height: 28, borderRadius: 4),
-                    SizedBox(height: 6),
-                    SkeletonBlock.dark(width: 22, height: 10, borderRadius: 3),
-                    SizedBox(height: 4),
-                    SkeletonBlock.dark(width: 18, height: 9, borderRadius: 3),
-                  ],
-                ),
-              ),
-              // ── Contenido ──
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Row(
-                        children: [
-                          SkeletonBlock.dark(width: 56, height: 20),
-                          SizedBox(width: 8),
-                          SkeletonBlock.dark(width: 68, height: 20),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      const SkeletonBlock.dark(height: 14, borderRadius: 4),
-                      if (notas) ...[
-                        const SizedBox(height: 8),
-                        const SkeletonBlock.dark(
-                          width: 120,
-                          height: 11,
-                          borderRadius: 4,
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }

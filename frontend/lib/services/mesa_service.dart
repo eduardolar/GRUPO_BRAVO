@@ -7,15 +7,23 @@ import 'http_client.dart';
 import 'auth_session.dart';
 
 class MesaService {
-  static Future<List<Mesa>> obtenerMesas() async {
+  static Future<List<Mesa>> obtenerMesas({String? restauranteId}) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 300));
-      return List.from(MockData.mesas);
+      var lista = List<Mesa>.from(MockData.mesas);
+      if (restauranteId != null && restauranteId.isNotEmpty) {
+        lista = lista.where((m) => m.restauranteId == restauranteId).toList();
+      }
+      return lista;
     }
 
+    final uri = Uri.parse('$baseUrl/mesas').replace(
+      queryParameters: (restauranteId != null && restauranteId.isNotEmpty)
+          ? {'restauranteId': restauranteId}
+          : null,
+    );
     final response = await httpWithRetry(
-      () =>
-          http.get(Uri.parse('$baseUrl/mesas'), headers: AuthSession.headers()),
+      () => http.get(uri, headers: AuthSession.headers()),
     );
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
@@ -61,6 +69,7 @@ class MesaService {
     required int capacidad,
     required String ubicacion,
     required String codigoQr,
+    String? restauranteId,
   }) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 200));
@@ -71,6 +80,7 @@ class MesaService {
         ubicacion: ubicacion,
         disponible: true,
         codigoQr: codigoQr,
+        restauranteId: restauranteId,
       );
       MockData.mesas.add(nueva);
       return nueva;
@@ -85,6 +95,8 @@ class MesaService {
           'capacidad': capacidad,
           'ubicacion': ubicacion,
           'codigoQr': codigoQr,
+          if (restauranteId != null && restauranteId.isNotEmpty)
+            'restauranteId': restauranteId,
         }),
       ),
       retry: false,

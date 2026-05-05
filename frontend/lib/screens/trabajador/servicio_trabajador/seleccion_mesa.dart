@@ -2,8 +2,10 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/models/mesa_model.dart';
+import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/services/mesa_service.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import 'crear_comanda.dart';
 
 class SeleccionMesa extends StatefulWidget {
@@ -16,16 +18,28 @@ class SeleccionMesa extends StatefulWidget {
 class _SeleccionMesaState extends State<SeleccionMesa> {
   List<Mesa> _mesas = [];
   bool _cargando = true;
+  String? _restauranteId;
 
   @override
   void initState() {
     super.initState();
-    _cargarMesas();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _restauranteId = context
+          .read<AuthProvider>()
+          .usuarioActual
+          ?.restauranteId;
+      _cargarMesas();
+    });
   }
 
   Future<void> _cargarMesas() async {
     try {
-      final mesas = await MesaService.obtenerMesas();
+      // Aislamos por sucursal: el trabajador solo ve y crea mesas de su
+      // restaurante.
+      final mesas = await MesaService.obtenerMesas(
+        restauranteId: _restauranteId,
+      );
       if (!mounted) return;
       setState(() {
         _mesas = mesas;
@@ -67,6 +81,7 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
         capacidad: mesa.capacidad,
         ubicacion: mesa.ubicacion,
         codigoQr: mesa.codigoQr,
+        restauranteId: _restauranteId,
       );
       if (!mounted) return;
       setState(() => _mesas.add(nueva));
