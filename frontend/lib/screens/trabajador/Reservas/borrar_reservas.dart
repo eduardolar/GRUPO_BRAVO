@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/models/reserva_model.dart';
+import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/services/reserva_service.dart';
+import 'package:provider/provider.dart';
 import '../../../core/colors_style.dart';
 
 // ── Constantes de texto ──
@@ -33,12 +35,31 @@ class _BorrarReservasState extends State<BorrarReservas> {
   @override
   void initState() {
     super.initState();
-    _reservasFuture = ReservaService.obtenerReservasFuturas();
+    // Future inicial; se rellena en didChangeDependencies cuando ya tenemos
+    // acceso al provider para leer la sucursal del trabajador.
+    _reservasFuture = Future.value(<Reserva>[]);
   }
+
+  bool _cargado = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_cargado) {
+      _cargado = true;
+      _refreshReservas();
+    }
+  }
+
+  String? get _restauranteId =>
+      context.read<AuthProvider>().usuarioActual?.restauranteId;
 
   void _refreshReservas() {
     setState(() {
-      _reservasFuture = ReservaService.obtenerReservasFuturas();
+      // Aislamos por sucursal: el trabajador solo ve reservas de su local.
+      _reservasFuture = ReservaService.obtenerReservasFuturas(
+        restauranteId: _restauranteId,
+      );
     });
   }
 

@@ -12,7 +12,8 @@ class CuponService {
     final uri = Uri.parse(
       '$baseUrl/cupones${soloActivos ? '?solo_activos=true' : ''}',
     );
-    final res = await httpWithRetry(() => http.get(uri));
+    // GET necesita Authorization Bearer porque el endpoint exige sesión.
+    final res = await httpWithRetry(() => http.get(uri, headers: _headers));
     if (res.statusCode == 200) {
       return (jsonDecode(res.body) as List)
           .map((j) => Cupon.fromJson(j))

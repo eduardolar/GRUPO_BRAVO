@@ -31,9 +31,26 @@ from fastapi_mail import FastMail, MessageSchema, MessageType
 from routes.auth import conf
 
 def _actor_de(request: Request) -> Optional[str]:
-    """Lee el correo del usuario que ejecuta la acción desde la cabecera
-    `X-Actor`. Es trivialmente falsificable (no hay auth real); cuando el
-    proyecto migre a JWT, sustituir por la extracción del token."""
+    """Devuelve el correo del usuario que ejecuta la acción.
+
+    Prioriza el JWT firmado (`Authorization: Bearer …`) — fuente de verdad
+    inmutable por el cliente. Solo cae al header legacy `X-Actor` cuando no
+    hay token (compatibilidad con flujos públicos como el registro inicial).
+    """
+    auth = request.headers.get("Authorization") or ""
+    if auth.lower().startswith("bearer "):
+        token = auth[7:].strip()
+        try:
+            from jose import JWTError, jwt
+            from security import ALGORITHM, SECRET_KEY
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            correo = payload.get("correo")
+            if isinstance(correo, str) and correo.strip():
+                return correo.strip()
+        except (JWTError, Exception):
+            # Token corrupto/expirado: caemos al header legacy.
+            pass
+
     valor = request.headers.get("X-Actor")
     return valor.strip() if valor and valor.strip() else None
 

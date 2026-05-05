@@ -18,11 +18,19 @@ class SeleccionMesa extends StatefulWidget {
 class _SeleccionMesaState extends State<SeleccionMesa> {
   List<Mesa> _mesas = [];
   bool _cargando = true;
+  String? _restauranteId;
 
   @override
   void initState() {
     super.initState();
-    _cargarMesas();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _restauranteId = context
+          .read<AuthProvider>()
+          .usuarioActual
+          ?.restauranteId;
+      _cargarMesas();
+    });
   }
 
   Future<void> _cargarMesas() async {
@@ -70,6 +78,7 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
         capacidad: mesa.capacidad,
         ubicacion: mesa.ubicacion,
         codigoQr: mesa.codigoQr,
+        restauranteId: _restauranteId,
       );
       if (!mounted) return;
       setState(() => _mesas.add(nueva));

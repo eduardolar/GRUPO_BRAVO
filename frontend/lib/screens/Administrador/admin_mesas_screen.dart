@@ -2,8 +2,11 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/models/mesa_model.dart';
+import 'package:frontend/providers/auth_provider.dart';
+import 'package:frontend/screens/Administrador/qr_imprimible_screen.dart';
 import 'package:frontend/services/mesa_service.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 
 class AdminMesasScreen extends StatefulWidget {
   const AdminMesasScreen({super.key});
@@ -15,16 +18,28 @@ class AdminMesasScreen extends StatefulWidget {
 class _AdminMesasScreenState extends State<AdminMesasScreen> {
   List<Mesa> _mesas = [];
   bool _cargando = true;
+  String? _restauranteId;
 
   @override
   void initState() {
     super.initState();
-    _cargarMesas();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _restauranteId = context
+          .read<AuthProvider>()
+          .usuarioActual
+          ?.restauranteId;
+      _cargarMesas();
+    });
   }
 
   Future<void> _cargarMesas() async {
     try {
-      final mesas = await MesaService.obtenerMesas();
+      // Aislamos por sucursal: el admin solo ve y opera sobre sus mesas.
+      // Los super admins (sin restaurante propio) ven todas.
+      final mesas = await MesaService.obtenerMesas(
+        restauranteId: _restauranteId,
+      );
       if (!mounted) return;
       setState(() {
         _mesas = mesas;
@@ -34,6 +49,30 @@ class _AdminMesasScreenState extends State<AdminMesasScreen> {
       if (!mounted) return;
       setState(() => _cargando = false);
     }
+  }
+
+  /// Genera un código QR opaco para una mesa nueva. Mezcla la sucursal,
+  /// el número y un sufijo aleatorio corto para que sea único globalmente
+  /// y no choque con otra mesa de otra sucursal con el mismo número.
+  String _autoQr(int numero, String ubicacion) {
+    final prefijo = ubicacion == 'terraza' ? 'T' : 'M';
+    final restPrefix = (_restauranteId ?? 'X').substring(
+      0,
+      _restauranteId != null && _restauranteId!.length >= 6 ? 6 : 1,
+    );
+    final sufijo = (Random().nextInt(0xFFFF))
+        .toRadixString(16)
+        .padLeft(4, '0')
+        .toUpperCase();
+    return '$prefijo${numero.toString().padLeft(2, '0')}-$restPrefix-$sufijo';
+  }
+
+  /// Abre la pantalla imprimible (fondo blanco + QR grande + datos).
+  void _abrirImprimible(Mesa mesa) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => QrImprimibleScreen(mesa: mesa)),
+    );
   }
 
   Future<void> _mostrarFormCrearMesa() async {
@@ -62,11 +101,17 @@ class _AdminMesasScreenState extends State<AdminMesasScreen> {
     if (mesa == null || !mounted) return;
 
     try {
+      // Si el usuario dejó el QR vacío, lo generamos opaco para que sea
+      // único entre sucursales (M01-69de62-A3F4 etc.).
+      final qrFinal = mesa.codigoQr.trim().isEmpty
+          ? _autoQr(mesa.numero, mesa.ubicacion)
+          : mesa.codigoQr.trim();
       final nueva = await MesaService.crearMesa(
         numero: mesa.numero,
         capacidad: mesa.capacidad,
         ubicacion: mesa.ubicacion,
-        codigoQr: mesa.codigoQr,
+        codigoQr: qrFinal,
+        restauranteId: _restauranteId,
       );
       if (!mounted) return;
       setState(() => _mesas.add(nueva));
@@ -75,8 +120,16 @@ class _AdminMesasScreenState extends State<AdminMesasScreen> {
           content: Text('Mesa ${nueva.numero} creada correctamente'),
           backgroundColor: AppColors.button,
           behavior: SnackBarBehavior.floating,
+          action: SnackBarAction(
+            label: 'IMPRIMIR QR',
+            textColor: Colors.white,
+            onPressed: () => _abrirImprimible(nueva),
+          ),
         ),
       );
+      // UX: tras crear, abrimos directamente la vista imprimible. Si el
+      // admin solo quiere registrar la mesa puede cerrarla con atrás.
+      _abrirImprimible(nueva);
     } catch (e) {
       if (!mounted) return;
       messenger.showSnackBar(
@@ -98,6 +151,11 @@ class _AdminMesasScreenState extends State<AdminMesasScreen> {
     );
 
     if (accion == null || !mounted) return;
+
+    if (accion == 'imprimir') {
+      _abrirImprimible(mesa);
+      return;
+    }
 
     if (accion == 'eliminar') {
       try {
@@ -496,6 +554,26 @@ class _DialogGestionAdmin extends StatelessWidget {
 
             const SizedBox(height: 12),
 
+            // Ver / imprimir QR
+            OutlinedButton.icon(
+              icon: const Icon(Icons.qr_code_2_rounded, size: 16),
+              label: const Text(
+                'VER / IMPRIMIR QR',
+                style: TextStyle(letterSpacing: 1.2, fontSize: 11),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white,
+                side: const BorderSide(color: Colors.white24),
+                minimumSize: const Size(double.infinity, 45),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              onPressed: () => Navigator.pop(context, 'imprimir'),
+            ),
+
+            const SizedBox(height: 12),
+
             // 3. Botón de ELIMINAR siempre visible
             OutlinedButton.icon(
               icon: const Icon(Icons.delete_outline, size: 16),
@@ -846,12 +924,11 @@ class _DialogCrearMesaState extends State<_DialogCrearMesa> {
               const SizedBox(height: 14),
               _Campo(
                 controller: _qrCtrl,
-                label: 'Código QR',
-                hint: 'Ej: Mesa_13',
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) return 'Campo obligatorio';
-                  return null;
-                },
+                label: 'Código QR (opcional)',
+                hint: 'Se generará uno único si lo dejas en blanco',
+                // Sin validator: si llega vacío, _autoQr() del padre genera
+                // un código opaco con la sucursal y un sufijo aleatorio,
+                // garantizando unicidad entre sucursales.
               ),
               const SizedBox(height: 24),
               Row(

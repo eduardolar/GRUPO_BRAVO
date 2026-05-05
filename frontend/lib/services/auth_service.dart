@@ -337,7 +337,10 @@ class AuthService {
 
     // RGPD art. 17: llama al endpoint de anonimización, no de borrado total.
     final response = await httpWithRetry(
-      () => http.delete(Uri.parse('$baseUrl/usuarios/$userId/mi-cuenta')),
+      () => http.delete(
+        Uri.parse('$baseUrl/usuarios/$userId/mi-cuenta'),
+        headers: AuthSession.headers(),
+      ),
       retry: false,
     );
     return response.statusCode == 200;

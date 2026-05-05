@@ -517,7 +517,8 @@ class ApiService {
 
   // ─── MESAS ───────────────────────────────────────────────────
 
-  static Future<List<Mesa>> obtenerMesas() => MesaService.obtenerMesas();
+  static Future<List<Mesa>> obtenerMesas({String? restauranteId}) =>
+      MesaService.obtenerMesas(restauranteId: restauranteId);
 
   // ─── RESERVAS ────────────────────────────────────────────────
 
@@ -545,10 +546,12 @@ class ApiService {
     required DateTime fecha,
     required String hora,
     required int comensales,
+    String? restauranteId,
   }) => ReservaService.hayDisponibilidad(
     fecha: fecha,
     hora: hora,
     comensales: comensales,
+    restauranteId: restauranteId,
   );
 
   static Future<List<Reserva>> obtenerReservas({required String userId}) =>
