@@ -9,8 +9,19 @@ import 'package:google_fonts/google_fonts.dart';
 
 class CrearComanda extends StatefulWidget {
   final String mesaId;
+  final String? pedidoIdExistente;
+  final List<Map<String, dynamic>> productosExistentes;
+  final double totalExistente;
+  final VoidCallback? onPedidoEnviado;
 
-  const CrearComanda({super.key, required this.mesaId});
+  const CrearComanda({
+    super.key,
+    required this.mesaId,
+    this.pedidoIdExistente,
+    this.productosExistentes = const [],
+    this.totalExistente = 0.0,
+    this.onPedidoEnviado,
+  });
 
   @override
   State<CrearComanda> createState() => _CrearPedidosState();
@@ -30,14 +41,48 @@ class _CrearPedidosState extends State<CrearComanda> {
   @override
   void initState() {
     super.initState();
+    if (widget.pedidoIdExistente != null) {
+      _pedidoId = widget.pedidoIdExistente;
+      for (final item in widget.productosExistentes) {
+        final id = (item['producto_id'] ?? item['productoId'] ?? item['_id'] ?? item['nombre'])?.toString() ?? '';
+        if (id.isNotEmpty) {
+          _itemsAcumulados[id] = Map<String, dynamic>.from(item);
+        }
+      }
+      _totalAcumulado = widget.totalExistente;
+    }
     _cargarDatos();
   }
 
   Future<void> _cargarDatos() async {
     try {
-      final categorias = await ApiService.obtenerCategorias();
-      final productos = await ApiService.obtenerProductos();
+      final results = await Future.wait([
+        ApiService.obtenerCategorias(),
+        ApiService.obtenerProductos(),
+        if (_pedidoId == null)
+          ApiService.obtenerPedidoActivoPorMesa(widget.mesaId),
+      ]);
+
       if (!mounted) return;
+
+      final categorias = results[0] as List<String>;
+      final productos = results[1] as List<Producto>;
+
+      if (_pedidoId == null && results.length == 3) {
+        final pedidoActivo = results[2] as Map<String, dynamic>?;
+        if (pedidoActivo != null) {
+          _pedidoId = (pedidoActivo['id'] ?? pedidoActivo['_id'])?.toString();
+          final raw = pedidoActivo['productos'] ?? pedidoActivo['items'];
+          if (raw is List) {
+            for (final item in raw.cast<Map<String, dynamic>>()) {
+              final id = (item['producto_id'] ?? item['productoId'] ?? item['_id'] ?? item['nombre'])?.toString() ?? '';
+              if (id.isNotEmpty) _itemsAcumulados[id] = Map<String, dynamic>.from(item);
+            }
+          }
+          _totalAcumulado = (pedidoActivo['total'] as num?)?.toDouble() ?? 0.0;
+        }
+      }
+
       setState(() {
         _categorias = categorias;
         _productos = productos;
@@ -258,6 +303,7 @@ void _enviarPedido(BuildContext context) async {
     if (!mounted) return;
     setState(() => _carrito.clear());
     _showSnack(messenger, "Pedido enviado a cocina · puedes añadir más platos");
+    widget.onPedidoEnviado?.call();
 
   } catch (e) {
     if (!mounted) return;

@@ -2,8 +2,10 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/models/mesa_model.dart';
+import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/services/mesa_service.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import 'crear_comanda.dart';
 
 class SeleccionMesa extends StatefulWidget {
@@ -24,8 +26,9 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
   }
 
   Future<void> _cargarMesas() async {
+    final restauranteId = context.read<AuthProvider>().usuarioActual?.restauranteId;
     try {
-      final mesas = await MesaService.obtenerMesas();
+      final mesas = await MesaService.obtenerMesas(restauranteId: restauranteId);
       if (!mounted) return;
       setState(() {
         _mesas = mesas;

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/models/mesa_model.dart';
+import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/services/api_service.dart';
 import 'package:frontend/services/mesa_service.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 
 class SacarCuenta extends StatefulWidget {
   const SacarCuenta({super.key});
@@ -28,8 +30,9 @@ class _SacarCuentaState extends State<SacarCuenta> {
   }
 
   Future<void> _cargarMesas() async {
+    final restauranteId = context.read<AuthProvider>().usuarioActual?.restauranteId;
     try {
-      final todas = await MesaService.obtenerMesas();
+      final todas = await MesaService.obtenerMesas(restauranteId: restauranteId);
       if (!mounted) return;
       setState(() {
         _mesasOcupadas = todas.where((m) => !m.disponible).toList();
