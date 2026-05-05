@@ -16,6 +16,7 @@ import 'pedido_service.dart';
 import 'reserva_service.dart';
 import 'mesa_service.dart';
 import 'http_client.dart';
+import 'auth_session.dart';
 
 class ApiService {
   static String get baseUrl {
@@ -41,12 +42,14 @@ class ApiService {
     required String contrasena,
     required String telefono,
     required String direccion,
+    required bool consentimientoRgpd,
   }) => AuthService.registrarUsuario(
     nombre: nombre,
     correo: correo,
     contrasena: contrasena,
     telefono: telefono,
     direccion: direccion,
+    consentimientoRgpd: consentimientoRgpd,
   );
 
   static Future<bool> actualizarPerfil({
@@ -83,8 +86,7 @@ class ApiService {
   static Future<void> renombrarCategoria(
     String nombreActual,
     String nuevoNombre,
-  ) =>
-      ProductoService.renombrarCategoria(nombreActual, nuevoNombre);
+  ) => ProductoService.renombrarCategoria(nombreActual, nuevoNombre);
 
   static Future<void> reordenarCategorias(List<String> nuevoOrden) =>
       ProductoService.reordenarCategorias(nuevoOrden);
@@ -103,8 +105,7 @@ class ApiService {
   static Future<Producto> actualizarProducto(
     String id,
     Map<String, dynamic> datos,
-  ) =>
-      ProductoService.actualizarProducto(id, datos);
+  ) => ProductoService.actualizarProducto(id, datos);
 
   static Future<void> reordenarProductos(List<String> ids) =>
       ProductoService.reordenarProductos(ids);
@@ -114,21 +115,33 @@ class ApiService {
 
   // ─── INGREDIENTES ────────────────────────────────────────────
 
-  static Future<List<Ingrediente>> obtenerIngredientes({String? restauranteId}) =>
-      IngredienteService.obtenerIngredientes(restauranteId: restauranteId);
+  static Future<List<Ingrediente>> obtenerIngredientes({
+    String? restauranteId,
+  }) => IngredienteService.obtenerIngredientes(restauranteId: restauranteId);
 
-  static Future<Map<String, List<Ingrediente>>> obtenerIngredientesPorCategoria({String? restauranteId}) =>
-      IngredienteService.obtenerIngredientesPorCategoria(restauranteId: restauranteId);
+  static Future<Map<String, List<Ingrediente>>>
+  obtenerIngredientesPorCategoria({String? restauranteId}) =>
+      IngredienteService.obtenerIngredientesPorCategoria(
+        restauranteId: restauranteId,
+      );
 
-  static Future<List<Ingrediente>> obtenerIngredientesStockBajo({String? restauranteId}) =>
-      IngredienteService.obtenerIngredientesStockBajo(restauranteId: restauranteId);
+  static Future<List<Ingrediente>> obtenerIngredientesStockBajo({
+    String? restauranteId,
+  }) => IngredienteService.obtenerIngredientesStockBajo(
+    restauranteId: restauranteId,
+  );
 
   // ─── PEDIDOS ─────────────────────────────────────────────────
 
   static Future<bool> enviarPedidoPorQR({
     required String mesaId,
     required List<dynamic> items,
-  }) => PedidoService.enviarPedidoPorQR(mesaId: mesaId, items: items);
+    String? restauranteId,
+  }) => PedidoService.enviarPedidoPorQR(
+    mesaId: mesaId,
+    items: items,
+    restauranteId: restauranteId,
+  );
 
   static Future<Map<String, dynamic>> crearPedido({
     required String userId,
@@ -142,6 +155,7 @@ class ApiService {
     String? notas,
     String? referenciaPago,
     required String estadoPago,
+    String? restauranteId,
   }) => PedidoService.crearPedido(
     userId: userId,
     items: items,
@@ -154,6 +168,7 @@ class ApiService {
     notas: notas,
     referenciaPago: referenciaPago,
     estadoPago: estadoPago,
+    restauranteId: restauranteId,
   );
 
   static Future<void> agregarItemsPedido({
@@ -170,17 +185,36 @@ class ApiService {
     required String userId,
   }) => PedidoService.obtenerHistorialPedidos(userId: userId);
 
-  static Future<List<Pedido>> obtenerTodosLosPedidos() =>
-      PedidoService.obtenerTodosLosPedidos();
+  static Future<Pedido> obtenerPedido(String pedidoId) =>
+      PedidoService.obtenerPedido(pedidoId);
+
+  static Future<List<Pedido>> obtenerTodosLosPedidos({
+    String? restauranteId,
+    String? estado,
+  }) => PedidoService.obtenerTodosLosPedidos(
+    restauranteId: restauranteId,
+    estado: estado,
+  );
 
   static Future<void> actualizarEstadoPedido({
     required String pedidoId,
     required String estado,
-  }) => PedidoService.actualizarEstadoPedido(pedidoId: pedidoId, estado: estado);
+  }) =>
+      PedidoService.actualizarEstadoPedido(pedidoId: pedidoId, estado: estado);
+
+  static Future<Map<String, dynamic>> marcarItemHecho({
+    required String pedidoId,
+    required int itemIndex,
+    required bool hecho,
+  }) => PedidoService.marcarItemHecho(
+    pedidoId: pedidoId,
+    itemIndex: itemIndex,
+    hecho: hecho,
+  );
 
   static Future<Map<String, dynamic>?> obtenerPedidoActivoPorMesa(
-          String mesaId) =>
-      PedidoService.obtenerPedidoActivoPorMesa(mesaId);
+    String mesaId,
+  ) => PedidoService.obtenerPedidoActivoPorMesa(mesaId);
 
   static Future<void> cerrarPedido({
     required String pedidoId,
@@ -400,14 +434,14 @@ class ApiService {
       retry: false,
     );
     if (response.statusCode >= 400) {
-      print(
+      debugPrint(
         'DEBUG PayPal create-order error: '
         'status=${response.statusCode} body=${response.body}',
       );
       throw toApiException(response.statusCode, decodeBody(response));
     }
     final body = Map<String, dynamic>.from(decodeBody(response));
-    print(
+    debugPrint(
       'DEBUG PayPal create-order success: status=${response.statusCode} body=$body',
     );
     return body;
@@ -483,7 +517,8 @@ class ApiService {
 
   // ─── MESAS ───────────────────────────────────────────────────
 
-  static Future<List<Mesa>> obtenerMesas() => MesaService.obtenerMesas();
+  static Future<List<Mesa>> obtenerMesas({String? restauranteId}) =>
+      MesaService.obtenerMesas(restauranteId: restauranteId);
 
   // ─── RESERVAS ────────────────────────────────────────────────
 
@@ -495,6 +530,7 @@ class ApiService {
     required int comensales,
     required String turno,
     String? notas,
+    String? restauranteId,
   }) => ReservaService.crearReserva(
     userId: userId,
     nombreCompleto: nombreCompleto,
@@ -503,16 +539,19 @@ class ApiService {
     comensales: comensales,
     turno: turno,
     notas: notas,
+    restauranteId: restauranteId,
   );
 
   static Future<bool> hayDisponibilidad({
     required DateTime fecha,
     required String hora,
     required int comensales,
+    String? restauranteId,
   }) => ReservaService.hayDisponibilidad(
     fecha: fecha,
     hora: hora,
     comensales: comensales,
+    restauranteId: restauranteId,
   );
 
   static Future<List<Reserva>> obtenerReservas({required String userId}) =>
@@ -538,9 +577,8 @@ class ApiService {
   // ─── HELPERS ─────────────────────────────────────────────────
 
   static Map<String, String> _jsonHeaders() {
-    return {'Content-Type': 'application/json', 'Accept': 'application/json'};
+    return AuthSession.headers(extra: {'Accept': 'application/json'});
   }
-
 
   static Future<void> agregarItemTicket({
     required String mesaId,

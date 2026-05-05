@@ -36,6 +36,7 @@ class ItemPedido(BaseModel):
     cantidad: int = Field(default=1, ge=1)
     precio: float = Field(ge=0)
     sin: list[str] = []
+    hecho: bool = False
 
 class UsuarioRegistro(BaseModel):
     nombre: str
@@ -45,6 +46,7 @@ class UsuarioRegistro(BaseModel):
     direccion: str
     rol: str = "cliente"
     restauranteId: Optional[str] = None
+    consentimiento_rgpd: bool = False
 
     @field_validator("password")
     @classmethod
@@ -87,6 +89,7 @@ class PedidoCrear(BaseModel):
     notas: Optional[str] = None
     referenciaPago: Optional[str] = None
     estadoPago: Optional[EstadoPago] = EstadoPago.pendiente
+    restauranteId: Optional[str] = None
 
     @field_validator("tipoEntrega", mode="before")
     @classmethod
@@ -147,6 +150,7 @@ class ReservaCrear(BaseModel):
     turno: str
     mesaId: Optional[str] = None
     notas: Optional[str] = None
+    restauranteId: Optional[str] = None
 
 class ValidarQR(BaseModel):
     codigoQr: str
@@ -174,6 +178,10 @@ class ProductoCrear(BaseModel):
     imagen: Optional[str] = None
     disponible: bool = True
     ingredientes: list = []
+    # ID de la sucursal a la que pertenece el producto. Si lo omites al
+    # editar, el documento conserva el restaurante_id que ya tenía: no lo
+    # sobreescribimos con None desde la capa de ruta.
+    restaurante_id: Optional[str] = None
 
     #Validacion para verficar login 2 FA.
 class VerificarLogin2FA(BaseModel):

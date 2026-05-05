@@ -19,12 +19,20 @@ class _RecoveryCodesDialog extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       title: const Row(
         children: [
-          Icon(Icons.health_and_safety_outlined, color: AppColors.button, size: 22),
+          Icon(
+            Icons.health_and_safety_outlined,
+            color: AppColors.button,
+            size: 22,
+          ),
           SizedBox(width: 10),
           Expanded(
             child: Text(
               'Códigos de recuperación',
-              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ],
@@ -36,7 +44,11 @@ class _RecoveryCodesDialog extends StatelessWidget {
           children: [
             Text(
               'Guárdalos en un lugar seguro. Cada código solo puede usarse una vez si pierdes acceso a tu dispositivo.',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13, height: 1.5),
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.6),
+                fontSize: 13,
+                height: 1.5,
+              ),
             ),
             const SizedBox(height: 16),
             Container(
@@ -50,18 +62,20 @@ class _RecoveryCodesDialog extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: codigos
-                    .map((c) => Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 3),
-                          child: Text(
-                            c,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontFamily: 'monospace',
-                              fontSize: 14,
-                              letterSpacing: 1.5,
-                            ),
+                    .map(
+                      (c) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 3),
+                        child: Text(
+                          c,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontFamily: 'monospace',
+                            fontSize: 14,
+                            letterSpacing: 1.5,
                           ),
-                        ))
+                        ),
+                      ),
+                    )
                     .toList(),
               ),
             ),
@@ -74,7 +88,9 @@ class _RecoveryCodesDialog extends StatelessWidget {
                 style: OutlinedButton.styleFrom(
                   foregroundColor: Colors.white70,
                   side: const BorderSide(color: Colors.white24),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
                 onPressed: () {
                   Clipboard.setData(ClipboardData(text: todosJuntos));
@@ -95,7 +111,11 @@ class _RecoveryCodesDialog extends StatelessWidget {
           onPressed: () => Navigator.of(context).pop(),
           child: const Text(
             'HE GUARDADO MIS CÓDIGOS',
-            style: TextStyle(color: AppColors.button, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+            style: TextStyle(
+              color: AppColors.button,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.5,
+            ),
           ),
         ),
       ],
@@ -116,8 +136,10 @@ class _TotpSetupScreenState extends State<TotpSetupScreen> {
   String? _otpauthUri;
   String? _secret;
 
-  final List<TextEditingController> _controllers =
-      List.generate(6, (_) => TextEditingController());
+  final List<TextEditingController> _controllers = List.generate(
+    6,
+    (_) => TextEditingController(),
+  );
   final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
 
   @override
@@ -128,8 +150,12 @@ class _TotpSetupScreenState extends State<TotpSetupScreen> {
 
   @override
   void dispose() {
-    for (final c in _controllers) { c.dispose(); }
-    for (final f in _focusNodes) { f.dispose(); }
+    for (final c in _controllers) {
+      c.dispose();
+    }
+    for (final f in _focusNodes) {
+      f.dispose();
+    }
     super.dispose();
   }
 
@@ -154,15 +180,16 @@ class _TotpSetupScreenState extends State<TotpSetupScreen> {
     }
   }
 
-  String get _codigoIngresado =>
-      _controllers.map((c) => c.text).join();
+  String get _codigoIngresado => _controllers.map((c) => c.text).join();
 
   Future<void> _activar() async {
     final codigo = _codigoIngresado;
     if (codigo.length < 6) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Introduce el código de 6 dígitos de Google Authenticator'),
+          content: Text(
+            'Introduce el código de 6 dígitos de Google Authenticator',
+          ),
           backgroundColor: AppColors.error,
         ),
       );
@@ -185,7 +212,9 @@ class _TotpSetupScreenState extends State<TotpSetupScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _activando = false);
-      for (final c in _controllers) { c.clear(); }
+      for (final c in _controllers) {
+        c.clear();
+      }
       _focusNodes[0].requestFocus();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -204,7 +233,10 @@ class _TotpSetupScreenState extends State<TotpSetupScreen> {
       body: Stack(
         children: [
           Positioned.fill(
-            child: Image.asset('assets/images/Bravo restaurante.jpg', fit: BoxFit.cover),
+            child: Image.asset(
+              'assets/images/Bravo restaurante.jpg',
+              fit: BoxFit.cover,
+            ),
           ),
           Positioned.fill(
             child: Container(color: Colors.black.withValues(alpha: 0.88)),
@@ -215,7 +247,11 @@ class _TotpSetupScreenState extends State<TotpSetupScreen> {
                 _buildAppBar(),
                 Expanded(
                   child: _cargandoSetup
-                      ? const Center(child: CircularProgressIndicator(color: AppColors.button))
+                      ? const Center(
+                          child: CircularProgressIndicator(
+                            color: AppColors.button,
+                          ),
+                        )
                       : _buildContenido(),
                 ),
               ],
@@ -232,7 +268,11 @@ class _TotpSetupScreenState extends State<TotpSetupScreen> {
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+            icon: const Icon(
+              Icons.arrow_back_ios_new,
+              color: Colors.white,
+              size: 20,
+            ),
             onPressed: () => Navigator.pop(context),
           ),
           const Expanded(
@@ -284,7 +324,11 @@ class _TotpSetupScreenState extends State<TotpSetupScreen> {
                 const SizedBox(height: 8),
                 Text(
                   'Escanea este código QR con la app Google Authenticator para vincular tu cuenta.',
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13, height: 1.5),
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.6),
+                    fontSize: 13,
+                    height: 1.5,
+                  ),
                   textAlign: TextAlign.center,
                 ),
               ],
@@ -319,7 +363,11 @@ class _TotpSetupScreenState extends State<TotpSetupScreen> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.vpn_key_outlined, color: AppColors.button, size: 18),
+                  const Icon(
+                    Icons.vpn_key_outlined,
+                    color: AppColors.button,
+                    size: 18,
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
@@ -333,7 +381,11 @@ class _TotpSetupScreenState extends State<TotpSetupScreen> {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.copy_outlined, color: Colors.white38, size: 18),
+                    icon: const Icon(
+                      Icons.copy_outlined,
+                      color: Colors.white38,
+                      size: 18,
+                    ),
                     onPressed: () {
                       Clipboard.setData(ClipboardData(text: _secret ?? ''));
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -353,7 +405,10 @@ class _TotpSetupScreenState extends State<TotpSetupScreen> {
             const SizedBox(height: 8),
             Text(
               'Usa esta clave si no puedes escanear el QR',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 11),
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.4),
+                fontSize: 11,
+              ),
             ),
           ],
 
@@ -378,7 +433,11 @@ class _TotpSetupScreenState extends State<TotpSetupScreen> {
           const SizedBox(height: 6),
           Text(
             'Introduce el código de 6 dígitos que muestra Google Authenticator',
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12, height: 1.4),
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.5),
+              fontSize: 12,
+              height: 1.4,
+            ),
           ),
           const SizedBox(height: 16),
           OtpFields(
@@ -397,17 +456,27 @@ class _TotpSetupScreenState extends State<TotpSetupScreen> {
                 backgroundColor: AppColors.button,
                 foregroundColor: Colors.white,
                 disabledBackgroundColor: Colors.white12,
-                shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.zero,
+                ),
                 elevation: 0,
               ),
               child: _activando
                   ? const SizedBox(
-                      width: 20, height: 20,
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
                     )
                   : const Text(
                       'ACTIVAR AUTENTICACIÓN',
-                      style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.5, fontSize: 13),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.5,
+                        fontSize: 13,
+                      ),
                     ),
             ),
           ),

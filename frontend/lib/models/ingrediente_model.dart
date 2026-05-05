@@ -46,10 +46,17 @@ class Ingrediente {
       id: json['id'] ?? json['_id'] ?? '',
       nombre: json['nombre'] ?? json['ingrediente'] ?? '',
       categoria: json['categoria'] ?? 'Otras',
-      cantidadActual: (json['cantidadActual'] ?? json['cantidad_actual'] ?? json['cantidad'] ?? 0).toDouble(),
+      cantidadActual:
+          (json['cantidadActual'] ??
+                  json['cantidad_actual'] ??
+                  json['cantidad'] ??
+                  0)
+              .toDouble(),
       unidad: json['unidad'] ?? 'kg',
-      stockMinimo: (json['stockMinimo'] ?? json['stock_minimo'] ?? 0).toDouble(),
-      cantidadReceta: (json['cantidadReceta'] ?? json['cantidad_receta'] ?? 0).toDouble(),
+      stockMinimo: (json['stockMinimo'] ?? json['stock_minimo'] ?? 0)
+          .toDouble(),
+      cantidadReceta: (json['cantidadReceta'] ?? json['cantidad_receta'] ?? 0)
+          .toDouble(),
     );
   }
 

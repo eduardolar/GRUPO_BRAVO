@@ -30,8 +30,6 @@ class MockData {
   // Reservas en memoria (se llenan en runtime)
   static final List<Reserva> reservas = MockReservas.reservas;
 
-
-
-    // Re-export de usuarios
+  // Re-export de usuarios
   static final List<Stock> stock = MockStock.stock;
 }

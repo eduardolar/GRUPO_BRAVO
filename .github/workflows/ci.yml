@@ -6,10 +6,15 @@ on:
   pull_request:
     branches: [main]
 
+# Cancela ejecuciones anteriores cuando llegan nuevos commits a la misma rama.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   # ── Backend (pytest) ──────────────────────────────────────────────────────
   backend:
-    name: Backend Tests
+    name: Backend (pytest)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -27,23 +32,55 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run tests
+      - name: Tests (pytest)
+        id: pytest
+        # Los tests usan mongomock (conftest.py reemplaza pymongo.MongoClient)
+        # por lo que MONGO_URI es prácticamente ignorado, pero lo dejamos
+        # apuntando a un host inexistente para reforzar la garantía.
         run: pytest tests/ -v --tb=short
         env:
           PYTHONPATH: .
-          MONGO_URI: mongodb://localhost:27017/test_db
+          MONGO_URI: mongodb://127.0.0.1:1/test_db_ci
+          JWT_SECRET_KEY: ci-test-secret-not-used-in-prod
           MAIL_USERNAME: ci@test.com
           MAIL_PASSWORD: fake-password
           MAIL_FROM: ci@test.com
           MAIL_SERVER: smtp.test.com
           MAIL_PORT: "587"
           STRIPE_SECRET_KEY: sk_test_fake
+          STRIPE_WEBHOOK_SECRET: whsec_test_fake
           PAYPAL_CLIENT_ID: fake
           PAYPAL_CLIENT_SECRET: fake
 
+      - name: ❌ Pytest falló — cómo arreglarlo
+        if: failure() && steps.pytest.outcome == 'failure'
+        run: |
+          {
+            echo "## ❌ Tests del backend (pytest) han fallado"
+            echo ""
+            echo "Mira el log del paso **Tests (pytest)** arriba para ver qué assert se rompió."
+            echo ""
+            echo "### 🔧 Reproduce el fallo en local"
+            echo ""
+            echo '```bash'
+            echo 'cd backend'
+            echo 'pip install -r requirements.txt'
+            echo 'pytest tests/ -v --tb=short'
+            echo '```'
+            echo ""
+            echo "### 🐛 Ver sólo el test que falla"
+            echo ""
+            echo '```bash'
+            echo 'pytest tests/test_auth_utils.py::TestNombreDelTest -v'
+            echo '```'
+            echo ""
+            echo "### 📚 Más info"
+            echo "Consulta [CONTRIBUTING.md](https://github.com/${GITHUB_REPOSITORY}/blob/main/CONTRIBUTING.md#backend)."
+          } >> "$GITHUB_STEP_SUMMARY"
+
   # ── Frontend (Flutter) ────────────────────────────────────────────────────
   flutter:
-    name: Flutter Tests
+    name: Frontend (Flutter)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -58,11 +95,141 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Verify Flutter version
+        run: flutter --version
+
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Analyze
-        run: flutter analyze --no-pub
+      # 1) Formato. Si falla, mostramos el diff y el comando para arreglar.
+      - name: Format check (dart format)
+        id: format
+        run: dart format --output=none --set-exit-if-changed lib test
 
-      - name: Run tests
-        run: flutter test test/ --reporter compact
+      - name: ❌ Formato incorrecto — cómo arreglarlo
+        if: failure() && steps.format.outcome == 'failure'
+        run: |
+          {
+            echo "## ❌ Hay archivos sin formatear"
+            echo ""
+            echo "El check \`dart format --set-exit-if-changed\` ha encontrado ficheros que no siguen el estilo estándar."
+            echo ""
+            echo "### 🔧 Cómo arreglarlo"
+            echo ""
+            echo "Ejecuta esto en local **antes de pushear**:"
+            echo ""
+            echo '```bash'
+            echo 'cd frontend'
+            echo 'dart format lib test'
+            echo 'git add -u && git commit -m "chore: dart format"'
+            echo '```'
+            echo ""
+            echo "### 📋 Archivos afectados"
+            echo ""
+            echo '<details><summary>Diff de formato (click para expandir)</summary>'
+            echo ''
+            echo '```diff'
+            dart format --output=show --summary=none lib test 2>&1 | head -300
+            echo '```'
+            echo '</details>'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # 2) Analyze. Si falla, mostramos el desglose de issues y cómo arreglarlos.
+      - name: Static analysis (flutter analyze)
+        id: analyze
+        run: flutter analyze --no-pub --fatal-warnings --fatal-infos
+
+      - name: ❌ Analyze falló — cómo arreglarlo
+        if: failure() && steps.analyze.outcome == 'failure'
+        run: |
+          {
+            echo "## ❌ flutter analyze ha encontrado issues"
+            echo ""
+            echo "El check usa \`--fatal-warnings --fatal-infos\`: cualquier **warning** o **info** rompe la build."
+            echo ""
+            echo "### 🔧 Cómo arreglarlo"
+            echo ""
+            echo "1. **Auto-fix** (resuelve la mayoría de lints comunes):"
+            echo ""
+            echo '```bash'
+            echo 'cd frontend'
+            echo 'dart fix --apply'
+            echo 'dart format lib test'
+            echo '```'
+            echo ""
+            echo "2. **Ver el listado completo** en local:"
+            echo ""
+            echo '```bash'
+            echo 'flutter analyze --no-pub --fatal-warnings --fatal-infos'
+            echo '```'
+            echo ""
+            echo "3. Para issues que \`dart fix\` no resuelve, sigue las pistas que da el log:"
+            echo "   - \`unused_field\` / \`unused_import\` → borra el campo o import."
+            echo "   - \`use_build_context_synchronously\` → añade \`if (!mounted) return;\` tras el await."
+            echo "   - \`deprecated_member_use\` → migra a la API nueva indicada."
+            echo ""
+            echo "### 📋 Issues detectados"
+            echo ""
+            echo '<details><summary>Salida completa (click para expandir)</summary>'
+            echo ''
+            echo '```'
+            flutter analyze --no-pub --fatal-warnings --fatal-infos 2>&1 | tail -200 || true
+            echo '```'
+            echo '</details>'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # 3) Tests. Si fallan, indicamos cómo correr el subset que rompió.
+      - name: Tests with coverage (flutter test)
+        id: tests
+        run: flutter test --coverage --reporter expanded test/
+
+      - name: ❌ Tests del frontend han fallado — cómo arreglarlo
+        if: failure() && steps.tests.outcome == 'failure'
+        run: |
+          {
+            echo "## ❌ Tests del frontend han fallado"
+            echo ""
+            echo "Mira el log del paso **Tests with coverage (flutter test)** arriba — busca las líneas con \`[E]\` o \`FAILED\`."
+            echo ""
+            echo "### 🔧 Reproduce el fallo en local"
+            echo ""
+            echo '```bash'
+            echo 'cd frontend'
+            echo 'flutter test --reporter expanded test/'
+            echo '```'
+            echo ""
+            echo "### 🐛 Ejecutar sólo el archivo que falla"
+            echo ""
+            echo '```bash'
+            echo 'flutter test test/ruta/al/fichero_test.dart'
+            echo '```'
+            echo ""
+            echo "### 📚 Más info"
+            echo "Consulta [CONTRIBUTING.md](https://github.com/${GITHUB_REPOSITORY}/blob/main/CONTRIBUTING.md#frontend)."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Sube el lcov.info como artefacto para inspeccionar el coverage
+      # desde la pestaña Actions de GitHub.
+      - name: Upload coverage report
+        if: always() && hashFiles('frontend/coverage/lcov.info') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: flutter-coverage
+          path: frontend/coverage/lcov.info
+          retention-days: 14
+
+      # Resumen verde si todo pasó.
+      - name: ✅ Resumen
+        if: success()
+        run: |
+          {
+            echo "## ✅ Pipeline del frontend en verde"
+            echo ""
+            echo "| Paso | Estado |"
+            echo "| --- | --- |"
+            echo "| Format check | ✅ |"
+            echo "| Static analysis | ✅ |"
+            echo "| Tests with coverage | ✅ |"
+            echo ""
+            echo "El artefacto \`flutter-coverage\` está disponible para descargar."
+          } >> "$GITHUB_STEP_SUMMARY"

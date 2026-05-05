@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/screens/cliente/scanner_qr.dart';
 import 'package:frontend/screens/cliente/login_screen.dart';
 import 'package:frontend/models/destino_login.dart';
-import 'package:frontend/screens/cliente/menu_screen.dart';
+import 'package:frontend/screens/cliente/carta_screen.dart';
 import 'package:frontend/providers/cart_provider.dart';
 import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/services/api_service.dart';
@@ -22,8 +23,11 @@ class _CodigoQrState extends State<CodigoQr> {
 
     return GestureDetector(
       onTap: () async {
-        final codigoQr = await Navigator.push<String>(
-          context,
+        final messenger = ScaffoldMessenger.of(context);
+        final navigator = Navigator.of(context);
+        final auth = Provider.of<AuthProvider>(context, listen: false);
+
+        final codigoQr = await navigator.push<String>(
           MaterialPageRoute(builder: (context) => const QRScanner()),
         );
         if (codigoQr == null || !mounted) return;
@@ -38,24 +42,20 @@ class _CodigoQrState extends State<CodigoQr> {
           if (!mounted) return;
           cart.asignarMesa(mesaId: mesaId, numeroMesa: numeroMesa);
 
-          ScaffoldMessenger.of(context).showSnackBar(
+          messenger.showSnackBar(
             SnackBar(
               content: Text('Mesa $numeroMesa asignada correctamente'),
-              backgroundColor: Colors.green,
+              backgroundColor: AppColors.disp,
             ),
           );
 
-          // Navegar automáticamente: login → menú (o directo al menú si ya está autenticado)
           if (!mounted) return;
-          final auth = Provider.of<AuthProvider>(context, listen: false);
           if (auth.estaAutenticado) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const MenuScreen()),
+            navigator.push(
+              MaterialPageRoute(builder: (_) => const CartaScreen()),
             );
           } else {
-            Navigator.push(
-              context,
+            navigator.push(
               MaterialPageRoute(
                 builder: (_) => const LoginScreen(destino: DestinoLogin.menu),
               ),
@@ -63,10 +63,10 @@ class _CodigoQrState extends State<CodigoQr> {
           }
         } catch (e) {
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
+          messenger.showSnackBar(
             SnackBar(
               content: Text('QR no válido: ${e.toString()}'),
-              backgroundColor: Colors.red,
+              backgroundColor: AppColors.error,
             ),
           );
         }
@@ -75,19 +75,18 @@ class _CodigoQrState extends State<CodigoQr> {
         width: double.infinity,
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: const Color(0xFF800020),
+          color: AppColors.button,
           border: Border.all(color: const Color(0xFFA6405A)),
           borderRadius: BorderRadius.circular(14),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-          
             Container(
               width: 3,
               height: 56,
               decoration: BoxDecoration(
-                color: const Color(0xFF1A1A1A),
+                color: AppColors.gold,
                 borderRadius: BorderRadius.circular(3),
               ),
             ),
@@ -97,7 +96,7 @@ class _CodigoQrState extends State<CodigoQr> {
               width: 56,
               height: 56,
               decoration: BoxDecoration(
-                color: const Color(0xFF660019),
+                color: AppColors.sombra,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: const Color(0xFFA6405A)),
               ),
@@ -115,9 +114,7 @@ class _CodigoQrState extends State<CodigoQr> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    cart.tienemesa
-                        ? "Mesa ${cart.numeroMesa}"
-                        : "Escanear QR",
+                    cart.tienemesa ? "Mesa ${cart.numeroMesa}" : "Escanear QR",
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 17,

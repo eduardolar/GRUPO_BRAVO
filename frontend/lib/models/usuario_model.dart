@@ -1,4 +1,10 @@
-enum RolUsuario { cliente, trabajador, cocinero, administrador, superadministrador }
+enum RolUsuario {
+  cliente,
+  trabajador,
+  cocinero,
+  administrador,
+  superadministrador,
+}
 
 class Usuario {
   final String id;
@@ -13,6 +19,7 @@ class Usuario {
   final String? restauranteId;
   final bool totpEnabled;
   final bool emailDosFactoresEnabled;
+  final bool activo;
 
   String get rolRaw => rol.name;
 
@@ -30,6 +37,7 @@ class Usuario {
     String? rolRaw,
     bool? totpEnabled,
     bool? emailDosFactoresEnabled,
+    bool? activo,
   }) {
     return Usuario(
       id: id ?? this.id,
@@ -43,7 +51,9 @@ class Usuario {
       rol: rol ?? this.rol,
       restauranteId: restauranteId ?? this.restauranteId,
       totpEnabled: totpEnabled ?? this.totpEnabled,
-      emailDosFactoresEnabled: emailDosFactoresEnabled ?? this.emailDosFactoresEnabled,
+      emailDosFactoresEnabled:
+          emailDosFactoresEnabled ?? this.emailDosFactoresEnabled,
+      activo: activo ?? this.activo,
     );
   }
 
@@ -60,6 +70,7 @@ class Usuario {
     this.restauranteId,
     this.totpEnabled = false,
     this.emailDosFactoresEnabled = false,
+    this.activo = true,
   });
 
   factory Usuario.fromJson(Map<String, dynamic> json) {
@@ -70,12 +81,18 @@ class Usuario {
       contrasena: json['password_hash'] ?? json['contrasena'] ?? '',
       telefono: json['telefono'] ?? '',
       direccion: json['direccion'] ?? '',
-      latitud: json['latitud'] != null ? double.parse(json['latitud'].toString()) : null,
-      longitud: json['longitud'] != null ? double.parse(json['longitud'].toString()) : null,
+      latitud: json['latitud'] != null
+          ? double.parse(json['latitud'].toString())
+          : null,
+      longitud: json['longitud'] != null
+          ? double.parse(json['longitud'].toString())
+          : null,
       rol: _parseRol(json['rol']),
-      restauranteId: (json['restauranteId'] ?? json['restaurante_id'])?.toString(),
+      restauranteId: (json['restauranteId'] ?? json['restaurante_id'])
+          ?.toString(),
       totpEnabled: json['totp_enabled'] == true,
       emailDosFactoresEnabled: json['email_2fa_enabled'] == true,
+      activo: json['activo'] != false,
     );
   }
 
@@ -111,6 +128,7 @@ class Usuario {
       'rol': rol.name,
       'totp_enabled': totpEnabled,
       'email_2fa_enabled': emailDosFactoresEnabled,
+      'activo': activo,
       if (restauranteId != null) 'restaurante_id': restauranteId,
     };
   }

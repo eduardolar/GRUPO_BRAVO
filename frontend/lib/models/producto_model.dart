@@ -10,6 +10,11 @@ class Producto {
   final bool estaDisponible;
   final List<Ingrediente> ingredientes;
 
+  /// Sucursal a la que pertenece el producto. `null` indica que el producto
+  /// es legacy (sin sucursal asignada) y solo el super admin debería
+  /// editarlo para asignárselo.
+  final String? restauranteId;
+
   Producto({
     required this.id,
     required this.nombre,
@@ -19,6 +24,7 @@ class Producto {
     this.imagenUrl,
     this.estaDisponible = true,
     this.ingredientes = const [],
+    this.restauranteId,
   });
 
   // El método factory permite crear un Producto desde un Mapa (JSON)
@@ -39,6 +45,9 @@ class Producto {
               return Ingrediente.fromJson(i as Map<String, dynamic>);
             }).toList()
           : [],
+      // Acepta ambas convenciones desde el backend.
+      restauranteId: (mapa['restauranteId'] ?? mapa['restaurante_id'])
+          ?.toString(),
     );
   }
 
@@ -53,6 +62,7 @@ class Producto {
       'imagenUrl': imagenUrl,
       'estaDisponible': estaDisponible,
       'ingredientes': ingredientes.map((i) => i.toJson()).toList(),
+      if (restauranteId != null) 'restauranteId': restauranteId,
     };
   }
 }

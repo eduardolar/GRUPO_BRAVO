@@ -26,7 +26,8 @@ class _ActivarCuentaScreenState extends State<ActivarCuentaScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => CodigoRecuperacionScreen(email: _correoCtrl.text.trim()),
+        builder: (_) =>
+            CodigoRecuperacionScreen(email: _correoCtrl.text.trim()),
       ),
     );
   }
@@ -38,10 +39,24 @@ class _ActivarCuentaScreenState extends State<ActivarCuentaScreen> {
       body: Stack(
         children: [
           Positioned.fill(
-            child: Image.asset('assets/images/Bravo restaurante.jpg', fit: BoxFit.cover),
+            child: Image.asset(
+              'assets/images/Bravo restaurante.jpg',
+              fit: BoxFit.cover,
+            ),
           ),
           Positioned.fill(
-            child: Container(color: AppColors.shadow.withValues(alpha: 0.85)),
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withValues(alpha: 0.55),
+                    Colors.black.withValues(alpha: 0.88),
+                  ],
+                ),
+              ),
+            ),
           ),
           SafeArea(
             child: Center(
@@ -49,7 +64,10 @@ class _ActivarCuentaScreenState extends State<ActivarCuentaScreen> {
                 constraints: const BoxConstraints(maxWidth: 500),
                 child: SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 20),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 30,
+                    vertical: 20,
+                  ),
                   child: Form(
                     key: _formKey,
                     child: Column(
@@ -62,7 +80,9 @@ class _ActivarCuentaScreenState extends State<ActivarCuentaScreen> {
                           tipoTeclado: TextInputType.emailAddress,
                           controlador: _correoCtrl,
                           validador: (v) {
-                            if (v == null || v.isEmpty) return 'Campo obligatorio';
+                            if (v == null || v.isEmpty) {
+                              return 'Campo obligatorio';
+                            }
                             if (!v.contains('@')) return 'Correo inválido';
                             return null;
                           },
@@ -77,13 +97,18 @@ class _ActivarCuentaScreenState extends State<ActivarCuentaScreen> {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.button,
                               foregroundColor: Colors.white,
-                              shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                              shape: const RoundedRectangleBorder(
+                                borderRadius: BorderRadius.zero,
+                              ),
                               elevation: 0,
                             ),
                             onPressed: _continuar,
                             child: Text(
                               'INGRESAR CÓDIGO',
-                              style: GoogleFonts.manrope(fontWeight: FontWeight.w700, letterSpacing: 2),
+                              style: GoogleFonts.manrope(
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 2,
+                              ),
                             ),
                           ),
                         ),
@@ -98,7 +123,11 @@ class _ActivarCuentaScreenState extends State<ActivarCuentaScreen> {
             top: 20,
             left: 10,
             child: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+              icon: const Icon(
+                Icons.arrow_back_ios_new,
+                color: Colors.white,
+                size: 20,
+              ),
               onPressed: () => Navigator.pop(context),
             ),
           ),
@@ -127,7 +156,10 @@ class _ActivarCuentaScreenState extends State<ActivarCuentaScreen> {
         Text(
           'Ingresa tu correo para continuar con el código que recibiste.',
           textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 15),
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.7),
+            fontSize: 15,
+          ),
         ),
       ],
     );
@@ -149,7 +181,11 @@ class _ActivarCuentaScreenState extends State<ActivarCuentaScreen> {
           Expanded(
             child: Text(
               'El código fue enviado a tu correo cuando el administrador creó tu cuenta. Si no lo tienes, pulsa "Reenviar" en la siguiente pantalla.',
-              style: GoogleFonts.manrope(color: Colors.white54, fontSize: 12, height: 1.5),
+              style: GoogleFonts.manrope(
+                color: Colors.white54,
+                fontSize: 12,
+                height: 1.5,
+              ),
             ),
           ),
         ],

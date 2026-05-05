@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../models/producto_model.dart';
@@ -14,7 +15,7 @@ class ProductoCard extends StatelessWidget {
 
   static DateTime _lastTap = DateTime(2000);
 
-  ProductoCard({
+  const ProductoCard({
     super.key,
     required this.product,
     required this.onAdd,
@@ -41,29 +42,24 @@ class ProductoCard extends StatelessWidget {
           SizedBox(
             height: 170,
             width: double.infinity,
-            child: product.imagenUrl != null && product.imagenUrl!.isNotEmpty
-                ? Image.network(
-                    product.imagenUrl!,
-                    fit: BoxFit.cover,
-                    loadingBuilder: (context, child, progress) {
-                      if (progress == null) return child;
-                      return Container(
-                        color: AppColors.background,
-                        child: Center(
-                          child: SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 1.5,
-                              color: AppColors.button,
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                    errorBuilder: (context, err, stack) => const _ImagePlaceholder(),
-                  )
-                : const _ImagePlaceholder(),
+            child: CachedNetworkImage(
+              imageUrl: product.imagenUrl ?? '',
+              fit: BoxFit.cover,
+              placeholder: (_, _) => Container(
+                color: AppColors.background,
+                child: const Center(
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 1.5,
+                      color: AppColors.button,
+                    ),
+                  ),
+                ),
+              ),
+              errorWidget: (_, _, _) => const _ImagePlaceholder(),
+            ),
           ),
 
           // Separador horizontal editorial
@@ -125,7 +121,9 @@ class ProductoCard extends StatelessWidget {
                       disabled: false,
                       onTap: () {
                         final now = DateTime.now();
-                        if (now.difference(_lastTap).inMilliseconds < 300) return;
+                        if (now.difference(_lastTap).inMilliseconds < 300) {
+                          return;
+                        }
                         _lastTap = now;
                         onAdd();
                       },
@@ -190,17 +188,22 @@ class ProductoCard extends StatelessWidget {
                       children: [
                         if (quantity > 0) ...[
                           Expanded(
-                            child: GestureDetector(
-                              onTap: onRemove,
-                              child: Container(
-                                height: 48,
-                                color: AppColors.backgroundButton,
-                                child: Icon(
-                                  quantity == 1
-                                      ? Icons.delete_outline
-                                      : Icons.remove,
-                                  color: AppColors.panel,
-                                  size: 20,
+                            child: Tooltip(
+                              message: quantity == 1
+                                  ? 'Eliminar del carrito'
+                                  : 'Quitar uno',
+                              child: GestureDetector(
+                                onTap: onRemove,
+                                child: Container(
+                                  height: 48,
+                                  color: AppColors.backgroundButton,
+                                  child: Icon(
+                                    quantity == 1
+                                        ? Icons.delete_outline
+                                        : Icons.remove,
+                                    color: AppColors.panel,
+                                    size: 20,
+                                  ),
                                 ),
                               ),
                             ),
@@ -208,7 +211,9 @@ class ProductoCard extends StatelessWidget {
                           Container(
                             width: 44,
                             height: 48,
-                            color: AppColors.backgroundButton.withValues(alpha: 0.8),
+                            color: AppColors.backgroundButton.withValues(
+                              alpha: 0.8,
+                            ),
                             alignment: Alignment.center,
                             child: Text(
                               '$quantity',
@@ -221,20 +226,26 @@ class ProductoCard extends StatelessWidget {
                           ),
                         ],
                         Expanded(
-                          child: GestureDetector(
-                            onTap: () {
-                              final now = DateTime.now();
-                              if (now.difference(_lastTap).inMilliseconds < 300) return;
-                              _lastTap = now;
-                              onAdd();
-                            },
-                            child: Container(
-                              height: 48,
-                              color: AppColors.button,
-                              child: const Icon(
-                                Icons.add,
-                                color: AppColors.background,
-                                size: 22,
+                          child: Tooltip(
+                            message: 'Añadir uno',
+                            child: GestureDetector(
+                              onTap: () {
+                                final now = DateTime.now();
+                                if (now.difference(_lastTap).inMilliseconds <
+                                    300) {
+                                  return;
+                                }
+                                _lastTap = now;
+                                onAdd();
+                              },
+                              child: Container(
+                                height: 48,
+                                color: AppColors.button,
+                                child: const Icon(
+                                  Icons.add,
+                                  color: AppColors.background,
+                                  size: 22,
+                                ),
                               ),
                             ),
                           ),
@@ -277,16 +288,10 @@ class _ImagePlaceholder extends StatelessWidget {
     return Container(
       color: AppColors.background,
       child: const Center(
-        child: Icon(
-          Icons.restaurant,
-          color: AppColors.line,
-          size: 36,
-        ),
+        child: Icon(Icons.restaurant, color: AppColors.line, size: 36),
       ),
     );
   }
-
-
 }
 
 class _AddButton extends StatelessWidget {

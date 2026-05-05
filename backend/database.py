@@ -1,12 +1,8 @@
-import os
-from pathlib import Path
+"""Conexión a MongoDB. La carga de .env se delega a `config.py`."""
+import config  # carga .env una sola vez (efecto de import)
 from pymongo import MongoClient
-from dotenv import load_dotenv
 
-load_dotenv(dotenv_path=Path(__file__).parent / ".env")
-
-MONGO_URI = os.getenv("MONGO_URI")
-cliente = MongoClient(MONGO_URI)
+cliente = MongoClient(config.MONGO_URI)
 db = cliente['comandas_db']
 
 coleccion_usuarios = db['usuarios']
@@ -18,3 +14,5 @@ coleccion_reservas = db['reservas']
 coleccion_ingredientes = db['ingredientes']
 coleccion_restaurantes = db["restaurantes"]
 coleccion_auditoria_pagos = db["auditoria_pagos"]
+coleccion_auditoria = db["auditoria"]
+coleccion_cupones = db["cupones"]

@@ -11,10 +11,11 @@ import '../../components/Cliente/otp_fields.dart';
 
 // Importes para la redirección de roles
 import '../../models/usuario_model.dart';
-import '../cliente/menu_screen.dart';
+import '../cliente/carta_screen.dart';
+import '../cliente/seleccionar_restaurante_screen.dart' as sel_rest_cliente;
 import '../home_screen_trabajador.dart';
 import '../Administrador/admin_home_screen.dart';
-import '../super_admin/seleccionar_restaurante_screen.dart';
+import '../super_admin/home_screen_super_admin.dart';
 import '../cocinero/home_screen_cocinero.dart';
 
 class VerificacionScreen extends StatefulWidget {
@@ -22,7 +23,7 @@ class VerificacionScreen extends StatefulWidget {
   final bool esModo2FA; // NUEVO: Bandera para saber de dónde venimos
 
   const VerificacionScreen({
-    super.key, 
+    super.key,
     required this.email,
     this.esModo2FA = false, // Por defecto es false (para registro normal)
   });
@@ -32,8 +33,10 @@ class VerificacionScreen extends StatefulWidget {
 }
 
 class _VerificacionScreenState extends State<VerificacionScreen> {
-  final List<TextEditingController> _controllers =
-      List.generate(6, (_) => TextEditingController());
+  final List<TextEditingController> _controllers = List.generate(
+    6,
+    (_) => TextEditingController(),
+  );
   final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
   bool _isLoading = false;
   int _secondsRemaining = 60;
@@ -63,8 +66,12 @@ class _VerificacionScreenState extends State<VerificacionScreen> {
   @override
   void dispose() {
     _timer?.cancel();
-    for (var c in _controllers) { c.dispose(); }
-    for (var n in _focusNodes) { n.dispose(); }
+    for (var c in _controllers) {
+      c.dispose();
+    }
+    for (var n in _focusNodes) {
+      n.dispose();
+    }
     super.dispose();
   }
 
@@ -74,37 +81,46 @@ class _VerificacionScreenState extends State<VerificacionScreen> {
       _showSnackBar('Introduce el código de 6 dígitos', isError: true);
       return;
     }
-    
+
     setState(() => _isLoading = true);
-    
+
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
       if (widget.esModo2FA) {
         // --- FLUJO 2: VERIFICACIÓN DEL LOGIN ---
-        final success = await authProvider.verificarLogin2FA(widget.email, code);
-        
+        final success = await authProvider.verificarLogin2FA(
+          widget.email,
+          code,
+        );
+
         if (success && mounted) {
           _showSnackBar('¡Sesión iniciada con éxito!', isError: false);
           _navigateToRoleHome(authProvider.usuarioActual!);
         }
-
       } else {
         // --- FLUJO 1: VERIFICACIÓN DE REGISTRO ---
         final success = await authProvider.verificarCodigo(widget.email, code);
-        
+
         if (success && mounted) {
           _showSnackBar('¡Cuenta verificada!', isError: false);
           Navigator.pushAndRemoveUntil(
             context,
-            MaterialPageRoute(builder: (_) => const MenuScreen()),
+            MaterialPageRoute(
+              builder: (_) => sel_rest_cliente.SeleccionarRestauranteScreen(
+                siguiente: const CartaScreen(),
+              ),
+            ),
             (route) => false,
           );
         }
       }
     } catch (e) {
       if (mounted) {
-        _showSnackBar(e.toString().replaceAll('Exception: ', ''), isError: true);
+        _showSnackBar(
+          e.toString().replaceAll('Exception: ', ''),
+          isError: true,
+        );
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -122,17 +138,18 @@ class _VerificacionScreenState extends State<VerificacionScreen> {
         destino = const MenuAdministrador();
         break;
       case RolUsuario.superadministrador:
-        destino = const SeleccionarRestauranteScreen();
+        destino = const HomeScreenSuperAdmin();
         break;
       case RolUsuario.cocinero:
         destino = const HomeCocinero();
         break;
       case RolUsuario.cliente:
-      default:
-        destino = const MenuScreen();
+        destino = sel_rest_cliente.SeleccionarRestauranteScreen(
+          siguiente: const CartaScreen(),
+        );
         break;
     }
-    
+
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (_) => destino),
@@ -140,21 +157,24 @@ class _VerificacionScreenState extends State<VerificacionScreen> {
     );
   }
 
-Future<void> _reenviarCodigo() async {
+  Future<void> _reenviarCodigo() async {
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      
+
       // Lógica condicional: Si es login 2FA llama a uno, si es registro llama al otro
       if (widget.esModo2FA) {
         await authProvider.reenviarLogin2FA(widget.email);
       } else {
         await authProvider.reenviarCodigo(widget.email);
       }
-      
+
       _startTimer();
-      
+
       if (mounted) {
-        _showSnackBar('Código reenviado. Revisa tu carpeta de Spam.', isError: false);
+        _showSnackBar(
+          'Código reenviado. Revisa tu carpeta de Spam.',
+          isError: false,
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -174,17 +194,22 @@ Future<void> _reenviarCodigo() async {
             subtituloWidget: Column(
               children: [
                 Text(
-                  widget.esModo2FA 
-                    ? 'Escribe el código de seguridad enviado a:' 
-                    : 'Hemos enviado un código de activación a:',
-                  style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13),
+                  widget.esModo2FA
+                      ? 'Escribe el código de seguridad enviado a:'
+                      : 'Hemos enviado un código de activación a:',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.7),
+                    fontSize: 13,
+                  ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 5),
                 Text(
                   widget.email,
                   style: const TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.bold),
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ],
             ),
@@ -218,7 +243,7 @@ Future<void> _reenviarCodigo() async {
               : 'REENVIAR CÓDIGO',
           style: TextStyle(
             color: _secondsRemaining == 0 ? AppColors.button : Colors.white38,
-            fontWeight: FontWeight.bold
+            fontWeight: FontWeight.bold,
           ),
         ),
       ),
@@ -226,10 +251,18 @@ Future<void> _reenviarCodigo() async {
   }
 
   void _showSnackBar(String message, {bool isError = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(message, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-      backgroundColor: isError ? AppColors.error : Colors.green.shade700,
-      behavior: SnackBarBehavior.floating,
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        backgroundColor: isError ? AppColors.error : AppColors.disp,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 }

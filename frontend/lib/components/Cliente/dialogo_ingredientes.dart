@@ -12,9 +12,8 @@ Future<List<String>?> mostrarDialogoIngredientes(
   return showDialog<List<String>>(
     context: context,
     barrierColor: Colors.black54,
-    builder: (context) => Center(
-      child: _DialogoIngredientes(producto: producto),
-    ),
+    builder: (context) =>
+        Center(child: _DialogoIngredientes(producto: producto)),
   );
 }
 
@@ -76,8 +75,12 @@ class _DialogoIngredientesState extends State<_DialogoIngredientes> {
                     ),
                   ),
                   IconButton(
+                    tooltip: 'Cerrar',
                     onPressed: () => Navigator.pop(context, null),
-                    icon: const Icon(Icons.close, color: AppColors.textSecondary),
+                    icon: const Icon(
+                      Icons.close,
+                      color: AppColors.textSecondary,
+                    ),
                     splashRadius: 20,
                   ),
                 ],
@@ -90,7 +93,10 @@ class _DialogoIngredientesState extends State<_DialogoIngredientes> {
                 alignment: Alignment.centerLeft,
                 child: Text(
                   'Desmarca los ingredientes que no quieras',
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                  ),
                 ),
               ),
             ),
@@ -119,8 +125,9 @@ class _DialogoIngredientesState extends State<_DialogoIngredientes> {
                           color: activo
                               ? AppColors.textPrimary
                               : AppColors.textSecondary,
-                          decoration:
-                              activo ? null : TextDecoration.lineThrough,
+                          decoration: activo
+                              ? null
+                              : TextDecoration.lineThrough,
                         ),
                       ),
                       onChanged: (val) {
@@ -157,8 +164,7 @@ class _DialogoIngredientesState extends State<_DialogoIngredientes> {
                   },
                   child: const Text(
                     'Añadir al carrito',
-                    style:
-                        TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),

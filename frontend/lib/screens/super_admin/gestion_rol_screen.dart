@@ -1,14 +1,16 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:frontend/components/bravo_app_bar.dart';
 import '../../models/usuario_model.dart';
 import '../../providers/usuario_provider.dart';
 import '../../core/colors_style.dart';
 
 class GestionRolesScreen extends StatefulWidget {
-  final String restauranteId;
+  final String? restauranteId;
 
-  const GestionRolesScreen({super.key, required this.restauranteId});
+  const GestionRolesScreen({super.key, this.restauranteId});
 
   @override
   State<GestionRolesScreen> createState() => _GestionRolesScreenState();
@@ -59,9 +61,12 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
   ];
 
   List<Usuario> _filtrarPorRestaurante(List<Usuario> todos) {
-    final idFiltro = widget.restauranteId.trim().toLowerCase();
+    final idFiltro = (widget.restauranteId ?? '').trim().toLowerCase();
     return todos.where((u) {
-      if ((u.restauranteId ?? '').toString().trim().toLowerCase() != idFiltro) return false;
+      if (idFiltro.isNotEmpty &&
+          (u.restauranteId ?? '').toString().trim().toLowerCase() != idFiltro) {
+        return false;
+      }
       return u.rolRaw != 'cliente';
     }).toList();
   }
@@ -79,15 +84,31 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: Image.asset('assets/images/Bravo restaurante.jpg', fit: BoxFit.cover),
+      extendBodyBehindAppBar: true,
+      appBar: const BravoAppBar(title: 'PERMISOS Y ROLES'),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/images/Bravo restaurante.jpg'),
+            fit: BoxFit.cover,
           ),
-          Positioned.fill(
-            child: Container(color: AppColors.shadow.withValues(alpha: 0.88)),
+        ),
+        child: Container(
+          width: double.infinity,
+          height: double.infinity,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.black.withValues(alpha: 0.55),
+                Colors.black.withValues(alpha: 0.88),
+              ],
+            ),
           ),
-          SafeArea(
+          child: SafeArea(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -97,7 +118,9 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
                     builder: (context, provider, _) {
                       if (provider.cargando) {
                         return const Center(
-                          child: CircularProgressIndicator(color: AppColors.button),
+                          child: CircularProgressIndicator(
+                            color: AppColors.button,
+                          ),
                         );
                       }
                       if (provider.error != null) {
@@ -123,6 +146,7 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
 
                       return ListView(
                         padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
+                        physics: const BouncingScrollPhysics(),
                         children: [
                           Center(
                             child: ConstrainedBox(
@@ -132,11 +156,18 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
                                 children: [
                                   for (final rol in [..._rolesOrden, 'otros'])
                                     if (grupos.containsKey(rol)) ...[
-                                      _buildSeccionHeader(rol, grupos[rol]!.length),
+                                      _buildSeccionHeader(
+                                        rol,
+                                        grupos[rol]!.length,
+                                      ),
                                       ...grupos[rol]!.map(
                                         (u) => _RolTile(
                                           usuario: u,
-                                          onEdit: () => _mostrarDialogoCambiarRol(context, u),
+                                          onEdit: () =>
+                                              _mostrarDialogoCambiarRol(
+                                                context,
+                                                u,
+                                              ),
                                         ),
                                       ),
                                       const SizedBox(height: 16),
@@ -153,22 +184,14 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
               ],
             ),
           ),
-          Positioned(
-            top: 20,
-            left: 10,
-            child: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
-              onPressed: () => Navigator.pop(context),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -177,7 +200,7 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
             style: TextStyle(
               fontFamily: 'Playfair Display',
               color: Colors.white,
-              fontSize: 34,
+              fontSize: 30,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -187,7 +210,7 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
           Text(
             'Modifica el rol de cualquier usuario de esta sucursal',
             style: GoogleFonts.manrope(
-              color: Colors.white.withValues(alpha: 0.6),
+              color: Colors.white.withValues(alpha: 0.65),
               fontSize: 13,
             ),
           ),
@@ -204,6 +227,8 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
       padding: const EdgeInsets.only(top: 8, bottom: 10),
       child: Row(
         children: [
+          Container(width: 3, height: 18, color: AppColors.button),
+          const SizedBox(width: 10),
           Icon(icono, color: AppColors.button, size: 16),
           const SizedBox(width: 8),
           Text(
@@ -211,20 +236,26 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
             style: GoogleFonts.manrope(
               fontSize: 11,
               fontWeight: FontWeight.w800,
-              color: AppColors.button,
+              color: Colors.white70,
               letterSpacing: 2,
             ),
           ),
           const SizedBox(width: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-            color: AppColors.button.withValues(alpha: 0.15),
+            decoration: BoxDecoration(
+              color: AppColors.button.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(
+                color: AppColors.button.withValues(alpha: 0.45),
+              ),
+            ),
             child: Text(
               '$count',
               style: GoogleFonts.manrope(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
-                color: AppColors.button,
+                color: Colors.white,
               ),
             ),
           ),
@@ -245,7 +276,10 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
         builder: (context, setStateDialog) => AlertDialog(
           backgroundColor: AppColors.background,
           shape: const RoundedRectangleBorder(),
-          title: Text('Cambiar rol', style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+          title: Text(
+            'Cambiar rol',
+            style: GoogleFonts.manrope(fontWeight: FontWeight.w700),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -258,8 +292,17 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
                     color: AppColors.button,
                     alignment: Alignment.center,
                     child: Text(
-                      user.nombre.trim().split(' ').map((e) => e.isNotEmpty ? e[0].toUpperCase() : '').take(2).join(),
-                      style: GoogleFonts.manrope(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13),
+                      user.nombre
+                          .trim()
+                          .split(' ')
+                          .map((e) => e.isNotEmpty ? e[0].toUpperCase() : '')
+                          .take(2)
+                          .join(),
+                      style: GoogleFonts.manrope(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -267,8 +310,20 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(user.nombre, style: GoogleFonts.manrope(fontWeight: FontWeight.w700, fontSize: 14)),
-                        Text(user.email, style: GoogleFonts.manrope(fontSize: 12, color: AppColors.textSecondary)),
+                        Text(
+                          user.nombre,
+                          style: GoogleFonts.manrope(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                          ),
+                        ),
+                        Text(
+                          user.email,
+                          style: GoogleFonts.manrope(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -276,11 +331,13 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
               ),
               const SizedBox(height: 20),
               DropdownButtonFormField<String>(
-                value: rolActual,
+                initialValue: rolActual,
                 decoration: InputDecoration(
                   labelText: 'Nuevo rol',
                   labelStyle: GoogleFonts.manrope(fontSize: 13),
-                  border: const OutlineInputBorder(borderRadius: BorderRadius.zero),
+                  border: const OutlineInputBorder(
+                    borderRadius: BorderRadius.zero,
+                  ),
                   enabledBorder: const OutlineInputBorder(
                     borderRadius: BorderRadius.zero,
                     borderSide: BorderSide(color: AppColors.line),
@@ -289,25 +346,37 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
                     borderRadius: BorderRadius.zero,
                     borderSide: BorderSide(color: AppColors.button, width: 1.5),
                   ),
-                  prefixIcon: const Icon(Icons.vpn_key_outlined, color: AppColors.button),
+                  prefixIcon: const Icon(
+                    Icons.vpn_key_outlined,
+                    color: AppColors.button,
+                  ),
                   filled: true,
                   fillColor: Colors.white,
                 ),
                 style: GoogleFonts.manrope(color: AppColors.textPrimary),
                 items: _opcionesRol
-                    .map((r) => DropdownMenuItem(
-                          value: r,
-                          child: Text(_rolesEtiqueta[r] ?? r, style: GoogleFonts.manrope()),
-                        ))
+                    .map(
+                      (r) => DropdownMenuItem(
+                        value: r,
+                        child: Text(
+                          _rolesEtiqueta[r] ?? r,
+                          style: GoogleFonts.manrope(),
+                        ),
+                      ),
+                    )
                     .toList(),
-                onChanged: (v) => v != null ? setStateDialog(() => rolActual = v) : null,
+                onChanged: (v) =>
+                    v != null ? setStateDialog(() => rolActual = v) : null,
               ),
             ],
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text('Cancelar', style: GoogleFonts.manrope(color: AppColors.textSecondary)),
+              child: Text(
+                'Cancelar',
+                style: GoogleFonts.manrope(color: AppColors.textSecondary),
+              ),
             ),
             TextButton(
               onPressed: () async {
@@ -319,18 +388,32 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
                   if (ok) {
                     if (!mounted) return;
                     nav.pop();
-                    messenger.showSnackBar(SnackBar(
-                      content: Text('Rol actualizado a ${_rolesEtiqueta[rolActual] ?? rolActual}', style: GoogleFonts.manrope()),
-                      backgroundColor: AppColors.button,
-                    ));
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Rol actualizado a ${_rolesEtiqueta[rolActual] ?? rolActual}',
+                          style: GoogleFonts.manrope(),
+                        ),
+                        backgroundColor: AppColors.button,
+                      ),
+                    );
                   }
                 } catch (e) {
                   messenger.showSnackBar(
-                    SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
+                    SnackBar(
+                      content: Text('Error: $e'),
+                      backgroundColor: AppColors.error,
+                    ),
                   );
                 }
               },
-              child: Text('Guardar', style: GoogleFonts.manrope(fontWeight: FontWeight.w700, color: AppColors.button)),
+              child: Text(
+                'Guardar',
+                style: GoogleFonts.manrope(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.button,
+                ),
+              ),
             ),
           ],
         ),
@@ -339,7 +422,7 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
   }
 }
 
-// ── TILE DE ROL ──────────────────────────────────────────────────────
+// ── TILE DE ROL (GLASS) ──────────────────────────────────────────────
 class _RolTile extends StatelessWidget {
   final Usuario usuario;
   final VoidCallback onEdit;
@@ -349,61 +432,105 @@ class _RolTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final initials = usuario.nombre.isNotEmpty
-        ? usuario.nombre.trim().split(' ').map((e) => e.isNotEmpty ? e[0].toUpperCase() : '').take(2).join()
+        ? usuario.nombre
+              .trim()
+              .split(' ')
+              .map((e) => e.isNotEmpty ? e[0].toUpperCase() : '')
+              .take(2)
+              .join()
         : '?';
 
     final rolLabel = _labelRol(usuario.rolRaw);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.07),
-        border: Border.all(color: Colors.white12),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 52,
-            height: 64,
-            color: AppColors.button.withValues(alpha: 0.8),
-            alignment: Alignment.center,
-            child: Text(
-              initials,
-              style: GoogleFonts.manrope(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.45),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.15),
+                width: 1.5,
+              ),
             ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                Text(
-                  usuario.nombre,
-                  style: GoogleFonts.manrope(fontWeight: FontWeight.w700, fontSize: 14, color: Colors.white),
-                ),
-                const SizedBox(height: 4),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  color: AppColors.button.withValues(alpha: 0.2),
+                  width: 52,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: AppColors.button.withValues(alpha: 0.85),
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(20),
+                      bottomLeft: Radius.circular(20),
+                    ),
+                  ),
+                  alignment: Alignment.center,
                   child: Text(
-                    rolLabel.toUpperCase(),
+                    initials,
                     style: GoogleFonts.manrope(
-                      fontSize: 10,
+                      color: Colors.white,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.button,
-                      letterSpacing: 1,
+                      fontSize: 15,
                     ),
                   ),
                 ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        usuario.nombre,
+                        style: GoogleFonts.manrope(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.button.withValues(alpha: 0.25),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: AppColors.button.withValues(alpha: 0.5),
+                          ),
+                        ),
+                        child: Text(
+                          rolLabel.toUpperCase(),
+                          style: GoogleFonts.manrope(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(
+                    Icons.edit_outlined,
+                    color: Colors.white70,
+                    size: 22,
+                  ),
+                  onPressed: onEdit,
+                ),
+                const SizedBox(width: 4),
               ],
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.edit_outlined, color: Colors.white54, size: 22),
-            onPressed: onEdit,
-          ),
-          const SizedBox(width: 4),
-        ],
+        ),
       ),
     );
   }

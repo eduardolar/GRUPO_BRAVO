@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/models/mesa_model.dart';
+import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/services/api_service.dart';
 import 'package:frontend/services/mesa_service.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 
 class SacarCuenta extends StatefulWidget {
   const SacarCuenta({super.key});
@@ -28,8 +30,9 @@ class _SacarCuentaState extends State<SacarCuenta> {
   }
 
   Future<void> _cargarMesas() async {
+    final restauranteId = context.read<AuthProvider>().usuarioActual?.restauranteId;
     try {
-      final todas = await MesaService.obtenerMesas();
+      final todas = await MesaService.obtenerMesas(restauranteId: restauranteId);
       if (!mounted) return;
       setState(() {
         _mesasOcupadas = todas.where((m) => !m.disponible).toList();
@@ -62,15 +65,13 @@ class _SacarCuentaState extends State<SacarCuenta> {
   }
 
   Future<void> _cobrarYLiberarMesa(String metodoPago) async {
-    final pedidoId =
-        (_pedido?['id'] ?? _pedido?['_id'])?.toString();
+    final pedidoId = (_pedido?['id'] ?? _pedido?['_id'])?.toString();
     final mesa = _mesaSeleccionada;
     if (pedidoId == null || mesa == null) return;
 
     setState(() => _procesando = true);
     try {
-      await ApiService.cerrarPedido(
-          pedidoId: pedidoId, metodoPago: metodoPago);
+      await ApiService.cerrarPedido(pedidoId: pedidoId, metodoPago: metodoPago);
       await ApiService.marcarMesaLibre(mesa.id);
       if (!mounted) return;
       _showSnack('Mesa ${mesa.numero} cerrada y liberada');
@@ -144,8 +145,11 @@ class _SacarCuentaState extends State<SacarCuenta> {
                   child: Row(
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.arrow_back_ios_new,
-                            color: AppColors.background, size: 18),
+                        icon: const Icon(
+                          Icons.arrow_back_ios_new,
+                          color: AppColors.background,
+                          size: 18,
+                        ),
                         onPressed: () => Navigator.pop(context),
                       ),
                       Expanded(
@@ -214,7 +218,9 @@ class _PanelMesas extends StatelessWidget {
           width: 22,
           height: 22,
           child: CircularProgressIndicator(
-              color: AppColors.background, strokeWidth: 1.5),
+            color: AppColors.background,
+            strokeWidth: 1.5,
+          ),
         ),
       );
     }
@@ -224,8 +230,11 @@ class _PanelMesas extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.table_restaurant_outlined,
-                size: 40, color: AppColors.background),
+            Icon(
+              Icons.table_restaurant_outlined,
+              size: 40,
+              color: AppColors.background,
+            ),
             const SizedBox(height: 14),
             const Text(
               'NO HAY MESAS OCUPADAS',
@@ -272,7 +281,9 @@ class _PanelMesas extends StatelessWidget {
                     onTap: () => onSeleccionar(mesa),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 18),
+                        horizontal: 20,
+                        vertical: 18,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.black45,
                         border: Border.all(color: AppColors.background),
@@ -320,8 +331,11 @@ class _PanelMesas extends StatelessWidget {
                               ],
                             ),
                           ),
-                          const Icon(Icons.chevron_right,
-                              color: AppColors.background, size: 20),
+                          const Icon(
+                            Icons.chevron_right,
+                            color: AppColors.background,
+                            size: 20,
+                          ),
                         ],
                       ),
                     ),
@@ -380,8 +394,11 @@ class _PanelCuenta extends StatelessWidget {
             children: [
               GestureDetector(
                 onTap: onVolver,
-                child: const Icon(Icons.arrow_back_ios_new,
-                    color: AppColors.background, size: 16),
+                child: const Icon(
+                  Icons.arrow_back_ios_new,
+                  color: AppColors.background,
+                  size: 16,
+                ),
               ),
               const SizedBox(width: 12),
               Text(
@@ -395,11 +412,16 @@ class _PanelCuenta extends StatelessWidget {
               ),
               const Spacer(),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.mesaSeleccionada.withValues(alpha: 0.15),
-                  border: Border.all(color: AppColors.mesaSeleccionada, width: 1),
+                  border: Border.all(
+                    color: AppColors.mesaSeleccionada,
+                    width: 1,
+                  ),
                 ),
                 child: const Text(
                   'OCUPADA',
@@ -423,114 +445,123 @@ class _PanelCuenta extends StatelessWidget {
                     width: 22,
                     height: 22,
                     child: CircularProgressIndicator(
-                        color: AppColors.background, strokeWidth: 1.5),
+                      color: AppColors.background,
+                      strokeWidth: 1.5,
+                    ),
                   ),
                 )
               : pedido == null
-                  ? Center(
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.receipt_long_outlined,
+                        size: 40,
+                        color: AppColors.background,
+                      ),
+                      const SizedBox(height: 14),
+                      const Text(
+                        'SIN PEDIDO ACTIVO',
+                        style: TextStyle(
+                          color: AppColors.background,
+                          fontSize: 11,
+                          letterSpacing: 3.0,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : ListView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.shadow,
+                        border: Border.all(color: AppColors.background),
+                      ),
                       child: Column(
-                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.receipt_long_outlined,
-                              size: 40, color: AppColors.background),
-                          const SizedBox(height: 14),
-                          const Text(
-                            'SIN PEDIDO ACTIVO',
-                            style: TextStyle(
-                              color: AppColors.background,
-                              fontSize: 11,
-                              letterSpacing: 3.0,
+                          ..._items.map(
+                            (item) => Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 10,
+                              ),
+                              child: Row(
+                                children: [
+                                  Text(
+                                    '× ${item['cantidad']}',
+                                    style: TextStyle(
+                                      color: AppColors.button,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 17,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      (item['nombre'] ?? '').toString(),
+                                      style: const TextStyle(
+                                        color: AppColors.background,
+                                        fontSize: 17,
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    '${((item['precio'] as num? ?? 0) * (item['cantidad'] as num? ?? 1)).toStringAsFixed(2).replaceAll('.', ',')} €',
+                                    style: const TextStyle(
+                                      color: AppColors.background,
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const Divider(color: AppColors.background, height: 1),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 14,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'TOTAL',
+                                  style: TextStyle(
+                                    color: AppColors.background,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 1.5,
+                                  ),
+                                ),
+                                Container(
+                                  color: AppColors.backgroundButton,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 8,
+                                  ),
+                                  child: Text(
+                                    '${_total.toStringAsFixed(2).replaceAll('.', ',')} €',
+                                    style: const TextStyle(
+                                      color: AppColors.background,
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
                       ),
-                    )
-                  : ListView(
-                      physics: const BouncingScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
-                      children: [
-                        Container(
-                          decoration: BoxDecoration(
-                            color: AppColors.shadow,
-                            border: Border.all(color: AppColors.background),
-                          ),
-                          child: Column(
-                            children: [
-                              ..._items.map(
-                                (item) => Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 20, vertical: 10),
-                                  child: Row(
-                                    children: [
-                                      Text(
-                                        '× ${item['cantidad']}',
-                                        style: TextStyle(
-                                          color: AppColors.button,
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 17,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Text(
-                                          (item['nombre'] ?? '').toString(),
-                                          style: const TextStyle(
-                                            color: AppColors.background,
-                                            fontSize: 17,
-                                          ),
-                                        ),
-                                      ),
-                                      Text(
-                                        '${((item['precio'] as num? ?? 0) * (item['cantidad'] as num? ?? 1)).toStringAsFixed(2).replaceAll('.', ',')} €',
-                                        style: const TextStyle(
-                                          color: AppColors.background,
-                                          fontSize: 17,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const Divider(
-                                  color: AppColors.background, height: 1),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 20, vertical: 14),
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    const Text(
-                                      'TOTAL',
-                                      style: TextStyle(
-                                        color: AppColors.background,
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w700,
-                                        letterSpacing: 1.5,
-                                      ),
-                                    ),
-                                    Container(
-                                      color: AppColors.backgroundButton,
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 14, vertical: 8),
-                                      child: Text(
-                                        '${_total.toStringAsFixed(2).replaceAll('.', ',')} €',
-                                        style: const TextStyle(
-                                          color: AppColors.background,
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.w800,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
                     ),
+                  ],
+                ),
         ),
 
         // Botones de cobro
@@ -603,7 +634,9 @@ class _BotonMetodoPago extends StatelessWidget {
                       width: 18,
                       height: 18,
                       child: CircularProgressIndicator(
-                          color: AppColors.background, strokeWidth: 1.5),
+                        color: AppColors.background,
+                        strokeWidth: 1.5,
+                      ),
                     ),
                   )
                 : Row(

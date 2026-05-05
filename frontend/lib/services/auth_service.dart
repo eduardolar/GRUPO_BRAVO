@@ -2,7 +2,17 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../data/mock_data.dart';
 import 'api_config.dart';
+import 'auth_session.dart';
 import 'http_client.dart';
+
+void _guardarSesionDesde(Map<String, dynamic> data) {
+  AuthSession.guardar(
+    token: data['access_token'] as String?,
+    userId: data['id'] as String?,
+    correo: data['correo'] as String?,
+    rol: data['rol'] as String?,
+  );
+}
 
 class AuthService {
   // MODIFICADO: Ahora el login puede devolver un aviso de "requires_2fa"
@@ -22,7 +32,7 @@ class AuthService {
     final response = await httpWithRetry(
       () => http.post(
         Uri.parse('$baseUrl/login'),
-        headers: {'Content-Type': 'application/json'},
+        headers: AuthSession.headers(),
         body: jsonEncode({'correo': correo, 'password': contrasena}),
       ),
       retry: false,
@@ -30,14 +40,21 @@ class AuthService {
 
     // Si el status es 200, devolvemos el map (que puede incluir el aviso 2FA)
     if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } 
-    
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      // Guardamos la sesión sólo si el backend devolvió un access_token
+      // (cuando hay 2FA pendiente, no llega token hasta verificar el código).
+      if (data['access_token'] != null) _guardarSesionDesde(data);
+      return data;
+    }
+
     throw toApiException(response.statusCode, decodeBody(response));
   }
 
   // Para enviar el código que el usuario recibe en su correo
-  static Future<Map<String, dynamic>> verificarLogin2FA(String correo, String codigo) async {
+  static Future<Map<String, dynamic>> verificarLogin2FA(
+    String correo,
+    String codigo,
+  ) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 500));
       return {'success': true, 'message': 'Código login verificado en Mock'};
@@ -45,12 +62,14 @@ class AuthService {
 
     final response = await http.post(
       Uri.parse('$baseUrl/verificar-login-2fa'),
-      headers: {'Content-Type': 'application/json'},
+      headers: AuthSession.headers(),
       body: jsonEncode({'correo': correo, 'codigo': codigo}),
     );
 
     if (response.statusCode == 200) {
-      return jsonDecode(response.body); 
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      _guardarSesionDesde(data);
+      return data;
     } else {
       final error = jsonDecode(response.body);
       throw Exception(error['detail'] ?? 'Código incorrecto o caducado');
@@ -63,6 +82,7 @@ class AuthService {
     required String contrasena,
     required String telefono,
     required String direccion,
+    required bool consentimientoRgpd,
   }) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 500));
@@ -82,7 +102,7 @@ class AuthService {
     final response = await httpWithRetry(
       () => http.post(
         Uri.parse('$baseUrl/registro'),
-        headers: {'Content-Type': 'application/json'},
+        headers: AuthSession.headers(),
         body: jsonEncode({
           'nombre': nombre,
           'correo': correo,
@@ -90,6 +110,7 @@ class AuthService {
           'telefono': telefono,
           'direccion': direccion,
           'rol': 'cliente',
+          'consentimiento_rgpd': consentimientoRgpd,
         }),
       ),
       retry: false,
@@ -111,7 +132,7 @@ class AuthService {
     final response = await httpWithRetry(
       () => http.post(
         Uri.parse('$baseUrl/verificar-codigo'),
-        headers: {'Content-Type': 'application/json'},
+        headers: AuthSession.headers(),
         body: jsonEncode({'correo': correo, 'codigo': codigo}),
       ),
       retry: false,
@@ -130,7 +151,7 @@ class AuthService {
     final response = await httpWithRetry(
       () => http.post(
         Uri.parse('$baseUrl/recuperar-password'),
-        headers: {'Content-Type': 'application/json'},
+        headers: AuthSession.headers(),
         body: jsonEncode({'correo': correo}),
       ),
       retry: false,
@@ -154,7 +175,7 @@ class AuthService {
     final response = await httpWithRetry(
       () => http.post(
         Uri.parse('$baseUrl/reset-password'),
-        headers: {'Content-Type': 'application/json'},
+        headers: AuthSession.headers(),
         body: jsonEncode({
           'correo': correo,
           'codigo': codigo,
@@ -178,7 +199,7 @@ class AuthService {
     final response = await httpWithRetry(
       () => http.post(
         Uri.parse('$baseUrl/reenviar-codigo'),
-        headers: {'Content-Type': 'application/json'},
+        headers: AuthSession.headers(),
         body: jsonEncode({'correo': correo}),
       ),
       retry: false,
@@ -188,7 +209,8 @@ class AuthService {
       throw toApiException(response.statusCode, decodeBody(response));
     }
   }
-static Future<void> reenviarLogin2FA({required String correo}) async {
+
+  static Future<void> reenviarLogin2FA({required String correo}) async {
     // Si estás usando los datos de prueba sin backend
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 500));
@@ -196,14 +218,18 @@ static Future<void> reenviarLogin2FA({required String correo}) async {
     }
 
     final response = await http.post(
-      Uri.parse('$baseUrl/reenviar-login-2fa'), // Endpoint específico para reenviar código de login 2FA
-      headers: {'Content-Type': 'application/json'},
+      Uri.parse(
+        '$baseUrl/reenviar-login-2fa',
+      ), // Endpoint específico para reenviar código de login 2FA
+      headers: AuthSession.headers(),
       body: jsonEncode({'correo': correo}),
     );
 
     if (response.statusCode != 200) {
       final error = jsonDecode(response.body);
-      throw Exception(error['detail'] ?? 'Error al reenviar el código de seguridad');
+      throw Exception(
+        error['detail'] ?? 'Error al reenviar el código de seguridad',
+      );
     }
   }
 
@@ -222,7 +248,7 @@ static Future<void> reenviarLogin2FA({required String correo}) async {
     final response = await httpWithRetry(
       () => http.put(
         Uri.parse('$baseUrl/usuarios/$userId'),
-        headers: {'Content-Type': 'application/json'},
+        headers: AuthSession.headers(),
         body: jsonEncode({
           'nombre': nombre,
           'correo': email,
@@ -250,7 +276,7 @@ static Future<void> reenviarLogin2FA({required String correo}) async {
     final response = await httpWithRetry(
       () => http.get(
         Uri.parse('$baseUrl/usuarios/$userId'),
-        headers: {'Content-Type': 'application/json'},
+        headers: AuthSession.headers(),
       ),
     );
 
@@ -269,7 +295,7 @@ static Future<void> reenviarLogin2FA({required String correo}) async {
     final response = await httpWithRetry(
       () => http.delete(
         Uri.parse('$baseUrl/usuarios/$userId'),
-        headers: {'Content-Type': 'application/json'},
+        headers: AuthSession.headers(),
       ),
       retry: false,
     );
@@ -289,7 +315,7 @@ static Future<void> reenviarLogin2FA({required String correo}) async {
     final response = await httpWithRetry(
       () => http.put(
         Uri.parse('$baseUrl/usuarios/$userId/cambiar-password'),
-        headers: {'Content-Type': 'application/json'},
+        headers: AuthSession.headers(),
         body: jsonEncode({
           'password_actual': passwordActual,
           'nueva_password': nuevaPassword,
@@ -309,8 +335,12 @@ static Future<void> reenviarLogin2FA({required String correo}) async {
       return true;
     }
 
+    // RGPD art. 17: llama al endpoint de anonimización, no de borrado total.
     final response = await httpWithRetry(
-      () => http.delete(Uri.parse('$baseUrl/usuarios/$userId')),
+      () => http.delete(
+        Uri.parse('$baseUrl/usuarios/$userId/mi-cuenta'),
+        headers: AuthSession.headers(),
+      ),
       retry: false,
     );
     return response.statusCode == 200;
@@ -318,8 +348,10 @@ static Future<void> reenviarLogin2FA({required String correo}) async {
 
   static Future<Map<String, dynamic>> setup2fa({required String userId}) async {
     final response = await httpWithRetry(
-      () => http.post(Uri.parse('$baseUrl/usuarios/$userId/2fa/setup'),
-          headers: {'Content-Type': 'application/json'}),
+      () => http.post(
+        Uri.parse('$baseUrl/usuarios/$userId/2fa/setup'),
+        headers: AuthSession.headers(),
+      ),
       retry: false,
     );
     if (response.statusCode == 200) return jsonDecode(response.body);
@@ -333,12 +365,14 @@ static Future<void> reenviarLogin2FA({required String correo}) async {
     final response = await httpWithRetry(
       () => http.post(
         Uri.parse('$baseUrl/usuarios/$userId/2fa/activar'),
-        headers: {'Content-Type': 'application/json'},
+        headers: AuthSession.headers(),
         body: jsonEncode({'codigo': codigo}),
       ),
       retry: false,
     );
-    if (response.statusCode == 200) return jsonDecode(response.body) as Map<String, dynamic>;
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    }
     throw toApiException(response.statusCode, decodeBody(response));
   }
 
@@ -349,12 +383,14 @@ static Future<void> reenviarLogin2FA({required String correo}) async {
     final response = await httpWithRetry(
       () => http.post(
         Uri.parse('$baseUrl/verificar-2fa-recovery'),
-        headers: {'Content-Type': 'application/json'},
+        headers: AuthSession.headers(),
         body: jsonEncode({'user_id': userId, 'codigo': codigo}),
       ),
       retry: false,
     );
-    if (response.statusCode == 200) return jsonDecode(response.body) as Map<String, dynamic>;
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    }
     throw toApiException(response.statusCode, decodeBody(response));
   }
 
@@ -365,7 +401,7 @@ static Future<void> reenviarLogin2FA({required String correo}) async {
     final response = await httpWithRetry(
       () => http.post(
         Uri.parse('$baseUrl/usuarios/$userId/2fa/regenerar-codigos'),
-        headers: {'Content-Type': 'application/json'},
+        headers: AuthSession.headers(),
         body: jsonEncode({'codigo': codigo}),
       ),
       retry: false,
@@ -384,7 +420,7 @@ static Future<void> reenviarLogin2FA({required String correo}) async {
     final response = await httpWithRetry(
       () => http.post(
         Uri.parse('$baseUrl/usuarios/$userId/2fa/desactivar'),
-        headers: {'Content-Type': 'application/json'},
+        headers: AuthSession.headers(),
         body: jsonEncode({'codigo': codigo}),
       ),
       retry: false,
@@ -398,7 +434,7 @@ static Future<void> reenviarLogin2FA({required String correo}) async {
     final response = await httpWithRetry(
       () => http.post(
         Uri.parse('$baseUrl/usuarios/$userId/2fa-email/solicitar'),
-        headers: {'Content-Type': 'application/json'},
+        headers: AuthSession.headers(),
       ),
       retry: false,
     );
@@ -414,7 +450,7 @@ static Future<void> reenviarLogin2FA({required String correo}) async {
     final response = await httpWithRetry(
       () => http.post(
         Uri.parse('$baseUrl/usuarios/$userId/2fa-email/activar'),
-        headers: {'Content-Type': 'application/json'},
+        headers: AuthSession.headers(),
         body: jsonEncode({'codigo': codigo}),
       ),
       retry: false,
@@ -431,7 +467,7 @@ static Future<void> reenviarLogin2FA({required String correo}) async {
     final response = await httpWithRetry(
       () => http.post(
         Uri.parse('$baseUrl/usuarios/$userId/2fa-email/desactivar'),
-        headers: {'Content-Type': 'application/json'},
+        headers: AuthSession.headers(),
         body: jsonEncode({'codigo': codigo}),
       ),
       retry: false,
@@ -448,7 +484,7 @@ static Future<void> reenviarLogin2FA({required String correo}) async {
     final response = await httpWithRetry(
       () => http.post(
         Uri.parse('$baseUrl/verificar-2fa'),
-        headers: {'Content-Type': 'application/json'},
+        headers: AuthSession.headers(),
         body: jsonEncode({'user_id': userId, 'codigo': codigo}),
       ),
       retry: false,

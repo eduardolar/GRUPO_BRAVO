@@ -38,10 +38,7 @@ class _AdminCategoriasTabState extends State<AdminCategoriasTab> {
   }
 
   Future<void> _crear() async {
-    final nombre = await _pedirNombre(
-      titulo: 'Nueva categoría',
-      cta: 'Crear',
-    );
+    final nombre = await _pedirNombre(titulo: 'Nueva categoría', cta: 'Crear');
     if (nombre == null || nombre.trim().isEmpty) return;
     try {
       await ApiService.crearCategoria(nombre.trim());
@@ -166,8 +163,7 @@ class _AdminCategoriasTabState extends State<AdminCategoriasTab> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide:
-                  const BorderSide(color: AppColors.button, width: 2),
+              borderSide: const BorderSide(color: AppColors.button, width: 2),
             ),
           ),
           onSubmitted: (v) => Navigator.pop(ctx, v),
@@ -277,18 +273,17 @@ class _AdminCategoriasTabState extends State<AdminCategoriasTab> {
             ),
           ),
           child: ListTile(
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 6,
+              vertical: 4,
+            ),
             leading: ReorderableDragStartListener(
               index: index,
               child: Container(
                 width: 44,
                 height: 44,
                 alignment: Alignment.center,
-                child: const Icon(
-                  Icons.drag_indicator,
-                  color: Colors.white54,
-                ),
+                child: const Icon(Icons.drag_indicator, color: Colors.white54),
               ),
             ),
             title: Row(
@@ -341,10 +336,7 @@ class _AdminCategoriasTabState extends State<AdminCategoriasTab> {
                     children: [
                       Icon(Icons.edit, color: AppColors.button, size: 18),
                       SizedBox(width: 10),
-                      Text(
-                        'Renombrar',
-                        style: TextStyle(color: Colors.white),
-                      ),
+                      Text('Renombrar', style: TextStyle(color: Colors.white)),
                     ],
                   ),
                 ),
@@ -352,8 +344,11 @@ class _AdminCategoriasTabState extends State<AdminCategoriasTab> {
                   value: 'delete',
                   child: Row(
                     children: [
-                      Icon(Icons.delete_outline,
-                          color: AppColors.error, size: 18),
+                      Icon(
+                        Icons.delete_outline,
+                        color: AppColors.error,
+                        size: 18,
+                      ),
                       SizedBox(width: 10),
                       Text(
                         'Eliminar',

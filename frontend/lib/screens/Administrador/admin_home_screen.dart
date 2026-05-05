@@ -30,13 +30,17 @@ class _MenuAdministradorState extends State<MenuAdministrador> {
   Future<void> _cargarStockBajo() async {
     if (!mounted) return;
     try {
-      final restauranteId =
-          context.read<AuthProvider>().usuarioActual?.restauranteId;
+      final restauranteId = context
+          .read<AuthProvider>()
+          .usuarioActual
+          ?.restauranteId;
       final lista = await ApiService.obtenerIngredientesStockBajo(
         restauranteId: restauranteId,
       );
       if (mounted) setState(() => _stockBajoCount = lista.length);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('$e');
+    }
   }
 
   @override
@@ -71,7 +75,10 @@ class _MenuAdministradorState extends State<MenuAdministrador> {
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24.0,
+                  vertical: 16.0,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -86,10 +93,7 @@ class _MenuAdministradorState extends State<MenuAdministrador> {
                     const SizedBox(height: 8),
                     Text(
                       "¿Qué te gustaría gestionar hoy?",
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 16,
-                      ),
+                      style: TextStyle(color: Colors.white70, fontSize: 16),
                     ),
                     if (_stockBajoCount > 0) ...[
                       const SizedBox(height: 16),
@@ -172,20 +176,27 @@ class _MenuAdministradorState extends State<MenuAdministrador> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: Colors.red.shade900.withValues(alpha: 0.55),
+            color: AppColors.error.withValues(alpha: 0.55),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.red.shade400.withValues(alpha: 0.5), width: 1.5),
+            border: Border.all(
+              color: AppColors.error.withValues(alpha: 0.5),
+              width: 1.5,
+            ),
           ),
           child: Row(
             children: [
-              Icon(Icons.warning_amber_rounded, color: Colors.red.shade200, size: 22),
+              Icon(
+                Icons.warning_amber_rounded,
+                color: AppColors.error,
+                size: 22,
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   '$_stockBajoCount ingrediente${_stockBajoCount == 1 ? '' : 's'} '
                   'por debajo del stock mínimo',
                   style: TextStyle(
-                    color: Colors.red.shade100,
+                    color: AppColors.error,
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                   ),
@@ -197,7 +208,7 @@ class _MenuAdministradorState extends State<MenuAdministrador> {
                   MaterialPageRoute(builder: (_) => const AdminStockScreen()),
                 ).then((_) => _cargarStockBajo()),
                 style: TextButton.styleFrom(
-                  foregroundColor: Colors.red.shade200,
+                  foregroundColor: AppColors.error,
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                 ),
                 child: const Text('Ver'),
@@ -254,7 +265,8 @@ class _MenuAdministradorState extends State<MenuAdministrador> {
                                 const SizedBox(width: 20),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       Text(
@@ -269,7 +281,9 @@ class _MenuAdministradorState extends State<MenuAdministrador> {
                                       Text(
                                         subtitle,
                                         style: TextStyle(
-                                          color: Colors.white.withValues(alpha: 0.6),
+                                          color: Colors.white.withValues(
+                                            alpha: 0.6,
+                                          ),
                                           fontSize: 14,
                                         ),
                                       ),
@@ -280,7 +294,7 @@ class _MenuAdministradorState extends State<MenuAdministrador> {
                                   Icons.arrow_forward_ios,
                                   color: Colors.white.withValues(alpha: 0.3),
                                   size: 20,
-                                )
+                                ),
                               ],
                             )
                           : Column(
@@ -317,9 +331,12 @@ class _MenuAdministradorState extends State<MenuAdministrador> {
                   top: 10,
                   right: 10,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
-                      color: Colors.red.shade700,
+                      color: AppColors.error,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: Colors.white.withValues(alpha: 0.3),
@@ -349,7 +366,10 @@ class _MenuAdministradorState extends State<MenuAdministrador> {
       decoration: BoxDecoration(
         color: AppColors.button.withValues(alpha: 0.2),
         shape: BoxShape.circle,
-        border: Border.all(color: AppColors.button.withValues(alpha: 0.5), width: 1),
+        border: Border.all(
+          color: AppColors.button.withValues(alpha: 0.5),
+          width: 1,
+        ),
       ),
       child: Icon(icon, color: AppColors.button, size: 30),
     );

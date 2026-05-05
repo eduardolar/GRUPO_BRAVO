@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:frontend/components/Cliente/entrada_texto.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/models/ingrediente_model.dart';
+import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/services/api_service.dart';
+import 'package:provider/provider.dart';
 
 class AdminAnadirMenu extends StatefulWidget {
   const AdminAnadirMenu({super.key});
@@ -52,9 +54,9 @@ class _AdminAnadirMenuState extends State<AdminAnadirMenu> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _cargando = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al cargar datos: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error al cargar datos: $e')));
     }
   }
 
@@ -82,7 +84,12 @@ class _AdminAnadirMenuState extends State<AdminAnadirMenu> {
           children: [
             const SizedBox(height: 30),
             _campoDatos("Nombre", Icons.abc, _nombreplato, _validarObligatorio),
-            _campoDatos("Descripción", Icons.abc, _descripcionPlato, _validarObligatorio),
+            _campoDatos(
+              "Descripción",
+              Icons.abc,
+              _descripcionPlato,
+              _validarObligatorio,
+            ),
             _campoDatos("Precio", Icons.euro, _precio, _validarPrecio),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -138,8 +145,12 @@ class _AdminAnadirMenuState extends State<AdminAnadirMenu> {
                               children: [
                                 Expanded(
                                   child: Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                                    child: Text(_ingredientesProducto[index].nombre),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                    ),
+                                    child: Text(
+                                      _ingredientesProducto[index].nombre,
+                                    ),
                                   ),
                                 ),
                                 IconButton(
@@ -220,7 +231,10 @@ class _AdminAnadirMenuState extends State<AdminAnadirMenu> {
             ? const SizedBox(
                 width: 20,
                 height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
               )
             : const Text("CREAR PRODUCTO"),
       ),
@@ -231,13 +245,21 @@ class _AdminAnadirMenuState extends State<AdminAnadirMenu> {
     if (!_formKey.currentState!.validate()) return;
 
     if (_categoriaSeleccionada == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Selecciona una categoría")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Selecciona una categoría")));
       return;
     }
 
     setState(() => _guardando = true);
+
+    // Sucursal del admin actual: el producto se crea SIEMPRE asignado a su
+    // restaurante. Sin esto el producto quedaba huérfano y desaparecía al
+    // filtrar por sucursal en cualquier listado del panel.
+    final restauranteId = context
+        .read<AuthProvider>()
+        .usuarioActual
+        ?.restauranteId;
 
     try {
       await ApiService.crearProducto({
@@ -247,6 +269,8 @@ class _AdminAnadirMenuState extends State<AdminAnadirMenu> {
         'categoria': _categoriaSeleccionada,
         'ingredientes': _ingredientesProducto.map((i) => i.nombre).toList(),
         'disponible': true,
+        if (restauranteId != null && restauranteId.isNotEmpty)
+          'restaurante_id': restauranteId,
       });
 
       if (!mounted) return;
@@ -256,9 +280,9 @@ class _AdminAnadirMenuState extends State<AdminAnadirMenu> {
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error al crear el producto: $e")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error al crear el producto: $e")));
     } finally {
       if (mounted) setState(() => _guardando = false);
     }
@@ -284,13 +308,17 @@ class _AdminAnadirMenuState extends State<AdminAnadirMenu> {
                         final item = _ingredientes[index];
                         return CheckboxListTile(
                           title: Text(item.nombre),
-                          value: seleccionados.any((i) => i.nombre == item.nombre),
+                          value: seleccionados.any(
+                            (i) => i.nombre == item.nombre,
+                          ),
                           onChanged: (bool? marcado) {
                             setModalState(() {
                               if (marcado == true) {
                                 seleccionados.add(item);
                               } else {
-                                seleccionados.removeWhere((i) => i.nombre == item.nombre);
+                                seleccionados.removeWhere(
+                                  (i) => i.nombre == item.nombre,
+                                );
                               }
                             });
                           },

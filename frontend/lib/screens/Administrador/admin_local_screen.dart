@@ -13,7 +13,10 @@ class _AdminLocalScreenState extends State<AdminLocalScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Text("Pantalla de configuración del local", style: TextStyle(color: AppColors.gold)),
+      body: Text(
+        "Pantalla de configuración del local",
+        style: TextStyle(color: AppColors.gold),
+      ),
     );
   }
 }

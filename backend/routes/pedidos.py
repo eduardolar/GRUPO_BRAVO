@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Query
 from exceptions import AppError, NotFoundError, ConflictError, ValidacionError
-from datetime import datetime
+from datetime import datetime, timezone
 from bson import ObjectId
 from fastapi_mail import FastMail, MessageSchema, MessageType
 from pydantic import BaseModel
@@ -16,9 +16,31 @@ router = APIRouter(prefix="/pedidos", tags=["Pedidos"])
 logger = logging.getLogger("uvicorn")
 
 
+# ── Server time (sincroniza cronómetros del cliente) ─────────────────────────
+
+@router.get("/server-time")
+def obtener_server_time():
+    """Devuelve la hora actual del servidor en UTC ISO 8601.
+
+    El cliente la usa para calcular un offset y mantener sus cronómetros
+    alineados con el servidor, independientemente de la hora del dispositivo.
+    """
+    return {"server_time": datetime.now(timezone.utc).isoformat()}
+
+
 # ── Helpers de stock ──────────────────────────────────────────────────────────
 
-def _descontar_stock(items: list, session=None):
+def _descontar_stock(items: list, session=None, restaurante_id: str | None = None):
+    """Resta del inventario los ingredientes consumidos por los items.
+
+    El descuento se hace contra los ingredientes de la **misma sucursal**
+    que el producto: si Madrid hace un pedido con "Pollo", se descuenta
+    el "Pollo" de Madrid, nunca el de Zaragoza. La sucursal se toma de:
+      1. el `restaurante_id` que pasa el caller (el del pedido), si llega
+      2. el `restaurante_id` del propio producto (fallback)
+    Si ninguno está disponible (caso legacy), se cae al matching por nombre
+    sin sucursal — pero loguea un aviso.
+    """
     for item in items:
         producto_id = item.get("producto_id", "")
         cantidad_pedida = item.get("cantidad", 1)
@@ -28,12 +50,17 @@ def _descontar_stock(items: list, session=None):
             continue
 
         try:
-            producto_db = coleccion_productos.find_one({"_id": ObjectId(producto_id)}, session=session)
+            producto_db = coleccion_productos.find_one(
+                {"_id": ObjectId(producto_id)}, session=session
+            )
         except Exception:
             producto_db = None
 
         if not producto_db:
             continue
+
+        # Sucursal contra la que descontar: prioriza la del pedido.
+        rid = restaurante_id or producto_db.get("restaurante_id")
 
         for ing in producto_db.get("ingredientes", []):
             if isinstance(ing, str):
@@ -49,16 +76,43 @@ def _descontar_stock(items: list, session=None):
                 continue
 
             descuento = cantidad_pedida * cantidad_receta
+            filtro: dict = {
+                "nombre": {"$regex": f"^{nombre_ing}$", "$options": "i"},
+                "cantidad_actual": {"$gte": descuento},
+            }
+            if rid:
+                # Aislamiento por sucursal: el ingrediente DEBE pertenecer
+                # al mismo restaurante que el producto/pedido.
+                filtro["restaurante_id"] = rid
+            else:
+                logger.warning(
+                    "Descuento de stock sin restaurante_id (producto=%s ingrediente=%r). "
+                    "Cayendo a matching solo por nombre (legacy).",
+                    producto_id, nombre_ing,
+                )
+
             result = coleccion_ingredientes.update_one(
-                {
-                    "nombre": {"$regex": f"^{nombre_ing}$", "$options": "i"},
-                    "cantidad_actual": {"$gte": descuento},
-                },
+                filtro,
                 {"$inc": {"cantidad_actual": -descuento}},
                 session=session,
             )
             if result.matched_count == 0:
-                raise ConflictError(f"Stock insuficiente para el ingrediente '{nombre_ing}'")
+                # Diagnóstico fino: distinguimos "no existe en la sucursal"
+                # de "existe pero no hay stock suficiente".
+                existe = coleccion_ingredientes.find_one(
+                    {
+                        "nombre": {"$regex": f"^{nombre_ing}$", "$options": "i"},
+                        **({"restaurante_id": rid} if rid else {}),
+                    },
+                    session=session,
+                )
+                if existe is None:
+                    raise ConflictError(
+                        f"El ingrediente '{nombre_ing}' no existe en esta sucursal"
+                    )
+                raise ConflictError(
+                    f"Stock insuficiente para el ingrediente '{nombre_ing}'"
+                )
 
 
 VALORES_ENTREGA_VALIDOS = {"local", "domicilio", "recoger"}
@@ -211,6 +265,11 @@ class ActualizarItemsPedido(BaseModel):
 class ActualizarEstado(BaseModel):
     estado: str
 
+
+class ActualizarItemHecho(BaseModel):
+    hecho: bool
+
+
 _ESTADOS_VALIDOS = {"pendiente", "preparando", "listo", "entregado", "cancelado"}
 
 
@@ -241,7 +300,7 @@ async def crear_pedido(pedido: PedidoCrear):
         "metodo_pago": pedido.metodoPago,
         "total": total_calculado,
         "notas": pedido.notas,
-        "fecha": datetime.now().isoformat(),
+        "fecha": datetime.now(timezone.utc).isoformat(),
         "estado": "pendiente",
         "referencia_pago": pedido.referenciaPago,
         "estado_pago": pedido.estadoPago or "pendiente",
@@ -253,12 +312,18 @@ async def crear_pedido(pedido: PedidoCrear):
         pedido_dict["mesa_id"] = pedido.mesaId
     if pedido.numeroMesa is not None:
         pedido_dict["numero_mesa"] = pedido.numeroMesa
+    if pedido.restauranteId:
+        pedido_dict["restaurante_id"] = pedido.restauranteId
+
+    # Sucursal del pedido — el descuento de stock va contra ESTA sucursal,
+    # nunca contra otra (aunque haya un ingrediente con el mismo nombre).
+    rid_pedido = pedido.restauranteId
 
     resultado = None
     try:
         with cliente.start_session() as session:
             with session.start_transaction():
-                _descontar_stock(items_dict, session=session)
+                _descontar_stock(items_dict, session=session, restaurante_id=rid_pedido)
                 resultado = coleccion_pedidos.insert_one(pedido_dict, session=session)
     except AppError:
         raise
@@ -266,7 +331,7 @@ async def crear_pedido(pedido: PedidoCrear):
         # MongoDB standalone no soporta transacciones: fallback a operaciones atómicas por documento
         if "Transaction numbers are only allowed" in str(e) or e.code == 20:
             logger.warning("MongoDB standalone detectado: usando actualizaciones atómicas sin transacción")
-            _descontar_stock(items_dict)
+            _descontar_stock(items_dict, restaurante_id=rid_pedido)
             resultado = coleccion_pedidos.insert_one(pedido_dict)
         else:
             logger.error(f"Error de base de datos creando pedido: {e}")
@@ -323,13 +388,64 @@ def actualizar_estado_pedido(pedido_id: str, payload: ActualizarEstado):
         raise ValidacionError("ID de pedido inválido")
     if payload.estado not in _ESTADOS_VALIDOS:
         raise ValidacionError(f"Estado inválido. Válidos: {_ESTADOS_VALIDOS}")
-    result = coleccion_pedidos.update_one(
-        {"_id": ObjectId(pedido_id)},
-        {"$set": {"estado": payload.estado}},
-    )
+
+    update: dict = {"$set": {"estado": payload.estado}}
+    # RGPD-03 — minimización de datos de geolocalización: cuando un pedido
+    # alcanza un estado terminal (entregado o cancelado) ya no es necesario
+    # conservar las coordenadas de la dirección de entrega. Las eliminamos
+    # del documento del pedido.
+    if payload.estado in {"entregado", "cancelado"}:
+        update["$unset"] = {
+            "direccion_lat": "",
+            "direccion_lon": "",
+            "latitud": "",
+            "longitud": "",
+        }
+
+    result = coleccion_pedidos.update_one({"_id": ObjectId(pedido_id)}, update)
     if result.matched_count == 0:
         raise NotFoundError("Pedido no encontrado")
     return {"updated": result.modified_count > 0, "estado": payload.estado}
+
+
+@router.patch("/{pedido_id}/items/{item_idx}/hecho")
+def marcar_item_hecho(pedido_id: str, item_idx: int, payload: ActualizarItemHecho):
+    if not ObjectId.is_valid(pedido_id):
+        raise ValidacionError("ID de pedido inválido")
+    if item_idx < 0:
+        raise ValidacionError("Índice de item inválido")
+
+    pedido = coleccion_pedidos.find_one({"_id": ObjectId(pedido_id)})
+    if not pedido:
+        raise NotFoundError("Pedido no encontrado")
+
+    items = pedido.get("items", [])
+    if not isinstance(items, list) or item_idx >= len(items):
+        raise ValidacionError(f"Índice de item fuera de rango (0..{len(items) - 1})")
+
+    coleccion_pedidos.update_one(
+        {"_id": ObjectId(pedido_id)},
+        {"$set": {f"items.{item_idx}.hecho": payload.hecho}},
+    )
+
+    pedido_actualizado = coleccion_pedidos.find_one({"_id": ObjectId(pedido_id)})
+    items_actualizados = pedido_actualizado.get("items", [])
+    todos_hechos = (
+        len(items_actualizados) > 0
+        and all(it.get("hecho", False) for it in items_actualizados)
+    )
+
+    if todos_hechos and pedido_actualizado.get("estado") in {"pendiente", "preparando"}:
+        coleccion_pedidos.update_one(
+            {"_id": ObjectId(pedido_id)},
+            {"$set": {"estado": "listo"}},
+        )
+
+    return {
+        "updated": True,
+        "hecho": payload.hecho,
+        "todosHechos": todos_hechos,
+    }
 
 
 @router.patch("/{pedido_id}")
@@ -369,6 +485,8 @@ def obtener_pedidos(
     userId: Optional[str] = Query(None),
     mesaId: Optional[str] = Query(None),
     estadoPago: Optional[str] = Query(None),
+    restauranteId: Optional[str] = Query(None),
+    estado: Optional[str] = Query(None),
 ):
     filtro = {}
     if userId:
@@ -377,14 +495,16 @@ def obtener_pedidos(
         filtro["mesa_id"] = mesaId
     if estadoPago:
         filtro["estado_pago"] = estadoPago
-    if not filtro:
-        raise HTTPException(status_code=400, detail="Se requiere al menos un filtro (userId o mesaId)")
-    pedidos = coleccion_pedidos.find(filtro)
-def obtener_pedidos(userId: Optional[str] = Query(None)):
-    filtro = {}
-    if userId:
-        filtro["usuario_id"] = userId
-        # Si se proporciona userId, se filtran los pedidos de ese usuario. Si no, se devuelven todos.
+    if restauranteId:
+        # Incluir pedidos con ese restaurante_id Y pedidos sin restaurante_id
+        # (retrocompatibilidad con pedidos creados antes de asignar restaurante)
+        filtro["$or"] = [
+            {"restaurante_id": restauranteId},
+            {"restaurante_id": {"$exists": False}},
+        ]
+    if estado:
+        filtro["estado"] = estado
+    # Sin filtros → devolver todos los pedidos (usado por la pantalla de cocina)
     pedidos = coleccion_pedidos.find(filtro)
     resultado = []
     for p in pedidos:
@@ -403,9 +523,35 @@ def obtener_pedidos(userId: Optional[str] = Query(None)):
             "mesaId": p.get("mesa_id"),
             "numeroMesa": p.get("numero_mesa"),
             "notas": p.get("notas", ""),
+            "restauranteId": str(p["restaurante_id"]) if p.get("restaurante_id") else None,
         })
     return resultado
 
+
+
+@router.get("/{pedido_id}")
+def obtener_pedido(pedido_id: str):
+    if not ObjectId.is_valid(pedido_id):
+        raise ValidacionError("ID de pedido inválido")
+    p = coleccion_pedidos.find_one({"_id": ObjectId(pedido_id)})
+    if not p:
+        raise NotFoundError("Pedido no encontrado")
+    items_raw = p.get("items", [])
+    return {
+        "id": str(p["_id"]),
+        "fecha": p.get("fecha", ""),
+        "total": p.get("total", 0),
+        "estado": p.get("estado", "pendiente"),
+        "estadoPago": p.get("estado_pago", "pendiente"),
+        "items": len(items_raw) if isinstance(items_raw, list) else items_raw,
+        "productos": items_raw if isinstance(items_raw, list) else [],
+        "tipoEntrega": p.get("tipo_entrega", ""),
+        "metodoPago": p.get("metodo_pago", ""),
+        "direccion": p.get("direccion_entrega", ""),
+        "mesaId": p.get("mesa_id"),
+        "numeroMesa": p.get("numero_mesa"),
+        "notas": p.get("notas", ""),
+    }
 
 
 @router.patch("/{pedido_id}/items")

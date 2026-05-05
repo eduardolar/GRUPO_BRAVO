@@ -1,36 +1,135 @@
 import 'dart:async';
 import 'dart:math';
+
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/models/pedido_model.dart';
+import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/services/api_service.dart';
+import 'package:frontend/services/server_time_service.dart';
+
+// ── Constantes ───────────────────────────────────────────────────────────
 
 const _kEstados = ['pendiente', 'preparando', 'listo'];
+const _kSonidoNuevoPedido = 'sounds/new_order.mp3';
+const _kPollInterval = Duration(seconds: 30);
+const _kTickInterval = Duration(seconds: 30);
+const _kLongPressDelay = Duration(milliseconds: 280);
+const _kAnimDuration = Duration(milliseconds: 180);
+const _kRadius = BorderRadius.all(Radius.circular(12));
+
+const double _kColMinWidth = 220;
+const double _kFeedbackWidth = 190;
+
+const Color _kVerde = Color(0xFF16A34A);
+const Color _kAmbar = Color(0xFFD97706);
+const Color _kNaranja = Color(0xFFEA580C);
+const Color _kAzul = Color(0xFF2563EB);
+const Color _kMarron = Color(0xFFB45309);
+
+// ── Typedefs ─────────────────────────────────────────────────────────────
+
+typedef _MoverEstadoFn = Future<void> Function(Pedido pedido, String estado);
+typedef _ToggleItemFn = Future<void> Function(Pedido pedido, int itemIdx);
+typedef _ItemHechoCheckFn = bool Function(Pedido pedido, int itemIdx);
+
+// ── Helpers ──────────────────────────────────────────────────────────────
 
 String _labelEstado(String e) {
   switch (e) {
-    case 'pendiente': return 'Pendiente';
-    case 'preparando': return 'En cocina';
-    case 'listo': return 'Listo';
-    default: return e;
+    case 'pendiente':
+      return 'Pendiente';
+    case 'preparando':
+      return 'En cocina';
+    case 'listo':
+      return 'Listo';
+    default:
+      return e;
   }
 }
 
 Color _colorEstado(String e) {
   switch (e) {
-    case 'preparando': return AppColors.button;
-    case 'listo': return const Color(0xFF2563EB);
-    default: return const Color(0xFFB45309);
+    case 'preparando':
+      return AppColors.button;
+    case 'listo':
+      return _kAzul;
+    default:
+      return _kMarron;
   }
 }
 
 IconData _iconoEstado(String e) {
   switch (e) {
-    case 'preparando': return Icons.local_fire_department_outlined;
-    case 'listo': return Icons.check_circle_outline;
-    default: return Icons.pending_outlined;
+    case 'preparando':
+      return Icons.local_fire_department_outlined;
+    case 'listo':
+      return Icons.check_circle_outline;
+    default:
+      return Icons.pending_outlined;
   }
 }
+
+({String etiqueta, IconData icono}) _entregaInfo(
+  String tipoEntrega,
+  int? numeroMesa,
+) {
+  switch (tipoEntrega) {
+    case 'local':
+      return (
+        etiqueta: 'Mesa ${numeroMesa ?? '-'}',
+        icono: Icons.table_restaurant_outlined,
+      );
+    case 'domicilio':
+      return (etiqueta: 'A domicilio', icono: Icons.delivery_dining_outlined);
+    case 'recoger':
+      return (etiqueta: 'Para recoger', icono: Icons.shopping_bag_outlined);
+    default:
+      return (etiqueta: tipoEntrega, icono: Icons.receipt_long_outlined);
+  }
+}
+
+/// Minutos transcurridos desde [fechaIso] según la hora del servidor.
+/// Devuelve `-1` si la fecha es inválida.
+int _minutosDesde(String fechaIso) {
+  try {
+    final dt = DateTime.parse(fechaIso);
+    return ServerTimeService.instance.now.difference(dt).inMinutes;
+  } catch (_) {
+    return -1;
+  }
+}
+
+Color _colorTiempo(int minutos) {
+  if (minutos < 0) return AppColors.textSecondary;
+  if (minutos < 5) return _kVerde;
+  if (minutos < 10) return _kAmbar;
+  if (minutos < 15) return _kNaranja;
+  return AppColors.error;
+}
+
+String _formatoTiempo(int minutos) {
+  if (minutos < 0) return '—';
+  if (minutos < 60) return '${minutos}m';
+  final h = minutos ~/ 60;
+  final m = minutos % 60;
+  return '${h}h ${m}m';
+}
+
+String _hora(String fechaIso) {
+  try {
+    final dt = DateTime.parse(fechaIso);
+    return '${dt.hour.toString().padLeft(2, '0')}:'
+        '${dt.minute.toString().padLeft(2, '0')}';
+  } catch (_) {
+    return '';
+  }
+}
+
+// ── Pantalla ─────────────────────────────────────────────────────────────
 
 class PedidosCocinaScreen extends StatefulWidget {
   const PedidosCocinaScreen({super.key});
@@ -42,41 +141,137 @@ class PedidosCocinaScreen extends StatefulWidget {
 class _PedidosCocinaScreenState extends State<PedidosCocinaScreen> {
   List<Pedido> _pedidos = [];
   bool _cargando = true;
-  Timer? _timer;
+  bool _primeraCarga = true;
+
+  Timer? _pollTimer;
+  Timer? _tickTimer;
+  final AudioPlayer _audio = AudioPlayer();
+
   final Set<String> _actualizando = {};
   final Map<String, String> _estadoOverride = {};
+  // Override optimista de items hechos: {pedidoId: {itemIdx: hecho}}
+  final Map<String, Map<int, bool>> _itemHechoOverride = {};
+  // IDs ya vistos (para detectar entradas nuevas y sonar). Se purga en cada
+  // poll para mantener solo los activos.
+  final Set<String> _idsVistos = {};
+
+  // Cada N polls resincronizamos la hora del servidor para corregir deriva.
+  static const int _kSyncCadaNPolls = 5;
+  int _pollsDesdeUltimaSync = 0;
 
   @override
   void initState() {
     super.initState();
+    _audio.setReleaseMode(ReleaseMode.stop);
+    // Sincronizamos hora del servidor antes del primer paint para que los
+    // cronómetros muestren un valor correcto desde el principio.
+    ServerTimeService.instance.sincronizar().then((_) {
+      if (mounted) setState(() {});
+    });
     _cargarPedidos();
-    _timer = Timer.periodic(const Duration(seconds: 30), (_) => _cargarPedidos());
+    _pollTimer = Timer.periodic(_kPollInterval, (_) => _cargarPedidos());
+    // Re-render cada 30 s para que avancen los cronómetros sin pegar a backend.
+    _tickTimer = Timer.periodic(_kTickInterval, (_) {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _pollTimer?.cancel();
+    _tickTimer?.cancel();
+    _audio.dispose();
     super.dispose();
   }
 
   String _estadoEfectivo(Pedido p) => _estadoOverride[p.id] ?? p.estado;
 
+  bool _itemHechoEfectivo(Pedido p, int idx) {
+    final override = _itemHechoOverride[p.id]?[idx];
+    if (override != null) return override;
+    if (idx < p.productos.length) return p.productos[idx].hecho;
+    return false;
+  }
+
+  Future<void> _reproducirAlerta() async {
+    try {
+      await _audio.stop();
+      await _audio.play(AssetSource(_kSonidoNuevoPedido));
+    } catch (e) {
+      debugPrint('No se pudo reproducir alerta de pedido: $e');
+    }
+  }
+
+  void _showSnack(String mensaje, {bool error = true}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(mensaje),
+          backgroundColor: error ? AppColors.error : AppColors.button,
+          behavior: SnackBarBehavior.floating,
+          shape: const RoundedRectangleBorder(borderRadius: _kRadius),
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+        ),
+      );
+  }
+
   Future<void> _cargarPedidos() async {
     try {
-      final todos = await ApiService.obtenerTodosLosPedidos();
-      final activos = todos
-          .where((p) => _kEstados.contains(p.estado))
-          .toList()
+      // Resincronizar offset con servidor cada N polls para corregir deriva.
+      _pollsDesdeUltimaSync++;
+      if (_pollsDesdeUltimaSync >= _kSyncCadaNPolls) {
+        _pollsDesdeUltimaSync = 0;
+        // Sin await: que se resuelva en paralelo sin bloquear el poll.
+        ServerTimeService.instance.sincronizar();
+      }
+
+      final restauranteId = context
+          .read<AuthProvider>()
+          .usuarioActual
+          ?.restauranteId;
+      final todos = await ApiService.obtenerTodosLosPedidos(
+        restauranteId: restauranteId,
+      );
+      final activos = todos.where((p) => _kEstados.contains(p.estado)).toList()
         ..sort((a, b) => a.fecha.compareTo(b.fecha));
+
+      // Detectar nuevos pedidos en estado pendiente. Solo después de la
+      // primera carga, para no sonar al abrir la pantalla con histórico.
+      final idsActivos = activos.map((p) => p.id).toSet();
+      final nuevosPendientes = activos
+          .where((p) => p.estado == 'pendiente' && !_idsVistos.contains(p.id))
+          .map((p) => p.id)
+          .toSet();
+
       if (!mounted) return;
       setState(() {
         _pedidos = activos;
         _cargando = false;
         _estadoOverride.clear();
+        // Purgar overrides e IDs de pedidos que ya no están activos.
+        _itemHechoOverride.removeWhere((id, _) => !idsActivos.contains(id));
+        _idsVistos
+          ..removeWhere((id) => !idsActivos.contains(id))
+          ..addAll(idsActivos);
       });
-    } catch (_) {
+
+      if (!_primeraCarga && nuevosPendientes.isNotEmpty) {
+        _reproducirAlerta();
+      }
+      _primeraCarga = false;
+    } catch (e) {
       if (!mounted) return;
       setState(() => _cargando = false);
+      // Solo notificamos en la primera carga: durante el polling normal,
+      // un fallo puntual no debería saturar al cocinero con SnackBars.
+      if (_primeraCarga) {
+        _showSnack('No se pudieron cargar los pedidos: $e');
+        _primeraCarga = false;
+      } else {
+        debugPrint('pedidos_cocina poll fallido: $e');
+      }
     }
   }
 
@@ -94,17 +289,39 @@ class _PedidosCocinaScreenState extends State<PedidosCocinaScreen> {
       );
       await _cargarPedidos();
     } catch (e) {
-      if (mounted) {
-        setState(() => _estadoOverride.remove(pedido.id));
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
+      if (!mounted) return;
+      setState(() => _estadoOverride.remove(pedido.id));
+      _showSnack('Error al mover pedido: $e');
     } finally {
       if (mounted) setState(() => _actualizando.remove(pedido.id));
+    }
+  }
+
+  Future<void> _toggleItemHecho(Pedido pedido, int itemIdx) async {
+    final actual = _itemHechoEfectivo(pedido, itemIdx);
+    final nuevo = !actual;
+    setState(() {
+      _itemHechoOverride.putIfAbsent(pedido.id, () => {})[itemIdx] = nuevo;
+    });
+    try {
+      final res = await ApiService.marcarItemHecho(
+        pedidoId: pedido.id,
+        itemIndex: itemIdx,
+        hecho: nuevo,
+      );
+      if (res['todosHechos'] == true) {
+        await _cargarPedidos();
+      }
+    } catch (e) {
+      if (!mounted) return;
+      // Revertir override.
+      setState(() {
+        _itemHechoOverride[pedido.id]?.remove(itemIdx);
+        if (_itemHechoOverride[pedido.id]?.isEmpty ?? false) {
+          _itemHechoOverride.remove(pedido.id);
+        }
+      });
+      _showSnack('Error al marcar item: $e');
     }
   }
 
@@ -120,15 +337,24 @@ class _PedidosCocinaScreenState extends State<PedidosCocinaScreen> {
           icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'PEDIDOS ACTIVOS',
-          style: TextStyle(
-            fontFamily: 'Playfair Display',
-            color: AppColors.textPrimary,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.5,
-            fontSize: 17,
-          ),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'PEDIDOS ACTIVOS',
+              style: TextStyle(
+                fontFamily: 'Playfair Display',
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.5,
+                fontSize: 17,
+              ),
+            ),
+            if (!_cargando && _pedidos.isNotEmpty) ...[
+              const SizedBox(width: 10),
+              _BadgeContador(count: _pedidos.length),
+            ],
+          ],
         ),
         actions: [
           Padding(
@@ -143,70 +369,109 @@ class _PedidosCocinaScreenState extends State<PedidosCocinaScreen> {
             ),
           ),
         ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Container(color: AppColors.line, height: 1),
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(1),
+          child: Divider(height: 1, color: AppColors.line),
         ),
       ),
       body: _cargando
-          ? const Center(child: CircularProgressIndicator(color: AppColors.button))
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.button),
+            )
           : _buildKanban(),
     );
   }
 
   Widget _buildKanban() {
-    return LayoutBuilder(builder: (context, constraints) {
-      const gap = 10.0;
-      const padding = 12.0;
-      final available = constraints.maxWidth - padding * 2 - gap * 2;
-      final colWidth = max(available / 3, 220.0);
-      final totalWidth = colWidth * 3 + gap * 2 + padding * 2;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const gap = 10.0;
+        const padding = 12.0;
+        final available = constraints.maxWidth - padding * 2 - gap * 2;
+        final colWidth = max(available / 3, _kColMinWidth);
+        final totalWidth = colWidth * 3 + gap * 2 + padding * 2;
 
-      final board = SizedBox(
-        width: totalWidth,
-        height: constraints.maxHeight,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: padding, vertical: 12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              for (int i = 0; i < _kEstados.length; i++) ...[
-                if (i > 0) const SizedBox(width: gap),
-                _KanbanColumn(
-                  width: colWidth,
-                  height: constraints.maxHeight - 24,
-                  estado: _kEstados[i],
-                  pedidos: _pedidos
-                      .where((p) => _estadoEfectivo(p) == _kEstados[i])
-                      .toList(),
-                  actualizando: _actualizando,
-                  onMover: _cambiarEstado,
-                ),
+        final board = SizedBox(
+          width: totalWidth,
+          height: constraints.maxHeight,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: padding,
+              vertical: 12,
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (int i = 0; i < _kEstados.length; i++) ...[
+                  if (i > 0) const SizedBox(width: gap),
+                  _KanbanColumn(
+                    width: colWidth,
+                    height: constraints.maxHeight - 24,
+                    estado: _kEstados[i],
+                    pedidos: _pedidos
+                        .where((p) => _estadoEfectivo(p) == _kEstados[i])
+                        .toList(),
+                    actualizando: _actualizando,
+                    onMover: _cambiarEstado,
+                    onToggleItem: _toggleItemHecho,
+                    isItemHecho: _itemHechoEfectivo,
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
-        ),
-      );
-
-      if (totalWidth > constraints.maxWidth) {
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: board,
         );
-      }
-      return board;
-    });
+
+        if (totalWidth > constraints.maxWidth) {
+          return SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: board,
+          );
+        }
+        return board;
+      },
+    );
   }
 }
 
-// ── COLUMNA KANBAN ──────────────────────────────────────────────────────────
+// ── Badge contador en AppBar ─────────────────────────────────────────────
+
+class _BadgeContador extends StatelessWidget {
+  final int count;
+  const _BadgeContador({required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppColors.button.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.button.withValues(alpha: 0.4)),
+      ),
+      child: Text(
+        '$count',
+        style: const TextStyle(
+          color: AppColors.button,
+          fontWeight: FontWeight.w700,
+          fontSize: 12,
+        ),
+      ),
+    );
+  }
+}
+
+// ── COLUMNA KANBAN ───────────────────────────────────────────────────────
+
 class _KanbanColumn extends StatelessWidget {
   final double width;
   final double height;
   final String estado;
   final List<Pedido> pedidos;
   final Set<String> actualizando;
-  final Future<void> Function(Pedido, String) onMover;
+  final _MoverEstadoFn onMover;
+  final _ToggleItemFn onToggleItem;
+  final _ItemHechoCheckFn isItemHecho;
 
   const _KanbanColumn({
     required this.width,
@@ -215,6 +480,8 @@ class _KanbanColumn extends StatelessWidget {
     required this.pedidos,
     required this.actualizando,
     required this.onMover,
+    required this.onToggleItem,
+    required this.isItemHecho,
   });
 
   @override
@@ -226,7 +493,7 @@ class _KanbanColumn extends StatelessWidget {
       builder: (context, candidates, _) {
         final hovering = candidates.isNotEmpty;
         return AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
+          duration: _kAnimDuration,
           width: width,
           height: height,
           decoration: BoxDecoration(
@@ -248,12 +515,20 @@ class _KanbanColumn extends StatelessWidget {
                     : ListView.builder(
                         padding: const EdgeInsets.fromLTRB(10, 8, 10, 16),
                         itemCount: pedidos.length,
-                        itemBuilder: (_, i) => _DraggableCard(
-                          pedido: pedidos[i],
-                          actualizando: actualizando.contains(pedidos[i].id),
-                          currentEstado: estado,
-                          onMover: onMover,
-                        ),
+                        itemBuilder: (_, i) {
+                          final p = pedidos[i];
+                          return RepaintBoundary(
+                            key: ValueKey('cocina-card-${p.id}'),
+                            child: _DraggableCard(
+                              pedido: p,
+                              actualizando: actualizando.contains(p.id),
+                              currentEstado: estado,
+                              onMover: onMover,
+                              onToggleItem: onToggleItem,
+                              isItemHecho: isItemHecho,
+                            ),
+                          );
+                        },
                       ),
               ),
             ],
@@ -339,70 +614,72 @@ class _KanbanColumn extends StatelessWidget {
   }
 }
 
-// ── WRAPPER DRAGGABLE ───────────────────────────────────────────────────────
+// ── WRAPPER DRAGGABLE ────────────────────────────────────────────────────
+
 class _DraggableCard extends StatelessWidget {
   final Pedido pedido;
   final bool actualizando;
   final String currentEstado;
-  final Future<void> Function(Pedido, String) onMover;
+  final _MoverEstadoFn onMover;
+  final _ToggleItemFn onToggleItem;
+  final _ItemHechoCheckFn isItemHecho;
 
   const _DraggableCard({
     required this.pedido,
     required this.actualizando,
     required this.currentEstado,
     required this.onMover,
+    required this.onToggleItem,
+    required this.isItemHecho,
   });
 
   @override
   Widget build(BuildContext context) {
-    if (actualizando) {
-      return _PedidoCard(
-        pedido: pedido,
-        currentEstado: currentEstado,
-        onMover: onMover,
-        loading: true,
-      );
-    }
+    final card = _PedidoCard(
+      pedido: pedido,
+      currentEstado: currentEstado,
+      onMover: onMover,
+      onToggleItem: onToggleItem,
+      isItemHecho: isItemHecho,
+      loading: actualizando,
+    );
+
+    if (actualizando) return card;
+
     return LongPressDraggable<Pedido>(
       data: pedido,
-      delay: const Duration(milliseconds: 280),
+      delay: _kLongPressDelay,
       feedback: Material(
         color: Colors.transparent,
         child: Opacity(
           opacity: 0.88,
           child: SizedBox(
-            width: 190,
+            width: _kFeedbackWidth,
             child: _PedidoCard(
               pedido: pedido,
               currentEstado: currentEstado,
               onMover: onMover,
+              onToggleItem: onToggleItem,
+              isItemHecho: isItemHecho,
               compact: true,
             ),
           ),
         ),
       ),
-      childWhenDragging: Opacity(
-        opacity: 0.25,
-        child: _PedidoCard(
-          pedido: pedido,
-          currentEstado: currentEstado,
-          onMover: onMover,
-        ),
-      ),
-      child: _PedidoCard(
-        pedido: pedido,
-        currentEstado: currentEstado,
-        onMover: onMover,
-      ),
+      childWhenDragging: Opacity(opacity: 0.25, child: card),
+      child: card,
     );
   }
 }
 
-// ── TARJETA ─────────────────────────────────────────────────────────────────
+// ── TARJETA ──────────────────────────────────────────────────────────────
+
 class _PedidoCard extends StatelessWidget {
   final Pedido pedido;
   final String currentEstado;
-  final Future<void> Function(Pedido, String) onMover;
+  final _MoverEstadoFn onMover;
+  final _ToggleItemFn onToggleItem;
+  final _ItemHechoCheckFn isItemHecho;
   final bool compact;
   final bool loading;
 
@@ -410,36 +687,11 @@ class _PedidoCard extends StatelessWidget {
     required this.pedido,
     required this.currentEstado,
     required this.onMover,
+    required this.onToggleItem,
+    required this.isItemHecho,
     this.compact = false,
     this.loading = false,
   });
-
-  String get _etiquetaEntrega {
-    switch (pedido.tipoEntrega) {
-      case 'local': return 'Mesa ${pedido.numeroMesa ?? '-'}';
-      case 'domicilio': return 'A domicilio';
-      case 'recoger': return 'Para recoger';
-      default: return pedido.tipoEntrega;
-    }
-  }
-
-  IconData get _iconoEntrega {
-    switch (pedido.tipoEntrega) {
-      case 'local': return Icons.table_restaurant_outlined;
-      case 'domicilio': return Icons.delivery_dining_outlined;
-      case 'recoger': return Icons.shopping_bag_outlined;
-      default: return Icons.receipt_long_outlined;
-    }
-  }
-
-  String _hora(String fecha) {
-    try {
-      final dt = DateTime.parse(fecha);
-      return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-    } catch (_) {
-      return '';
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -457,34 +709,49 @@ class _PedidoCard extends StatelessWidget {
           ),
         ],
       ),
-      child: loading
-          ? const Padding(
-              padding: EdgeInsets.symmetric(vertical: 22),
-              child: Center(
-                child: CircularProgressIndicator(
-                  color: AppColors.button,
-                  strokeWidth: 2,
+      child: Stack(
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildCabecera(),
+              if (!compact) ...[
+                const Divider(height: 1, color: AppColors.line),
+                _buildProductos(),
+                if (pedido.notas != null && pedido.notas!.isNotEmpty)
+                  _buildNotas(),
+                const Divider(height: 1, color: AppColors.line),
+                _buildBotones(),
+              ],
+            ],
+          ),
+          if (loading)
+            Positioned.fill(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  color: AppColors.panel.withValues(alpha: 0.75),
+                  alignment: Alignment.center,
+                  child: const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      color: AppColors.button,
+                      strokeWidth: 2,
+                    ),
+                  ),
                 ),
               ),
-            )
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildCabecera(),
-                if (!compact) ...[
-                  const Divider(height: 1, color: AppColors.line),
-                  _buildProductos(),
-                  if (pedido.notas != null && pedido.notas!.isNotEmpty)
-                    _buildNotas(),
-                  const Divider(height: 1, color: AppColors.line),
-                  _buildBotones(),
-                ],
-              ],
             ),
+        ],
+      ),
     );
   }
 
   Widget _buildCabecera() {
+    final info = _entregaInfo(pedido.tipoEntrega, pedido.numeroMesa);
+    final minutos = _minutosDesde(pedido.fecha);
+    final colorTiempo = _colorTiempo(minutos);
     return Padding(
       padding: const EdgeInsets.all(11),
       child: Row(
@@ -496,7 +763,7 @@ class _PedidoCard extends StatelessWidget {
               shape: BoxShape.circle,
               border: Border.all(color: AppColors.gold, width: 1.5),
             ),
-            child: Icon(_iconoEntrega, color: AppColors.gold, size: 16),
+            child: Icon(info.icono, color: AppColors.gold, size: 16),
           ),
           const SizedBox(width: 9),
           Expanded(
@@ -504,7 +771,7 @@ class _PedidoCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _etiquetaEntrega,
+                  info.etiqueta,
                   style: const TextStyle(
                     fontFamily: 'Playfair Display',
                     color: AppColors.textPrimary,
@@ -522,7 +789,9 @@ class _PedidoCard extends StatelessWidget {
               ],
             ),
           ),
-          if (!compact)
+          _ChipCronometro(color: colorTiempo, texto: _formatoTiempo(minutos)),
+          if (!compact) ...[
+            const SizedBox(width: 6),
             Tooltip(
               message: 'Mantén pulsado para arrastrar',
               child: Icon(
@@ -531,82 +800,104 @@ class _PedidoCard extends StatelessWidget {
                 size: 16,
               ),
             ),
+          ],
         ],
       ),
     );
   }
 
   Widget _buildProductos() {
-    final visible = pedido.productos.take(3).toList();
-    final extra = pedido.productos.length - visible.length;
     return Padding(
       padding: const EdgeInsets.fromLTRB(11, 8, 11, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ...visible.map(
-            (p) => Padding(
-              padding: const EdgeInsets.only(bottom: 5),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 22,
-                    height: 22,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: AppColors.background,
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: AppColors.line),
-                    ),
-                    child: Text(
-                      '${p.cantidad}',
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 10,
+          for (int i = 0; i < pedido.productos.length; i++)
+            _itemRow(i, pedido.productos[i]),
+        ],
+      ),
+    );
+  }
+
+  Widget _itemRow(int idx, ProductoPedido p) {
+    final hecho = isItemHecho(pedido, idx);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: InkWell(
+        onTap: () => onToggleItem(pedido, idx),
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 2),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 22,
+                height: 22,
+                child: Checkbox(
+                  value: hecho,
+                  onChanged: (_) => onToggleItem(pedido, idx),
+                  activeColor: AppColors.button,
+                  visualDensity: VisualDensity.compact,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                width: 22,
+                height: 22,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: AppColors.line),
+                ),
+                child: Text(
+                  '${p.cantidad}',
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 10,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      p.nombre.isNotEmpty ? p.nombre : 'Producto',
+                      style: TextStyle(
+                        color: hecho
+                            ? AppColors.textSecondary.withValues(alpha: 0.6)
+                            : AppColors.textPrimary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        decoration: hecho
+                            ? TextDecoration.lineThrough
+                            : TextDecoration.none,
+                        decorationColor: AppColors.textSecondary.withValues(
+                          alpha: 0.6,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          p.nombre.isNotEmpty ? p.nombre : 'Producto',
-                          style: const TextStyle(
-                            color: AppColors.textPrimary,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                    if (p.sin.isNotEmpty)
+                      Text(
+                        'Sin: ${p.sin.join(', ')}',
+                        style: TextStyle(
+                          color: AppColors.error.withValues(alpha: 0.85),
+                          fontSize: 10,
+                          fontStyle: FontStyle.italic,
+                          fontWeight: FontWeight.w600,
                         ),
-                        if (p.sin.isNotEmpty)
-                          Text(
-                            'Sin: ${p.sin.join(', ')}',
-                            style: TextStyle(
-                              color: AppColors.textSecondary.withValues(alpha: 0.65),
-                              fontSize: 10,
-                              fontStyle: FontStyle.italic,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
+                      ),
+                  ],
+                ),
               ),
-            ),
+            ],
           ),
-          if (extra > 0)
-            Text(
-              '+ $extra más',
-              style: TextStyle(
-                color: AppColors.textSecondary.withValues(alpha: 0.5),
-                fontSize: 11,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-        ],
+        ),
       ),
     );
   }
@@ -624,7 +915,11 @@ class _PedidoCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(Icons.notes_outlined, size: 12, color: AppColors.textSecondary),
+            const Icon(
+              Icons.notes_outlined,
+              size: 12,
+              color: AppColors.textSecondary,
+            ),
             const SizedBox(width: 6),
             Expanded(
               child: Text(
@@ -681,7 +976,44 @@ class _PedidoCard extends StatelessWidget {
   }
 }
 
-// ── BOTÓN ────────────────────────────────────────────────────────────────────
+// ── Chip cronómetro ──────────────────────────────────────────────────────
+
+class _ChipCronometro extends StatelessWidget {
+  final Color color;
+  final String texto;
+  const _ChipCronometro({required this.color, required this.texto});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.access_time, size: 11, color: color),
+          const SizedBox(width: 3),
+          Text(
+            texto,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w700,
+              fontSize: 10,
+              letterSpacing: 0.3,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Botón ────────────────────────────────────────────────────────────────
+
 class _Boton extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -699,12 +1031,8 @@ class _Boton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       height: 34,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(9),
-        border: Border.all(color: AppColors.gold, width: 1.5),
-      ),
       child: ElevatedButton(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
@@ -712,7 +1040,10 @@ class _Boton extends StatelessWidget {
           foregroundColor: primary ? Colors.white : AppColors.textPrimary,
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 8),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+            side: const BorderSide(color: AppColors.gold, width: 1.5),
+          ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
