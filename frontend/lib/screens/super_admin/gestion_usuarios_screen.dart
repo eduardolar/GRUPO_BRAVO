@@ -1,7 +1,10 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../models/usuario_model.dart';
+import '../../models/restaurante_model.dart';
+import '../../providers/restaurante_provider.dart';
 import '../../providers/usuario_provider.dart';
 import '../../core/colors_style.dart';
 import 'crear_usuario_screen.dart';
@@ -23,13 +26,28 @@ class GestionUsuariosScreen extends StatefulWidget {
 class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  
+  // Estado interno para filtrar por sucursal seleccionada. 
+  // 'null' significa "Todas" (Todas).
+  String? _selectedRestauranteId;
 
   @override
   void initState() {
     super.initState();
+    _selectedRestauranteId = widget.restauranteId;
+    
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<UsuarioProvider>().cargar();
+      final provUser = context.read<UsuarioProvider>();
+      final provRest = context.read<RestauranteProvider>();
+      
+      if (provUser.usuarios.isEmpty) {
+        provUser.cargar();
+      }
+      if (provRest.restaurantes.isEmpty) {
+        provRest.cargar();
+      }
     });
+
     _searchController.addListener(() {
       setState(() {
         _searchQuery = _searchController.text.trim().toLowerCase();
@@ -71,28 +89,41 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
     'cliente': Icons.person_outline,
   };
 
+  // CORRECCIÓN 1: Quitamos 'administrador' de aquí para que no salgan mezclados con los trabajadores
   static const _rolesPersonal = [
-    'administrador',
     'cocinero',
     'camarero',
     'mesero',
     'trabajador',
   ];
 
-  List<Usuario> _filtrarPorRestaurante(List<Usuario> todos) {
-    final idFiltro = (widget.restauranteId ?? '').trim().toLowerCase();
+  List<Usuario> _filtrarUsuarios(List<Usuario> todos) {
     final filtro = widget.rolAFiltrar.toLowerCase();
+    final idSucursal = _selectedRestauranteId;
 
     return todos.where((u) {
-      final idDB = (u.restauranteId ?? '').toString().trim().toLowerCase();
-      if (idDB != idFiltro) return false;
-
       final rol = u.rolRaw;
+      final idDB = u.restauranteId;
 
-      if (filtro == 'cliente') return rol == 'cliente';
-      if (filtro == 'trabajador') return _rolesPersonal.contains(rol);
-      if (filtro.isNotEmpty) return rol == filtro;
-      return true;
+      // 1. Filtrar por rol
+      bool matchRol = false;
+      if (filtro.isEmpty) {
+        matchRol = true;
+      } else if (filtro == 'cliente') {
+        matchRol = (rol == 'cliente');
+      } else if (filtro == 'trabajador') {
+        matchRol = _rolesPersonal.contains(rol);
+      } else {
+        matchRol = (rol == filtro);
+      }
+
+      if (!matchRol) return false;
+
+      // 2. Filtrar por sucursal
+      if (rol == 'cliente') return true; 
+      if (idSucursal == null) return true; 
+      
+      return idDB == idSucursal;
     }).toList();
   }
 
@@ -109,11 +140,14 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
     final rolFijo = widget.rolAFiltrar.toLowerCase() == 'administrador'
         ? 'administrador'
         : null;
+        
+    final rId = _selectedRestauranteId ?? '';
+
     await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => CrearUsuarioScreen(
-          restauranteId: widget.restauranteId ?? '',
+          restauranteId: rId,
           rolFijo: rolFijo,
         ),
       ),
@@ -128,52 +162,20 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
     }).toList();
   }
 
-  Widget _buildBuscador() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 640),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.07),
-              border: Border.all(color: Colors.white12),
-            ),
-            child: TextField(
-              controller: _searchController,
-              style: GoogleFonts.manrope(color: Colors.white, fontSize: 14),
-              decoration: InputDecoration(
-                hintText: 'Buscar por nombre o email...',
-                hintStyle: GoogleFonts.manrope(
-                  color: Colors.white38,
-                  fontSize: 14,
-                ),
-                prefixIcon: const Icon(
-                  Icons.search,
-                  color: Colors.white38,
-                  size: 20,
-                ),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(
-                          Icons.close,
-                          color: Colors.white38,
-                          size: 18,
-                        ),
-                        onPressed: () => _searchController.clear(),
-                      )
-                    : null,
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 14,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
+  String _buildSubtext() {
+    final filtro = widget.rolAFiltrar.toLowerCase();
+    final esClientes = filtro == 'cliente';
+
+    if (esClientes) return 'Base de datos global de clientes registrados';
+
+    if (_selectedRestauranteId == null) return 'Gestión de personal de todo el grupo Bravo';
+
+    final rProv = context.read<RestauranteProvider>();
+    final rMatch = rProv.restaurantes.where((r) => r.id == _selectedRestauranteId).firstOrNull;
+    if (rMatch != null) {
+      return 'Gestión de personal de Bravo ${rMatch.nombre.replaceAll('Bravo', '').trim()}';
+    }
+    return 'Gestión de personal de la sucursal';
   }
 
   @override
@@ -182,7 +184,6 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // Fondo
           Positioned.fill(
             child: Image.asset(
               'assets/images/Bravo restaurante.jpg',
@@ -204,35 +205,41 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
             ),
           ),
 
-          // Contenido
           SafeArea(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildHeader(),
+                _buildHeaderEditorial(), 
+                _buildBranchFilterBar(),
                 _buildBuscador(),
                 Expanded(
                   child: Consumer<UsuarioProvider>(
                     builder: (context, provider, _) {
-                      if (provider.cargando) {
+                      if (provider.cargando && provider.usuarios.isEmpty) {
                         return const Center(
-                          child: CircularProgressIndicator(
-                            color: AppColors.button,
-                          ),
+                          child: CircularProgressIndicator(color: AppColors.button),
                         );
                       }
-                      if (provider.error != null) {
+                      
+                      if (provider.error != null && provider.usuarios.isEmpty) {
                         return Center(
-                          child: Text(
-                            'Error al cargar datos',
-                            style: GoogleFonts.manrope(color: Colors.white54),
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            margin: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: AppColors.error.withValues(alpha: 0.1),
+                              border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                            ),
+                            child: Text(
+                              'Error al cargar datos:\n${provider.error}',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.manrope(color: Colors.white54),
+                            ),
                           ),
                         );
                       }
 
-                      final lista = _filtrarPorBusqueda(
-                        _filtrarPorRestaurante(provider.usuarios),
-                      );
+                      final lista = _filtrarPorBusqueda(_filtrarUsuarios(provider.usuarios));
                       final grupos = _agruparPorRol(lista);
 
                       if (grupos.isEmpty) {
@@ -257,12 +264,9 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
                                       ...grupos[rol]!.map(
                                         (u) => _UsuarioTile(
                                           usuario: u,
-                                          onDelete: () =>
-                                              _confirmarBorrado(context, u),
-                                          onEdit: () =>
-                                              _abrirEdicion(context, u),
-                                          onToggleActivo: () =>
-                                              _toggleActivo(context, u),
+                                          onDelete: () => _confirmarBorrado(context, u),
+                                          onEdit: () => _abrirEdicion(context, u),
+                                          onToggleActivo: () => _toggleActivo(context, u),
                                         ),
                                       ),
                                       const SizedBox(height: 16),
@@ -279,39 +283,37 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
               ],
             ),
           ),
-
-          // Botón volver
-          Positioned(
-            top: 20,
-            left: 10,
-            child: IconButton(
-              icon: const Icon(
-                Icons.arrow_back_ios_new,
-                color: Colors.white,
-                size: 20,
-              ),
-              onPressed: () => Navigator.pop(context),
-            ),
-          ),
         ],
       ),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeaderEditorial() {
+    final filtro = widget.rolAFiltrar.toLowerCase();
+    final esClientes = filtro == 'cliente';
+    final subtext = _buildSubtext();
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
+      padding: const EdgeInsets.fromLTRB(20, 12, 16, 12),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          IconButton(
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+            icon: const Icon(
+              Icons.arrow_back_ios_new,
+              color: Colors.white,
+              size: 20,
+            ),
+            onPressed: () => Navigator.pop(context),
+          ),
+          const SizedBox(width: 8),
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  widget.rolAFiltrar.toLowerCase() == 'cliente'
-                      ? 'Clientes'
-                      : 'Personal',
+                  esClientes ? 'Clientes' : 'Personal',
                   style: const TextStyle(
                     fontFamily: 'Playfair Display',
                     color: Colors.white,
@@ -320,12 +322,11 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
                   ),
                 ),
                 const SizedBox(height: 6),
-                Container(height: 2, width: 40, color: AppColors.button),
+                Center(child: Container(height: 2, width: 40, color: AppColors.button)),
                 const SizedBox(height: 10),
                 Text(
-                  widget.rolAFiltrar.toLowerCase() == 'cliente'
-                      ? 'Base de datos de clientes registrados'
-                      : 'Gestión de personal de esta sucursal',
+                  subtext,
+                  textAlign: TextAlign.center,
                   style: GoogleFonts.manrope(
                     color: Colors.white.withValues(alpha: 0.6),
                     fontSize: 13,
@@ -334,8 +335,8 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
               ],
             ),
           ),
-          if (widget.rolAFiltrar.toLowerCase() != 'cliente') ...[
-            const SizedBox(width: 16),
+          const SizedBox(width: 8),
+          if (!esClientes) ...[
             _NuevoUsuarioButton(onPressed: _irACrearUsuario),
           ],
         ],
@@ -343,6 +344,120 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
     );
   }
 
+  Widget _buildBranchFilterBar() {
+    if (widget.rolAFiltrar.toLowerCase() == 'cliente') return const SizedBox.shrink();
+
+    return SizedBox(
+      height: 62,
+      child: Stack(
+        children: [
+          Consumer<RestauranteProvider>(
+            builder: (context, rProv, _) {
+              if (rProv.cargando && rProv.restaurantes.isEmpty) {
+                return const SizedBox.shrink();
+              }
+              final sucursales = rProv.restaurantes;
+              final opciones = [null, ...sucursales];
+
+              return ListView.separated(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+                itemCount: opciones.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (context, index) {
+                  final dynamic item = opciones[index];
+                  final bool isSelected = (item == null && _selectedRestauranteId == null) ||
+                                         (item is Restaurante && _selectedRestauranteId == item.id);
+                  
+                  final String label = (item == null) ? 'TODAS' : item.nombre.toUpperCase();
+
+                  return _BranchCategoryChip(
+                    label: label,
+                    seleccionado: isSelected,
+                    onTap: () => setState(() {
+                      _selectedRestauranteId = (item == null) ? null : item.id;
+                    }),
+                  );
+                },
+              );
+            },
+          ),
+          Positioned(
+            right: 0,
+            top: 12,
+            bottom: 12,
+            width: 40,
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.55),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // CORRECCIÓN 2: Buscador con barra blanca y texto oscuro
+  Widget _buildBuscador() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 640),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white, // Fondo blanco sólido
+              borderRadius: BorderRadius.circular(8), // Bordes redondeados
+            ),
+            child: TextField(
+              controller: _searchController,
+              style: GoogleFonts.manrope(color: Colors.black87, fontSize: 14), // Texto oscuro
+              decoration: InputDecoration(
+                hintText: 'Buscar por nombre o email...',
+                hintStyle: GoogleFonts.manrope(
+                  color: Colors.black54, // Hint texto oscuro
+                  fontSize: 14,
+                ),
+                prefixIcon: const Icon(
+                  Icons.search,
+                  color: Colors.black54, // Icono oscuro
+                  size: 20,
+                ),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(
+                          Icons.close,
+                          color: Colors.black54,
+                          size: 18,
+                        ),
+                        onPressed: () => _searchController.clear(),
+                      )
+                    : null,
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 14,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // CORRECCIÓN 3: Titulos de roles y números en blanco
   Widget _buildSeccionHeader(String rol, int count) {
     final etiqueta = _rolesEtiqueta[rol] ?? rol;
     final icono = _rolesIcono[rol] ?? Icons.person_outline;
@@ -351,27 +466,30 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
       padding: const EdgeInsets.only(top: 8, bottom: 10),
       child: Row(
         children: [
-          Icon(icono, color: AppColors.button, size: 16),
+          Icon(icono, color: Colors.white, size: 16), // Icono blanco
           const SizedBox(width: 8),
           Text(
             etiqueta.toUpperCase(),
             style: GoogleFonts.manrope(
               fontSize: 11,
               fontWeight: FontWeight.w800,
-              color: AppColors.button,
+              color: Colors.white, // Título en blanco
               letterSpacing: 2,
             ),
           ),
           const SizedBox(width: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-            color: AppColors.button.withValues(alpha: 0.15),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.15), // Fondo de la píldora semitransparente
+              borderRadius: BorderRadius.circular(6),
+            ),
             child: Text(
               '$count',
               style: GoogleFonts.manrope(
                 fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: AppColors.button,
+                fontWeight: FontWeight.w800,
+                color: Colors.white, // Número en blanco
               ),
             ),
           ),
@@ -383,6 +501,8 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
   }
 
   Widget _buildVacio() {
+    final bool esClientes = widget.rolAFiltrar.toLowerCase() == 'cliente';
+    
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -390,25 +510,26 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
           const Icon(Icons.people_outline, size: 64, color: Colors.white24),
           const SizedBox(height: 16),
           Text(
-            'No hay usuarios en esta sucursal',
+            esClientes ? 'No hay clientes registrados' : 'No hay personal que mostrar',
             style: GoogleFonts.manrope(color: Colors.white38, fontSize: 14),
           ),
           const SizedBox(height: 24),
-          TextButton.icon(
-            onPressed: _irACrearUsuario,
-            icon: const Icon(
-              Icons.person_add_outlined,
-              color: AppColors.button,
-              size: 18,
-            ),
-            label: Text(
-              'Agregar el primero',
-              style: GoogleFonts.manrope(
+          if (!esClientes)
+            TextButton.icon(
+              onPressed: _irACrearUsuario,
+              icon: const Icon(
+                Icons.person_add_outlined,
                 color: AppColors.button,
-                fontWeight: FontWeight.w600,
+                size: 18,
+              ),
+              label: Text(
+                'Agregar el primero',
+                style: GoogleFonts.manrope(
+                  color: AppColors.button,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
-          ),
         ],
       ),
     );
@@ -437,25 +558,36 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
     );
   }
 
-  void _abrirEdicion(BuildContext context, Usuario user) {
+void _abrirEdicion(BuildContext context, Usuario user) {
     final nombreCtrl = TextEditingController(text: user.nombre);
     final emailCtrl = TextEditingController(text: user.email);
 
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: AppColors.background,
-        shape: const RoundedRectangleBorder(),
+        backgroundColor: AppColors.background, // Si tu fondo es claro, esto va perfecto
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         title: Text(
           'Editar usuario',
-          style: GoogleFonts.manrope(fontWeight: FontWeight.w700),
+          style: GoogleFonts.manrope(
+            fontWeight: FontWeight.w800,
+            color: Colors.black87, // Título en oscuro
+          ),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _CampoEdicion(controller: nombreCtrl, label: 'Nombre'),
+            _CampoEdicion(
+              controller: nombreCtrl, 
+              label: 'Nombre', 
+              color: Colors.black87, // ¡Ahora sí lo acepta!
+            ),
             const SizedBox(height: 12),
-            _CampoEdicion(controller: emailCtrl, label: 'Email'),
+            _CampoEdicion(
+              controller: emailCtrl, 
+              label: 'Email', 
+              color: Colors.black87, // ¡Ahora sí lo acepta!
+            ),
           ],
         ),
         actions: [
@@ -463,7 +595,7 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
             onPressed: () => Navigator.pop(context),
             child: Text(
               'Cancelar',
-              style: GoogleFonts.manrope(color: AppColors.textSecondary),
+              style: GoogleFonts.manrope(color: Colors.black54, fontWeight: FontWeight.w600),
             ),
           ),
           TextButton(
@@ -494,7 +626,7 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
               'Guardar',
               style: GoogleFonts.manrope(
                 color: AppColors.button,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w800,
               ),
             ),
           ),
@@ -758,14 +890,23 @@ class _BadgeEstadoCuenta extends StatelessWidget {
 }
 
 // ── CAMPO DE EDICIÓN ─────────────────────────────────────────────────
+// ── CAMPO DE EDICIÓN ─────────────────────────────────────────────────
 class _CampoEdicion extends StatelessWidget {
   final TextEditingController controller;
   final String label;
+  final Color color; // <-- ¡Aquí le decimos que acepte el color!
 
-  const _CampoEdicion({required this.controller, required this.label});
+  const _CampoEdicion({
+    required this.controller, 
+    required this.label,
+    this.color = Colors.white, // Por defecto es blanco, pero tomará el black87 que le mandas
+  });
 
   @override
   Widget build(BuildContext context) {
+    // Si pasamos un color oscuro, oscurecemos los bordes y fondos. Si es blanco, los aclaramos.
+    final isDarkText = color != Colors.white;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -773,30 +914,82 @@ class _CampoEdicion extends StatelessWidget {
           label.toUpperCase(),
           style: GoogleFonts.manrope(
             fontSize: 10,
-            fontWeight: FontWeight.w700,
-            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w800,
+            color: isDarkText ? Colors.black54 : AppColors.textSecondary,
             letterSpacing: 1.5,
           ),
         ),
         const SizedBox(height: 6),
         Container(
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.06),
-            border: Border.all(color: Colors.white12),
+            color: isDarkText 
+                ? Colors.black.withValues(alpha: 0.05) 
+                : Colors.white.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isDarkText 
+                  ? Colors.black.withValues(alpha: 0.1) 
+                  : Colors.white12,
+            ),
           ),
           child: TextField(
             controller: controller,
-            style: GoogleFonts.manrope(color: Colors.white, fontSize: 14),
-            decoration: const InputDecoration(
+            style: GoogleFonts.manrope(color: color, fontSize: 14), // <-- Usa tu Colors.black87
+            decoration: InputDecoration(
               border: InputBorder.none,
-              contentPadding: EdgeInsets.symmetric(
+              contentPadding: const EdgeInsets.symmetric(
                 horizontal: 12,
-                vertical: 10,
+                vertical: 12,
               ),
             ),
           ),
         ),
       ],
+    );
+  }
+}
+
+// ── BRANCH CATEGORY CHIP (Estilo Carta) ──────────────────────────────────
+class _BranchCategoryChip extends StatelessWidget {
+  final String label;
+  final bool seleccionado;
+  final VoidCallback onTap;
+
+  const _BranchCategoryChip({
+    required this.label,
+    required this.seleccionado,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: seleccionado ? AppColors.button : Colors.black45,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: seleccionado ? AppColors.button : Colors.white24,
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: seleccionado ? Colors.white : Colors.white70,
+              fontSize: 11,
+              fontWeight: seleccionado ? FontWeight.w700 : FontWeight.w500,
+              letterSpacing: 1.0,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

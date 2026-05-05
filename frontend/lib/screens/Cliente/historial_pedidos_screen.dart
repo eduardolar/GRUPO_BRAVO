@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -221,50 +222,69 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: _cargarPedidos,
-          color: AppColors.button,
-          backgroundColor: AppColors.background,
-          child: CustomScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            slivers: [
-              // ── AppBar ──────────────────────────────────────────────────
-              _buildAppBar(),
-
-              // ── Banner activos ──────────────────────────────────────────
-              if (!_cargando && activos > 0)
-                SliverToBoxAdapter(child: _buildActiveBanner(activos)),
-
-              // ── Chips filtro ────────────────────────────────────────────
-              SliverToBoxAdapter(child: _buildFiltros()),
-
-              // ── Contenido ───────────────────────────────────────────────
-              if (_cargando)
-                SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (_, _) => _buildSkeleton(),
-                    childCount: 4,
-                  ),
-                )
-              else if (_pedidosFiltrados.isEmpty)
-                SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: _buildEmptyState(),
-                )
-              else
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
-                  sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (_, i) => _buildPedidoCard(i),
-                      childCount: _pedidosFiltrados.length,
-                    ),
-                  ),
-                ),
-            ],
+      body: Stack(
+        children: [
+          // ── FONDO EXACTO AL DE LA CAPTURA ──────────────────────────────
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/Bravo restaurante.jpg', // Ruta a tu imagen
+              fit: BoxFit.cover,
+            ),
           ),
-        ),
+          // Capa oscura por encima para dar legibilidad (como en la captura)
+          Positioned.fill(
+            child: Container(
+              color: Colors.black.withValues(alpha: 0.7), // Ajusta la oscuridad aquí
+            ),
+          ),
+
+          // ── CONTENIDO PRINCIPAL ─────────────────────────────────────────
+          SafeArea(
+            child: RefreshIndicator(
+              onRefresh: _cargarPedidos,
+              color: AppColors.button,
+              backgroundColor: AppColors.panel,
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  // ── AppBar ──────────────────────────────────────────────────
+                  _buildAppBar(),
+
+                  // ── Banner activos ──────────────────────────────────────────
+                  if (!_cargando && activos > 0)
+                    SliverToBoxAdapter(child: _buildActiveBanner(activos)),
+
+                  // ── Chips filtro ────────────────────────────────────────────
+                  SliverToBoxAdapter(child: _buildFiltros()),
+
+                  // ── Contenido ───────────────────────────────────────────────
+                  if (_cargando)
+                    SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (_, _) => _buildSkeleton(),
+                        childCount: 4,
+                      ),
+                    )
+                  else if (_pedidosFiltrados.isEmpty)
+                    SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: _buildEmptyState(),
+                    )
+                  else
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (_, i) => _buildPedidoCard(i),
+                          childCount: _pedidosFiltrados.length,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -273,7 +293,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
 
   Widget _buildAppBar() {
     return SliverAppBar(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent, // Transparente total
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       pinned: true,
@@ -281,34 +301,32 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
         tooltip: 'Volver',
         icon: const Icon(
           Icons.arrow_back_ios_new_rounded,
-          color: AppColors.button,
+          color: Colors.white, // Blanco para contrastar en fondo oscuro
           size: 20,
         ),
         onPressed: () => Navigator.pop(context),
       ),
       title: Text(
-        'Mis Pedidos',
+        'Historial de pedidos',
         style: GoogleFonts.manrope(
-          color: AppColors.textPrimary,
-          fontWeight: FontWeight.w800,
-          fontSize: 20,
+          color: Colors.white,
+          fontWeight: FontWeight.w700,
+          fontSize: 18,
+          letterSpacing: 0.5,
         ),
       ),
+      centerTitle: true,
       actions: [
         IconButton(
           icon: const Icon(
             Icons.refresh_rounded,
-            color: AppColors.button,
+            color: Colors.white70,
             size: 22,
           ),
           onPressed: _cargarPedidos,
           tooltip: 'Actualizar',
         ),
       ],
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(1),
-        child: Container(height: 1, color: AppColors.line),
-      ),
     );
   }
 
@@ -317,24 +335,23 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
   Widget _buildActiveBanner(int count) {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: AppColors.button.withValues(alpha: 0.07),
+        color: AppColors.button.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.button.withValues(alpha: 0.2)),
+        border: Border.all(color: AppColors.button.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
-          // Punto pulsante
           _PulsingDot(color: AppColors.button),
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
               count == 1
                   ? 'Tienes 1 pedido en curso'
                   : 'Tienes $count pedidos en curso',
               style: GoogleFonts.manrope(
-                color: AppColors.button,
+                color: Colors.white,
                 fontWeight: FontWeight.w600,
                 fontSize: 13,
               ),
@@ -342,8 +359,8 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
           ),
           Icon(
             Icons.chevron_right_rounded,
-            color: AppColors.button.withValues(alpha: 0.5),
-            size: 18,
+            color: Colors.white54,
+            size: 20,
           ),
         ],
       ),
@@ -359,10 +376,10 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
     }
 
     return SizedBox(
-      height: 52,
+      height: 60,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         itemCount: _filtros.length,
         separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (_, i) {
@@ -379,12 +396,17 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
             }),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               decoration: BoxDecoration(
-                color: isSelected ? AppColors.button : AppColors.panel,
-                borderRadius: BorderRadius.circular(20),
+                // Fondo oscuro cristalino como en tu captura
+                color: isSelected 
+                    ? AppColors.button 
+                    : Colors.white.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: isSelected ? AppColors.button : AppColors.line,
+                  color: isSelected 
+                      ? AppColors.button 
+                      : Colors.white.withValues(alpha: 0.1),
                 ),
               ),
               child: Row(
@@ -395,26 +417,26 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
                     style: GoogleFonts.manrope(
                       color: isSelected
                           ? Colors.white
-                          : AppColors.textSecondary,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12,
+                          : Colors.white70,
+                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                      fontSize: 13,
                     ),
                   ),
                   if (count > 0 && !isSelected) ...[
-                    const SizedBox(width: 5),
+                    const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 6,
-                        vertical: 1,
+                        vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.line,
+                        color: Colors.white.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
                         '$count',
                         style: GoogleFonts.manrope(
-                          color: AppColors.textSecondary,
+                          color: Colors.white70,
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
                         ),
@@ -430,171 +452,145 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
     );
   }
 
-  // ── Tarjeta de pedido ─────────────────────────────────────────────────────
+  // ── Tarjeta de pedido (Efecto Perfil) ─────────────────────────────────────
 
   Widget _buildPedidoCard(int index) {
     final pedido = _pedidosFiltrados[index];
     final estaExpandido = _expandido == index;
     final colorEstado = _colorEstado(pedido.estado);
-    final esActivo = _estadosActivos.contains(pedido.estado);
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
       margin: const EdgeInsets.only(bottom: 12),
+      // Mismo estilo de la captura: fondo semi-transparente y borde sutil
       decoration: BoxDecoration(
-        color: AppColors.panel,
-        borderRadius: BorderRadius.circular(16),
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: estaExpandido
-              ? AppColors.button.withValues(alpha: 0.35)
-              : AppColors.line,
+              ? AppColors.button.withValues(alpha: 0.5)
+              : Colors.white.withValues(alpha: 0.1),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: estaExpandido
-                ? AppColors.button.withValues(alpha: 0.07)
-                : Colors.black.withValues(alpha: 0.04),
-            blurRadius: estaExpandido ? 16 : 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () =>
-                setState(() => _expandido = estaExpandido ? -1 : index),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // ── Cabecera ──────────────────────────────────────────
-                  Row(
-                    children: [
-                      // Icono estado con dot activo
-                      Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          Container(
-                            width: 50,
-                            height: 50,
-                            decoration: BoxDecoration(
-                              color: colorEstado.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            child: Icon(
-                              _iconoEstado(pedido.estado),
-                              color: colorEstado,
-                              size: 24,
-                            ),
+        borderRadius: BorderRadius.circular(12),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8), // Blur cristalino
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () =>
+                  setState(() => _expandido = estaExpandido ? -1 : index),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ── Cabecera ──────────────────────────────────────────
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Icono minimalista
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: colorEstado.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: colorEstado.withValues(alpha: 0.3)),
                           ),
-                          if (esActivo)
-                            Positioned(
-                              top: -2,
-                              right: -2,
-                              child: Container(
-                                width: 10,
-                                height: 10,
-                                decoration: BoxDecoration(
-                                  color: colorEstado,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: AppColors.panel,
-                                    width: 2,
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(width: 12),
+                          child: Icon(
+                            _iconoEstado(pedido.estado),
+                            color: colorEstado,
+                            size: 22,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
 
-                      // Fecha e items
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _formatearFecha(pedido.fecha),
-                              style: GoogleFonts.manrope(
-                                color: AppColors.textPrimary,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 14,
-                              ),
-                            ),
-                            const SizedBox(height: 3),
-                            Row(
-                              children: [
-                                Text(
-                                  '${pedido.items} ${pedido.items == 1 ? 'artículo' : 'artículos'}',
-                                  style: GoogleFonts.manrope(
-                                    color: AppColors.textSecondary,
-                                    fontSize: 12,
-                                  ),
+                        // Fecha e items
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _formatearFecha(pedido.fecha),
+                                style: GoogleFonts.manrope(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14,
                                 ),
-                                if (pedido.numeroMesa != null) ...[
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
                                   Text(
-                                    ' · Mesa ${pedido.numeroMesa}',
+                                    '${pedido.items} ${pedido.items == 1 ? 'artículo' : 'artículos'}',
                                     style: GoogleFonts.manrope(
-                                      color: AppColors.textSecondary,
+                                      color: Colors.white60,
                                       fontSize: 12,
+                                      fontWeight: FontWeight.w500,
                                     ),
                                   ),
+                                  if (pedido.numeroMesa != null) ...[
+                                    Text(
+                                      ' · Mesa ${pedido.numeroMesa}',
+                                      style: GoogleFonts.manrope(
+                                        color: Colors.white60,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
                                 ],
-                              ],
+                              ),
+                              const SizedBox(height: 8),
+                              _BadgeEstado(
+                                label: _etiquetaEstado(pedido),
+                                color: colorEstado,
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // Total + Flecha
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              _formatearPrecio(pedido.total),
+                              style: GoogleFonts.manrope(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 16,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            AnimatedRotation(
+                              turns: estaExpandido ? 0.5 : 0,
+                              duration: const Duration(milliseconds: 300),
+                              child: Icon(
+                                Icons.keyboard_arrow_down_rounded,
+                                color: Colors.white54,
+                                size: 24,
+                              ),
                             ),
                           ],
                         ),
-                      ),
+                      ],
+                    ),
 
-                      // Total + badge
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            _formatearPrecio(pedido.total),
-                            style: GoogleFonts.manrope(
-                              color: AppColors.textPrimary,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          _BadgeEstado(
-                            label: _etiquetaEstado(pedido),
-                            color: colorEstado,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(width: 4),
-                      AnimatedRotation(
-                        turns: estaExpandido ? 0.5 : 0,
-                        duration: const Duration(milliseconds: 300),
-                        child: Icon(
-                          Icons.keyboard_arrow_down_rounded,
-                          color: AppColors.textSecondary.withValues(
-                            alpha: 0.45,
-                          ),
-                          size: 24,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  // ── Detalle expandido ──────────────────────────────────
-                  AnimatedCrossFade(
-                    firstChild: const SizedBox.shrink(),
-                    secondChild: _buildDetalle(pedido, colorEstado),
-                    crossFadeState: estaExpandido
-                        ? CrossFadeState.showSecond
-                        : CrossFadeState.showFirst,
-                    duration: const Duration(milliseconds: 300),
-                  ),
-                ],
+                    // ── Detalle expandido ──────────────────────────────────
+                    AnimatedCrossFade(
+                      firstChild: const SizedBox.shrink(),
+                      secondChild: _buildDetalle(pedido, colorEstado),
+                      crossFadeState: estaExpandido
+                          ? CrossFadeState.showSecond
+                          : CrossFadeState.showFirst,
+                      duration: const Duration(milliseconds: 300),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -612,50 +608,60 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _Divider(),
+          _Divider(), 
 
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
 
           // ── Stepper de estado ──────────────────────────────────────────
           _buildStatusStepper(pedido.estado),
 
-          const SizedBox(height: 18),
+          const SizedBox(height: 24),
 
-          // ── Productos ─────────────────────────────────────────────────
-          _SectionLabel(label: 'PRODUCTOS'),
-          const SizedBox(height: 8),
-          ...pedido.productos.map((p) => _buildProductoRow(p)),
-
-          _Divider(vPadding: 10),
-
-          // Total
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Total',
-                style: GoogleFonts.manrope(
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
+          // ── Productos (Diseño Limpio) ───────────────────────────────────
+          _SectionLabel(label: 'RESUMEN DE CUENTA'),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.2), // Fondo más oscuro para contraste
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+            ),
+            child: Column(
+              children: [
+                ...pedido.productos.map((p) => _buildProductoRow(p)),
+                _Divider(vPadding: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'TOTAL',
+                      style: GoogleFonts.manrope(
+                        color: Colors.white70,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                    Text(
+                      _formatearPrecio(pedido.total),
+                      style: GoogleFonts.manrope(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              Text(
-                _formatearPrecio(pedido.total),
-                style: GoogleFonts.manrope(
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 16,
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
 
           // ── Detalles entrega / pago ────────────────────────────────────
-          _SectionLabel(label: 'DETALLES'),
-          const SizedBox(height: 8),
+          _SectionLabel(label: 'INFORMACIÓN DE ENVÍO'),
+          const SizedBox(height: 10),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -678,29 +684,30 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
 
           // Notas
           if (pedido.notas != null && pedido.notas!.isNotEmpty) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Container(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppColors.background,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.line),
+                color: Colors.white.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Icon(
-                    Icons.notes_rounded,
-                    size: 14,
-                    color: AppColors.textSecondary.withValues(alpha: 0.6),
+                    Icons.edit_note_rounded,
+                    size: 16,
+                    color: Colors.white54,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       pedido.notas!,
                       style: GoogleFonts.manrope(
-                        color: AppColors.textSecondary,
+                        color: Colors.white70,
                         fontSize: 12,
+                        fontStyle: FontStyle.italic,
                       ),
                     ),
                   ),
@@ -711,7 +718,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
 
           // ── Botón seguir pedido ────────────────────────────────────────
           if (esActivo) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
               height: 46,
@@ -737,21 +744,21 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
                     ),
                   ),
                 ),
-                icon: const Icon(Icons.radar_rounded, size: 18),
+                icon: const Icon(Icons.my_location_rounded, size: 18),
                 label: Text(
-                  'SEGUIR PEDIDO',
+                  'RASTREAR PEDIDO',
                   style: GoogleFonts.manrope(
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w700,
                     fontSize: 13,
-                    letterSpacing: 0.5,
+                    letterSpacing: 1.0,
                   ),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.button,
                   foregroundColor: Colors.white,
-                  elevation: 0,
+                  elevation: 0, // Plano para encajar en el diseño
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                 ),
               ),
@@ -767,21 +774,21 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
   Widget _buildStatusStepper(String estadoActual) {
     if (estadoActual == 'cancelado') {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: AppColors.error.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.error.withValues(alpha: 0.2)),
+          color: AppColors.error.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
         ),
         child: Row(
           children: [
-            Icon(Icons.cancel_rounded, color: AppColors.error, size: 16),
-            const SizedBox(width: 8),
+            Icon(Icons.error_outline_rounded, color: AppColors.error, size: 18),
+            const SizedBox(width: 10),
             Text(
-              'Este pedido fue cancelado',
+              'El pedido fue cancelado',
               style: GoogleFonts.manrope(
                 color: AppColors.error,
-                fontSize: 12,
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -800,10 +807,10 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
     final pasoActualIdx = pasos.indexWhere((p) => p[0] == estadoActual);
 
     final iconos = [
-      Icons.receipt_rounded,
-      Icons.local_fire_department_rounded,
-      Icons.done_all_rounded,
-      Icons.check_circle_rounded,
+      Icons.receipt_long_rounded,
+      Icons.outdoor_grill_rounded,
+      Icons.check_circle_outline_rounded,
+      Icons.home_work_rounded,
     ];
 
     return Row(
@@ -814,9 +821,10 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
           return Expanded(
             child: Container(
               height: 2,
+              margin: const EdgeInsets.symmetric(horizontal: 4),
               decoration: BoxDecoration(
-                color: completado ? AppColors.button : AppColors.line,
-                borderRadius: BorderRadius.circular(1),
+                color: completado ? AppColors.button : Colors.white.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(2),
               ),
             ),
           );
@@ -830,29 +838,33 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
         return Column(
           children: [
             Container(
-              width: 34,
-              height: 34,
+              width: 32,
+              height: 32,
               decoration: BoxDecoration(
-                color: completado || actual ? AppColors.button : AppColors.line,
+                color: completado || actual ? AppColors.button : Colors.white.withValues(alpha: 0.05),
                 shape: BoxShape.circle,
+                border: Border.all(
+                  color: completado || actual ? AppColors.button : Colors.white.withValues(alpha: 0.2),
+                  width: 1.5,
+                ),
               ),
               child: Icon(
                 completado ? Icons.check_rounded : iconos[pasoIdx],
                 size: 16,
                 color: completado || actual
                     ? Colors.white
-                    : AppColors.textSecondary,
+                    : Colors.white54,
               ),
             ),
-            const SizedBox(height: 5),
+            const SizedBox(height: 6),
             Text(
               label,
               style: GoogleFonts.manrope(
                 color: completado || actual
-                    ? AppColors.textPrimary
-                    : AppColors.textSecondary.withValues(alpha: 0.4),
-                fontSize: 9,
-                fontWeight: FontWeight.w600,
+                    ? Colors.white
+                    : Colors.white54,
+                fontSize: 10,
+                fontWeight: actual ? FontWeight.w700 : FontWeight.w500,
               ),
             ),
           ],
@@ -865,29 +877,29 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
 
   Widget _buildProductoRow(ProductoPedido p) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 26,
-            height: 26,
+            width: 24,
+            height: 24,
             decoration: BoxDecoration(
-              color: AppColors.button.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(7),
+              color: Colors.white.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(6),
             ),
             child: Center(
               child: Text(
-                '${p.cantidad}',
+                '${p.cantidad}x',
                 style: GoogleFonts.manrope(
-                  color: AppColors.button,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 12,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 11,
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -895,17 +907,21 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
                 Text(
                   p.nombre,
                   style: GoogleFonts.manrope(
-                    color: AppColors.textPrimary,
+                    color: Colors.white,
                     fontSize: 13,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 if (p.sin.isNotEmpty)
-                  Text(
-                    'Sin: ${p.sin.join(', ')}',
-                    style: GoogleFonts.manrope(
-                      color: AppColors.textSecondary,
-                      fontSize: 11,
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      'Sin: ${p.sin.join(', ')}',
+                      style: GoogleFonts.manrope(
+                        color: AppColors.error.withValues(alpha: 0.9),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
               ],
@@ -914,7 +930,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
           Text(
             _formatearPrecio(p.subtotal),
             style: GoogleFonts.manrope(
-              color: AppColors.textSecondary,
+              color: Colors.white70,
               fontSize: 13,
               fontWeight: FontWeight.w600,
             ),
@@ -930,7 +946,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
     final esTodos = _filtroEstado == 'todos';
     return EmptyState(
       icon: esTodos ? Icons.receipt_long_rounded : _iconoEstado(_filtroEstado),
-      iconBackground: AppColors.panel,
+      iconBackground: Colors.white.withValues(alpha: 0.05),
       title: esTodos
           ? 'Aún no tienes pedidos'
           : 'Sin pedidos ${_etiquetaEstadoFiltro(_filtroEstado)}',
@@ -948,31 +964,31 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.panel,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.line),
+          color: Colors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
         ),
         child: Row(
           children: [
-            const SkeletonBlock(width: 50, height: 50, borderRadius: 14),
-            const SizedBox(width: 12),
+            const SkeletonBlock(width: 44, height: 44, borderRadius: 8),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: const [
-                  SkeletonBlock(height: 14, borderRadius: 7),
+                  SkeletonBlock(height: 14, borderRadius: 4),
                   SizedBox(height: 8),
-                  SkeletonBlock(width: 130, height: 10, borderRadius: 5),
+                  SkeletonBlock(width: 120, height: 10, borderRadius: 4),
                 ],
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 14),
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: const [
-                SkeletonBlock(width: 60, height: 14, borderRadius: 7),
+                SkeletonBlock(width: 60, height: 14, borderRadius: 4),
                 SizedBox(height: 8),
-                SkeletonBlock(width: 75, height: 10, borderRadius: 5),
+                SkeletonBlock(width: 70, height: 10, borderRadius: 4),
               ],
             ),
           ],
@@ -994,18 +1010,19 @@ class _BadgeEstado extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(8),
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
       ),
       child: Text(
-        label,
+        label.toUpperCase(),
         style: GoogleFonts.manrope(
           color: color,
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.2,
+          fontSize: 9,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.5,
         ),
       ),
     );
@@ -1022,9 +1039,9 @@ class _InfoChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.line),
+        color: Colors.black.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1032,14 +1049,14 @@ class _InfoChip extends StatelessWidget {
           Icon(
             icon,
             size: 14,
-            color: AppColors.textSecondary.withValues(alpha: 0.7),
+            color: Colors.white60,
           ),
           const SizedBox(width: 6),
           Text(
             label,
             style: GoogleFonts.manrope(
-              color: AppColors.textSecondary,
-              fontSize: 12,
+              color: Colors.white70,
+              fontSize: 11,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -1058,10 +1075,10 @@ class _SectionLabel extends StatelessWidget {
     return Text(
       label,
       style: GoogleFonts.manrope(
-        color: AppColors.textSecondary,
+        color: Colors.white54,
         fontSize: 10,
-        fontWeight: FontWeight.w700,
-        letterSpacing: 1.2,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 1.5,
       ),
     );
   }
@@ -1077,17 +1094,7 @@ class _Divider extends StatelessWidget {
       padding: EdgeInsets.symmetric(vertical: vPadding),
       child: Row(
         children: [
-          Expanded(child: Container(height: 1, color: AppColors.line)),
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 10),
-            width: 5,
-            height: 5,
-            decoration: BoxDecoration(
-              color: AppColors.button.withValues(alpha: 0.25),
-              shape: BoxShape.circle,
-            ),
-          ),
-          Expanded(child: Container(height: 1, color: AppColors.line)),
+          Expanded(child: Container(height: 1, color: Colors.white.withValues(alpha: 0.1))),
         ],
       ),
     );
@@ -1112,10 +1119,10 @@ class _PulsingDotState extends State<_PulsingDot>
     super.initState();
     _ctrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 900),
+      duration: const Duration(milliseconds: 1000),
     )..repeat(reverse: true);
     _scale = Tween(
-      begin: 0.8,
+      begin: 0.6,
       end: 1.2,
     ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
   }
@@ -1133,7 +1140,17 @@ class _PulsingDotState extends State<_PulsingDot>
       child: Container(
         width: 8,
         height: 8,
-        decoration: BoxDecoration(color: widget.color, shape: BoxShape.circle),
+        decoration: BoxDecoration(
+          color: widget.color, 
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: widget.color.withValues(alpha: 0.6),
+              blurRadius: 4,
+              spreadRadius: 1,
+            )
+          ]
+        ),
       ),
     );
   }
