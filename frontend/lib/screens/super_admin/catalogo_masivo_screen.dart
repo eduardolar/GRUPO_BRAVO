@@ -733,10 +733,7 @@ class _CatalogoMasivoScreenState extends State<CatalogoMasivoScreen> {
             child: SizedBox(
               height: 22,
               width: 22,
-              child: CircularProgressIndicator(
-                color: _kAccent,
-                strokeWidth: 2,
-              ),
+              child: CircularProgressIndicator(color: _kAccent, strokeWidth: 2),
             ),
           );
         }
@@ -1299,9 +1296,7 @@ class _ChipSucursal extends StatelessWidget {
                 : Colors.white.withValues(alpha: 0.06),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: activa
-                  ? _kAccent
-                  : Colors.white.withValues(alpha: 0.18),
+              color: activa ? _kAccent : Colors.white.withValues(alpha: 0.18),
               width: activa ? 1.4 : 1,
             ),
           ),
@@ -1309,9 +1304,7 @@ class _ChipSucursal extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                activa
-                    ? Icons.storefront_rounded
-                    : Icons.storefront_outlined,
+                activa ? Icons.storefront_rounded : Icons.storefront_outlined,
                 size: 14,
                 color: activa ? _kAccent : Colors.white70,
               ),

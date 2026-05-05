@@ -18,7 +18,10 @@ class ProductoService {
     }
 
     final response = await httpWithRetry(
-      () => http.get(Uri.parse('$baseUrl/categorias')),
+      () => http.get(
+        Uri.parse('$baseUrl/categorias'),
+        headers: AuthSession.headers(),
+      ),
     );
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
@@ -180,7 +183,9 @@ class ProductoService {
     final uri = Uri.parse(
       '$baseUrl/productos',
     ).replace(queryParameters: params.isEmpty ? null : params);
-    final response = await httpWithRetry(() => http.get(uri));
+    final response = await httpWithRetry(
+      () => http.get(uri, headers: AuthSession.headers()),
+    );
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
       return data.map((json) => Producto.fromMap(json)).toList();
@@ -306,7 +311,10 @@ class ProductoService {
       return;
     }
     final response = await httpWithRetry(
-      () => http.delete(Uri.parse('$baseUrl/productos/$id')),
+      () => http.delete(
+        Uri.parse('$baseUrl/productos/$id'),
+        headers: AuthSession.headers(),
+      ),
       retry: false,
     );
     if (response.statusCode != 200 && response.statusCode != 204) {

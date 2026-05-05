@@ -121,7 +121,10 @@ class ReservaService {
     }
 
     final response = await httpWithRetry(
-      () => http.get(Uri.parse('$baseUrl/reservas?usuarioId=$userId')),
+      () => http.get(
+        Uri.parse('$baseUrl/reservas?usuarioId=$userId'),
+        headers: AuthSession.headers(),
+      ),
     );
 
     if (response.statusCode == 200) {
@@ -167,7 +170,10 @@ class ReservaService {
     }
 
     final response = await httpWithRetry(
-      () => http.delete(Uri.parse('$baseUrl/reservas/$reservaId')),
+      () => http.delete(
+        Uri.parse('$baseUrl/reservas/$reservaId'),
+        headers: AuthSession.headers(),
+      ),
       retry: false,
     );
     return response.statusCode == 200;
@@ -182,7 +188,10 @@ class ReservaService {
     }
 
     final response = await httpWithRetry(
-      () => http.get(Uri.parse('$baseUrl/reservas/futuras')),
+      () => http.get(
+        Uri.parse('$baseUrl/reservas/futuras'),
+        headers: AuthSession.headers(),
+      ),
     );
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);

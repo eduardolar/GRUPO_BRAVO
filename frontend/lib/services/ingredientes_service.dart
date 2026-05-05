@@ -117,7 +117,9 @@ class IngredienteService {
           ? {'restaurante_id': restauranteId}
           : null,
     );
-    final response = await httpWithRetry(() => http.get(uri));
+    final response = await httpWithRetry(
+      () => http.get(uri, headers: AuthSession.headers()),
+    );
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
       return data.map((json) => Ingrediente.fromJson(json)).toList();
@@ -140,7 +142,9 @@ class IngredienteService {
           ? {'restaurante_id': restauranteId}
           : null,
     );
-    final response = await httpWithRetry(() => http.get(uri));
+    final response = await httpWithRetry(
+      () => http.get(uri, headers: AuthSession.headers()),
+    );
     if (response.statusCode == 200) {
       final Map<String, dynamic> data = jsonDecode(
         utf8.decode(response.bodyBytes),
@@ -188,7 +192,10 @@ class IngredienteService {
 
   static Future<void> eliminarIngrediente(String id) async {
     final response = await httpWithRetry(
-      () => http.delete(Uri.parse('$baseUrl/ingredientes/$id')),
+      () => http.delete(
+        Uri.parse('$baseUrl/ingredientes/$id'),
+        headers: AuthSession.headers(),
+      ),
       retry: false,
     );
     if (response.statusCode != 200) {
@@ -208,7 +215,9 @@ class IngredienteService {
           ? {'restaurante_id': restauranteId}
           : null,
     );
-    final response = await httpWithRetry(() => http.get(uri));
+    final response = await httpWithRetry(
+      () => http.get(uri, headers: AuthSession.headers()),
+    );
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
       return data.map((json) => Ingrediente.fromJson(json)).toList();

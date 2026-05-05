@@ -14,7 +14,8 @@ class MesaService {
     }
 
     final response = await httpWithRetry(
-      () => http.get(Uri.parse('$baseUrl/mesas')),
+      () =>
+          http.get(Uri.parse('$baseUrl/mesas'), headers: AuthSession.headers()),
     );
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
@@ -103,7 +104,10 @@ class MesaService {
     }
 
     final response = await httpWithRetry(
-      () => http.delete(Uri.parse('$baseUrl/mesas/$mesaId')),
+      () => http.delete(
+        Uri.parse('$baseUrl/mesas/$mesaId'),
+        headers: AuthSession.headers(),
+      ),
       retry: false,
     );
 

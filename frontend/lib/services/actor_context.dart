@@ -2,13 +2,13 @@
 ///
 /// Se settea desde [AuthProvider] al iniciar/cerrar sesión y los servicios
 /// que tocan endpoints con auditoría (crear/editar/eliminar usuarios, cambiar
-/// rol…) lo leen para añadir el header `X-Actor` y que el backend lo registre
-/// como `actor` del evento.
+/// rol…) lo añaden como header `X-Actor`.
 ///
-/// **Aviso de seguridad**: el header se rellena en el cliente y por tanto es
-/// trivialmente falsificable. Sirve como rastro de auditoría coherente con el
-/// estado actual del backend (sin JWT). Cuando se introduzca autenticación
-/// real el backend deberá ignorar este header y leer el actor del token.
+/// **Cómo lo usa el backend**: desde la introducción del JWT, `_actor_de()`
+/// del backend lee el correo del **token firmado** (no falsificable) y solo
+/// cae a `X-Actor` cuando la petición no lleva Bearer (flujos públicos).
+/// Por tanto este helper queda como complemento — es seguro mantenerlo,
+/// pero **el rastro de auditoría real lo da el JWT**, no este header.
 class ActorContext {
   ActorContext._();
   static final ActorContext instance = ActorContext._();
