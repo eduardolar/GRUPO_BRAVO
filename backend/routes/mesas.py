@@ -1,3 +1,4 @@
+import logging
 from typing import Optional
 
 from bson import ObjectId
@@ -5,8 +6,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from database import coleccion_mesas
-from models import ValidarQR
+from models import MesaActualizar, ValidarQR
 from security import get_current_user, normalizar_rol, require_role
+
+logger = logging.getLogger("uvicorn")
 
 
 class ActualizarEstadoMesa(BaseModel):
@@ -122,6 +125,98 @@ def actualizar_estado_mesa(
     nuevo_estado = "libre" if datos.disponible else "ocupada"
     coleccion_mesas.update_one({"_id": object_id}, {"$set": {"estado": nuevo_estado}})
     return {"ok": True, "estado": nuevo_estado}
+
+
+def _exigir_misma_sucursal_mesa(mesa: dict, usuario: dict) -> None:
+    """Un admin de sucursal X no puede editar mesas de la sucursal Y.
+    Los super_admin sí pueden — el chequeo se salta para ellos.
+    Si el JWT no lleva restaurante_id (cuenta legacy), no se aplica restricción
+    pero se deja traza de aviso para auditarla.
+    """
+    rol = normalizar_rol(usuario.get("rol", "") or "")
+    if rol == "super_admin":
+        return
+    rid_user = usuario.get("restaurante_id") or usuario.get("restauranteId")
+    rid_mesa = mesa.get("restaurante_id")
+    if not rid_user:
+        # JWT legacy sin sucursal: permitimos con aviso
+        logger.warning(
+            "mesas PUT: usuario sin restaurante_id en JWT (rol=%s sub=%s). "
+            "No se aplica restricción por sucursal.",
+            rol,
+            usuario.get("sub"),
+        )
+        return
+    if rid_mesa and rid_mesa != rid_user:
+        raise HTTPException(status_code=403, detail="Mesa de otra sucursal")
+
+
+@router.put("/{mesa_id}", summary="Editar datos de una mesa (admin)")
+def editar_mesa(
+    mesa_id: str,
+    datos: MesaActualizar,
+    usuario: dict = Depends(require_role(["admin", "super_admin"])),
+):
+    """Actualiza numero, capacidad, ubicacion y/o codigoQr de una mesa existente.
+    Solo los campos presentes en el body (no null) se modifican en BD.
+    """
+    try:
+        oid = ObjectId(mesa_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="ID de mesa inválido")
+
+    mesa = coleccion_mesas.find_one({"_id": oid})
+    if not mesa:
+        raise HTTPException(status_code=404, detail="Mesa no encontrada")
+
+    # Aislamiento por sucursal — super_admin está exento
+    _exigir_misma_sucursal_mesa(mesa, usuario)
+
+    # Resolver el valor efectivo de codigoQr (camelCase tiene precedencia)
+    qr_nuevo = datos.codigoQr or datos.codigo_qr
+
+    # Construir solo los campos que llegaron con valor no-null
+    campos: dict = {}
+    if datos.numero is not None:
+        campos["numero"] = datos.numero
+    if datos.capacidad is not None:
+        campos["capacidad"] = datos.capacidad
+    if datos.ubicacion is not None:
+        campos["ubicacion"] = datos.ubicacion
+    if qr_nuevo is not None:
+        campos["codigoQr"] = qr_nuevo
+
+    if not campos:
+        raise HTTPException(status_code=400, detail="Sin campos para actualizar")
+
+    rid_mesa = mesa.get("restaurante_id")
+
+    # Validar unicidad de numero en la misma sucursal (excluir la propia mesa)
+    if "numero" in campos:
+        filtro_num: dict = {"numero": campos["numero"], "_id": {"$ne": oid}}
+        if rid_mesa:
+            filtro_num["restaurante_id"] = rid_mesa
+        if coleccion_mesas.find_one(filtro_num):
+            raise HTTPException(
+                status_code=409,
+                detail="Ya existe una mesa con ese número en esta sucursal",
+            )
+
+    # Validar unicidad global de codigoQr (cross-sucursal; excluir la propia)
+    if "codigoQr" in campos:
+        filtro_qr: dict = {
+            "$or": [{"codigoQr": campos["codigoQr"]}, {"codigo_qr": campos["codigoQr"]}],
+            "_id": {"$ne": oid},
+        }
+        if coleccion_mesas.find_one(filtro_qr):
+            raise HTTPException(
+                status_code=409,
+                detail="El código QR ya está en uso",
+            )
+
+    coleccion_mesas.update_one({"_id": oid}, {"$set": campos})
+    mesa_actualizada = coleccion_mesas.find_one({"_id": oid})
+    return _serializar(mesa_actualizada)
 
 
 @router.delete("/{mesa_id}", summary="Eliminar mesa (admin)")

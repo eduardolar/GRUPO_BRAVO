@@ -44,14 +44,43 @@ class _KpisGlobalesScreenState extends State<KpisGlobalesScreen> {
     });
   }
 
+  /// Calcula el rango de fechas para el período seleccionado.
+  /// Devuelve `(fechaDesde, fechaHasta)` donde `null` significa sin límite.
+  (DateTime?, DateTime?) _rangoDelPeriodo() {
+    final ahora = DateTime.now();
+    switch (_periodo) {
+      case 'hoy':
+        final inicio = DateTime(ahora.year, ahora.month, ahora.day);
+        final fin = DateTime(ahora.year, ahora.month, ahora.day, 23, 59, 59);
+        return (inicio, fin);
+      case 'semana':
+        final inicioSemana = ahora.subtract(Duration(days: ahora.weekday - 1));
+        return (
+          DateTime(inicioSemana.year, inicioSemana.month, inicioSemana.day),
+          ahora,
+        );
+      case 'mes':
+        return (DateTime(ahora.year, ahora.month, 1), ahora);
+      default:
+        // 'todo': sin filtro de fecha; el limit actúa como salvaguarda.
+        return (null, null);
+    }
+  }
+
   Future<void> _cargar() async {
     setState(() {
       _cargando = true;
       _error = null;
     });
     try {
-      // Sin restauranteId → todos los pedidos del sistema
-      final datos = await PedidoService.obtenerTodosLosPedidos();
+      // Sin restauranteId → todos los pedidos del sistema.
+      // El backend filtra por rango de fechas; ya no filtramos en cliente.
+      final (fechaDesde, fechaHasta) = _rangoDelPeriodo();
+      final datos = await PedidoService.obtenerTodosLosPedidos(
+        fechaDesde: fechaDesde,
+        fechaHasta: fechaHasta,
+        limit: 1000,
+      );
       if (!mounted) return;
       setState(() {
         _pedidos = datos;
@@ -64,32 +93,6 @@ class _KpisGlobalesScreenState extends State<KpisGlobalesScreen> {
         _error = e.toString();
       });
     }
-  }
-
-  // ── Filtro por período ────────────────────────────────────────────
-  List<Pedido> _filtrarPeriodo(List<Pedido> todos) {
-    final ahora = DateTime.now();
-    return todos.where((p) {
-      final f = DateTime.tryParse(p.fecha);
-      if (f == null) return false;
-      switch (_periodo) {
-        case 'hoy':
-          return f.year == ahora.year &&
-              f.month == ahora.month &&
-              f.day == ahora.day;
-        case 'semana':
-          final ini = DateTime(
-            ahora.year,
-            ahora.month,
-            ahora.day,
-          ).subtract(Duration(days: ahora.weekday - 1));
-          return !f.isBefore(ini);
-        case 'mes':
-          return f.year == ahora.year && f.month == ahora.month;
-        default:
-          return true;
-      }
-    }).toList();
   }
 
   // ── Métricas por sucursal ─────────────────────────────────────────
@@ -175,10 +178,10 @@ class _KpisGlobalesScreenState extends State<KpisGlobalesScreen> {
           child: SafeArea(
             child: Consumer2<RestauranteProvider, UsuarioProvider>(
               builder: (context, rp, up, _) {
-                final pedidosFiltrados = _filtrarPeriodo(_pedidos);
+                // El backend ya filtra por rango; _pedidos contiene solo el período activo.
                 final kpis = _calcularKpis(
                   rp.restaurantes,
-                  pedidosFiltrados,
+                  _pedidos,
                   up.usuarios,
                 );
                 final totalIngresos = kpis.fold(0.0, (s, k) => s + k.ingresos);

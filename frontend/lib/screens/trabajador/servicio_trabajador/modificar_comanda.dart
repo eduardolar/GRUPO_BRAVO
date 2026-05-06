@@ -462,7 +462,7 @@ class _DetalleComandaSheet extends StatelessWidget {
                         physics: const BouncingScrollPhysics(),
                         padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
                         itemCount: productos.length,
-                        separatorBuilder: (_, __) =>
+                        separatorBuilder: (_, _) =>
                             const Divider(color: Colors.white10, height: 1),
                         itemBuilder: (_, i) {
                           final item = productos[i];

@@ -249,20 +249,20 @@ class _KpiSectionState extends State<_KpiSection> {
   @override
   void initState() {
     super.initState();
+    // Solo necesitamos los pedidos de HOY para calcular el resumen del día.
+    // Pasamos el rango al backend para no traer el histórico entero.
+    final ahora = DateTime.now();
+    final inicioDia = DateTime(ahora.year, ahora.month, ahora.day);
     _futuro = PedidoService.obtenerTodosLosPedidos(
       restauranteId: widget.restauranteId,
+      fechaDesde: inicioDia,
+      fechaHasta: ahora,
+      limit: 1000,
     );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final prov = context.read<UsuarioProvider>();
       if (prov.usuarios.isEmpty && !prov.cargando) prov.cargar();
     });
-  }
-
-  bool _esHoy(String fecha) {
-    final f = DateTime.tryParse(fecha);
-    if (f == null) return false;
-    final h = DateTime.now();
-    return f.year == h.year && f.month == h.month && f.day == h.day;
   }
 
   @override
@@ -280,9 +280,8 @@ class _KpiSectionState extends State<_KpiSection> {
           future: _futuro,
           builder: (_, snap) {
             final cargando = snap.connectionState == ConnectionState.waiting;
-            final hoy = snap.hasData
-                ? snap.data!.where((p) => _esHoy(p.fecha)).toList()
-                : <Pedido>[];
+            // El backend ya filtra por el rango de hoy (ver initState).
+            final hoy = snap.data ?? const <Pedido>[];
             final ingresos = hoy.fold(0.0, (s, p) => s + p.total);
             final ticket = hoy.isEmpty ? 0.0 : ingresos / hoy.length;
 

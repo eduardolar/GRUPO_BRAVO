@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../core/colors_style.dart';
+import '../../../providers/auth_provider.dart';
 import '../../../services/api_service.dart';
 import '../../../models/ingrediente_model.dart';
 import '../../../components/trabajador/app_layout.dart';
@@ -22,7 +24,12 @@ class _AvisarFaltaScreenState extends State<AvisarFaltaScreen> {
   }
 
   Future<void> _cargarDatos() async {
-    final ingredientes = await ApiService.obtenerIngredientes();
+    final restauranteId =
+        context.read<AuthProvider>().usuarioActual?.restauranteId;
+    final ingredientes = await ApiService.obtenerIngredientes(
+      restauranteId: restauranteId,
+    );
+    if (!mounted) return;
     setState(() {
       _ingredientes = ingredientes;
       _cargando = false;

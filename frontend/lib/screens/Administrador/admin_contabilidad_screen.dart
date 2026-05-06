@@ -30,11 +30,17 @@ class _AdminContabilidadScreenState extends State<AdminContabilidadScreen> {
 
   Future<List<Pedido>> _cargarPedidos() {
     // Filtra por el restaurante del admin para no mezclar sucursales.
+    // Pasa las fechas al backend para evitar descargar el histórico completo.
     final restauranteId = context
         .read<AuthProvider>()
         .usuarioActual
         ?.restauranteId;
-    return PedidoService.obtenerTodosLosPedidos(restauranteId: restauranteId);
+    return PedidoService.obtenerTodosLosPedidos(
+      restauranteId: restauranteId,
+      fechaDesde: _fechaInicio,
+      fechaHasta: _fechaFin,
+      limit: 1000,
+    );
   }
 
   Future<void> _refrescar() async {
@@ -72,6 +78,8 @@ class _AdminContabilidadScreenState extends State<AdminContabilidadScreen> {
           }
         }
       });
+      // Recargamos desde el backend con el nuevo rango seleccionado.
+      _refrescar();
     }
   }
 
@@ -201,33 +209,9 @@ class _AdminContabilidadScreenState extends State<AdminContabilidadScreen> {
                         );
                       }
 
-                      final pedidos = (snapshot.data ?? []).where((p) {
-                        DateTime f =
-                            DateTime.tryParse(p.fecha.toString()) ??
-                            DateTime.now();
-
-                        // Normalizamos las fechas para que coja todo el día desde las 00:00 hasta las 23:59
-                        DateTime inicioFiltro = DateTime(
-                          _fechaInicio.year,
-                          _fechaInicio.month,
-                          _fechaInicio.day,
-                        );
-                        DateTime finFiltro = DateTime(
-                          _fechaFin.year,
-                          _fechaFin.month,
-                          _fechaFin.day,
-                          23,
-                          59,
-                          59,
-                        );
-
-                        return f.isAfter(
-                              inicioFiltro.subtract(const Duration(seconds: 1)),
-                            ) &&
-                            f.isBefore(
-                              finFiltro.add(const Duration(seconds: 1)),
-                            );
-                      }).toList();
+                      // El backend ya devuelve los pedidos filtrados por fecha;
+                      // no se necesita un segundo filtro en cliente.
+                      final pedidos = snapshot.data ?? [];
 
                       double totalIngresos = pedidos.fold(
                         0,
@@ -268,11 +252,11 @@ class _AdminContabilidadScreenState extends State<AdminContabilidadScreen> {
                               ],
                             ),
                           ),
-                          const Padding(
-                            padding: EdgeInsets.all(20.0),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
                             child: Align(
                               alignment: Alignment.centerLeft,
-                              child: Text(
+                              child: const Text(
                                 'HISTORIAL DE VENTAS',
                                 style: TextStyle(
                                   color: Colors.white,
@@ -281,6 +265,19 @@ class _AdminContabilidadScreenState extends State<AdminContabilidadScreen> {
                               ),
                             ),
                           ),
+                          // Aviso cuando el backend devuelve exactamente el límite:
+                          // puede haber más pedidos fuera del rango visible.
+                          if (pedidos.length == 1000)
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                              child: Text(
+                                'Mostrando los 1000 pedidos más recientes — acota el rango para ver más',
+                                style: TextStyle(
+                                  color: Colors.orangeAccent,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ),
                           Expanded(
                             child: pedidos.isEmpty
                                 ? const Center(
