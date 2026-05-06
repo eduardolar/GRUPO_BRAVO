@@ -203,6 +203,52 @@ class IngredienteService {
     }
   }
 
+  /// Devuelve grupos de ingredientes duplicados (mismo nombre normalizado en
+  /// la misma sucursal). Cada grupo incluye la lista completa y el `principal`
+  /// sugerido por el backend (el de mayor stock).
+  static Future<List<Map<String, dynamic>>> obtenerDuplicados({
+    String? restauranteId,
+  }) async {
+    final uri = Uri.parse('$baseUrl/ingredientes/duplicados').replace(
+      queryParameters: restauranteId != null
+          ? {'restaurante_id': restauranteId}
+          : null,
+    );
+    final response = await httpWithRetry(
+      () => http.get(uri, headers: AuthSession.headers()),
+    );
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
+      return List<Map<String, dynamic>>.from(data);
+    }
+    throw toApiException(response.statusCode, decodeBody(response));
+  }
+
+  /// Fusiona varios ingredientes en uno: suma stock al `principal` y borra los
+  /// `absorber`. También reescribe el `ingrediente_id` en los productos que
+  /// referenciaban a los absorbidos.
+  /// Devuelve `{fusionados: int, stock_total_principal: float}`.
+  static Future<Map<String, dynamic>> fusionarIngredientes({
+    required String principalId,
+    required List<String> absorberIds,
+  }) async {
+    final response = await httpWithRetry(
+      () => http.post(
+        Uri.parse('$baseUrl/ingredientes/fusionar'),
+        headers: AuthSession.headers(),
+        body: jsonEncode({
+          'principal_id': principalId,
+          'absorber_ids': absorberIds,
+        }),
+      ),
+      retry: false,
+    );
+    if (response.statusCode == 200) {
+      return Map<String, dynamic>.from(decodeBody(response));
+    }
+    throw toApiException(response.statusCode, decodeBody(response));
+  }
+
   static Future<List<Ingrediente>> obtenerIngredientesStockBajo({
     String? restauranteId,
   }) async {

@@ -17,6 +17,9 @@ class AuthProvider with ChangeNotifier {
   String? get pendingUserId2fa => _pendingUserId2fa;
 
   Future<void> cargarSesion() async {
+    // Primero restaurar el token JWT; si no hay token, la UI no intentará
+    // llamadas autenticadas aunque sí haya objeto Usuario guardado.
+    await AuthSession.cargar();
     try {
       final prefs = await SharedPreferences.getInstance();
       final json = prefs.getString(_kSesionKey);
@@ -190,7 +193,7 @@ class AuthProvider with ChangeNotifier {
     );
     if (!success) throw Exception('Error al eliminar la cuenta');
     _usuarioActual = null;
-    AuthSession.limpiar();
+    await AuthSession.limpiar();
     notifyListeners();
     await _limpiarSesion();
   }
@@ -198,7 +201,7 @@ class AuthProvider with ChangeNotifier {
   Future<void> cerrarSesion() async {
     _usuarioActual = null;
     _pendingUserId2fa = null;
-    AuthSession.limpiar();
+    await AuthSession.limpiar();
     notifyListeners();
     await _limpiarSesion();
   }

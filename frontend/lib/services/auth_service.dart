@@ -5,8 +5,8 @@ import 'api_config.dart';
 import 'auth_session.dart';
 import 'http_client.dart';
 
-void _guardarSesionDesde(Map<String, dynamic> data) {
-  AuthSession.guardar(
+Future<void> _guardarSesionDesde(Map<String, dynamic> data) async {
+  await AuthSession.guardar(
     token: data['access_token'] as String?,
     userId: data['id'] as String?,
     correo: data['correo'] as String?,
@@ -43,7 +43,7 @@ class AuthService {
       final data = jsonDecode(response.body) as Map<String, dynamic>;
       // Guardamos la sesión sólo si el backend devolvió un access_token
       // (cuando hay 2FA pendiente, no llega token hasta verificar el código).
-      if (data['access_token'] != null) _guardarSesionDesde(data);
+      if (data['access_token'] != null) await _guardarSesionDesde(data);
       return data;
     }
 
@@ -68,7 +68,7 @@ class AuthService {
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body) as Map<String, dynamic>;
-      _guardarSesionDesde(data);
+      await _guardarSesionDesde(data);
       return data;
     } else {
       final error = jsonDecode(response.body);

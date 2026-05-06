@@ -395,44 +395,215 @@ class _AdminMenuScreenState extends State<AdminMenuScreen>
     );
   }
 
+  Widget _buildCategoryChip(int index) {
+    final isSelected = _selectedCategoryIndex == index;
+    return InkWell(
+      onTap: () => setState(() => _selectedCategoryIndex = index),
+      borderRadius: BorderRadius.circular(22),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        // Área cómoda al pulsar (>= 44 px Material guideline).
+        constraints: const BoxConstraints(minHeight: 44),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.button
+              : Colors.black.withValues(alpha: 0.4),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(
+            color: isSelected
+                ? AppColors.button
+                : Colors.white.withValues(alpha: 0.3),
+          ),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          _categorias[index],
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.white70,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+            fontSize: 15,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _abrirSelectorCategoriaMenu() async {
+    final idx = await showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: const Color(0xFF1A1A1A),
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(ctx).size.height * 0.7,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(20, 16, 20, 8),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Categoría',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 18,
+                      ),
+                    ),
+                  ),
+                ),
+                Flexible(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
+                    itemCount: _categorias.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 8),
+                    itemBuilder: (_, i) {
+                      final selected = i == _selectedCategoryIndex;
+                      return InkWell(
+                        onTap: () => Navigator.pop(ctx, i),
+                        borderRadius: BorderRadius.circular(14),
+                        child: Container(
+                          constraints: const BoxConstraints(minHeight: 60),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
+                          decoration: BoxDecoration(
+                            color: selected
+                                ? AppColors.button.withValues(alpha: 0.18)
+                                : Colors.white.withValues(alpha: 0.06),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: selected
+                                  ? AppColors.button
+                                  : Colors.white.withValues(alpha: 0.15),
+                              width: selected ? 1.5 : 1,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  _categorias[i],
+                                  style: TextStyle(
+                                    color: selected
+                                        ? AppColors.button
+                                        : Colors.white,
+                                    fontWeight: selected
+                                        ? FontWeight.w700
+                                        : FontWeight.w500,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                              if (selected)
+                                const Icon(
+                                  Icons.check_circle,
+                                  color: AppColors.button,
+                                  size: 22,
+                                ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+    if (idx != null && mounted) {
+      setState(() => _selectedCategoryIndex = idx);
+    }
+  }
+
+  Widget _buildCategoryDropdown() {
+    final actual = _categorias.isEmpty
+        ? '—'
+        : _categorias[_selectedCategoryIndex];
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: _categorias.isEmpty ? null : _abrirSelectorCategoriaMenu,
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 56),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.4),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.category, color: AppColors.button, size: 22),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    actual,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const Icon(
+                  Icons.keyboard_arrow_down,
+                  color: Colors.white70,
+                  size: 24,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildCategorySelector() {
+    // En pantallas estrechas mostramos un desplegable compacto en lugar de
+    // chips: ahorra espacio vertical y deja la lista de productos con más
+    // sitio. En pantallas anchas mantenemos los chips con scroll horizontal.
+    final esEstrecha = MediaQuery.of(context).size.width < 600;
+    if (esEstrecha) return _buildCategoryDropdown();
+
+    final List<Widget> chips = List.generate(
+      _categorias.length,
+      _buildCategoryChip,
+    );
+
     return SizedBox(
-      height: 48,
+      height: 64,
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Row(
-          children: List.generate(_categorias.length, (index) {
-            final isSelected = _selectedCategoryIndex == index;
-            return GestureDetector(
-              onTap: () => setState(() => _selectedCategoryIndex = index),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                padding: const EdgeInsets.symmetric(horizontal: 18),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? AppColors.button
-                      : Colors.black.withValues(alpha: 0.4),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: isSelected
-                        ? AppColors.button
-                        : Colors.white.withValues(alpha: 0.3),
-                  ),
+          children: chips
+              .map(
+                (c) => Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 5),
+                  child: c,
                 ),
-                alignment: Alignment.center,
-                child: Text(
-                  _categorias[index],
-                  style: TextStyle(
-                    color: isSelected ? Colors.white : Colors.white70,
-                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  ),
-                ),
-              ),
-            );
-          }),
+              )
+              .toList(),
         ),
       ),
     );

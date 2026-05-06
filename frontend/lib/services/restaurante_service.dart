@@ -72,7 +72,7 @@ class RestauranteService {
     try {
       final response = await httpWithRetry(
         () => http.patch(
-          Uri.parse('\$baseUrl/restaurantes/\$id/activo'),
+          Uri.parse('$baseUrl/restaurantes/$id/activo'),
           headers: AuthSession.headers(),
           body: jsonEncode({'activo': activo}),
         ),

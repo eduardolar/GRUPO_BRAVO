@@ -170,6 +170,46 @@ class IngredienteActualizar(BaseModel):
     stockMinimo: Optional[float] = None
     categoria: Optional[str] = None
 
+
+class MesaActualizar(BaseModel):
+    """Campos editables de una mesa; todos opcionales (PATCH semántico sobre PUT)."""
+    numero: Optional[int] = None
+    capacidad: Optional[int] = None
+    # Aceptamos camelCase (codigoQr) y snake_case (codigo_qr) desde el cliente;
+    # internamente siempre se persiste como codigoQr en BD (compatibilidad histórica).
+    codigoQr: Optional[str] = None
+    codigo_qr: Optional[str] = None
+    ubicacion: Optional[str] = None
+
+    @field_validator("numero")
+    @classmethod
+    def numero_positivo(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and v < 1:
+            raise ValueError("numero debe ser >= 1")
+        return v
+
+    @field_validator("capacidad")
+    @classmethod
+    def capacidad_positiva(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and v < 1:
+            raise ValueError("capacidad debe ser >= 1")
+        return v
+
+    @field_validator("ubicacion")
+    @classmethod
+    def ubicacion_valida(cls, v: Optional[str]) -> Optional[str]:
+        _PERMITIDAS = {"interior", "terraza"}
+        if v is not None and v not in _PERMITIDAS:
+            raise ValueError(f"ubicacion debe ser uno de: {', '.join(sorted(_PERMITIDAS))}")
+        return v
+
+    @field_validator("codigoQr", "codigo_qr")
+    @classmethod
+    def qr_no_vacio(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not v.strip():
+            raise ValueError("codigoQr no puede estar vacío")
+        return v
+
 class ProductoCrear(BaseModel):
     nombre: str
     descripcion: str = ""

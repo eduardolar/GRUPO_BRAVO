@@ -28,8 +28,21 @@ import 'package:frontend/components/Cliente/primary_button.dart';
 // Import para la verificación del 2FA
 import 'package:frontend/screens/cliente/verificacion_screen.dart';
 
+/// Pantalla de inicio de sesión común a todos los roles (cliente, trabajador,
+/// cocinero, administrador y superadministrador).
+///
+/// El backend decide si la cuenta requiere verificación 2FA por correo. Si la
+/// requiere, esta pantalla redirige a [VerificacionScreen] en modo 2FA. En caso
+/// contrario navega directamente al home propio del rol del usuario mediante
+/// [_navigateToRoleHome].
 class LoginScreen extends StatefulWidget {
+  /// Destino post-login para clientes (carta o reservar mesa).
+  /// Se ignora para empleados porque ellos tienen su propio home por rol.
   final DestinoLogin destino;
+
+  /// Si es `true`, muestra el enlace "¿Eres nuevo empleado? Activa tu cuenta",
+  /// que abre el flujo de canje de código de invitación enviado por el
+  /// superadmin al dar de alta a un trabajador.
   final bool mostrarActivarCuenta;
 
   const LoginScreen({
@@ -43,9 +56,12 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  // Controla si el campo de contraseña enmascara el texto (ojito de "ver/ocultar").
   bool _oscurecerContrasena = true;
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  // Bloquea el botón ENTRAR mientras hay una petición en curso para evitar
+  // doble submit y enviar dos veces las credenciales al backend.
   bool _isLoading = false;
 
   @override
@@ -177,7 +193,13 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // --- FUNCIÓN DE LOGICA DE INICIO DE SESIÓN CON 2FA ---
+  /// Lanza el login contra el backend y maneja las dos posibles ramas:
+  /// éxito directo (sesión creada) o requerimiento de 2FA por correo.
+  ///
+  /// La lógica de detección de 2FA vive en el backend: si la respuesta trae
+  /// `requires_2fa: true`, no hay sesión todavía y debemos mandar al usuario
+  /// a [VerificacionScreen] en modo 2FA para introducir el código que recibió
+  /// por email.
   Future<void> _iniciarSesion() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
@@ -195,6 +217,8 @@ class _LoginScreenState extends State<LoginScreen> {
       // 1. Intentamos el login
       final respuesta = await authProvider.iniciarSesion(email, password);
 
+      // Tras un await el widget puede haber sido removido del árbol; sin esta
+      // guarda, usar `context` provoca una excepción en runtime.
       if (!mounted) return;
 
       // 2. CASO 2FA: Si la respuesta indica que requiere verificación por correo
@@ -231,6 +255,11 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  /// Reemplaza la pila de navegación por el home correspondiente al rol.
+  ///
+  /// Usa `pushAndRemoveUntil` con predicado `(_) => false` para que el botón
+  /// "atrás" no devuelva al usuario a la pantalla de login después de haber
+  /// autenticado correctamente.
   void _navigateToRoleHome(Usuario usuario) {
     Widget destino;
     switch (usuario.rol) {

@@ -5,6 +5,8 @@ import 'dart:io' show SocketException;
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+import 'auth_session.dart';
+
 /// Typed HTTP error. [statusCode] == 0 means a network-level failure
 /// (no connection or request timeout).
 class ApiException implements Exception {
@@ -96,6 +98,21 @@ Future<http.Response> httpWithRetry(
     attempt++;
     try {
       final response = await request().timeout(const Duration(seconds: 20));
+
+      // Interceptor 401: si había sesión activa antes de la llamada y el
+      // backend la rechaza, disparamos el hook para cerrar sesión en la UI.
+      // No se dispara en login fallido porque en ese momento autenticado==false.
+      if (response.statusCode == 401 && AuthSession.autenticado) {
+        final cb = AuthSession.onUnauthorized;
+        if (cb != null) {
+          try {
+            await cb();
+          } catch (e) {
+            debugPrint('onUnauthorized callback failed: $e');
+          }
+        }
+      }
+
       if (!retry || response.statusCode < 500 || attempt >= maxAttempts) {
         return response;
       }

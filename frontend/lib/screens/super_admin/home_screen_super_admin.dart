@@ -533,11 +533,8 @@ class _HomeScreenSuperAdminState extends State<HomeScreenSuperAdmin> {
                             subtitle: 'Empleados del grupo',
                             icon: Icons.people_outline_rounded,
                             onTap: () => _ir(
-                              context,
-                              const GestionUsuariosScreen(
-                                rolAFiltrar: 'trabajador',
-                              ),
-                            ),
+                                context,
+                                const GestionUsuariosScreen(rolAFiltrar: 'trabajador')),
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -547,11 +544,8 @@ class _HomeScreenSuperAdminState extends State<HomeScreenSuperAdmin> {
                             subtitle: 'Gestores de sucursal',
                             icon: Icons.admin_panel_settings_outlined,
                             onTap: () => _ir(
-                              context,
-                              const GestionUsuariosScreen(
-                                rolAFiltrar: 'administrador',
-                              ),
-                            ),
+                                context,
+                                const GestionUsuariosScreen(rolAFiltrar: 'administrador')),
                           ),
                         ),
                       ],
@@ -565,11 +559,8 @@ class _HomeScreenSuperAdminState extends State<HomeScreenSuperAdmin> {
                             subtitle: 'Base de clientes',
                             icon: Icons.assignment_ind_outlined,
                             onTap: () => _ir(
-                              context,
-                              const GestionUsuariosScreen(
-                                rolAFiltrar: 'cliente',
-                              ),
-                            ),
+                                context,
+                                const GestionUsuariosScreen(rolAFiltrar: 'cliente')),
                           ),
                         ),
                         const SizedBox(width: 16),
