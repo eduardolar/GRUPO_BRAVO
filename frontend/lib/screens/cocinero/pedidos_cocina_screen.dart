@@ -13,10 +13,12 @@ import 'package:frontend/services/server_time_service.dart';
 
 // ── Constantes ───────────────────────────────────────────────────────────
 
-const _kEstados = ['pendiente', 'preparando', 'listo'];
+const List<String> _kEstados = ['pendiente', 'preparando', 'listo'];
 const _kSonidoNuevoPedido = 'sounds/new_order.mp3';
 const _kPollInterval = Duration(seconds: 30);
-const _kTickInterval = Duration(seconds: 30);
+// Fallback de fluidez visual: refresca cronómetros cuando el poll falla.
+// No recarga datos del backend; ese trabajo lo hace _pollTimer.
+const _kTickInterval = Duration(seconds: 60);
 const _kLongPressDelay = Duration(milliseconds: 280);
 const _kAnimDuration = Duration(milliseconds: 180);
 const _kRadius = BorderRadius.all(Radius.circular(12));
@@ -142,6 +144,13 @@ class _PedidosCocinaScreenState extends State<PedidosCocinaScreen> {
   List<Pedido> _pedidos = [];
   bool _cargando = true;
   bool _primeraCarga = true;
+  // Cocinero sin restaurante asignado: no cargamos pedidos para no mezclar
+  // los de distintas sucursales. Mostramos un mensaje en el body.
+  bool _sinSucursal = false;
+  // Evita que dos cargas se solapen (poll del timer + refresh manual). Sin
+  // esta guarda, la segunda llamada borra los _estadoOverride/_itemHechoOverride
+  // optimistas que el cocinero acaba de pulsar y se ve un "flicker" en la UI.
+  bool _pollEnCurso = false;
 
   Timer? _pollTimer;
   Timer? _tickTimer;
@@ -170,7 +179,7 @@ class _PedidosCocinaScreenState extends State<PedidosCocinaScreen> {
     });
     _cargarPedidos();
     _pollTimer = Timer.periodic(_kPollInterval, (_) => _cargarPedidos());
-    // Re-render cada 30 s para que avancen los cronómetros sin pegar a backend.
+    // Fallback cada 60 s: avanza cronómetros si el poll falla; no toca backend.
     _tickTimer = Timer.periodic(_kTickInterval, (_) {
       if (mounted) setState(() {});
     });
@@ -218,6 +227,11 @@ class _PedidosCocinaScreenState extends State<PedidosCocinaScreen> {
   }
 
   Future<void> _cargarPedidos() async {
+    // Guarda contra cargas solapadas: si hay una en curso, ignoramos esta.
+    // Sin esta guarda, un refresh manual mientras corre el poll del timer
+    // produce dos respuestas que pisan los overrides optimistas.
+    if (_pollEnCurso) return;
+    _pollEnCurso = true;
     try {
       // Resincronizar offset con servidor cada N polls para corregir deriva.
       _pollsDesdeUltimaSync++;
@@ -231,11 +245,31 @@ class _PedidosCocinaScreenState extends State<PedidosCocinaScreen> {
           .read<AuthProvider>()
           .usuarioActual
           ?.restauranteId;
-      final todos = await ApiService.obtenerTodosLosPedidos(
+
+      // Sin sucursal asignada no podemos saber qué pedidos pertenecen a este
+      // cocinero. En lugar de traer todos los pedidos del sistema (lo que
+      // mezclaría sucursales y permitiría a dos cocineros pelearse por el
+      // mismo pedido), abortamos y mostramos un mensaje claro.
+      if (restauranteId == null || restauranteId.isEmpty) {
+        if (!mounted) return;
+        setState(() {
+          _sinSucursal = true;
+          _cargando = false;
+          _pedidos = [];
+        });
+        return;
+      }
+      if (_sinSucursal) {
+        // Por si el restauranteId aparece tras un cambio de sesión.
+        _sinSucursal = false;
+      }
+
+      // El backend filtra por estados en servidor; evitamos traer histórico
+      // completo (entregado/cancelado) en restaurantes con mucho volumen.
+      final activos = (await ApiService.obtenerTodosLosPedidos(
         restauranteId: restauranteId,
-      );
-      final activos = todos.where((p) => _kEstados.contains(p.estado)).toList()
-        ..sort((a, b) => a.fecha.compareTo(b.fecha));
+        estados: _kEstados.toList(),
+      ))..sort((a, b) => a.fecha.compareTo(b.fecha));
 
       // Detectar nuevos pedidos en estado pendiente. Solo después de la
       // primera carga, para no sonar al abrir la pantalla con histórico.
@@ -272,6 +306,8 @@ class _PedidosCocinaScreenState extends State<PedidosCocinaScreen> {
       } else {
         debugPrint('pedidos_cocina poll fallido: $e');
       }
+    } finally {
+      _pollEnCurso = false;
     }
   }
 
@@ -378,7 +414,9 @@ class _PedidosCocinaScreenState extends State<PedidosCocinaScreen> {
           ? const Center(
               child: CircularProgressIndicator(color: AppColors.button),
             )
-          : _buildKanban(),
+          : _sinSucursal
+              ? const _SinSucursalView()
+              : _buildKanban(),
     );
   }
 
@@ -1062,6 +1100,55 @@ class _Boton extends StatelessWidget {
               ),
             ),
             if (!iconLeft) ...[const SizedBox(width: 3), Icon(icon, size: 13)],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Vista cuando el cocinero no tiene sucursal asignada ──────────────────
+
+class _SinSucursalView extends StatelessWidget {
+  const _SinSucursalView();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.storefront_outlined,
+              size: 56,
+              color: AppColors.textSecondary.withValues(alpha: 0.5),
+            ),
+            const SizedBox(height: 18),
+            const Text(
+              'Sin sucursal asignada',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Playfair Display',
+                color: AppColors.textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.0,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Tu cuenta no tiene un restaurante asignado, por lo que no se '
+              'pueden mostrar los pedidos de cocina. Pide al administrador '
+              'que te asigne a una sucursal.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.textSecondary.withValues(alpha: 0.85),
+                fontSize: 13,
+                height: 1.4,
+              ),
+            ),
           ],
         ),
       ),

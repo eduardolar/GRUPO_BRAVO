@@ -42,9 +42,13 @@ class _AdminAnadirMenuState extends State<AdminAnadirMenu> {
   }
 
   Future<void> _cargarDatos() async {
+    final restauranteId =
+        context.read<AuthProvider>().usuarioActual?.restauranteId;
     try {
       final categorias = await ApiService.obtenerCategorias();
-      final ingredientes = await ApiService.obtenerIngredientes();
+      final ingredientes = await ApiService.obtenerIngredientes(
+        restauranteId: restauranteId,
+      );
       if (!mounted) return;
       setState(() {
         _categorias = categorias;
@@ -267,7 +271,11 @@ class _AdminAnadirMenuState extends State<AdminAnadirMenu> {
         'descripcion': _descripcionPlato.text.trim(),
         'precio': double.parse(_precio.text.trim()),
         'categoria': _categoriaSeleccionada,
-        'ingredientes': _ingredientesProducto.map((i) => i.nombre).toList(),
+        'ingredientes': _ingredientesProducto.map((i) => <String, dynamic>{
+          if (i.id.isNotEmpty) 'ingrediente_id': i.id,
+          'nombre': i.nombre,
+          'cantidad_receta': 1.0,
+        }).toList(),
         'disponible': true,
         if (restauranteId != null && restauranteId.isNotEmpty)
           'restaurante_id': restauranteId,

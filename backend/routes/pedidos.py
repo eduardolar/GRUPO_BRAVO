@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from exceptions import AppError, NotFoundError, ConflictError, ValidacionError
 from datetime import datetime, timezone
 from bson import ObjectId
+from bson.errors import InvalidId
 from fastapi_mail import FastMail, MessageSchema, MessageType
 from pydantic import BaseModel
 from typing import Optional
@@ -11,6 +12,7 @@ from pymongo.errors import OperationFailure
 from database import coleccion_pedidos, coleccion_productos, coleccion_ingredientes, coleccion_usuarios, cliente
 from models import PedidoCrear
 from routes.auth import conf
+from security import require_role, get_current_user, normalizar_rol
 
 router = APIRouter(prefix="/pedidos", tags=["Pedidos"])
 logger = logging.getLogger("uvicorn")
@@ -65,10 +67,30 @@ def _descontar_stock(items: list, session=None, restaurante_id: str | None = Non
         for ing in producto_db.get("ingredientes", []):
             if isinstance(ing, str):
                 nombre_ing = ing
+                # Bug 2 fix: strings sueltos no tienen cantidadReceta
                 cantidad_receta = 1
+                ing_oid = None
             elif isinstance(ing, dict):
                 nombre_ing = ing.get("nombre", "")
-                cantidad_receta = ing.get("cantidad_receta", 1) or 1
+                # Bug 2 fix: aceptar tanto snake_case como camelCase
+                cr = ing.get("cantidad_receta")
+                if cr is None:
+                    cr = ing.get("cantidadReceta")
+                cantidad_receta = cr or 1
+
+                # Bug 1 fix: preferir match por id cuando está disponible
+                ing_id_raw = (
+                    ing.get("ingrediente_id")
+                    or ing.get("ingredienteId")
+                    or ing.get("id")
+                    or ing.get("_id")
+                )
+                ing_oid = None
+                if ing_id_raw:
+                    try:
+                        ing_oid = ObjectId(str(ing_id_raw))
+                    except (InvalidId, TypeError):
+                        ing_oid = None
             else:
                 continue
 
@@ -76,20 +98,33 @@ def _descontar_stock(items: list, session=None, restaurante_id: str | None = Non
                 continue
 
             descuento = cantidad_pedida * cantidad_receta
-            filtro: dict = {
-                "nombre": {"$regex": f"^{nombre_ing}$", "$options": "i"},
-                "cantidad_actual": {"$gte": descuento},
-            }
-            if rid:
-                # Aislamiento por sucursal: el ingrediente DEBE pertenecer
-                # al mismo restaurante que el producto/pedido.
-                filtro["restaurante_id"] = rid
+
+            if ing_oid is not None:
+                # Camino preferido: filtro exacto por _id; el nombre se usa
+                # solo en el diagnóstico de error, no en el filtro.
+                filtro: dict = {
+                    "_id": ing_oid,
+                    "cantidad_actual": {"$gte": descuento},
+                }
+                if rid:
+                    # Aislamiento por sucursal: el ingrediente DEBE pertenecer
+                    # al mismo restaurante que el producto/pedido.
+                    filtro["restaurante_id"] = rid
             else:
-                logger.warning(
-                    "Descuento de stock sin restaurante_id (producto=%s ingrediente=%r). "
-                    "Cayendo a matching solo por nombre (legacy).",
-                    producto_id, nombre_ing,
-                )
+                # Camino legacy: matching por nombre (puede haber colisiones si
+                # existen duplicados — ver Bug 1; se mantiene por retrocompat).
+                filtro = {
+                    "nombre": {"$regex": f"^{nombre_ing}$", "$options": "i"},
+                    "cantidad_actual": {"$gte": descuento},
+                }
+                if rid:
+                    filtro["restaurante_id"] = rid
+                else:
+                    logger.warning(
+                        "Descuento de stock sin restaurante_id (producto=%s ingrediente=%r). "
+                        "Cayendo a matching solo por nombre (legacy).",
+                        producto_id, nombre_ing,
+                    )
 
             result = coleccion_ingredientes.update_one(
                 filtro,
@@ -99,13 +134,22 @@ def _descontar_stock(items: list, session=None, restaurante_id: str | None = Non
             if result.matched_count == 0:
                 # Diagnóstico fino: distinguimos "no existe en la sucursal"
                 # de "existe pero no hay stock suficiente".
-                existe = coleccion_ingredientes.find_one(
-                    {
-                        "nombre": {"$regex": f"^{nombre_ing}$", "$options": "i"},
-                        **({"restaurante_id": rid} if rid else {}),
-                    },
-                    session=session,
-                )
+                if ing_oid is not None:
+                    existe = coleccion_ingredientes.find_one(
+                        {
+                            "_id": ing_oid,
+                            **({"restaurante_id": rid} if rid else {}),
+                        },
+                        session=session,
+                    )
+                else:
+                    existe = coleccion_ingredientes.find_one(
+                        {
+                            "nombre": {"$regex": f"^{nombre_ing}$", "$options": "i"},
+                            **({"restaurante_id": rid} if rid else {}),
+                        },
+                        session=session,
+                    )
                 if existe is None:
                     raise ConflictError(
                         f"El ingrediente '{nombre_ing}' no existe en esta sucursal"
@@ -383,7 +427,11 @@ def actualizar_estado_pago(payload: ActualizarEstadoPago):
 
 
 @router.patch("/{pedido_id}/estado")
-def actualizar_estado_pedido(pedido_id: str, payload: ActualizarEstado):
+def actualizar_estado_pedido(
+    pedido_id: str,
+    payload: ActualizarEstado,
+    _user: dict = Depends(require_role(["cocinero", "camarero", "admin", "super_admin"])),
+):
     if not ObjectId.is_valid(pedido_id):
         raise ValidacionError("ID de pedido inválido")
     if payload.estado not in _ESTADOS_VALIDOS:
@@ -409,7 +457,12 @@ def actualizar_estado_pedido(pedido_id: str, payload: ActualizarEstado):
 
 
 @router.patch("/{pedido_id}/items/{item_idx}/hecho")
-def marcar_item_hecho(pedido_id: str, item_idx: int, payload: ActualizarItemHecho):
+def marcar_item_hecho(
+    pedido_id: str,
+    item_idx: int,
+    payload: ActualizarItemHecho,
+    _user: dict = Depends(require_role(["cocinero", "camarero", "admin", "super_admin"])),
+):
     if not ObjectId.is_valid(pedido_id):
         raise ValidacionError("ID de pedido inválido")
     if item_idx < 0:
@@ -480,6 +533,26 @@ def actualizar_pedido(pedido_id: str, payload: ActualizarItemsPedido):
 
 
 
+def _normalizar_fecha_query(valor: str, fin_de_dia: bool) -> str:
+    """Acepta YYYY-MM-DD o ISO completo. Si solo viene fecha, devuelve
+    'T00:00:00' o 'T23:59:59' según fin_de_dia. Lanza ValidacionError si
+    el formato es inválido."""
+    valor = valor.strip()
+    # Intentar parsear con fromisoformat para validar
+    try:
+        datetime.fromisoformat(valor)
+    except ValueError:
+        raise ValidacionError(
+            f"Fecha inválida: '{valor}'. Use formato YYYY-MM-DD o ISO 8601 completo."
+        )
+    # Si solo viene fecha (sin hora), extender con hora según fin_de_dia
+    if len(valor) == 10:
+        sufijo = "T23:59:59" if fin_de_dia else "T00:00:00"
+        return valor + sufijo
+    # Si llega con hora explícita, respetarla tal cual
+    return valor
+
+
 @router.get("")
 def obtener_pedidos(
     userId: Optional[str] = Query(None),
@@ -487,8 +560,64 @@ def obtener_pedidos(
     estadoPago: Optional[str] = Query(None),
     restauranteId: Optional[str] = Query(None),
     estado: Optional[str] = Query(None),
+    # Filtro multi-estado en CSV: ?estados=pendiente,preparando,listo
+    # Cuando se envía, tiene prioridad sobre ?estado (parámetro individual).
+    estados: Optional[str] = Query(None),
+    # Filtros temporales: ISO 8601 (YYYY-MM-DD o con hora)
+    fecha_desde: Optional[str] = Query(None),
+    fecha_hasta: Optional[str] = Query(None),
+    # Límite de resultados: None = sin límite (compatibilidad). Con límite,
+    # se ordena descendente para devolver los N más recientes.
+    limit: Optional[int] = Query(None, ge=1, le=1000),
+    current_user: dict = Depends(get_current_user),
 ):
-    filtro = {}
+    rol = normalizar_rol(current_user.get("rol", ""))
+
+    # ── Aislamiento por rol ───────────────────────────────────────────────────
+    if rol == "cliente":
+        # Un cliente solo puede ver sus propios pedidos, independientemente de
+        # lo que llegue en ?userId. El sub del JWT es la fuente de verdad.
+        userId = current_user["sub"]
+        restauranteId = None  # un cliente no filtra por sucursal
+    else:
+        # Personal: si el JWT lleva restaurante_id, restringimos a esa sucursal
+        # salvo que sea super_admin (puede ver todas las sucursales).
+        # NOTA: si en el futuro el JWT no incluyera restaurante_id para algún
+        # rol de personal legacy, simplemente no se aplica la restricción aquí
+        # y se loguea un aviso para que quede trazabilidad.
+        jwt_restaurante = current_user.get("restaurante_id")
+        if rol != "super_admin":
+            if jwt_restaurante:
+                restauranteId = jwt_restaurante
+            else:
+                logger.warning(
+                    "obtener_pedidos: usuario personal sin restaurante_id en JWT "
+                    "(rol=%s sub=%s). No se aplica restricción por sucursal.",
+                    rol, current_user.get("sub"),
+                )
+
+    # ── Validar y resolver filtro de estado(s) ────────────────────────────────
+    estados_filtro: Optional[list[str]] = None
+
+    if estados:
+        # CSV → lista; quitamos blancos alrededor de cada token.
+        lista = [s.strip() for s in estados.split(",") if s.strip()]
+        invalidos = [s for s in lista if s not in _ESTADOS_VALIDOS]
+        if invalidos:
+            raise ValidacionError(
+                f"Estado(s) inválido(s): {invalidos}. Válidos: {sorted(_ESTADOS_VALIDOS)}"
+            )
+        estados_filtro = lista
+    elif estado:
+        if estado not in _ESTADOS_VALIDOS:
+            raise ValidacionError(
+                f"Estado inválido: '{estado}'. Válidos: {sorted(_ESTADOS_VALIDOS)}"
+            )
+        estados_filtro = [estado]
+
+    # ── Construir filtro Mongo ────────────────────────────────────────────────
+    filtro: dict = {}
+
     if userId:
         filtro["usuario_id"] = userId
     if mesaId:
@@ -496,16 +625,34 @@ def obtener_pedidos(
     if estadoPago:
         filtro["estado_pago"] = estadoPago
     if restauranteId:
-        # Incluir pedidos con ese restaurante_id Y pedidos sin restaurante_id
-        # (retrocompatibilidad con pedidos creados antes de asignar restaurante)
+        # Retrocompatibilidad: incluir pedidos sin restaurante_id (legacy)
         filtro["$or"] = [
             {"restaurante_id": restauranteId},
             {"restaurante_id": {"$exists": False}},
         ]
-    if estado:
-        filtro["estado"] = estado
-    # Sin filtros → devolver todos los pedidos (usado por la pantalla de cocina)
-    pedidos = coleccion_pedidos.find(filtro)
+    if estados_filtro:
+        if len(estados_filtro) == 1:
+            filtro["estado"] = estados_filtro[0]
+        else:
+            filtro["estado"] = {"$in": estados_filtro}
+
+    # ── Filtros temporales ────────────────────────────────────────────────────
+    # El campo "fecha" se guarda como string ISO 8601, que es lexicográficamente
+    # ordenable, por lo que la comparación $gte/$lte funciona correctamente sin
+    # necesidad de convertir a datetime.
+    rango_fecha: dict = {}
+    if fecha_desde:
+        rango_fecha["$gte"] = _normalizar_fecha_query(fecha_desde, fin_de_dia=False)
+    if fecha_hasta:
+        rango_fecha["$lte"] = _normalizar_fecha_query(fecha_hasta, fin_de_dia=True)
+    if rango_fecha:
+        filtro["fecha"] = rango_fecha
+
+    cursor = coleccion_pedidos.find(filtro)
+    # Con limit aplicamos orden descendente para que el caller reciba los N más recientes
+    if limit is not None:
+        cursor = cursor.sort("fecha", -1).limit(limit)
+    pedidos = cursor
     resultado = []
     for p in pedidos:
         items_raw = p.get("items", [])

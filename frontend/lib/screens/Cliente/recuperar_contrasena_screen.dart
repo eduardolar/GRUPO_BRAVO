@@ -9,6 +9,13 @@ import '../../core/app_snackbar.dart';
 import '../../providers/auth_provider.dart';
 import 'codigo_recuperacion_screen.dart';
 
+/// Primer paso del flujo "olvidé mi contraseña".
+///
+/// El cliente introduce su correo y, si existe en BBDD, el backend envía un
+/// código de 6 dígitos. Tras enviar la petición navegamos siempre a
+/// [CodigoRecuperacionScreen]; el backend está diseñado para no revelar si el
+/// correo existe (devuelve éxito silencioso aunque el email no esté registrado)
+/// para evitar enumerar usuarios.
 class RecuperarContrasenaScreen extends StatefulWidget {
   const RecuperarContrasenaScreen({super.key});
 

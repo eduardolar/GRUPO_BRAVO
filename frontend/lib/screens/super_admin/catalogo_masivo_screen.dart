@@ -310,7 +310,11 @@ class _CatalogoMasivoScreenState extends State<CatalogoMasivoScreen> {
             // alias.
             final precio = it.precioEditado ?? it.original.precio;
             final ingredientes = it.original.ingredientes
-                .map((i) => i.toJson())
+                .map((i) => <String, dynamic>{
+                  if (i.id.isNotEmpty) 'ingrediente_id': i.id,
+                  'nombre': i.nombre,
+                  'cantidad_receta': i.cantidadReceta,
+                })
                 .toList();
             final datos = <String, dynamic>{
               'nombre': it.original.nombre,
@@ -953,7 +957,7 @@ class _CatalogoMasivoScreenState extends State<CatalogoMasivoScreen> {
             style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
               hintText: 'Buscar producto…',
-              hintStyle: const TextStyle(color: Colors.white60),
+              hintStyle: const TextStyle(color: Colors.white70),
               prefixIcon: const Icon(
                 Icons.search_rounded,
                 color: Colors.white70,

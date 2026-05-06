@@ -6,6 +6,9 @@ from bson.errors import InvalidId
 from database import coleccion_productos, coleccion_ingredientes
 from models import ProductoCrear
 from security import require_role
+import logging
+
+_log = logging.getLogger("uvicorn")
 
 router = APIRouter(prefix="/productos", tags=["Productos"])
 
@@ -23,15 +26,82 @@ class AsignarSucursalRequest(BaseModel):
     solo_huerfanos: bool = False
 
 
+def _normalizar_ingrediente_item(item) -> Optional[dict]:
+    """Reduce un item del array `ingredientes` al esquema mínimo:
+    `{ingrediente_id?, nombre, cantidad_receta}`.
+
+    Acepta: string suelto (legacy), dict con cualquier convención de claves,
+    o items con campos extra del frontend (cantidadActual, unidad, etc.)
+    que se descartan deliberadamente para evitar datos congelados en BD.
+
+    Devuelve None si el item no tiene nombre (no se puede descontar stock).
+    """
+    if isinstance(item, str):
+        nombre = item.strip()
+        if not nombre:
+            return None
+        return {"nombre": nombre, "cantidad_receta": 1.0}
+
+    if not isinstance(item, dict):
+        return None
+
+    # Nombre: obligatorio para poder descontar stock
+    nombre = item.get("nombre") or item.get("ingrediente", "")
+    if not nombre:
+        return None
+    nombre = str(nombre).strip()
+    if not nombre:
+        return None
+
+    # cantidad_receta: acepta snake_case y camelCase
+    cr = item.get("cantidad_receta")
+    if cr is None:
+        cr = item.get("cantidadReceta")
+    try:
+        cantidad_receta = float(cr) if cr is not None else 1.0
+    except (TypeError, ValueError):
+        cantidad_receta = 1.0
+    if cantidad_receta <= 0:
+        cantidad_receta = 1.0
+
+    # ingrediente_id: acepta todas las convenciones que manda el frontend
+    id_raw = (
+        item.get("ingrediente_id")
+        or item.get("ingredienteId")
+        or item.get("id")
+        or item.get("_id")
+    )
+    resultado: dict = {"nombre": nombre, "cantidad_receta": cantidad_receta}
+    if id_raw:
+        resultado["ingrediente_id"] = str(id_raw)
+
+    return resultado
+
+
 def _normalizar_payload(producto: ProductoCrear) -> dict:
     """Convierte el modelo Pydantic a un dict listo para Mongo.
 
-    `restaurante_id=None` se omite del `$set` para que un PUT que no envíe
-    ese campo NO borre el restaurante asignado al producto.
+    - `restaurante_id=None` se omite del `$set` para que un PUT que no envíe
+      ese campo NO borre el restaurante asignado al producto.
+    - El array `ingredientes` se reduce al esquema mínimo para que no queden
+      datos congelados (cantidadActual, unidad, etc.) que se desactualizan.
+      Solo se hace al guardar (POST/PUT), nunca en lecturas masivas.
     """
     datos = producto.dict()
     if datos.get("restaurante_id") is None:
         datos.pop("restaurante_id", None)
+
+    # Bug 3 fix: sanear el array de ingredientes en cada escritura
+    items_raw = datos.get("ingredientes") or []
+    items_normalizados = []
+    for item in items_raw:
+        normalizado = _normalizar_ingrediente_item(item)
+        if normalizado is None:
+            _log.warning("Ingrediente sin nombre descartado al guardar producto: %r", item)
+            continue
+        items_normalizados.append(normalizado)
+    datos["ingredientes"] = items_normalizados
+
     return datos
 
 

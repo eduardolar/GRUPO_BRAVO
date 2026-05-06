@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -364,7 +363,7 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
                 physics: const BouncingScrollPhysics(),
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
                 itemCount: opciones.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                separatorBuilder: (_, _) => const SizedBox(width: 8),
                 itemBuilder: (context, index) {
                   final dynamic item = opciones[index];
                   final bool isSelected = (item == null && _selectedRestauranteId == null) ||

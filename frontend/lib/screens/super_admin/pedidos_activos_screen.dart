@@ -83,10 +83,14 @@ class _PedidosActivosScreenState extends State<PedidosActivosScreen> {
       });
     }
     try {
+      // No filtramos por fecha: los pedidos activos son los que están abiertos
+      // ahora mismo, independientemente de cuándo se crearon. El limit actúa
+      // como salvaguarda dura para no bloquear la UI en volúmenes altos.
       final datos = await PedidoService.obtenerTodosLosPedidos(
         restauranteId: (widget.restauranteId?.isEmpty ?? true)
             ? null
             : widget.restauranteId,
+        limit: 1000,
       );
       if (!mounted) return;
       setState(() {
@@ -340,13 +344,43 @@ class _PedidosActivosScreenState extends State<PedidosActivosScreen> {
               child: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 640),
-                  child: Text(
-                    '${lista.length} pedido${lista.length != 1 ? 's' : ''}',
-                    style: GoogleFonts.manrope(
-                      color: Colors.white70,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${lista.length} pedido${lista.length != 1 ? 's' : ''}',
+                        style: GoogleFonts.manrope(
+                          color: Colors.white70,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      // Aviso si el backend devuelve exactamente el límite:
+                      // significa que puede haber más pedidos sin mostrar.
+                      if (_pedidos.length == 1000)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.warning_amber_rounded,
+                                size: 13,
+                                color: Colors.orangeAccent,
+                              ),
+                              const SizedBox(width: 5),
+                              Flexible(
+                                child: Text(
+                                  'Mostrando los 1000 pedidos más recientes — algo puede ir mal si se llega a este tope',
+                                  style: GoogleFonts.manrope(
+                                    fontSize: 10,
+                                    color: Colors.orangeAccent,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               ),

@@ -131,6 +131,18 @@ class ApiService {
     restauranteId: restauranteId,
   );
 
+  static Future<List<Map<String, dynamic>>> obtenerDuplicados({
+    String? restauranteId,
+  }) => IngredienteService.obtenerDuplicados(restauranteId: restauranteId);
+
+  static Future<Map<String, dynamic>> fusionarIngredientes({
+    required String principalId,
+    required List<String> absorberIds,
+  }) => IngredienteService.fusionarIngredientes(
+    principalId: principalId,
+    absorberIds: absorberIds,
+  );
+
   // ─── PEDIDOS ─────────────────────────────────────────────────
 
   static Future<bool> enviarPedidoPorQR({
@@ -191,9 +203,11 @@ class ApiService {
   static Future<List<Pedido>> obtenerTodosLosPedidos({
     String? restauranteId,
     String? estado,
+    List<String>? estados,
   }) => PedidoService.obtenerTodosLosPedidos(
     restauranteId: restauranteId,
     estado: estado,
+    estados: estados,
   );
 
   static Future<void> actualizarEstadoPedido({
