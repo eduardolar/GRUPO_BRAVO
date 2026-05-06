@@ -106,4 +106,39 @@ class CuponService {
       throw toApiException(res.statusCode, decodeBody(res));
     }
   }
+
+  // NUEVA FUNCIÓN PARA ENVÍO MASIVO
+  static Future<void> enviarNotificacionMasiva({
+    required String cuponId,
+    required String tipoFiltro, // 'todos' o 'restaurante'
+    String? restauranteId,
+  }) async {
+    // 1. Definimos la URL del backend para esta acción
+    final url = Uri.parse('$baseUrl/cupones/enviar-masivo');
+
+    try {
+      // 2. Hacemos la petición POST
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          // 'Authorization': 'Bearer ...' // Si el backend pide token, añádirlo aquí
+        },
+        body: json.encode({
+          'cuponId': cuponId,
+          'filtro': tipoFiltro,
+          'restauranteId': restauranteId,
+        }),
+      );
+
+      // 3. Verificamos si el servidor aceptó la orden
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        final errorData = json.decode(response.body);
+        throw errorData['message'] ?? 'Error al procesar el envío masivo';
+      }
+    } catch (e) {
+      // Si hay un error de red o el servidor responde mal, lo lanzamos
+      throw 'No se pudo conectar con el servidor: $e';
+    }
+  }
 }

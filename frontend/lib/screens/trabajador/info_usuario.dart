@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:frontend/screens/Cliente/direccion_screen.dart';
 import 'package:frontend/screens/Cliente/historial_pedidos_screen.dart';
 import 'package:frontend/screens/Cliente/totp_setup_screen.dart';
-import 'package:frontend/screens/cliente/login_screen.dart';
+import 'package:frontend/screens/Cliente/login_screen.dart';
 import 'package:frontend/screens/home_screen_trabajador.dart';
 import 'package:provider/provider.dart';
 import '../../core/colors_style.dart';
@@ -33,6 +33,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
     _nombreController = TextEditingController(text: usuario?.nombre ?? '');
     _emailController = TextEditingController(text: usuario?.email ?? '');
     _telefonoController = TextEditingController(text: usuario?.telefono ?? '');
+    _direccionController = TextEditingController(
+      text: usuario?.direccion ?? '',
+    );
     _direccionController = TextEditingController(
       text: usuario?.direccion ?? '',
     );
@@ -116,6 +119,11 @@ class _PerfilScreenState extends State<PerfilScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(
           children: [
+            Icon(
+              Icons.warning_amber_rounded,
+              color: Colors.redAccent,
+              size: 26,
+            ),
             Icon(
               Icons.warning_amber_rounded,
               color: Colors.redAccent,
@@ -282,6 +290,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       if (v == null || v.trim().length != 6) {
                         return 'Introduce el código de 6 dígitos';
                       }
+                      if (v == null || v.trim().length != 6) {
+                        return 'Introduce el código de 6 dígitos';
+                      }
                       return null;
                     },
                   ),
@@ -445,7 +456,16 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       if (v == null || v.isEmpty) {
                         return 'Introduce la nueva contraseña';
                       }
+                      if (v == null || v.isEmpty) {
+                        return 'Introduce la nueva contraseña';
+                      }
                       if (v.length < 8) return 'Mínimo 8 caracteres';
+                      if (!RegExp(r'[A-Z]').hasMatch(v)) {
+                        return 'Falta una mayúscula';
+                      }
+                      if (!RegExp(r'[0-9]').hasMatch(v)) {
+                        return 'Falta un número';
+                      }
                       if (!RegExp(r'[A-Z]').hasMatch(v)) {
                         return 'Falta una mayúscula';
                       }
@@ -1086,6 +1106,11 @@ class _PerfilScreenState extends State<PerfilScreen> {
         ),
         child: Row(
           children: [
+            Icon(
+              icono,
+              color: color == Colors.white ? Colors.white70 : color,
+              size: 20,
+            ),
             Icon(
               icono,
               color: color == Colors.white ? Colors.white70 : color,
