@@ -6,6 +6,7 @@ import '../../components/bravo_app_bar.dart';
 import '../../models/cupon_model.dart';
 import '../../services/cupon_service.dart';
 import '../../core/colors_style.dart';
+import '../../services/restaurante_service.dart';
 
 // ─── Colores ─────────────────────────────────────────────────────────────────
 const _kCard = Color(0xFF1C1C1E);
@@ -26,13 +27,12 @@ class CuponesScreen extends StatefulWidget {
 class _CuponesScreenState extends State<CuponesScreen>
     with SingleTickerProviderStateMixin {
   List<Cupon> _cupones = [];
+  List<dynamic> _restaurantes = [];
   bool _cargando = true;
   String? _error;
-
   String _filtro = 'todos';
   String _busqueda = '';
   final String _orden = 'recientes';
-
   late TabController _tabCtrl;
 
   @override
@@ -55,10 +55,14 @@ class _CuponesScreenState extends State<CuponesScreen>
       _error = null;
     });
     try {
-      final lista = await CuponService.listar();
+      final resultados = await Future.wait([
+        CuponService.listar(),
+        RestauranteService().obtenerTodos(),
+      ]);
       if (!mounted) return;
       setState(() {
-        _cupones = lista;
+        _cupones = resultados[0] as List<Cupon>;
+        _restaurantes = resultados[1] as List<dynamic>;
         _cargando = false;
       });
     } catch (e) {
@@ -68,6 +72,115 @@ class _CuponesScreenState extends State<CuponesScreen>
         _cargando = false;
       });
     }
+  }
+
+  //Nueva función: diálogo de envío por email
+  void _mostrarOpcionesEnvio(Cupon c) {
+    String destino = 'todos';
+    String? restauranteId;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: _kCard,
+          title: Text(
+            'Enviar ${c.codigo}',
+            style: const TextStyle(color: _kText),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                '¿A quién deseas enviar el cupón?',
+                style: TextStyle(color: _kText),
+              ),
+              const SizedBox(height: 20),
+
+              //selector de alcance
+              DropdownButton<String>(
+                dropdownColor: _kCard,
+                value: destino,
+                isExpanded: true,
+                style: const TextStyle(color: _kText),
+                items: [
+                  const DropdownMenuItem(
+                    value: 'todos',
+                    child: Text('Todos los clientes'),
+                  ),
+                  const DropdownMenuItem(
+                    value: 'restaurante',
+                    child: Text('Clientes de un restaurante específico'),
+                  ),
+                ],
+                onChanged: (val) => setDialogState(() => destino = val!),
+              ),
+
+              //si elige restaurante, mostrar selector de restaurantes
+              if (destino == 'restaurante') ...[
+                const SizedBox(height: 15),
+                DropdownButton<String>(
+                  dropdownColor: _kCard,
+                  hint: const Text(
+                    'Selecciona un restaurante',
+                    style: TextStyle(color: _kSub),
+                  ),
+                  value: restauranteId,
+                  isExpanded: true,
+                  style: const TextStyle(color: _kText),
+                  items: _restaurantes.map((r) {
+                    return DropdownMenuItem<String>(
+                      value: r.id.toString(),
+                      child: Text(r.nombre, overflow: TextOverflow.ellipsis),
+                    );
+                  }).toList(),
+                  onChanged: (val) => setDialogState(() => restauranteId = val),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar', style: TextStyle(color: _kSub)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: _kGreen),
+              onPressed: (destino == 'restaurante' && restauranteId == null)
+                  ? null
+                  : () {
+                      Navigator.pop(context);
+                      _ejecutarEnvioMasivo(c, destino, restauranteId);
+                    },
+              child: const Text('Enviar emails'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _ejecutarEnvioMasivo(Cupon c, String tipo, String? resId) async {
+    setState(() => _cargando = true);
+    try {
+      // Aquí asumo que crearás esta función en tu CuponService
+      await CuponService.enviarNotificacionMasiva(
+        cuponId: c.id,
+        tipoFiltro: tipo,
+        restauranteId: resId,
+      );
+      _mostrarSnackBar('Emails en cola de envio correctamente', esError: false);
+    } catch (e) {
+      _mostrarSnackBar('No se pudo enviar los emails: $e');
+    } finally {
+      setState(() => _cargando = false);
+    }
+  }
+
+  void _mostrarSnackBar(String msg, {bool esError = true}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), backgroundColor: esError ? _kRed : _kGreen),
+    );
   }
 
   List<Cupon> get _filtrados {
@@ -249,6 +362,15 @@ class _CuponesScreenState extends State<CuponesScreen>
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.email_outlined,
+                                  color: _kBlue,
+                                ),
+                                onPressed: () => _mostrarOpcionesEnvio(
+                                  c,
+                                ), // <--- NUEVA ACCIÓN
+                              ),
                               IconButton(
                                 icon: const Icon(
                                   Icons.qr_code,
