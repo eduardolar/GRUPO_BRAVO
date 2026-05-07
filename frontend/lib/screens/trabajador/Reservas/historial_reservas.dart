@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/models/reserva_model.dart';
+import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/services/reserva_service.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../../../core/colors_style.dart';
 
 // -- Constantes de texto --
@@ -35,15 +37,34 @@ class _HistorialReservasState extends State<HistorialReservas> {
   String _textoBusqueda = '';
   final TextEditingController _controladorBusqueda = TextEditingController();
 
+  bool _cargado = false;
+
   @override
   void initState() {
     super.initState();
-    _reservasFuture = ReservaService.obtenerReservasFuturas();
+    // Future inicial vacío: la carga real ocurre en didChangeDependencies
+    // cuando ya tenemos contexto para leer el restaurante del trabajador.
+    _reservasFuture = Future.value(<Reserva>[]);
   }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_cargado) {
+      _cargado = true;
+      _cargarReservas();
+    }
+  }
+
+  String? get _restauranteId =>
+      context.read<AuthProvider>().usuarioActual?.restauranteId;
 
   Future<void> _cargarReservas() async {
     setState(() {
-      _reservasFuture = ReservaService.obtenerReservasFuturas();
+      // Aislamos por sucursal: el trabajador solo ve reservas de su local.
+      _reservasFuture = ReservaService.obtenerReservasFuturas(
+        restauranteId: _restauranteId,
+      );
     });
   }
 

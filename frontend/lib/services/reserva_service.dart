@@ -86,6 +86,7 @@ class ReservaService {
     required DateTime fecha,
     required String hora,
     required int comensales,
+    String? restauranteId,
   }) async {
     if (!usarApiReal) {
       final fechaStr =
@@ -99,12 +100,19 @@ class ReservaService {
     }
 
     final fechaStr = fecha.toIso8601String().split('T').first;
+    final params = <String, String>{
+      'fecha': fechaStr,
+      'hora': hora,
+      'comensales': '$comensales',
+    };
+    if (restauranteId != null && restauranteId.isNotEmpty) {
+      params['restauranteId'] = restauranteId;
+    }
+    final uri = Uri.parse(
+      '$baseUrl/reservas/mesas-disponibles',
+    ).replace(queryParameters: params);
     final response = await httpWithRetry(
-      () => http.get(
-        Uri.parse(
-          '$baseUrl/reservas/mesas-disponibles?fecha=$fechaStr&hora=$hora&comensales=$comensales',
-        ),
-      ),
+      () => http.get(uri, headers: AuthSession.headers()),
     );
 
     if (response.statusCode == 200) {
@@ -121,7 +129,10 @@ class ReservaService {
     }
 
     final response = await httpWithRetry(
-      () => http.get(Uri.parse('$baseUrl/reservas?usuarioId=$userId')),
+      () => http.get(
+        Uri.parse('$baseUrl/reservas?usuarioId=$userId'),
+        headers: AuthSession.headers(),
+      ),
     );
 
     if (response.statusCode == 200) {
@@ -167,13 +178,18 @@ class ReservaService {
     }
 
     final response = await httpWithRetry(
-      () => http.delete(Uri.parse('$baseUrl/reservas/$reservaId')),
+      () => http.delete(
+        Uri.parse('$baseUrl/reservas/$reservaId'),
+        headers: AuthSession.headers(),
+      ),
       retry: false,
     );
     return response.statusCode == 200;
   }
 
-  static Future<List<Reserva>> obtenerReservasFuturas() async {
+  static Future<List<Reserva>> obtenerReservasFuturas({
+    String? restauranteId,
+  }) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 400));
       final ahora = DateTime.now();
@@ -181,8 +197,13 @@ class ReservaService {
       return MockData.reservas.where((r) => !r.fecha.isBefore(hoy)).toList();
     }
 
+    final uri = Uri.parse('$baseUrl/reservas/futuras').replace(
+      queryParameters: (restauranteId != null && restauranteId.isNotEmpty)
+          ? {'restauranteId': restauranteId}
+          : null,
+    );
     final response = await httpWithRetry(
-      () => http.get(Uri.parse('$baseUrl/reservas/futuras')),
+      () => http.get(uri, headers: AuthSession.headers()),
     );
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);

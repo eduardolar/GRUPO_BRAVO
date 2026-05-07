@@ -1,20 +1,24 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/services/auth_session.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  group('AuthSession', () {
-    setUp(() {
-      AuthSession.limpiar(); // estado limpio en cada test
-    });
+  // Usa el stub en memoria de SharedPreferences para tests unitarios;
+  // no toca disco real ni requiere plataforma nativa.
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    await AuthSession.limpiar();
+  });
 
+  group('AuthSession', () {
     test('estado inicial: no autenticado', () {
       expect(AuthSession.token, isNull);
       expect(AuthSession.userId, isNull);
       expect(AuthSession.autenticado, isFalse);
     });
 
-    test('guardar persiste los datos', () {
-      AuthSession.guardar(
+    test('guardar persiste los datos en memoria', () async {
+      await AuthSession.guardar(
         token: 'jwt-abc',
         userId: 'u1',
         correo: 'a@b.c',
@@ -27,30 +31,56 @@ void main() {
       expect(AuthSession.autenticado, isTrue);
     });
 
-    test('guardar con token vacío deja autenticado=false', () {
-      AuthSession.guardar(token: '', userId: 'u1');
+    test('guardar con token vacío deja autenticado=false', () async {
+      await AuthSession.guardar(token: '', userId: 'u1');
       expect(AuthSession.token, isNull);
       expect(AuthSession.autenticado, isFalse);
     });
 
-    test('guardar con token null deja autenticado=false', () {
-      AuthSession.guardar(token: null, userId: 'u1');
+    test('guardar con token null deja autenticado=false', () async {
+      await AuthSession.guardar(token: null, userId: 'u1');
       expect(AuthSession.autenticado, isFalse);
     });
 
-    test('limpiar resetea todos los campos', () {
-      AuthSession.guardar(token: 't', userId: 'u', correo: 'c', rol: 'r');
-      AuthSession.limpiar();
+    test('limpiar resetea todos los campos', () async {
+      await AuthSession.guardar(token: 't', userId: 'u', correo: 'c', rol: 'r');
+      await AuthSession.limpiar();
       expect(AuthSession.token, isNull);
       expect(AuthSession.userId, isNull);
       expect(AuthSession.correo, isNull);
       expect(AuthSession.rol, isNull);
       expect(AuthSession.autenticado, isFalse);
     });
+
+    test('cargar restaura sesión guardada previamente', () async {
+      // Precarga las claves directamente en el mock de SharedPreferences para
+      // simular un reinicio donde el disco tiene datos pero la memoria no.
+      SharedPreferences.setMockInitialValues({
+        'auth_token': 'jwt-persistido',
+        'auth_user_id': 'u42',
+        'auth_correo': 'x@y.z',
+        'auth_rol': 'administrador',
+      });
+      // cargar debe restaurar desde SharedPreferences.
+      await AuthSession.cargar();
+      expect(AuthSession.token, 'jwt-persistido');
+      expect(AuthSession.userId, 'u42');
+      expect(AuthSession.correo, 'x@y.z');
+      expect(AuthSession.rol, 'administrador');
+      expect(AuthSession.autenticado, isTrue);
+    });
+
+    test('cargar sin sesión guardada no cambia el estado', () async {
+      await AuthSession.cargar();
+      expect(AuthSession.autenticado, isFalse);
+    });
   });
 
   group('AuthSession.headers', () {
-    setUp(AuthSession.limpiar);
+    setUp(() async {
+      SharedPreferences.setMockInitialValues({});
+      await AuthSession.limpiar();
+    });
 
     test('sin sesión: sólo Content-Type', () {
       final h = AuthSession.headers();
@@ -63,23 +93,23 @@ void main() {
       expect(h, isEmpty);
     });
 
-    test('con sesión añade Authorization Bearer', () {
-      AuthSession.guardar(token: 'jwt-token-xyz');
+    test('con sesión añade Authorization Bearer', () async {
+      await AuthSession.guardar(token: 'jwt-token-xyz');
       final h = AuthSession.headers();
       expect(h['Authorization'], 'Bearer jwt-token-xyz');
       expect(h['Content-Type'], 'application/json');
     });
 
-    test('extra se mezcla con base', () {
-      AuthSession.guardar(token: 't');
+    test('extra se mezcla con base', () async {
+      await AuthSession.guardar(token: 't');
       final h = AuthSession.headers(extra: {'X-Actor': 'a@b.c'});
       expect(h['Authorization'], 'Bearer t');
       expect(h['X-Actor'], 'a@b.c');
       expect(h['Content-Type'], 'application/json');
     });
 
-    test('extra puede sobrescribir Content-Type', () {
-      AuthSession.guardar(token: 't');
+    test('extra puede sobrescribir Content-Type', () async {
+      await AuthSession.guardar(token: 't');
       final h = AuthSession.headers(extra: {'Content-Type': 'text/plain'});
       expect(h['Content-Type'], 'text/plain');
     });

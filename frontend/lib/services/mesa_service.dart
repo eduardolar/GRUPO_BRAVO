@@ -10,11 +10,20 @@ class MesaService {
   static Future<List<Mesa>> obtenerMesas({String? restauranteId}) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 300));
-      return List.from(MockData.mesas);
+      var lista = List<Mesa>.from(MockData.mesas);
+      if (restauranteId != null && restauranteId.isNotEmpty) {
+        lista = lista.where((m) => m.restauranteId == restauranteId).toList();
+      }
+      return lista;
     }
 
+    final uri = Uri.parse('$baseUrl/mesas').replace(
+      queryParameters: (restauranteId != null && restauranteId.isNotEmpty)
+          ? {'restauranteId': restauranteId}
+          : null,
+    );
     final response = await httpWithRetry(
-      () => http.get(Uri.parse('$baseUrl/mesas')),
+      () => http.get(uri, headers: AuthSession.headers()),
     );
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
@@ -69,6 +78,7 @@ class MesaService {
     required int capacidad,
     required String ubicacion,
     required String codigoQr,
+    String? restauranteId,
   }) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 200));
@@ -79,6 +89,7 @@ class MesaService {
         ubicacion: ubicacion,
         disponible: true,
         codigoQr: codigoQr,
+        restauranteId: restauranteId,
       );
       MockData.mesas.add(nueva);
       return nueva;
@@ -93,6 +104,8 @@ class MesaService {
           'capacidad': capacidad,
           'ubicacion': ubicacion,
           'codigoQr': codigoQr,
+          if (restauranteId != null && restauranteId.isNotEmpty)
+            'restauranteId': restauranteId,
         }),
       ),
       retry: false,
@@ -112,7 +125,10 @@ class MesaService {
     }
 
     final response = await httpWithRetry(
-      () => http.delete(Uri.parse('$baseUrl/mesas/$mesaId')),
+      () => http.delete(
+        Uri.parse('$baseUrl/mesas/$mesaId'),
+        headers: AuthSession.headers(),
+      ),
       retry: false,
     );
 
@@ -145,6 +161,55 @@ class MesaService {
     if (response.statusCode != 200) {
       throw toApiException(response.statusCode, decodeBody(response));
     }
+  }
+
+  /// Edita una mesa existente. Solo se envían los campos que no sean null.
+  static Future<Mesa> editarMesa(
+    String id, {
+    int? numero,
+    int? capacidad,
+    String? ubicacion,
+    String? codigoQr,
+  }) async {
+    if (!usarApiReal) {
+      await Future.delayed(const Duration(milliseconds: 200));
+      final index = MockData.mesas.indexWhere((m) => m.id == id);
+      if (index == -1) throw const ApiException(404, 'Mesa no encontrada');
+      final actualizada = Mesa(
+        id: id,
+        numero: numero ?? MockData.mesas[index].numero,
+        capacidad: capacidad ?? MockData.mesas[index].capacidad,
+        ubicacion: ubicacion ?? MockData.mesas[index].ubicacion,
+        disponible: MockData.mesas[index].disponible,
+        codigoQr: codigoQr ?? MockData.mesas[index].codigoQr,
+        restauranteId: MockData.mesas[index].restauranteId,
+      );
+      MockData.mesas[index] = actualizada;
+      return actualizada;
+    }
+
+    // Construimos el body solo con los campos que el usuario cambió,
+    // para no pisar valores que el backend considere inmutables.
+    final body = <String, dynamic>{
+      'numero': ?numero,
+      'capacidad': ?capacidad,
+      'ubicacion': ?ubicacion,
+      'codigoQr': ?codigoQr,
+    };
+
+    final response = await httpWithRetry(
+      () => http.put(
+        Uri.parse('$baseUrl/mesas/$id'),
+        headers: AuthSession.headers(),
+        body: jsonEncode(body),
+      ),
+      retry: false,
+    );
+
+    if (response.statusCode == 200) {
+      return Mesa.fromMap(jsonDecode(response.body) as Map<String, dynamic>);
+    }
+    throw toApiException(response.statusCode, decodeBody(response));
   }
 
   static Future<void> marcarMesaLibre(String mesaId) async {

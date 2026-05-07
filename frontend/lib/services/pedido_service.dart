@@ -279,11 +279,18 @@ class PedidoService {
   static Future<List<Pedido>> obtenerTodosLosPedidos({
     String? restauranteId,
     String? estado,
+    List<String>? estados,
+    DateTime? fechaDesde,
+    DateTime? fechaHasta,
+    int? limit,
   }) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 400));
       var pedidos = MockData.pedidos.map((m) => Pedido.fromMap(m)).toList();
-      if (estado != null) {
+      // Prioriza el filtro múltiple sobre el singular.
+      if (estados != null && estados.isNotEmpty) {
+        pedidos = pedidos.where((p) => estados.contains(p.estado)).toList();
+      } else if (estado != null) {
         pedidos = pedidos.where((p) => p.estado == estado).toList();
       }
       return pedidos;
@@ -293,7 +300,24 @@ class PedidoService {
     if (restauranteId != null && restauranteId.isNotEmpty) {
       params['restauranteId'] = restauranteId;
     }
-    if (estado != null) params['estado'] = estado;
+    // `estados` (CSV) tiene prioridad; si está presente, no enviamos `estado`
+    // para evitar confusión en el backend (este ya prioriza `estados` también).
+    if (estados != null && estados.isNotEmpty) {
+      params['estados'] = estados.join(',');
+    } else if (estado != null) {
+      params['estado'] = estado;
+    }
+    // Filtros temporales: el backend extiende las fechas a inicio/fin de día.
+    if (fechaDesde != null) {
+      params['fecha_desde'] = fechaDesde.toIso8601String().substring(0, 10);
+    }
+    if (fechaHasta != null) {
+      params['fecha_hasta'] = fechaHasta.toIso8601String().substring(0, 10);
+    }
+    // Salvaguarda: limita el número de pedidos devueltos para no bloquear la UI.
+    if (limit != null) {
+      params['limit'] = limit.toString();
+    }
     final uri = Uri.parse(
       '$baseUrl/pedidos',
     ).replace(queryParameters: params.isEmpty ? null : params);

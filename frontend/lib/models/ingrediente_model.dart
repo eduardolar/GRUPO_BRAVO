@@ -12,7 +12,7 @@ class Ingrediente {
   Ingrediente({
     required this.id,
     required this.nombre,
-    this.categoria = 'Otras',
+    this.categoria = 'Otros',
     this.cantidadActual = 0,
     this.unidad = 'kg',
     this.stockMinimo = 0,
@@ -45,7 +45,7 @@ class Ingrediente {
     return Ingrediente(
       id: json['id'] ?? json['_id'] ?? '',
       nombre: json['nombre'] ?? json['ingrediente'] ?? '',
-      categoria: json['categoria'] ?? 'Otras',
+      categoria: json['categoria'] ?? 'Otros',
       cantidadActual:
           (json['cantidadActual'] ??
                   json['cantidad_actual'] ??

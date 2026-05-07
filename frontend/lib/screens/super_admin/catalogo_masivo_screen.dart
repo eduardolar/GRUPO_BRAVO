@@ -310,7 +310,11 @@ class _CatalogoMasivoScreenState extends State<CatalogoMasivoScreen> {
             // alias.
             final precio = it.precioEditado ?? it.original.precio;
             final ingredientes = it.original.ingredientes
-                .map((i) => i.toJson())
+                .map((i) => <String, dynamic>{
+                  if (i.id.isNotEmpty) 'ingrediente_id': i.id,
+                  'nombre': i.nombre,
+                  'cantidad_receta': i.cantidadReceta,
+                })
                 .toList();
             final datos = <String, dynamic>{
               'nombre': it.original.nombre,
@@ -733,10 +737,7 @@ class _CatalogoMasivoScreenState extends State<CatalogoMasivoScreen> {
             child: SizedBox(
               height: 22,
               width: 22,
-              child: CircularProgressIndicator(
-                color: _kAccent,
-                strokeWidth: 2,
-              ),
+              child: CircularProgressIndicator(color: _kAccent, strokeWidth: 2),
             ),
           );
         }
@@ -956,7 +957,7 @@ class _CatalogoMasivoScreenState extends State<CatalogoMasivoScreen> {
             style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
               hintText: 'Buscar producto…',
-              hintStyle: const TextStyle(color: Colors.white60),
+              hintStyle: const TextStyle(color: Colors.white70),
               prefixIcon: const Icon(
                 Icons.search_rounded,
                 color: Colors.white70,
@@ -1299,9 +1300,7 @@ class _ChipSucursal extends StatelessWidget {
                 : Colors.white.withValues(alpha: 0.06),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: activa
-                  ? _kAccent
-                  : Colors.white.withValues(alpha: 0.18),
+              color: activa ? _kAccent : Colors.white.withValues(alpha: 0.18),
               width: activa ? 1.4 : 1,
             ),
           ),
@@ -1309,9 +1308,7 @@ class _ChipSucursal extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                activa
-                    ? Icons.storefront_rounded
-                    : Icons.storefront_outlined,
+                activa ? Icons.storefront_rounded : Icons.storefront_outlined,
                 size: 14,
                 color: activa ? _kAccent : Colors.white70,
               ),

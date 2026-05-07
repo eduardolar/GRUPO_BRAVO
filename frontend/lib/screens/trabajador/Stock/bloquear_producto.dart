@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../core/colors_style.dart';
+import '../../../providers/auth_provider.dart';
 import '../../../services/api_service.dart';
 import '../../../models/ingrediente_model.dart';
 
@@ -23,8 +25,12 @@ class _BloquearProductoState extends State<BloquearProducto> {
   }
 
   Future<void> _cargarDatos() async {
+    final restauranteId =
+        context.read<AuthProvider>().usuarioActual?.restauranteId;
     try {
-      final productos = await ApiService.obtenerIngredientes();
+      final productos = await ApiService.obtenerIngredientes(
+        restauranteId: restauranteId,
+      );
 
       if (mounted) {
         setState(() {

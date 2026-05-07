@@ -25,11 +25,22 @@ def _hay_conflicto_horario(hora_a: str, hora_b: str) -> bool:
     return inicio_a < fin_b and inicio_b < fin_a
 
 
-def _mesas_ocupadas_por_hora(fecha: str, hora: str) -> set:
-    reservas = coleccion_reservas.find({"fecha": fecha, "estado": "Confirmada"})
+def _mesas_ocupadas_por_hora(
+    fecha: str, hora: str, restaurante_id: str | None = None
+) -> set:
+    """Devuelve los `mesa_id` ya ocupados a esa hora. Si se pasa
+    `restaurante_id`, solo considera reservas de esa sucursal — necesario
+    para que las reservas de Madrid no marquen como ocupadas las mesas de
+    Zaragoza (aunque los IDs son únicos, la búsqueda es más eficiente)."""
+    filtro: dict = {"fecha": fecha, "estado": "Confirmada"}
+    if restaurante_id:
+        filtro["restaurante_id"] = restaurante_id
+    reservas = coleccion_reservas.find(filtro)
     ocupadas = set()
     for r in reservas:
-        if r.get("mesa_id") and r.get("hora") and _hay_conflicto_horario(r["hora"], hora):
+        if r.get("mesa_id") and r.get("hora") and _hay_conflicto_horario(
+            r["hora"], hora
+        ):
             ocupadas.add(r["mesa_id"])
     return ocupadas
 
@@ -39,9 +50,17 @@ def mesas_disponibles(
     fecha: str = Query(...),
     hora: str = Query(...),
     comensales: int = Query(1),
+    restauranteId: str | None = Query(None),
+    restaurante_id: str | None = Query(None),
 ):
-    ocupadas = _mesas_ocupadas_por_hora(fecha, hora)
-    mesas = coleccion_mesas.find({"capacidad": {"$gte": comensales}})
+    rid = restauranteId or restaurante_id
+    ocupadas = _mesas_ocupadas_por_hora(fecha, hora, rid)
+    # Filtramos las mesas candidatas también por sucursal: un cliente que
+    # reserva en Madrid nunca debe ver mesas de Zaragoza.
+    filtro_mesas: dict = {"capacidad": {"$gte": comensales}}
+    if rid:
+        filtro_mesas["restaurante_id"] = rid
+    mesas = coleccion_mesas.find(filtro_mesas)
     resultado = []
     for m in mesas:
         mid = str(m["_id"])
@@ -50,16 +69,26 @@ def mesas_disponibles(
                 "id": mid,
                 "numero": m.get("numero", 0),
                 "capacidad": m.get("capacidad", 0),
+                "restauranteId": m.get("restaurante_id"),
             })
     return resultado
 
 
 # ⚠️ Este endpoint debe estar ANTES de @router.get("") para que FastAPI no lo confunda
 @router.get("/futuras")
-def obtener_reservas_futuras():
-    """Devuelve todas las reservas desde hoy en adelante (para trabajadores)."""
+def obtener_reservas_futuras(
+    restauranteId: str | None = Query(None),
+    restaurante_id: str | None = Query(None),
+):
+    """Devuelve todas las reservas desde hoy en adelante (para trabajadores).
+    Si se pasa `restauranteId`, filtra por sucursal — necesario para que un
+    trabajador de Madrid no vea las reservas de Zaragoza."""
     hoy = date.today().strftime("%Y-%m-%d")
-    reservas = coleccion_reservas.find({"fecha": {"$gte": hoy}})
+    rid = restauranteId or restaurante_id
+    filtro: dict = {"fecha": {"$gte": hoy}}
+    if rid:
+        filtro["restaurante_id"] = rid
+    reservas = coleccion_reservas.find(filtro)
     resultado = []
     for r in reservas:
         item = {
@@ -143,12 +172,21 @@ def crear_reserva(reserva: ReservaCrear):
                         detail=f"El restaurante no acepta reservas a las {reserva.hora}. Horario de apertura: {apertura} – {cierre}",
                     )
 
-    ocupadas = _mesas_ocupadas_por_hora(reserva.fecha, reserva.hora)
+    ocupadas = _mesas_ocupadas_por_hora(reserva.fecha, reserva.hora, reserva.restauranteId)
 
     if reserva.mesaId:
         mesa = coleccion_mesas.find_one({"_id": ObjectId(reserva.mesaId)})
         if not mesa:
             raise HTTPException(status_code=404, detail="Mesa no encontrada")
+        # La mesa elegida debe pertenecer a la sucursal de la reserva: si no,
+        # estaríamos reservando una mesa de Madrid para un cliente de Zaragoza.
+        if reserva.restauranteId:
+            rid_mesa = mesa.get("restaurante_id")
+            if rid_mesa and rid_mesa != reserva.restauranteId:
+                raise HTTPException(
+                    status_code=400,
+                    detail="La mesa pertenece a otra sucursal",
+                )
         if mesa.get("capacidad", 0) < reserva.comensales:
             raise HTTPException(
                 status_code=400,
@@ -161,9 +199,11 @@ def crear_reserva(reserva: ReservaCrear):
             )
         mesa_asignada = mesa
     else:
-        candidatas = coleccion_mesas.find(
-            {"capacidad": {"$gte": reserva.comensales}}
-        ).sort("capacidad", 1)
+        # Asignación automática: solo entre mesas de la misma sucursal.
+        filtro_candidatas: dict = {"capacidad": {"$gte": reserva.comensales}}
+        if reserva.restauranteId:
+            filtro_candidatas["restaurante_id"] = reserva.restauranteId
+        candidatas = coleccion_mesas.find(filtro_candidatas).sort("capacidad", 1)
         mesa_asignada = None
         for m in candidatas:
             if str(m["_id"]) not in ocupadas:

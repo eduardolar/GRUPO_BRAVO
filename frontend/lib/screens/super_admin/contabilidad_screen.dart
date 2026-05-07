@@ -38,16 +38,43 @@ class _ContabilidadScreenState extends State<ContabilidadScreen> {
     _cargar();
   }
 
+  /// Calcula el rango de fechas para el período seleccionado.
+  /// Devuelve `(fechaDesde, fechaHasta)` donde `null` significa sin límite.
+  (DateTime?, DateTime?) _rangoDelPeriodo() {
+    final ahora = DateTime.now();
+    switch (_periodo) {
+      case 'hoy':
+        final inicio = DateTime(ahora.year, ahora.month, ahora.day);
+        final fin = DateTime(ahora.year, ahora.month, ahora.day, 23, 59, 59);
+        return (inicio, fin);
+      case 'semana':
+        final inicioSemana = ahora.subtract(Duration(days: ahora.weekday - 1));
+        return (
+          DateTime(inicioSemana.year, inicioSemana.month, inicioSemana.day),
+          ahora,
+        );
+      case 'mes':
+        return (DateTime(ahora.year, ahora.month, 1), ahora);
+      default:
+        // 'todo': sin filtro de fecha, el limit actúa como salvaguarda.
+        return (null, null);
+    }
+  }
+
   Future<void> _cargar() async {
     setState(() {
       _cargando = true;
       _error = null;
     });
     try {
+      final (fechaDesde, fechaHasta) = _rangoDelPeriodo();
       final datos = await PedidoService.obtenerTodosLosPedidos(
         restauranteId: (widget.restauranteId?.isEmpty ?? true)
             ? null
             : widget.restauranteId,
+        fechaDesde: fechaDesde,
+        fechaHasta: fechaHasta,
+        limit: 1000,
       );
       if (!mounted) return;
       setState(() {
@@ -63,28 +90,8 @@ class _ContabilidadScreenState extends State<ContabilidadScreen> {
     }
   }
 
-  // ── Filtro por período ────────────────────────────────────────────
-  List<Pedido> get _pedidosFiltrados {
-    final ahora = DateTime.now();
-    return _pedidos.where((p) {
-      final f = DateTime.tryParse(p.fecha);
-      if (f == null) return false;
-      switch (_periodo) {
-        case 'hoy':
-          return f.year == ahora.year &&
-              f.month == ahora.month &&
-              f.day == ahora.day;
-        case 'semana':
-          final inicio = ahora.subtract(Duration(days: ahora.weekday - 1));
-          final inicioSemana = DateTime(inicio.year, inicio.month, inicio.day);
-          return f.isAfter(inicioSemana.subtract(const Duration(seconds: 1)));
-        case 'mes':
-          return f.year == ahora.year && f.month == ahora.month;
-        default:
-          return true;
-      }
-    }).toList();
-  }
+  // El backend ya filtra por período; esta propiedad expone la lista directamente.
+  List<Pedido> get _pedidosFiltrados => _pedidos;
 
   // ── Métricas calculadas ───────────────────────────────────────────
   double get _ingresos {
@@ -279,7 +286,11 @@ class _ContabilidadScreenState extends State<ContabilidadScreen> {
         children: _periodos.map((p) {
           final selected = _periodo == p;
           return GestureDetector(
-            onTap: () => setState(() => _periodo = p),
+            onTap: () {
+              setState(() => _periodo = p);
+              // Recargamos desde el backend con el nuevo rango de fechas.
+              _cargar();
+            },
             child: Container(
               margin: const EdgeInsets.only(right: 8),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -403,6 +414,21 @@ class _ContabilidadScreenState extends State<ContabilidadScreen> {
                       ),
                     ],
                   ),
+
+                  // Aviso cuando el backend devuelve exactamente el límite:
+                  // puede haber más pedidos fuera del rango visible.
+                  if (_pedidos.length == 1000)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: Text(
+                        'Mostrando los 1000 pedidos más recientes — acota el rango para ver más',
+                        style: GoogleFonts.manrope(
+                          color: Colors.orangeAccent,
+                          fontSize: 11,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
 
                   if (lista.isNotEmpty) ...[
                     const SizedBox(height: 28),

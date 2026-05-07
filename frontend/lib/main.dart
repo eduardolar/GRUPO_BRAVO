@@ -18,6 +18,7 @@ import 'screens/home_screen_trabajador.dart';
 import 'screens/super_admin/home_screen_super_admin.dart';
 import 'services/actor_context.dart';
 import 'services/api_config.dart';
+import 'services/auth_session.dart';
 import 'services/notificaciones_service.dart';
 import 'services/pedido_listo_watcher.dart';
 
@@ -26,6 +27,11 @@ void main() async {
 
   final authProvider = AuthProvider();
   await authProvider.cargarSesion();
+
+  // Cierre de sesión automático cuando el backend devuelve 401 con sesión activa.
+  // El callback solo se dispara si AuthSession.autenticado era true antes de la
+  // petición, por lo que un 401 en login (sin token previo) no lo activa.
+  AuthSession.onUnauthorized = () => authProvider.cerrarSesion();
 
   // flutter_stripe solo funciona en Android/iOS, no en Web.
   // La clave se lee de api_config.dart y puede sobreescribirse con

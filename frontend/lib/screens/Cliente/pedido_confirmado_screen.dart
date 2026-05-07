@@ -223,7 +223,10 @@ class _PedidoConfirmadoScreenState extends State<PedidoConfirmadoScreen>
             SafeArea(
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  final maxW = constraints.maxWidth.clamp(0.0, 520.0);
+                  // 640 da más respiración en escritorio sin que el resumen
+                  // (con sus filas etiqueta + valor) se quede comprimido.
+                  // En móvil el clamp deja que ocupe todo el ancho.
+                  final maxW = constraints.maxWidth.clamp(0.0, 640.0);
                   final hPad = (constraints.maxWidth - maxW) / 2 + 24.0;
 
                   return FadeTransition(
@@ -290,6 +293,10 @@ class _FondoConVelado extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Subimos el alpha (0.92 → 0.97) para que el logo no compita con el
+    // contenido translúcido. En móvil casi no se nota; en escritorio,
+    // donde la imagen se zoomea con BoxFit.cover, el logo grande dejaba
+    // de funcionar como fondo y empezaba a leerse como contenido.
     return Positioned.fill(
       child: RepaintBoundary(
         child: Stack(
@@ -305,8 +312,8 @@ class _FondoConVelado extends StatelessWidget {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Colors.black.withValues(alpha: 0.78),
-                    Colors.black.withValues(alpha: 0.90),
+                    Colors.black.withValues(alpha: 0.92),
+                    Colors.black.withValues(alpha: 0.97),
                   ],
                 ),
               ),
@@ -466,9 +473,9 @@ class _PanelDetalles extends StatelessWidget {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
+        color: Colors.white.withValues(alpha: 0.07),
         borderRadius: _kRadius,
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
       ),
       child: Column(
         children: [
@@ -620,9 +627,9 @@ class _SeguimientoWidget extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 18),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
+        color: Colors.white.withValues(alpha: 0.07),
         borderRadius: _kRadius,
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -733,9 +740,9 @@ class _ResumenArticulos extends StatelessWidget {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
+        color: Colors.white.withValues(alpha: 0.07),
         borderRadius: _kRadius,
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

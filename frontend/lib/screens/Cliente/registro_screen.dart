@@ -15,7 +15,16 @@ import 'verificacion_screen.dart';
 
 const BorderRadius _kFieldRadius = BorderRadius.all(Radius.circular(15));
 
+/// Pantalla de registro de un cliente nuevo.
+///
+/// Tras un registro exitoso el backend envía un código de verificación al
+/// correo y aquí se navega a [VerificacionScreen] (modo verificar email).
+/// El [destino] se propaga para que, al terminar la verificación, el cliente
+/// caiga directamente en la carta o en la reserva, según lo que haya intentado
+/// hacer antes.
 class RegistroScreen extends StatefulWidget {
+  /// Destino post-verificación de email para conservar la intención original
+  /// del cliente (ver carta vs. reservar mesa).
   final DestinoLogin destino;
 
   const RegistroScreen({super.key, this.destino = DestinoLogin.menu});
@@ -29,6 +38,9 @@ class _RegistroScreenState extends State<RegistroScreen> {
   bool _ocultarPass = true;
   bool _ocultarConfirm = true;
   bool _isLoading = false;
+  // Consentimiento RGPD: el botón de registro queda inactivo hasta marcarlo,
+  // y si el usuario intenta enviar sin marcar, `_privacidadError` activa el
+  // mensaje rojo bajo el checkbox.
   bool _aceptaPrivacidad = false;
   bool _privacidadError = false;
 
@@ -51,6 +63,8 @@ class _RegistroScreenState extends State<RegistroScreen> {
   }
 
   // ── Validadores ─────────────────────────────────────────────────────────
+  // Cada validador devuelve null si el valor es válido o un mensaje de error
+  // en caso contrario. Esa es la convención de `TextFormField.validator`.
 
   String? _validarEmail(String? v) {
     if (v == null || v.trim().isEmpty) return 'Campo requerido';
@@ -85,6 +99,9 @@ class _RegistroScreenState extends State<RegistroScreen> {
 
   // ── Acciones ────────────────────────────────────────────────────────────
 
+  /// Abre la pantalla del mapa en modo "solo seleccionar" para que el cliente
+  /// elija una dirección sin crearla aún en su cuenta. La dirección elegida
+  /// se vuelca al campo readonly del formulario.
   Future<void> _abrirSelectorDireccion() async {
     final resultado = await Navigator.push<Map<String, dynamic>>(
       context,
@@ -98,6 +115,8 @@ class _RegistroScreenState extends State<RegistroScreen> {
     });
   }
 
+  /// Lanza el registro contra el backend. Si todo sale bien, se navega a la
+  /// pantalla de verificación de email para introducir el código OTP enviado.
   Future<void> _registrarse() async {
     if (!_formKey.currentState!.validate()) return;
     if (!_aceptaPrivacidad) {

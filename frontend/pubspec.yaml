@@ -37,6 +37,10 @@ dependencies:
   # Notificaciones locales (cliente: aviso de "pedido listo")
   flutter_local_notifications: ^17.2.3
 
+  # Web APIs (window.print, history.replaceState…). Solo se importa desde
+  # implementaciones condicionales `*_web.dart`; en móvil se usa el stub.
+  web: ^1.1.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
