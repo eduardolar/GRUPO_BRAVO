@@ -416,7 +416,7 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
           labelStyle: const TextStyle(color: Colors.white70),
           prefixIcon: const Icon(
             Icons.settings_accessibility_outlined,
-            color: AppColors.gold,
+            color: AppColors.bottomSheetBg,
           ),
           filled: true,
           fillColor: const Color(0x8C000000),
@@ -488,7 +488,7 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
               labelStyle: const TextStyle(color: Colors.white70),
               prefixIcon: const Icon(
                 Icons.storefront_outlined,
-                color: AppColors.gold,
+                color: AppColors.bottomSheetBg,
               ),
               filled: true,
               fillColor: const Color(0x8C000000),

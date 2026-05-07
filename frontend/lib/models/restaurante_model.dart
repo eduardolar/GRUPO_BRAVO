@@ -1,7 +1,7 @@
 /// Modelo de sucursal / restaurante del Grupo Bravo.
 ///
-/// Incluye los campos heredados (nombre, horario general) más los nuevos
-/// campos añadidos para la edición avanzada del local (F8):
+/// Incluye los campos del local más los nuevos campos añadidos para la
+/// edición avanzada (F8):
 ///   - [logoUrl] / [logoPublicId]: logo en Cloudinary.
 ///   - [horariosDia]: horario detallado por día de la semana.
 ///   - Datos fiscales: [cif], [razonSocial], [direccionFiscal], etc.
@@ -11,8 +11,6 @@ class Restaurante {
   final String nombre;
   final String direccion;
   final String codigo;
-  final String? horarioApertura; // "HH:MM" — legacy campo general
-  final String? horarioCierre;  // "HH:MM" — legacy campo general
   final bool activo;
   /// Fecha ISO en que fue suspendida, o null si no está suspendida.
   final String? suspendidoAt;
@@ -48,11 +46,8 @@ class Restaurante {
     required this.nombre,
     required this.direccion,
     required this.codigo,
-    this.horarioApertura,
-    this.horarioCierre,
     this.activo = true,
     this.suspendidoAt,
-    // Nuevos:
     this.logoUrl,
     this.logoPublicId,
     this.horariosDia,
@@ -94,11 +89,6 @@ class Restaurante {
       nombre: json['nombre'] ?? '',
       direccion: json['direccion'] ?? '',
       codigo: json['codigo'] ?? '',
-      horarioApertura:
-          json['horarioApertura'] as String? ??
-          json['horario_apertura'] as String?,
-      horarioCierre:
-          json['horarioCierre'] as String? ?? json['horario_cierre'] as String?,
       activo: json['activo'] != false,
       suspendidoAt: json['suspendido_at'] as String?,
       logoUrl: json['logo_url'] as String?,
@@ -115,20 +105,51 @@ class Restaurante {
     );
   }
 
-  /// Returns false only when both horario fields are set AND current time is
-  /// outside range.
+  /// Devuelve true si la sucursal está abierta en este momento.
+  ///
+  /// Usa [horariosDia] (al menos un día con abierto:true). Si no hay ningún
+  /// día configurado como abierto, devuelve false.
+  /// Soporta turnos que cruzan la medianoche (apertura > cierre): la cola
+  /// del turno de ayer cubre las primeras horas de hoy.
   bool estaAbierto() {
-    if (horarioApertura == null || horarioCierre == null) return true;
-    final now = DateTime.now();
-    final open = _parseMins(horarioApertura!);
-    final close = _parseMins(horarioCierre!);
-    final nowMins = now.hour * 60 + now.minute;
-    if (close > open) {
-      return nowMins >= open && nowMins < close;
-    } else {
-      // Cruza la medianoche (p.ej. 22:00 – 02:00)
-      return nowMins >= open || nowMins < close;
+    if (horariosDia == null || !horariosDia!.values.any((h) => h.abierto)) {
+      return false;
     }
+
+    const claves = [
+      'lunes',
+      'martes',
+      'miercoles',
+      'jueves',
+      'viernes',
+      'sabado',
+      'domingo',
+    ];
+    final now = DateTime.now();
+    final nowMins = now.hour * 60 + now.minute;
+    final idxHoy = now.weekday - 1; // 0..6
+    final idxAyer = (idxHoy - 1 + 7) % 7;
+
+    // a) Cola del turno de ayer si cruzaba medianoche.
+    final hAyer = horariosDia![claves[idxAyer]];
+    if (hAyer != null && hAyer.abierto) {
+      final openA = _parseMins(hAyer.apertura);
+      final closeA = _parseMins(hAyer.cierre);
+      if (closeA <= openA && nowMins < closeA) return true;
+    }
+
+    // b) Turno de hoy.
+    final hHoy = horariosDia![claves[idxHoy]];
+    if (hHoy != null && hHoy.abierto) {
+      final openH = _parseMins(hHoy.apertura);
+      final closeH = _parseMins(hHoy.cierre);
+      if (closeH > openH) {
+        return nowMins >= openH && nowMins < closeH;
+      }
+      // Hoy cruza medianoche: abierto desde apertura hasta 23:59.
+      return nowMins >= openH;
+    }
+    return false;
   }
 
   static int _parseMins(String t) {

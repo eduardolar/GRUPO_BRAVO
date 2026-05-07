@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 
 // TUS COMPONENTES Y SERVICIOS
+import '../../core/app_snackbar.dart';
 import '../../core/colors_style.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/usuario_service.dart';
@@ -80,6 +81,7 @@ class _DireccionScreenState extends State<DireccionScreen> {
       }
     } catch (e) {
       _setDireccionError();
+      if (mounted) handleApiError(context, e, prefix: 'Error de geocodificación');
     }
   }
 
@@ -136,11 +138,7 @@ class _DireccionScreenState extends State<DireccionScreen> {
         return;
       }
 
-      final userId = auth.usuarioActual?.id;
-      if (userId == null) throw "Sesión no válida";
-
       bool exito = await usuarioService.actualizarDireccion(
-        userId: userId,
         direccion: direccionFinal,
         latitud: _puntoActual.latitude,
         longitud: _puntoActual.longitude,

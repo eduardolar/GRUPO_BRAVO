@@ -26,29 +26,11 @@ class _SeleccionarRestauranteScreenState
     });
   }
 
-  static String? _validarHora(String? v) {
-    if (v == null || v.trim().isEmpty) return null;
-    final parts = v.trim().split(':');
-    if (parts.length != 2) return 'Usa el formato HH:MM';
-    final h = int.tryParse(parts[0]);
-    final m = int.tryParse(parts[1]);
-    if (h == null || m == null || h < 0 || h > 23 || m < 0 || m > 59) {
-      return 'Hora inválida (00:00 – 23:59)';
-    }
-    return null;
-  }
-
   // ── DIÁLOGO CREAR / EDITAR ────────────────────────────────────────
   Future<void> _mostrarFormulario({Restaurante? restaurante}) async {
     final nombreCtrl = TextEditingController(text: restaurante?.nombre ?? '');
     final direccionCtrl = TextEditingController(
       text: restaurante?.direccion ?? '',
-    );
-    final aperturaCtrl = TextEditingController(
-      text: restaurante?.horarioApertura ?? '',
-    );
-    final cierreCtrl = TextEditingController(
-      text: restaurante?.horarioCierre ?? '',
     );
     final formKey = GlobalKey<FormState>();
     final esEdicion = restaurante != null;
@@ -130,94 +112,6 @@ class _SeleccionarRestauranteScreenState
                 validator: (v) =>
                     v == null || v.trim().isEmpty ? 'Campo obligatorio' : null,
               ),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: aperturaCtrl,
-                      style: GoogleFonts.manrope(color: Colors.white),
-                      keyboardType: TextInputType.datetime,
-                      decoration: InputDecoration(
-                        labelText: 'Apertura (HH:MM)',
-                        labelStyle: GoogleFonts.manrope(
-                          fontSize: 12,
-                          color: Colors.white70,
-                        ),
-                        hintText: '09:00',
-                        hintStyle: GoogleFonts.manrope(
-                          fontSize: 12,
-                          color: Colors.white60,
-                        ),
-                        prefixIcon: const Icon(
-                          Icons.schedule_outlined,
-                          color: AppColors.button,
-                          size: 18,
-                        ),
-                        filled: true,
-                        fillColor: const Color(0x8C000000),
-                        border: const OutlineInputBorder(
-                          borderRadius: BorderRadius.zero,
-                        ),
-                        enabledBorder: const OutlineInputBorder(
-                          borderRadius: BorderRadius.zero,
-                          borderSide: BorderSide(color: AppColors.line),
-                        ),
-                        focusedBorder: const OutlineInputBorder(
-                          borderRadius: BorderRadius.zero,
-                          borderSide: BorderSide(
-                            color: AppColors.button,
-                            width: 1.5,
-                          ),
-                        ),
-                      ),
-                      validator: _validarHora,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: TextFormField(
-                      controller: cierreCtrl,
-                      style: GoogleFonts.manrope(color: Colors.white),
-                      keyboardType: TextInputType.datetime,
-                      decoration: InputDecoration(
-                        labelText: 'Cierre (HH:MM)',
-                        labelStyle: GoogleFonts.manrope(
-                          fontSize: 12,
-                          color: Colors.white70,
-                        ),
-                        hintText: '23:00',
-                        hintStyle: GoogleFonts.manrope(
-                          fontSize: 12,
-                          color: Colors.white60,
-                        ),
-                        prefixIcon: const Icon(
-                          Icons.schedule_outlined,
-                          color: AppColors.button,
-                          size: 18,
-                        ),
-                        filled: true,
-                        fillColor: const Color(0x8C000000),
-                        border: const OutlineInputBorder(
-                          borderRadius: BorderRadius.zero,
-                        ),
-                        enabledBorder: const OutlineInputBorder(
-                          borderRadius: BorderRadius.zero,
-                          borderSide: BorderSide(color: AppColors.line),
-                        ),
-                        focusedBorder: const OutlineInputBorder(
-                          borderRadius: BorderRadius.zero,
-                          borderSide: BorderSide(
-                            color: AppColors.button,
-                            width: 1.5,
-                          ),
-                        ),
-                      ),
-                      validator: _validarHora,
-                    ),
-                  ),
-                ],
-              ),
             ],
           ),
         ),
@@ -249,8 +143,6 @@ class _SeleccionarRestauranteScreenState
 
     final nombre = nombreCtrl.text.trim();
     final direccion = direccionCtrl.text.trim();
-    final apertura = aperturaCtrl.text.trim();
-    final cierre = cierreCtrl.text.trim();
     final provider = context.read<RestauranteProvider>();
 
     if (esEdicion) {
@@ -258,8 +150,6 @@ class _SeleccionarRestauranteScreenState
         id: restaurante.id,
         nombre: nombre,
         direccion: direccion,
-        horarioApertura: apertura,
-        horarioCierre: cierre,
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -711,6 +601,18 @@ class _RestauranteCard extends StatelessWidget {
     required this.onToggleActivo,
   });
 
+  /// Devuelve "HH:MM–HH:MM" del día actual si está configurado y abierto, o null.
+  static String? _horarioHoy(Restaurante r) {
+    final hd = r.horariosDia;
+    if (hd == null) return null;
+    const claves = [
+      'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo',
+    ];
+    final h = hd[claves[DateTime.now().weekday - 1]];
+    if (h == null || !h.abierto) return null;
+    return '${h.apertura}–${h.cierre}';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -821,8 +723,7 @@ class _RestauranteCard extends StatelessWidget {
                       // Horario + Personal
                       Row(
                         children: [
-                          if (restaurante.horarioApertura != null &&
-                              restaurante.horarioCierre != null) ...[
+                          if (_horarioHoy(restaurante) != null) ...[
                             const Icon(
                               Icons.schedule_outlined,
                               size: 13,
@@ -830,7 +731,7 @@ class _RestauranteCard extends StatelessWidget {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              '${restaurante.horarioApertura!} - ${restaurante.horarioCierre!}',
+                              'Hoy: ${_horarioHoy(restaurante)}',
                               style: GoogleFonts.manrope(
                                 fontSize: 11,
                                 color: AppColors.textSecondary,

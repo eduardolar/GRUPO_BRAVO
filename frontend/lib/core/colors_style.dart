@@ -17,10 +17,14 @@ class AppColors {
 
   // Iconos
   static const Color iconPrimary = Color(0xFF2D2D2D);
-  static const Color gold = Color(0xFF1A1A1A);
+  // Fondo oscuro de bottom sheets y textos sobre fondos claros.
+  static const Color bottomSheetBg = Color(0xFF1A1A1A);
 
   // Alertas o notificaciones
   static const Color error = Color(0xFFFF3B30);
+  static const Color success = Color.fromARGB(255, 40, 184, 11);
+  static const Color warning = Color(0xFFD97706);
+  static const Color info = Color(0xFF3B82F6);
 
   //Sombras
   static const Color shadow = Color(0x66000000);
@@ -46,4 +50,8 @@ class AppColors {
 
   // Seleccion de mesas naranja
   static const Color mesaSeleccionada = Colors.orange;
+
+  // Google Pay branding (obligatorio por las guidelines de Google)
+  static const Color googlePayGrey = Color(0xFF5F6368);
+  static const Color googlePayGreen = Color(0xFF1A8E3E);
 }

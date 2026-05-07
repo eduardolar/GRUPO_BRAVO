@@ -336,3 +336,78 @@ def test_admin_no_ve_reservas_de_otra_sucursal_con_restaurante_id(client):
         assert r.get("restauranteId") == "R1", (
             f"Admin de R1 vio reserva de otra sucursal: {r.get('restauranteId')}"
         )
+
+
+# ─── Tests horarios_dia — validación al crear reserva ────────────────────────
+
+def _insertar_restaurante_con_horarios(horarios_dia: dict) -> str:
+    """Inserta un restaurante en BD con horarios_dia y devuelve su id como str."""
+    from database import coleccion_restaurantes
+    res = coleccion_restaurantes.insert_one({
+        "nombre": "Bravo Horarios",
+        "direccion": "Calle Test 1",
+        "codigo": "HOR01",
+        "activo": True,
+        "horarios_dia": horarios_dia,
+    })
+    return str(res.inserted_id)
+
+
+def _insertar_mesa_para_restaurante(rid: str, numero: int = 1, capacidad: int = 4) -> str:
+    from database import coleccion_mesas
+    res = coleccion_mesas.insert_one({
+        "numero": numero,
+        "capacidad": capacidad,
+        "restaurante_id": rid,
+    })
+    return str(res.inserted_id)
+
+
+def _payload_reserva(restaurante_id: str, fecha: str = "2026-12-01", hora: str = "13:00") -> dict:
+    """Payload mínimo para POST /reservas.
+    2026-12-01 es martes (weekday=1, clave 'martes').
+    """
+    return {
+        "usuarioId": "u_test",
+        "nombreCompleto": "Test User",
+        "fecha": fecha,
+        "hora": hora,
+        "comensales": 2,
+        "turno": "comida",
+        "restauranteId": restaurante_id,
+    }
+
+
+def test_reserva_dia_abierto_acepta_hora_en_rango(client):
+    """POST /reservas con restaurante que tiene 'martes' abierto y hora en rango → 200/201."""
+    horarios = {
+        "martes": {"apertura": "09:00", "cierre": "23:00", "abierto": True},
+    }
+    rid = _insertar_restaurante_con_horarios(horarios)
+    _insertar_mesa_para_restaurante(rid)
+
+    resp = client.post(
+        "/api/v1/reservas",
+        json=_payload_reserva(rid, fecha="2026-12-01", hora="13:00"),
+        headers=_tok_cliente("u_test"),
+    )
+    assert resp.status_code in (200, 201), resp.json()
+    data = resp.json()
+    assert data["fecha"] == "2026-12-01"
+
+
+def test_reserva_dia_cerrado_devuelve_400(client):
+    """POST /reservas con restaurante que tiene 'martes' cerrado (abierto=false) → 400."""
+    horarios = {
+        "martes": {"apertura": "09:00", "cierre": "23:00", "abierto": False},
+    }
+    rid = _insertar_restaurante_con_horarios(horarios)
+    _insertar_mesa_para_restaurante(rid)
+
+    resp = client.post(
+        "/api/v1/reservas",
+        json=_payload_reserva(rid, fecha="2026-12-01", hora="13:00"),
+        headers=_tok_cliente("u_test"),
+    )
+    assert resp.status_code == 400, resp.json()
+    assert "cerrado" in resp.json()["detail"].lower()

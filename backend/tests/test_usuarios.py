@@ -437,3 +437,113 @@ def test_login_usuario_legacy_sin_campo_activo_no_bloquea(client):
             json={"correo": "suspendido@test.com", "password": "Segura1!"},
         )
     assert resp.status_code == 200, resp.json()
+
+
+# ─── Fix 1: IDOR en endpoints de perfil ──────────────────────────────────────
+
+def _tok_cliente(user_id: str = "cliente_123") -> dict:
+    token = crear_token({
+        "sub": user_id,
+        "correo": "cliente@test.com",
+        "rol": "cliente",
+    })
+    return {"Authorization": f"Bearer {token}"}
+
+
+def test_ver_perfil_sin_token_devuelve_401(client):
+    uid = _insertar_usuario("perfil_noauth@test.com")
+    resp = client.get(f"/api/v1/usuarios/{uid}")
+    assert resp.status_code == 401
+
+
+def test_cliente_no_puede_ver_perfil_en_usuarios(client):
+    """Un cliente obtiene 403 intentando usar GET /usuarios/{id} — debe usar /clientes/me."""
+    uid = _insertar_usuario("perfil_cliente_bloqueado@test.com", rol="cliente")
+    tok = _tok_cliente(user_id=uid)
+    resp = client.get(f"/api/v1/usuarios/{uid}", headers=tok)
+    assert resp.status_code == 403, resp.json()
+
+
+def test_admin_puede_ver_perfil_de_empleado(client):
+    """Admin puede consultar el perfil de cualquier empleado."""
+    uid = _insertar_usuario("perfil_para_admin@test.com", rol="camarero")
+    resp = client.get(f"/api/v1/usuarios/{uid}", headers=_tok_admin("R1"))
+    assert resp.status_code == 200, resp.json()
+
+
+def test_actualizar_perfil_sin_token_devuelve_401(client):
+    uid = _insertar_usuario("perfil_update_noauth@test.com")
+    resp = client.put(f"/api/v1/usuarios/{uid}", json={"nombre": "Nuevo"})
+    assert resp.status_code == 401
+
+
+def test_cliente_no_puede_editar_perfil_en_usuarios(client):
+    """Un cliente recibe 403 intentando usar PUT /usuarios/{id} — debe usar PUT /clientes/me."""
+    uid = _insertar_usuario("ajeno_edit@test.com", rol="cliente")
+    tok = _tok_cliente(user_id=uid)
+    resp = client.put(f"/api/v1/usuarios/{uid}", json={"nombre": "Hack"},
+                      headers=tok)
+    assert resp.status_code == 403, resp.json()
+
+
+def test_admin_puede_editar_correo_y_activo_de_empleado(client):
+    """Admin puede cambiar correo y activo de un empleado a través de PUT /usuarios/{id}."""
+    from database import coleccion_usuarios
+    uid = _insertar_usuario("empleado_edit@test.com", rol="camarero")
+    resp = client.put(
+        f"/api/v1/usuarios/{uid}",
+        json={"correo": "nuevo@camarero.com", "activo": False},
+        headers=_tok_admin("R1"),
+    )
+    assert resp.status_code == 200, resp.json()
+    doc = coleccion_usuarios.find_one({"_id": __import__("bson").ObjectId(uid)})
+    assert doc["correo"] == "nuevo@camarero.com"
+    assert doc["activo"] is False
+
+
+def test_cambiar_password_sin_token_devuelve_401(client):
+    uid = _insertar_usuario("pwd_noauth@test.com")
+    resp = client.put(f"/api/v1/usuarios/{uid}/cambiar-password",
+                      json={"password_actual": "x", "nueva_password": "y"})
+    assert resp.status_code == 401
+
+
+def test_cliente_no_puede_cambiar_password_en_usuarios(client):
+    """Un cliente recibe 403 intentando PUT /usuarios/{id}/cambiar-password — debe usar PUT /clientes/me/password."""
+    uid = _insertar_usuario("pwd_ajeno@test.com", rol="cliente")
+    tok = _tok_cliente(user_id=uid)
+    resp = client.put(f"/api/v1/usuarios/{uid}/cambiar-password",
+                      json={"password_actual": "x", "nueva_password": "y"},
+                      headers=tok)
+    assert resp.status_code == 403, resp.json()
+
+
+def test_mis_datos_endpoint_eliminado_devuelve_404(client):
+    """GET /usuarios/{id}/mis-datos ya no existe — los clientes usan GET /clientes/me/datos."""
+    uid = _insertar_usuario("misdatos_eliminado@test.com", rol="cliente")
+    tok = _tok_cliente(user_id=uid)
+    resp = client.get(f"/api/v1/usuarios/{uid}/mis-datos", headers=tok)
+    assert resp.status_code == 404
+
+
+def test_mi_cuenta_endpoint_eliminado_devuelve_404(client):
+    """DELETE /usuarios/{id}/mi-cuenta ya no existe — los clientes usan DELETE /clientes/me."""
+    uid = _insertar_usuario("baja_eliminado@test.com", rol="cliente")
+    tok = _tok_cliente(user_id=uid)
+    resp = client.delete(f"/api/v1/usuarios/{uid}/mi-cuenta", headers=tok)
+    assert resp.status_code == 404
+
+
+# ─── Fix 2: Escalada de privilegios en registro público ──────────────────────
+
+# ─── RGPD: exportar_mis_datos incluye pedidos ────────────────────────────────
+
+
+
+# NOTE: Los tests de RGPD (mis-datos, pedidos) para el endpoint
+# GET /usuarios/{id}/mis-datos se eliminaron junto con el endpoint.
+# Su cobertura equivalente vive en test_clientes.py usando GET /clientes/me/datos.
+
+# NOTE: test_registro_publico_ignora_rol_admin se eliminó porque el endpoint
+# POST /api/v1/registro fue eliminado de auth.py. Su equivalente vive en
+# test_clientes.py → test_registro_ignora_rol_admin (usa /api/v1/clientes/registro).

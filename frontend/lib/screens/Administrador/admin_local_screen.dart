@@ -6,6 +6,7 @@ import '../../core/colors_style.dart';
 import '../../models/restaurante_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/restaurante_service.dart';
+import 'admin_local_editar_screen.dart';
 
 class AdminLocalScreen extends StatefulWidget {
   const AdminLocalScreen({super.key});
@@ -181,8 +182,8 @@ class _AdminLocalScreenState extends State<AdminLocalScreen> {
           _buildEstadoCard(r),
           const SizedBox(height: 32),
 
-          // Nota informativa
-          _buildNotaSutil(),
+          // Botón de edición
+          _buildBotonEditar(),
           const SizedBox(height: 24),
         ],
       ),
@@ -310,8 +311,8 @@ class _AdminLocalScreenState extends State<AdminLocalScreen> {
   }
 
   Widget _buildHorarioCard(Restaurante r) {
-    final apertura = r.horarioApertura ?? '—';
-    final cierre = r.horarioCierre ?? '—';
+    final tienePorDia = r.horariosDia != null &&
+        r.horariosDia!.values.any((h) => h.abierto);
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(14),
@@ -325,9 +326,13 @@ class _AdminLocalScreenState extends State<AdminLocalScreen> {
             border: Border.all(color: Colors.white12, width: 1),
           ),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.schedule_outlined,
-                  color: AppColors.button, size: 22),
+              const Padding(
+                padding: EdgeInsets.only(top: 2),
+                child: Icon(Icons.schedule_outlined,
+                    color: AppColors.button, size: 22),
+              ),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
@@ -342,14 +347,18 @@ class _AdminLocalScreenState extends State<AdminLocalScreen> {
                         letterSpacing: 1.5,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        _horaChip('Apertura', apertura, Colors.green),
-                        const SizedBox(width: 12),
-                        _horaChip('Cierre', cierre, AppColors.error),
-                      ],
-                    ),
+                    const SizedBox(height: 8),
+                    if (tienePorDia)
+                      _buildHorariosPorDia(r.horariosDia!)
+                    else
+                      const Text(
+                        'Sin horario configurado',
+                        style: TextStyle(
+                          color: Colors.white38,
+                          fontSize: 13,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -360,26 +369,61 @@ class _AdminLocalScreenState extends State<AdminLocalScreen> {
     );
   }
 
-  Widget _horaChip(String etiqueta, String hora, Color color) {
+  Widget _buildHorariosPorDia(Map<String, HorarioDia> horarios) {
+    const dias = [
+      ('lunes', 'Lunes'),
+      ('martes', 'Martes'),
+      ('miercoles', 'Miércoles'),
+      ('jueves', 'Jueves'),
+      ('viernes', 'Viernes'),
+      ('sabado', 'Sábado'),
+      ('domingo', 'Domingo'),
+    ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          etiqueta,
-          style: TextStyle(
-            color: color.withValues(alpha: 0.8),
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
+        for (final (clave, etiqueta) in dias)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 3),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 78,
+                  child: Text(
+                    etiqueta,
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Builder(builder: (_) {
+                    final h = horarios[clave];
+                    if (h == null || !h.abierto) {
+                      return const Text(
+                        'Cerrado',
+                        style: TextStyle(
+                          color: Colors.white38,
+                          fontSize: 13,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      );
+                    }
+                    return Text(
+                      '${h.apertura} – ${h.cierre}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    );
+                  }),
+                ),
+              ],
+            ),
           ),
-        ),
-        Text(
-          hora,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
       ],
     );
   }
@@ -437,26 +481,31 @@ class _AdminLocalScreenState extends State<AdminLocalScreen> {
     );
   }
 
-  Widget _buildNotaSutil() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(Icons.info_outline, color: Colors.white30, size: 18),
-          const SizedBox(width: 10),
-          const Expanded(
-            child: Text(
-              'Para modificar estos datos contacta con el administrador general.',
-              style: TextStyle(color: Colors.white54, fontSize: 13, height: 1.5),
+  Widget _buildBotonEditar() {
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: ElevatedButton.icon(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.button,
+          foregroundColor: Colors.white,
+          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+          elevation: 0,
+        ),
+        icon: const Icon(Icons.edit_outlined, size: 18),
+        label: const Text(
+          'EDITAR LOCAL',
+          style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 2),
+        ),
+        onPressed: () async {
+          final actualizado = await Navigator.push<bool>(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const AdminLocalEditarScreen(),
             ),
-          ),
-        ],
+          );
+          if (actualizado == true) _cargar();
+        },
       ),
     );
   }

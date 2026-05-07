@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from exceptions import AppError, NotFoundError, ConflictError, ValidacionError
 from datetime import datetime, timezone, timedelta
@@ -10,7 +10,7 @@ from typing import Optional
 import csv
 import io
 import logging
-from pymongo.errors import OperationFailure
+from pymongo.errors import DuplicateKeyError, OperationFailure
 
 from database import coleccion_pedidos, coleccion_productos, coleccion_ingredientes, coleccion_usuarios, cliente
 from models import PedidoCrear
@@ -322,8 +322,26 @@ _ESTADOS_VALIDOS = {"pendiente", "preparando", "listo", "entregado", "cancelado"
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
+def _pedido_a_respuesta(pedido_doc: dict, n_items: int) -> dict:
+    """Convierte un documento de pedido de MongoDB al shape de respuesta del endpoint."""
+    return {
+        "id": str(pedido_doc["_id"]),
+        "fecha": pedido_doc.get("fecha", ""),
+        "total": pedido_doc.get("total", 0),
+        "estado": pedido_doc.get("estado", "pendiente"),
+        "estadoPago": pedido_doc.get("estado_pago", "pendiente"),
+        "items": n_items,
+        "mesaId": pedido_doc.get("mesa_id"),
+        "numeroMesa": pedido_doc.get("numero_mesa"),
+    }
+
+
 @router.post("")
-async def crear_pedido(pedido: PedidoCrear):
+async def crear_pedido(
+    pedido: PedidoCrear,
+    current_user: dict = Depends(get_current_user),
+    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
+):
     items_dict = [item.model_dump() for item in pedido.items]
 
     # Compute total from authoritative DB prices — never trust client-supplied totals
@@ -340,8 +358,31 @@ async def crear_pedido(pedido: PedidoCrear):
         item["precio"] = precio_real
         total_calculado += precio_real * item["cantidad"]
 
+    # Para clientes, ignorar userId del payload y usar el sub del JWT.
+    # Admin y personal de sala/cocina pueden crear pedidos en nombre de cualquier usuario.
+    rol_actor = normalizar_rol(current_user.get("rol", ""))
+    if rol_actor == "cliente":
+        usuario_id_pedido = current_user["sub"]
+    else:
+        usuario_id_pedido = pedido.userId
+
+    # ── Idempotencia server-side ──────────────────────────────────────────────
+    # Si el cliente manda Idempotency-Key, buscamos un pedido previo con la
+    # misma (usuario_id, idempotency_key). Si existe, devolvemos ese pedido
+    # sin crear uno nuevo (respuesta 200 idempotente).
+    if idempotency_key:
+        ik = idempotency_key.strip()
+        if ik:
+            existing = coleccion_pedidos.find_one(
+                {"usuario_id": usuario_id_pedido, "idempotency_key": ik}
+            )
+            if existing:
+                items_raw = existing.get("items", [])
+                n = len(items_raw) if isinstance(items_raw, list) else 0
+                return _pedido_a_respuesta(existing, n)
+
     pedido_dict = {
-        "usuario_id": pedido.userId,
+        "usuario_id": usuario_id_pedido,
         "items": items_dict,
         "tipo_entrega": _normalizar_tipo_entrega(pedido.tipoEntrega),
         "metodo_pago": pedido.metodoPago,
@@ -352,6 +393,9 @@ async def crear_pedido(pedido: PedidoCrear):
         "referencia_pago": pedido.referenciaPago,
         "estado_pago": pedido.estadoPago or "pendiente",
     }
+
+    if idempotency_key and idempotency_key.strip():
+        pedido_dict["idempotency_key"] = idempotency_key.strip()
 
     if pedido.direccionEntrega:
         pedido_dict["direccion_entrega"] = pedido.direccionEntrega
@@ -374,12 +418,33 @@ async def crear_pedido(pedido: PedidoCrear):
                 resultado = coleccion_pedidos.insert_one(pedido_dict, session=session)
     except AppError:
         raise
+    except DuplicateKeyError:
+        # Race condition: otro request con la misma idempotency_key llegó antes.
+        # Recuperamos el pedido existente y lo devolvemos.
+        existing = coleccion_pedidos.find_one(
+            {"usuario_id": usuario_id_pedido, "idempotency_key": idempotency_key.strip()}
+        )
+        if existing:
+            items_raw = existing.get("items", [])
+            n = len(items_raw) if isinstance(items_raw, list) else 0
+            return _pedido_a_respuesta(existing, n)
+        raise  # error DuplicateKey en otro campo — propagar
     except OperationFailure as e:
         # MongoDB standalone no soporta transacciones: fallback a operaciones atómicas por documento
         if "Transaction numbers are only allowed" in str(e) or e.code == 20:
             logger.warning("MongoDB standalone detectado: usando actualizaciones atómicas sin transacción")
-            _descontar_stock(items_dict, restaurante_id=rid_pedido)
-            resultado = coleccion_pedidos.insert_one(pedido_dict)
+            try:
+                _descontar_stock(items_dict, restaurante_id=rid_pedido)
+                resultado = coleccion_pedidos.insert_one(pedido_dict)
+            except DuplicateKeyError:
+                existing = coleccion_pedidos.find_one(
+                    {"usuario_id": usuario_id_pedido, "idempotency_key": idempotency_key.strip()}
+                ) if idempotency_key else None
+                if existing:
+                    items_raw = existing.get("items", [])
+                    n = len(items_raw) if isinstance(items_raw, list) else 0
+                    return _pedido_a_respuesta(existing, n)
+                raise
         else:
             logger.error(f"Error de base de datos creando pedido: {e}")
             raise  # deja que el handler global lo capture como 500

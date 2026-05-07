@@ -205,7 +205,7 @@ class _PerfilTrabajadorScreenState extends State<PerfilTrabajadorScreen> {
           padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
           child: Container(
             decoration: const BoxDecoration(
-              color: AppColors.gold,
+              color: AppColors.bottomSheetBg,
               borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
             ),
             padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
@@ -354,7 +354,7 @@ class _PerfilTrabajadorScreenState extends State<PerfilTrabajadorScreen> {
           padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
           child: Container(
             decoration: const BoxDecoration(
-              color: AppColors.gold,
+              color: AppColors.bottomSheetBg,
               borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
             ),
             padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),

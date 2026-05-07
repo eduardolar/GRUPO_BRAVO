@@ -43,7 +43,7 @@ class EntradaTexto extends StatelessWidget {
         style: const TextStyle(color: AppColors.textPrimary),
         readOnly: readOnly,
         decoration: InputDecoration(
-          prefixIcon: Icon(icono, color: AppColors.gold),
+          prefixIcon: Icon(icono, color: AppColors.bottomSheetBg),
           // Solo muestra el botón del ojo si el campo se marcó como contraseña
           suffixIcon: esContrasena
               ? IconButton(

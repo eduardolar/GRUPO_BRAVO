@@ -48,13 +48,9 @@ class RestauranteService {
     required String id,
     required String nombre,
     required String direccion,
-    String? horarioApertura,
-    String? horarioCierre,
   }) async {
     try {
       final body = <String, dynamic>{'nombre': nombre, 'direccion': direccion};
-      if (horarioApertura != null) body['horario_apertura'] = horarioApertura;
-      if (horarioCierre != null) body['horario_cierre'] = horarioCierre;
 
       final response = await httpWithRetry(
         () => http.put(

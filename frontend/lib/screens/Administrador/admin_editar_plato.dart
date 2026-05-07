@@ -755,7 +755,7 @@ class _EditorProductoSheetState extends State<_EditorProductoSheet> {
   }) {
     return Row(
       children: [
-        Icon(icono, size: 16, color: AppColors.gold),
+        Icon(icono, size: 16, color: AppColors.bottomSheetBg),
         const SizedBox(width: 8),
         Text(
           titulo,
@@ -851,7 +851,7 @@ class _EditorProductoSheetState extends State<_EditorProductoSheet> {
     return InputDecoration(
       labelText: etiqueta,
       labelStyle: const TextStyle(color: Colors.white60),
-      prefixIcon: Icon(icono, color: AppColors.gold),
+      prefixIcon: Icon(icono, color: AppColors.bottomSheetBg),
       suffixText: suffixText,
       suffixStyle: const TextStyle(color: Colors.white54),
       filled: true,

@@ -137,11 +137,7 @@ class _CartaScreenState extends State<CartaScreen> {
     if (!producto.estaDisponible) return;
 
     if (_restaurante != null && !_restaurante!.estaAbierto()) {
-      _showSnack(
-        'COCINA CERRADA · REABRE A LAS '
-        '${(_restaurante!.horarioApertura ?? '—').toUpperCase()}',
-        error: true,
-      );
+      _showSnack('COCINA CERRADA', error: true);
       return;
     }
 
@@ -175,6 +171,11 @@ class _CartaScreenState extends State<CartaScreen> {
       return;
     }
     _lastReorderTap = now;
+
+    if (_restaurante != null && !_restaurante!.estaAbierto()) {
+      _showSnack('COCINA CERRADA', error: true);
+      return;
+    }
 
     final cart = context.read<CartProvider>();
     int agregados = 0;
@@ -234,7 +235,7 @@ class _CartaScreenState extends State<CartaScreen> {
             child: const Text(
               'Cambiar',
               style: TextStyle(
-                color: AppColors.gold,
+                color: AppColors.bottomSheetBg,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -258,6 +259,10 @@ class _CartaScreenState extends State<CartaScreen> {
   }
 
   void _irACheckout() {
+    if (_restaurante != null && !_restaurante!.estaAbierto()) {
+      _showSnack('COCINA CERRADA', error: true);
+      return;
+    }
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const PantallaOpcionesEntrega()),
@@ -331,7 +336,10 @@ class _CartaScreenState extends State<CartaScreen> {
         ],
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: _CartFAB(onTap: _irACheckout),
+      floatingActionButton: _CartFAB(
+        onTap: _irACheckout,
+        enabled: _restaurante == null || _restaurante!.estaAbierto(),
+      ),
     );
   }
 
@@ -695,7 +703,7 @@ class _ChipRestaurante extends StatelessWidget {
                     style: const TextStyle(color: Colors.white38, fontSize: 11),
                   ),
                   const SizedBox(width: 4),
-                  const Icon(Icons.sync, color: AppColors.gold, size: 12),
+                  const Icon(Icons.sync, color: AppColors.bottomSheetBg, size: 12),
                 ],
               ),
             ),
@@ -710,9 +718,25 @@ class _CerradoBanner extends StatelessWidget {
   final Restaurante restaurante;
   const _CerradoBanner({required this.restaurante});
 
+  /// Devuelve la hora de apertura del día de hoy según horariosDia, o null.
+  String? _aperturaHoy() {
+    final hd = restaurante.horariosDia;
+    if (hd == null) return null;
+    const claves = [
+      'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo',
+    ];
+    final idx = DateTime.now().weekday - 1;
+    final h = hd[claves[idx]];
+    if (h != null && h.abierto) return h.apertura;
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final reapertura = restaurante.horarioApertura ?? '—';
+    final reapertura = _aperturaHoy();
+    final texto = reapertura != null
+        ? 'COCINA CERRADA · Reabre a las $reapertura'
+        : 'COCINA CERRADA HOY';
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 0, 20, 6),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -726,7 +750,7 @@ class _CerradoBanner extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'COCINA CERRADA · Reabre a las $reapertura',
+              texto,
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 12,
@@ -958,7 +982,8 @@ class _Chip extends StatelessWidget {
 
 class _CartFAB extends StatelessWidget {
   final VoidCallback onTap;
-  const _CartFAB({required this.onTap});
+  final bool enabled;
+  const _CartFAB({required this.onTap, this.enabled = true});
 
   @override
   Widget build(BuildContext context) {
@@ -967,14 +992,16 @@ class _CartFAB extends StatelessWidget {
         if (cart.totalQuantity == 0) return const SizedBox.shrink();
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Material(
-            color: AppColors.button,
-            borderRadius: _kRadius,
-            elevation: 4,
-            shadowColor: Colors.black54,
-            child: InkWell(
-              onTap: onTap,
+          child: Opacity(
+            opacity: enabled ? 1.0 : 0.5,
+            child: Material(
+              color: AppColors.button,
               borderRadius: _kRadius,
+              elevation: enabled ? 4 : 0,
+              shadowColor: Colors.black54,
+              child: InkWell(
+                onTap: onTap,
+                borderRadius: _kRadius,
               child: Padding(
                 padding: const EdgeInsets.symmetric(
                   vertical: 16,
@@ -1030,6 +1057,7 @@ class _CartFAB extends StatelessWidget {
                 ),
               ),
             ),
+          ),
           ),
         );
       },

@@ -102,7 +102,9 @@ class AuthProvider with ChangeNotifier {
     required String email,
     required String contrasena,
     required String telefono,
-    required String direccion,
+    // La dirección se recoge en OpcionesEntregaScreen la primera vez que el
+    // usuario pide a domicilio, por lo que es opcional al registrarse.
+    String direccion = '',
     required bool consentimientoRgpd,
   }) async {
     try {
@@ -157,7 +159,6 @@ class AuthProvider with ChangeNotifier {
   }) async {
     if (_usuarioActual == null) throw Exception('No hay usuario autenticado');
     final success = await AuthService.actualizarPerfil(
-      userId: _usuarioActual!.id,
       nombre: nombre,
       email: email,
       telefono: telefono,
@@ -180,7 +181,6 @@ class AuthProvider with ChangeNotifier {
   }) async {
     if (_usuarioActual == null) throw Exception('No hay usuario autenticado');
     await AuthService.cambiarContrasena(
-      userId: _usuarioActual!.id,
       passwordActual: passwordActual,
       nuevaPassword: nuevaPassword,
     );
@@ -188,9 +188,7 @@ class AuthProvider with ChangeNotifier {
 
   Future<void> eliminarCuenta() async {
     if (_usuarioActual == null) throw Exception('No hay usuario autenticado');
-    final success = await AuthService.eliminarCuenta(
-      userId: _usuarioActual!.id,
-    );
+    final success = await AuthService.eliminarCuenta();
     if (!success) throw Exception('Error al eliminar la cuenta');
     _usuarioActual = null;
     await AuthSession.limpiar();

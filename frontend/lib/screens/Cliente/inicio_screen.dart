@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:frontend/components/bravo_app_bar.dart';
 import 'package:frontend/core/app_routes.dart';
+import 'package:frontend/core/app_snackbar.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/core/url_helper.dart';
 import 'package:frontend/models/destino_login.dart';
@@ -94,7 +95,6 @@ class _InicioScreenState extends State<InicioScreen> {
     final sessionId = _stripeSessionId!;
     _stripeSessionId = null;
     final navigator = Navigator.of(context);
-    final messenger = ScaffoldMessenger.of(context);
     try {
       final pagado = await ApiService.verificarCheckoutSession(
         sessionId: sessionId,
@@ -113,18 +113,11 @@ class _InicioScreenState extends State<InicioScreen> {
         ),
       );
     } catch (e) {
-      debugPrint('Error verificando Stripe: $e');
       if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(
-          content: const Text(
-            'No pudimos verificar el pago. Inténtalo de nuevo.',
-          ),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-          shape: const RoundedRectangleBorder(borderRadius: _kRadius),
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-        ),
+      handleApiError(
+        context,
+        e,
+        prefix: 'No pudimos verificar el pago',
       );
     }
   }
@@ -582,7 +575,6 @@ class _BotonesPrincipales extends StatelessWidget {
   Future<void> _escanearQr(BuildContext context) async {
     final cart = context.read<CartProvider>();
     final navigator = Navigator.of(context);
-    final messenger = ScaffoldMessenger.of(context);
 
     final codigoQr = await navigator.push<String>(
       AppRoute.slideUp(const QRScanner()),
@@ -604,17 +596,8 @@ class _BotonesPrincipales extends StatelessWidget {
             : AppRoute.slideUp(const LoginScreen(destino: DestinoLogin.menu)),
       );
     } catch (e) {
-      messenger
-        ..clearSnackBars()
-        ..showSnackBar(
-          SnackBar(
-            content: Text('Error al validar el QR: $e'),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-            shape: const RoundedRectangleBorder(borderRadius: _kRadius),
-            margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-          ),
-        );
+      if (!context.mounted) return;
+      handleApiError(context, e, prefix: 'Error al validar el QR');
     }
   }
 }

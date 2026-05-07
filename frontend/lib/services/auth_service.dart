@@ -101,7 +101,7 @@ class AuthService {
 
     final response = await httpWithRetry(
       () => http.post(
-        Uri.parse('$baseUrl/registro'),
+        Uri.parse('$baseUrl/clientes/registro'),
         headers: AuthSession.headers(),
         body: jsonEncode({
           'nombre': nombre,
@@ -131,7 +131,7 @@ class AuthService {
 
     final response = await httpWithRetry(
       () => http.post(
-        Uri.parse('$baseUrl/verificar-codigo'),
+        Uri.parse('$baseUrl/clientes/verificar-email'),
         headers: AuthSession.headers(),
         body: jsonEncode({'correo': correo, 'codigo': codigo}),
       ),
@@ -150,7 +150,7 @@ class AuthService {
 
     final response = await httpWithRetry(
       () => http.post(
-        Uri.parse('$baseUrl/recuperar-password'),
+        Uri.parse('$baseUrl/clientes/recuperar-password'),
         headers: AuthSession.headers(),
         body: jsonEncode({'correo': correo}),
       ),
@@ -174,7 +174,7 @@ class AuthService {
 
     final response = await httpWithRetry(
       () => http.post(
-        Uri.parse('$baseUrl/reset-password'),
+        Uri.parse('$baseUrl/clientes/restablecer-password'),
         headers: AuthSession.headers(),
         body: jsonEncode({
           'correo': correo,
@@ -198,7 +198,7 @@ class AuthService {
 
     final response = await httpWithRetry(
       () => http.post(
-        Uri.parse('$baseUrl/reenviar-codigo'),
+        Uri.parse('$baseUrl/clientes/reenviar-codigo'),
         headers: AuthSession.headers(),
         body: jsonEncode({'correo': correo}),
       ),
@@ -234,7 +234,6 @@ class AuthService {
   }
 
   static Future<bool> actualizarPerfil({
-    required String userId,
     required String nombre,
     required String email,
     required String telefono,
@@ -247,7 +246,7 @@ class AuthService {
 
     final response = await httpWithRetry(
       () => http.put(
-        Uri.parse('$baseUrl/usuarios/$userId'),
+        Uri.parse('$baseUrl/clientes/me'),
         headers: AuthSession.headers(),
         body: jsonEncode({
           'nombre': nombre,
@@ -261,21 +260,17 @@ class AuthService {
     return response.statusCode == 200;
   }
 
-  static Future<Map<String, dynamic>> verPerfil({
-    required String userId,
-  }) async {
+  static Future<Map<String, dynamic>> verPerfil() async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 300));
-      final usuario = MockData.usuarios.firstWhere(
-        (u) => u.id == userId,
-        orElse: () => throw const ApiException(404, 'Usuario no encontrado'),
-      );
+      final usuario = MockData.usuarios.firstOrNull;
+      if (usuario == null) throw const ApiException(404, 'Usuario no encontrado');
       return usuario.toJson();
     }
 
     final response = await httpWithRetry(
       () => http.get(
-        Uri.parse('$baseUrl/usuarios/$userId'),
+        Uri.parse('$baseUrl/clientes/me'),
         headers: AuthSession.headers(),
       ),
     );
@@ -286,7 +281,7 @@ class AuthService {
     throw toApiException(response.statusCode, decodeBody(response));
   }
 
-  static Future<bool> eliminarPerfil({required String userId}) async {
+  static Future<bool> eliminarPerfil() async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 300));
       return true;
@@ -294,7 +289,7 @@ class AuthService {
 
     final response = await httpWithRetry(
       () => http.delete(
-        Uri.parse('$baseUrl/usuarios/$userId'),
+        Uri.parse('$baseUrl/clientes/me'),
         headers: AuthSession.headers(),
       ),
       retry: false,
@@ -303,7 +298,6 @@ class AuthService {
   }
 
   static Future<void> cambiarContrasena({
-    required String userId,
     required String passwordActual,
     required String nuevaPassword,
   }) async {
@@ -314,7 +308,7 @@ class AuthService {
 
     final response = await httpWithRetry(
       () => http.put(
-        Uri.parse('$baseUrl/usuarios/$userId/cambiar-password'),
+        Uri.parse('$baseUrl/clientes/me/password'),
         headers: AuthSession.headers(),
         body: jsonEncode({
           'password_actual': passwordActual,
@@ -329,7 +323,7 @@ class AuthService {
     }
   }
 
-  static Future<bool> eliminarCuenta({required String userId}) async {
+  static Future<bool> eliminarCuenta() async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 500));
       return true;
@@ -338,7 +332,7 @@ class AuthService {
     // RGPD art. 17: llama al endpoint de anonimización, no de borrado total.
     final response = await httpWithRetry(
       () => http.delete(
-        Uri.parse('$baseUrl/usuarios/$userId/mi-cuenta'),
+        Uri.parse('$baseUrl/clientes/me'),
         headers: AuthSession.headers(),
       ),
       retry: false,

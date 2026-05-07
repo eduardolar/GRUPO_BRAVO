@@ -1,6 +1,7 @@
-"""Tests for 2FA recovery code utilities in routes/auth.py."""
+"""Tests for 2FA recovery code utilities (now in utils/auth_helpers.py)."""
 import hashlib
-from routes.auth import _generar_codigos_recuperacion, _buscar_codigo_recuperacion
+from utils.auth_helpers import generar_codigos_recuperacion as _generar_codigos_recuperacion
+from utils.auth_helpers import buscar_codigo_recuperacion as _buscar_codigo_recuperacion
 
 
 class TestGenerarCodigosRecuperacion:

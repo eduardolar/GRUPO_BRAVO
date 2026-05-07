@@ -7,36 +7,25 @@ from typing import Optional
 from database import coleccion_usuarios, coleccion_auditoria, coleccion_restaurantes
 from exceptions import NotFoundError, ConflictError, ValidacionError, AutenticacionError, AutorizacionError
 from bson import ObjectId
-from database import coleccion_usuarios
 import audit_general as ag
-from models import UsuarioActualizar
 from security import require_role, normalizar_rol, ROLES_CANONICOS
 from limiter import limiter
 
-_FOOTER_RGPD = """
-<div style="color:#9B9B9B;font-size:11px;margin-top:20px;padding-top:12px;
-            border-top:1px solid #E0DBD3;text-align:center;line-height:1.6;">
-  <strong>Restaurante Bravo</strong> — Responsable del tratamiento.<br>
-  Tus datos son tratados conforme al RGPD (UE) 2016/679 y la LOPDGDD 3/2018.<br>
-  <a href="https://grupobravo.com/privacidad" style="color:#800020;">
-    Política de Privacidad</a> &nbsp;·&nbsp;
-  <a href="mailto:privacidad@grupobravo.com" style="color:#800020;">
-    Ejercer derechos ARSULIPO</a>
-</div>
-"""
 from pydantic import BaseModel, EmailStr
 from fastapi_mail import FastMail, MessageSchema, MessageType
 
-# Importar la configuración de correo desde auth
-from routes.auth import conf
+# Importar helpers compartidos
+from utils.auth_helpers import (
+    conf,
+    FOOTER_RGPD as _FOOTER_RGPD,
+    hash_otp as _hash_otp_util,
+    expiry_iso as _expiry_iso_util,
+)
 
 def _actor_de(request: Request) -> Optional[str]:
-    """Devuelve el correo del usuario que ejecuta la acción.
-
-    Prioriza el JWT firmado (`Authorization: Bearer …`) — fuente de verdad
-    inmutable por el cliente. Solo cae al header legacy `X-Actor` cuando no
-    hay token (compatibilidad con flujos públicos como el registro inicial).
-    """
+    """Devuelve el correo del usuario que ejecuta la acción, exclusivamente
+    desde el JWT firmado (`Authorization: Bearer …`). Fuente de verdad
+    inmutable por el cliente."""
     auth = request.headers.get("Authorization") or ""
     if auth.lower().startswith("bearer "):
         token = auth[7:].strip()
@@ -48,11 +37,9 @@ def _actor_de(request: Request) -> Optional[str]:
             if isinstance(correo, str) and correo.strip():
                 return correo.strip()
         except (JWTError, Exception):
-            # Token corrupto/expirado: caemos al header legacy.
             pass
 
-    valor = request.headers.get("X-Actor")
-    return valor.strip() if valor and valor.strip() else None
+    return None
 
 
 async def _enviar_correo_activacion(email: str, nombre: str, codigo: str):
@@ -95,7 +82,9 @@ class CambiarPassword(BaseModel):
     password_actual: str
     nueva_password: str
 
-# NUEVO: Agregamos latitud y longitud
+# Modelo que admin/super_admin usa para editar empleados.
+# Incluye correo, activo y rol porque son exclusivos de admins
+# (los clientes usan PUT /clientes/me que tiene su propio modelo restringido).
 class UsuarioActualizar(BaseModel):
     nombre: str | None = None
     correo: str | None = None
@@ -103,7 +92,8 @@ class UsuarioActualizar(BaseModel):
     direccion: str | None = ""
     latitud: float | None = None
     longitud: float | None = None
-    activo: bool | None = None    
+    activo: bool | None = None
+    rol: str | None = None
 
 # Modelo para crear usuarios desde el panel de Admin
 class UsuarioCrear(BaseModel):
@@ -197,7 +187,9 @@ def obtener_auditoria_usuarios(
 
 
 @router.get("/{user_id}")
-def ver_perfil(user_id: str):
+def ver_perfil(user_id: str, _actor: dict = Depends(require_role(["admin", "super_admin"]))):
+    """Obtiene el perfil de un usuario. Solo accesible por admin/super_admin.
+    Los clientes usan GET /clientes/me para su propio perfil."""
     usuario = coleccion_usuarios.find_one({"_id": ObjectId(user_id)})
     if not usuario:
         raise NotFoundError("Usuario no encontrado")
@@ -211,20 +203,27 @@ def ver_perfil(user_id: str):
         "longitud": usuario.get("longitud"),
         "rol": usuario.get("rol", "cliente"),
     }
-@router.put("/{user_id}")
-def actualizar_perfil(user_id: str, datos: UsuarioActualizar, request: Request):
-    # 1. Convertimos el modelo Pydantic a un diccionario de Python
-    datos_dict = datos.dict()
 
-    # Creamos un nuevo diccionario solo con los campos
-    # que NO son None. Así no intentamos sobrescribir nombre/correo con nulos.
+@router.put("/{user_id}")
+def actualizar_perfil(user_id: str, datos: UsuarioActualizar, request: Request,
+                      actor: dict = Depends(require_role(["admin", "super_admin"]))):
+    """Edita los datos de un empleado. Solo accesible por admin/super_admin.
+    Los clientes usan PUT /clientes/me para su propio perfil."""
+    # Convertimos el modelo Pydantic a un diccionario de Python sin valores None.
+    datos_dict = datos.dict()
     actualizacion = {k: v for k, v in datos_dict.items() if v is not None}
 
     # Si por algún motivo el diccionario queda vacío, avisamos
     if not actualizacion:
         raise ValidacionError("No se enviaron datos válidos para actualizar")
 
-    # 3. Ejecutamos la actualización en MongoDB usando solo los campos filtrados
+    # Normalizar rol si se envía
+    if "rol" in actualizacion:
+        rol_limpio = normalizar_rol(actualizacion["rol"])
+        if rol_limpio not in ROLES_CANONICOS:
+            raise ValidacionError(f"Rol '{rol_limpio}' no válido")
+        actualizacion["rol"] = rol_limpio
+
     resultado = coleccion_usuarios.update_one(
         {"_id": ObjectId(user_id)},
         {"$set": actualizacion}
@@ -241,7 +240,10 @@ def actualizar_perfil(user_id: str, datos: UsuarioActualizar, request: Request):
     return {"mensaje": "Perfil actualizado correctamente"}
 
 @router.put("/{user_id}/cambiar-password")
-def cambiar_password(user_id: str, datos: CambiarPassword):
+def cambiar_password(user_id: str, datos: CambiarPassword,
+                     _actor: dict = Depends(require_role(["admin", "super_admin"]))):
+    """Cambia la contraseña de un empleado. Solo accesible por admin/super_admin.
+    Los clientes usan PUT /clientes/me/password para su propia contraseña."""
     usuario = coleccion_usuarios.find_one({"_id": ObjectId(user_id)})
     if not usuario:
         raise NotFoundError("Usuario no encontrado")
@@ -409,6 +411,7 @@ async def crear_usuario(
 
     # Código para que el empleado active su cuenta y establezca su contraseña
     reset_code = ''.join(random.choices(string.digits, k=6))
+    reset_code_hash = _hash_otp_util(reset_code)
 
     nuevo_usuario = {
         "nombre": datos.nombre,
@@ -423,7 +426,7 @@ async def crear_usuario(
         "latitud": None,
         "longitud": None,
         "verification_code": None,
-        "reset_code": reset_code,
+        "reset_code": reset_code_hash,
     }
 
     resultado = coleccion_usuarios.insert_one(nuevo_usuario)
@@ -482,82 +485,6 @@ def reactivar_usuario(
     return {"mensaje": "Usuario reactivado", "activo": True}
 
 
-# ── RGPD: derechos ARSULIPO ────────────────────────────────────────────────────
-
-@router.get("/{user_id}/mis-datos")
-def exportar_mis_datos(user_id: str):
-    """RGPD art. 15/20 — Derecho de acceso y portabilidad. Devuelve los datos
-    personales del usuario en formato JSON descargable."""
-    try:
-        oid = ObjectId(user_id)
-    except Exception:
-        raise ValidacionError("ID de usuario inválido")
-
-    usuario = coleccion_usuarios.find_one({"_id": oid})
-    if not usuario:
-        raise NotFoundError("Usuario no encontrado")
-
-    return {
-        "id": str(usuario["_id"]),
-        "nombre": usuario.get("nombre", ""),
-        "correo": usuario.get("correo", ""),
-        "telefono": usuario.get("telefono", ""),
-        "direccion": usuario.get("direccion", ""),
-        "rol": usuario.get("rol", ""),
-        "is_verified": usuario.get("is_verified", False),
-        "consentimiento_rgpd": usuario.get("consentimiento_rgpd", False),
-        "consentimiento_fecha": usuario.get("consentimiento_fecha"),
-        "fecha_registro": str(oid.generation_time.isoformat()),
-        "totp_enabled": usuario.get("totp_enabled", False),
-        "email_2fa_enabled": usuario.get("email_2fa_enabled", False),
-    }
-
-
-@router.delete("/{user_id}/mi-cuenta")
-def solicitar_baja(user_id: str, request: Request):
-    """RGPD art. 17 — Derecho de supresión. Anonimiza los datos personales del
-    usuario conservando el documento para integridad contable de pedidos."""
-    try:
-        oid = ObjectId(user_id)
-    except Exception:
-        raise ValidacionError("ID de usuario inválido")
-
-    usuario = coleccion_usuarios.find_one({"_id": oid})
-    if not usuario:
-        raise NotFoundError("Usuario no encontrado")
-
-    correo_original = usuario.get("correo", user_id)
-    correo_anonimo = f"baja_{user_id}@bravo.eliminado"
-
-    coleccion_usuarios.update_one(
-        {"_id": oid},
-        {"$set": {
-            "nombre": "Usuario eliminado",
-            "correo": correo_anonimo,
-            "telefono": "",
-            "direccion": "",
-            "latitud": None,
-            "longitud": None,
-            "password_hash": "",
-            "is_verified": False,
-            "activo": False,
-            "rgpd_baja": True,
-            "rgpd_baja_fecha": datetime.now(timezone.utc).isoformat(),
-            "totp_enabled": False,
-            "totp_secret": None,
-            "email_2fa_enabled": False,
-            "verification_code": None,
-            "reset_code": None,
-            "login_code_2fa": None,
-            "recovery_codes": [],
-        }}
-    )
-
-    ag.registrar(
-        ag.USUARIO_ELIMINADO,
-        actor=correo_original,
-        objetivo=correo_original,
-        detalle="Baja RGPD — datos anonimizados",
-    )
-    return {"mensaje": "Cuenta eliminada. Tus datos personales han sido anonimizados conforme al RGPD."}
+# NOTE: GET /{user_id}/mis-datos y DELETE /{user_id}/mi-cuenta han sido
+# eliminados. Los clientes usan GET /clientes/me/datos y DELETE /clientes/me.
 

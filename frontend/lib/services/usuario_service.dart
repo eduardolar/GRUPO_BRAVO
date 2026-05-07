@@ -178,16 +178,15 @@ class UsuarioService {
     }
   }
 
-  // 8. Persistencia de Dirección y Coordenadas
+  // 8. Persistencia de Dirección y Coordenadas (perfil propio del cliente)
   Future<bool> actualizarDireccion({
-    required String userId,
     required String direccion,
     required double latitud,
     required double longitud,
   }) async {
     try {
       final response = await http.put(
-        Uri.parse('$baseUrl/usuarios/$userId'),
+        Uri.parse('$baseUrl/clientes/me'),
         headers: _headersConActor(),
         body: jsonEncode({
           'direccion': direccion,

@@ -18,7 +18,7 @@ from fastapi.responses import JSONResponse
 
 import cloudinary_client
 from database import coleccion_productos, coleccion_restaurantes
-from security import require_role
+from security import require_role, get_current_user, normalizar_rol
 
 _log = logging.getLogger("uvicorn")
 
@@ -207,13 +207,29 @@ def borrar_imagen(
 
 @router.post(
     "/restaurantes/{restaurante_id}/logo",
-    summary="Subir o reemplazar el logo de una sucursal (super_admin)",
+    summary="Subir o reemplazar el logo de una sucursal (super_admin global; admin solo su sucursal)",
 )
 def subir_logo_restaurante(
     restaurante_id: str,
     file: UploadFile = File(...),
-    _actor: dict = Depends(require_role(["super_admin"])),
+    usuario: dict = Depends(get_current_user),
 ):
+    # 0. Comprobar autorización: super_admin global, admin solo su sucursal
+    rol = normalizar_rol(usuario.get("rol", ""))
+    if rol == "super_admin":
+        pass  # acceso global
+    elif rol == "admin":
+        if str(usuario.get("restaurante_id", "")) != str(restaurante_id):
+            return JSONResponse(
+                status_code=403,
+                content={"detail": "No tienes permiso para modificar el logo de esta sucursal"},
+            )
+    else:
+        return JSONResponse(
+            status_code=403,
+            content={"detail": "No tienes permiso para esta acción"},
+        )
+
     # 1. Verificar disponibilidad de Cloudinary
     if not cloudinary_client._DISPONIBLE:
         return JSONResponse(status_code=503, content={"detail": _MSG_503})
@@ -293,12 +309,28 @@ def subir_logo_restaurante(
 
 @router.delete(
     "/restaurantes/{restaurante_id}/logo",
-    summary="Eliminar el logo de una sucursal (super_admin)",
+    summary="Eliminar el logo de una sucursal (super_admin global; admin solo su sucursal)",
 )
 def borrar_logo_restaurante(
     restaurante_id: str,
-    _actor: dict = Depends(require_role(["super_admin"])),
+    usuario: dict = Depends(get_current_user),
 ):
+    # 0. Comprobar autorización: super_admin global, admin solo su sucursal
+    rol = normalizar_rol(usuario.get("rol", ""))
+    if rol == "super_admin":
+        pass  # acceso global
+    elif rol == "admin":
+        if str(usuario.get("restaurante_id", "")) != str(restaurante_id):
+            return JSONResponse(
+                status_code=403,
+                content={"detail": "No tienes permiso para modificar el logo de esta sucursal"},
+            )
+    else:
+        return JSONResponse(
+            status_code=403,
+            content={"detail": "No tienes permiso para esta acción"},
+        )
+
     # 1. Verificar disponibilidad de Cloudinary
     if not cloudinary_client._DISPONIBLE:
         return JSONResponse(status_code=503, content={"detail": _MSG_503})

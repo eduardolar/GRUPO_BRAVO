@@ -42,6 +42,9 @@ dependencies:
   # Selector de imagen desde galería / cámara (subida de foto de producto)
   image_picker: ^1.0.7
 
+  # Generación de UUID v4 para idempotency keys en checkout
+  uuid: ^4.5.1
+
   # Web APIs (window.print, history.replaceState…). Solo se importa desde
   # implementaciones condicionales `*_web.dart`; en móvil se usa el stub.
   web: ^1.1.1

@@ -1218,7 +1218,7 @@ class _BottomSheetContainer extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
-        color: AppColors.gold,
+        color: AppColors.bottomSheetBg,
         borderRadius: BorderRadius.vertical(
           top: Radius.circular(_kSheetTopRadius),
         ),

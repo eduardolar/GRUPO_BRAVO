@@ -44,8 +44,15 @@ def _auth_super_admin() -> dict:
 # ── Validación (sin BD) ───────────────────────────────────────────────────────
 
 def test_items_vacios_devuelven_422(client):
-    resp = client.post("/api/v1/pedidos", json={**PEDIDO_VALIDO, "items": []})
+    resp = client.post("/api/v1/pedidos", json={**PEDIDO_VALIDO, "items": []},
+                       headers=_auth_cliente())
     assert resp.status_code == 422
+
+
+def test_crear_pedido_sin_token_devuelve_401(client):
+    """POST /pedidos sin token debe devolver 401."""
+    resp = client.post("/api/v1/pedidos", json=PEDIDO_VALIDO)
+    assert resp.status_code == 401
 
 
 def test_total_del_cliente_es_ignorado(client):
@@ -67,31 +74,36 @@ def test_total_del_cliente_es_ignorado(client):
         mock_session = MagicMock()
         mock_cliente.start_session.return_value.__enter__.return_value = mock_session
 
-        resp = client.post("/api/v1/pedidos", json={**PEDIDO_VALIDO, "total": 0.01})
+        resp = client.post("/api/v1/pedidos", json={**PEDIDO_VALIDO, "total": 0.01},
+                           headers=_auth_cliente())
 
     assert resp.status_code == 200
     assert resp.json()["total"] == 25.0
 
 
 def test_metodo_pago_invalido_devuelve_422(client):
-    resp = client.post("/api/v1/pedidos", json={**PEDIDO_VALIDO, "metodoPago": "cripto"})
+    resp = client.post("/api/v1/pedidos", json={**PEDIDO_VALIDO, "metodoPago": "cripto"},
+                       headers=_auth_cliente())
     assert resp.status_code == 422
 
 
 def test_tipo_entrega_invalido_devuelve_422(client):
-    resp = client.post("/api/v1/pedidos", json={**PEDIDO_VALIDO, "tipoEntrega": "volando"})
+    resp = client.post("/api/v1/pedidos", json={**PEDIDO_VALIDO, "tipoEntrega": "volando"},
+                       headers=_auth_cliente())
     assert resp.status_code == 422
 
 
 def test_item_cantidad_cero_devuelve_422(client):
     item_malo = {**ITEM_VALIDO, "cantidad": 0}
-    resp = client.post("/api/v1/pedidos", json={**PEDIDO_VALIDO, "items": [item_malo]})
+    resp = client.post("/api/v1/pedidos", json={**PEDIDO_VALIDO, "items": [item_malo]},
+                       headers=_auth_cliente())
     assert resp.status_code == 422
 
 
 def test_item_precio_negativo_devuelve_422(client):
     item_malo = {**ITEM_VALIDO, "precio": -1}
-    resp = client.post("/api/v1/pedidos", json={**PEDIDO_VALIDO, "items": [item_malo]})
+    resp = client.post("/api/v1/pedidos", json={**PEDIDO_VALIDO, "items": [item_malo]},
+                       headers=_auth_cliente())
     assert resp.status_code == 422
 
 
@@ -117,7 +129,7 @@ def test_crear_pedido_ok(client):
         mock_session = MagicMock()
         mock_cliente.start_session.return_value.__enter__.return_value = mock_session
 
-        resp = client.post("/api/v1/pedidos", json=PEDIDO_VALIDO)
+        resp = client.post("/api/v1/pedidos", json=PEDIDO_VALIDO, headers=_auth_cliente())
 
     assert resp.status_code == 200
     data = resp.json()
@@ -142,7 +154,8 @@ def test_tipo_entrega_mesa_normaliza_a_local(client):
         mock_productos.find_one.return_value = {"precio": 12.50, "ingredientes": []}
         mock_usuarios.find_one.return_value = None
 
-        resp = client.post("/api/v1/pedidos", json={**PEDIDO_VALIDO, "tipoEntrega": "mesa"})
+        resp = client.post("/api/v1/pedidos", json={**PEDIDO_VALIDO, "tipoEntrega": "mesa"},
+                           headers=_auth_cliente())
 
     assert resp.status_code == 200
 
@@ -167,7 +180,7 @@ def test_stock_insuficiente_devuelve_409(client):
         mock_session = MagicMock()
         mock_cliente.start_session.return_value.__enter__.return_value = mock_session
 
-        resp = client.post("/api/v1/pedidos", json=PEDIDO_VALIDO)
+        resp = client.post("/api/v1/pedidos", json=PEDIDO_VALIDO, headers=_auth_cliente())
 
     assert resp.status_code == 409
     assert "harina" in resp.json()["detail"].lower() or "stock" in resp.json()["detail"].lower()
@@ -875,3 +888,142 @@ def test_export_formato_invalido_devuelve_422(client):
         headers=_auth_admin(),
     )
     assert resp.status_code == 422
+
+
+# ── Idempotency Key ───────────────────────────────────────────────────────────
+
+def _make_pedido_mock(pedido_id=None):
+    """Devuelve los mocks necesarios para crear un pedido con éxito."""
+    if pedido_id is None:
+        pedido_id = ObjectId()
+    mock_insert = MagicMock()
+    mock_insert.inserted_id = pedido_id
+    return pedido_id, mock_insert
+
+
+def test_doble_post_misma_idempotency_key_devuelve_mismo_id(client):
+    """Dos POST con la misma Idempotency-Key y el mismo usuario devuelven el mismo pedido."""
+    pedido_id = ObjectId()
+    mock_insert = MagicMock()
+    mock_insert.inserted_id = pedido_id
+
+    # Primer pedido existente que devolverá find_one en la segunda llamada
+    pedido_existente = {
+        "_id": pedido_id,
+        "usuario_id": "u_cliente",
+        "fecha": "2025-01-01T10:00:00",
+        "total": 25.0,
+        "estado": "pendiente",
+        "estado_pago": "pendiente",
+        "items": [ITEM_VALIDO],
+        "idempotency_key": "key-abc-123",
+    }
+
+    headers = {**_auth_cliente("u_cliente"), "Idempotency-Key": "key-abc-123"}
+
+    with patch("routes.pedidos.cliente") as mock_cliente, \
+         patch("routes.pedidos.coleccion_pedidos") as mock_pedidos, \
+         patch("routes.pedidos.coleccion_productos") as mock_productos, \
+         patch("routes.pedidos.coleccion_ingredientes"), \
+         patch("routes.pedidos.coleccion_usuarios") as mock_usuarios, \
+         patch("routes.pedidos._enviar_factura", new_callable=AsyncMock):
+
+        mock_productos.find_one.return_value = {"precio": 12.50, "ingredientes": []}
+        mock_usuarios.find_one.return_value = None
+        mock_session = MagicMock()
+        mock_cliente.start_session.return_value.__enter__.return_value = mock_session
+
+        # Primera llamada: find_one → None (no existe), insert_one devuelve nuevo pedido
+        mock_pedidos.find_one.return_value = None
+        mock_pedidos.insert_one.return_value = mock_insert
+        resp1 = client.post("/api/v1/pedidos", json=PEDIDO_VALIDO, headers=headers)
+
+        # Segunda llamada: find_one → devuelve el pedido existente (mismo id)
+        mock_pedidos.find_one.return_value = pedido_existente
+        resp2 = client.post("/api/v1/pedidos", json=PEDIDO_VALIDO, headers=headers)
+
+    assert resp1.status_code == 200, resp1.json()
+    assert resp2.status_code == 200, resp2.json()
+    # Ambas respuestas deben devolver el mismo id
+    assert resp1.json()["id"] == str(pedido_id)
+    assert resp2.json()["id"] == str(pedido_id)
+
+
+def test_doble_post_sin_idempotency_key_crea_dos_pedidos(client):
+    """Dos POST sin Idempotency-Key deben crear dos pedidos distintos (compatibilidad)."""
+    id1 = ObjectId()
+    id2 = ObjectId()
+    mock_insert1 = MagicMock()
+    mock_insert1.inserted_id = id1
+    mock_insert2 = MagicMock()
+    mock_insert2.inserted_id = id2
+
+    with patch("routes.pedidos.cliente") as mock_cliente, \
+         patch("routes.pedidos.coleccion_pedidos") as mock_pedidos, \
+         patch("routes.pedidos.coleccion_productos") as mock_productos, \
+         patch("routes.pedidos.coleccion_ingredientes"), \
+         patch("routes.pedidos.coleccion_usuarios") as mock_usuarios, \
+         patch("routes.pedidos._enviar_factura", new_callable=AsyncMock):
+
+        mock_productos.find_one.return_value = {"precio": 12.50, "ingredientes": []}
+        mock_usuarios.find_one.return_value = None
+        mock_session = MagicMock()
+        mock_cliente.start_session.return_value.__enter__.return_value = mock_session
+
+        # Sin header Idempotency-Key: find_one no debe ser llamado para idempotencia
+        mock_pedidos.insert_one.return_value = mock_insert1
+        resp1 = client.post("/api/v1/pedidos", json=PEDIDO_VALIDO, headers=_auth_cliente("u_cliente"))
+
+        mock_pedidos.insert_one.return_value = mock_insert2
+        resp2 = client.post("/api/v1/pedidos", json=PEDIDO_VALIDO, headers=_auth_cliente("u_cliente"))
+
+    assert resp1.status_code == 200, resp1.json()
+    assert resp2.status_code == 200, resp2.json()
+    # Deben ser pedidos distintos
+    assert resp1.json()["id"] != resp2.json()["id"]
+    assert resp1.json()["id"] == str(id1)
+    assert resp2.json()["id"] == str(id2)
+
+
+def test_misma_idempotency_key_usuario_distinto_crea_pedido_nuevo(client):
+    """Misma Idempotency-Key con distinto usuario_id crea pedidos independientes."""
+    id_u1 = ObjectId()
+    id_u2 = ObjectId()
+    mock_insert_u1 = MagicMock()
+    mock_insert_u1.inserted_id = id_u1
+    mock_insert_u2 = MagicMock()
+    mock_insert_u2.inserted_id = id_u2
+
+    same_key = "shared-key-xyz"
+
+    with patch("routes.pedidos.cliente") as mock_cliente, \
+         patch("routes.pedidos.coleccion_pedidos") as mock_pedidos, \
+         patch("routes.pedidos.coleccion_productos") as mock_productos, \
+         patch("routes.pedidos.coleccion_ingredientes"), \
+         patch("routes.pedidos.coleccion_usuarios") as mock_usuarios, \
+         patch("routes.pedidos._enviar_factura", new_callable=AsyncMock):
+
+        mock_productos.find_one.return_value = {"precio": 12.50, "ingredientes": []}
+        mock_usuarios.find_one.return_value = None
+        mock_session = MagicMock()
+        mock_cliente.start_session.return_value.__enter__.return_value = mock_session
+
+        # Usuario 1: find_one → None, crea pedido nuevo
+        mock_pedidos.find_one.return_value = None
+        mock_pedidos.insert_one.return_value = mock_insert_u1
+        headers_u1 = {**_auth_cliente("u_user1"), "Idempotency-Key": same_key}
+        resp1 = client.post("/api/v1/pedidos", json=PEDIDO_VALIDO, headers=headers_u1)
+
+        # Usuario 2: find_one → None (clave misma pero usuario distinto, no existe),
+        # crea también su pedido nuevo
+        mock_pedidos.find_one.return_value = None
+        mock_pedidos.insert_one.return_value = mock_insert_u2
+        headers_u2 = {**_auth_cliente("u_user2"), "Idempotency-Key": same_key}
+        resp2 = client.post("/api/v1/pedidos", json=PEDIDO_VALIDO, headers=headers_u2)
+
+    assert resp1.status_code == 200, resp1.json()
+    assert resp2.status_code == 200, resp2.json()
+    # Usuarios distintos → pedidos distintos aunque la key sea la misma
+    assert resp1.json()["id"] == str(id_u1)
+    assert resp2.json()["id"] == str(id_u2)
+    assert resp1.json()["id"] != resp2.json()["id"]

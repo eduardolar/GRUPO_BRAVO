@@ -96,7 +96,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
       case 'pendiente':
         return AppColors.noDisp;
       case 'preparando':
-        return const Color(0xFFD97706);
+        return AppColors.warning;
       case 'listo':
         return AppColors.button;
       case 'entregado':

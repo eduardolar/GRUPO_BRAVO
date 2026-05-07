@@ -53,27 +53,25 @@ class ApiService {
   );
 
   static Future<bool> actualizarPerfil({
-    required String userId,
     required String nombre,
     required String email,
     required String telefono,
     required String direccion,
   }) => AuthService.actualizarPerfil(
-    userId: userId,
     nombre: nombre,
     email: email,
     telefono: telefono,
     direccion: direccion,
   );
 
-  static Future<Map<String, dynamic>> verPerfil({required String userId}) =>
-      AuthService.verPerfil(userId: userId);
+  static Future<Map<String, dynamic>> verPerfil() =>
+      AuthService.verPerfil();
 
-  static Future<bool> eliminarPerfil({required String userId}) =>
-      AuthService.eliminarPerfil(userId: userId);
+  static Future<bool> eliminarPerfil() =>
+      AuthService.eliminarPerfil();
 
-  static Future<bool> eliminarCuenta({required String userId}) =>
-      AuthService.eliminarCuenta(userId: userId);
+  static Future<bool> eliminarCuenta() =>
+      AuthService.eliminarCuenta();
 
   // ─── CATEGORÍAS ──────────────────────────────────────────────
 
@@ -168,6 +166,7 @@ class ApiService {
     String? referenciaPago,
     required String estadoPago,
     String? restauranteId,
+    String? idempotencyKey,
   }) => PedidoService.crearPedido(
     userId: userId,
     items: items,
@@ -181,6 +180,7 @@ class ApiService {
     referenciaPago: referenciaPago,
     estadoPago: estadoPago,
     restauranteId: restauranteId,
+    idempotencyKey: idempotencyKey,
   );
 
   static Future<void> agregarItemsPedido({
