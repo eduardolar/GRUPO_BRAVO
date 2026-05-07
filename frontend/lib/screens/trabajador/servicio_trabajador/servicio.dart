@@ -247,24 +247,11 @@ class _ActionButtonsServicio extends StatelessWidget {
         _MainButton(
           icon: Icons.edit_outlined,
           label: "Modificar comanda",
-          icon: Icons.edit_outlined,
-          label: "Modificar comanda",
           onPressed: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const ModificarComanda()),
+              MaterialPageRoute(builder: (_) => const ModificarComanda()),
             );
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const ModificarComanda()),
-            );
-            // Para añadir items hay que elegir primero la mesa: la pantalla
-            // SeleccionMesa muestra el flujo completo y permite continuar.
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const SeleccionMesa()),
-            );
-            showAppInfo(context, 'Selecciona la mesa para añadir items');
           },
         ),
         _MainButton(
