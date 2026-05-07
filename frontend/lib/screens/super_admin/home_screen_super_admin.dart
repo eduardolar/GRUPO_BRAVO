@@ -63,29 +63,10 @@ class _HomeScreenSuperAdminState extends State<HomeScreenSuperAdmin> {
   void _ir(BuildContext context, Widget screen) =>
       Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
 
-  // ── Validación de hora ──────────────────────────────────────────
-  static String? _validarHora(String? v) {
-    if (v == null || v.trim().isEmpty) return null;
-    final parts = v.trim().split(':');
-    if (parts.length != 2) return 'Usa HH:MM';
-    final h = int.tryParse(parts[0]);
-    final m = int.tryParse(parts[1]);
-    if (h == null || m == null || h < 0 || h > 23 || m < 0 || m > 59) {
-      return 'Hora inválida';
-    }
-    return null;
-  }
-
   // ── Diálogo crear/editar sucursal ───────────────────────────────
   Future<void> _mostrarFormulario({Restaurante? restaurante}) async {
     final nombreCtrl = TextEditingController(text: restaurante?.nombre ?? '');
     final dirCtrl = TextEditingController(text: restaurante?.direccion ?? '');
-    final apertCtrl = TextEditingController(
-      text: restaurante?.horarioApertura ?? '',
-    );
-    final cierreCtrl = TextEditingController(
-      text: restaurante?.horarioCierre ?? '',
-    );
     final formKey = GlobalKey<FormState>();
     final esEdicion = restaurante != null;
 
@@ -117,32 +98,6 @@ class _HomeScreenSuperAdminState extends State<HomeScreenSuperAdmin> {
                 icon: Icons.location_on_outlined,
                 validator: (v) =>
                     v == null || v.trim().isEmpty ? 'Obligatorio' : null,
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _campo(
-                      ctrl: apertCtrl,
-                      label: 'Apertura (HH:MM)',
-                      hint: '09:00',
-                      icon: Icons.schedule_outlined,
-                      keyboard: TextInputType.datetime,
-                      validator: _validarHora,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _campo(
-                      ctrl: cierreCtrl,
-                      label: 'Cierre (HH:MM)',
-                      hint: '23:00',
-                      icon: Icons.schedule_outlined,
-                      keyboard: TextInputType.datetime,
-                      validator: _validarHora,
-                    ),
-                  ),
-                ],
               ),
             ],
           ),
@@ -177,8 +132,6 @@ class _HomeScreenSuperAdminState extends State<HomeScreenSuperAdmin> {
     final provider = context.read<RestauranteProvider>();
     final nombre = nombreCtrl.text.trim();
     final direccion = dirCtrl.text.trim();
-    final apertura = apertCtrl.text.trim();
-    final cierre = cierreCtrl.text.trim();
 
     bool exito;
     if (esEdicion) {
@@ -186,8 +139,6 @@ class _HomeScreenSuperAdminState extends State<HomeScreenSuperAdmin> {
         id: restaurante.id,
         nombre: nombre,
         direccion: direccion,
-        horarioApertura: apertura,
-        horarioCierre: cierre,
       );
     } else {
       exito = await provider.crear(nombre: nombre, direccion: direccion);
@@ -1222,6 +1173,18 @@ class _SucursalGlassCard extends StatelessWidget {
     required this.onReactivar,
   });
 
+  /// Devuelve "HH:MM–HH:MM" del día actual si está configurado y abierto, o null.
+  static String? _horarioHoy(Restaurante r) {
+    final hd = r.horariosDia;
+    if (hd == null) return null;
+    const claves = [
+      'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo',
+    ];
+    final h = hd[claves[DateTime.now().weekday - 1]];
+    if (h == null || !h.abierto) return null;
+    return '${h.apertura}–${h.cierre}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final r = restaurante;
@@ -1340,8 +1303,7 @@ class _SucursalGlassCard extends StatelessWidget {
                             const SizedBox(height: 4),
                             Row(
                               children: [
-                                if (r.horarioApertura != null &&
-                                    r.horarioCierre != null) ...[
+                                if (_horarioHoy(r) != null) ...[
                                   Icon(
                                     Icons.schedule_outlined,
                                     size: 13,
@@ -1349,7 +1311,7 @@ class _SucursalGlassCard extends StatelessWidget {
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
-                                    '${r.horarioApertura} - ${r.horarioCierre}',
+                                    'Hoy: ${_horarioHoy(r)}',
                                     style: TextStyle(
                                       fontSize: 11,
                                       color:

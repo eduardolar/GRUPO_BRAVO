@@ -47,15 +47,11 @@ class RestauranteProvider with ChangeNotifier {
     required String id,
     required String nombre,
     required String direccion,
-    String? horarioApertura,
-    String? horarioCierre,
   }) async {
     final ok = await _service.editarRestaurante(
       id: id,
       nombre: nombre,
       direccion: direccion,
-      horarioApertura: horarioApertura,
-      horarioCierre: horarioCierre,
     );
     if (ok) {
       _restaurantes = _restaurantes.map((r) {
@@ -65,12 +61,6 @@ class RestauranteProvider with ChangeNotifier {
           nombre: nombre,
           direccion: direccion,
           codigo: r.codigo,
-          horarioApertura: horarioApertura == null
-              ? r.horarioApertura
-              : (horarioApertura.isEmpty ? null : horarioApertura),
-          horarioCierre: horarioCierre == null
-              ? r.horarioCierre
-              : (horarioCierre.isEmpty ? null : horarioCierre),
         );
       }).toList();
       notifyListeners();
@@ -88,8 +78,6 @@ class RestauranteProvider with ChangeNotifier {
           nombre: r.nombre,
           direccion: r.direccion,
           codigo: r.codigo,
-          horarioApertura: r.horarioApertura,
-          horarioCierre: r.horarioCierre,
           activo: activo,
         );
       }).toList();

@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/models/reserva_model.dart';
-import 'package:frontend/models/restaurante_model.dart';
 import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/providers/cart_provider.dart';
 import 'package:frontend/providers/restaurante_provider.dart';
@@ -72,8 +71,6 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
 
   List<Reserva> _misReservas = [];
   bool _cargandoReservas = false;
-
-  Restaurante? _restaurante;
 
   static const double _dateItemWidth = 64.0;
 
@@ -150,7 +147,7 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
     super.dispose();
   }
 
-  // ── Horario del restaurante ──
+  // ── Carga inicial del restaurante (para refrescar disponibilidad) ──
   Future<void> _loadRestaurante() async {
     final cartRid = context.read<CartProvider>().restauranteId;
     if (cartRid == null) return;
@@ -158,33 +155,15 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
       final prov = context.read<RestauranteProvider>();
       if (prov.restaurantes.isEmpty) await prov.cargar();
       if (!mounted) return;
-      final matches = prov.restaurantes.where((r) => r.id == cartRid);
-      if (matches.isNotEmpty) {
-        setState(() => _restaurante = matches.first);
-        _cargarDisponibilidad();
-      }
+      _cargarDisponibilidad();
     } catch (e) {
       debugPrint('$e');
     }
   }
 
-  static int _parseMins(String t) {
-    final parts = t.split(':');
-    return int.parse(parts[0]) * 60 + int.parse(parts[1]);
-  }
-
-  bool _horaEnRango(TimeOfDay t) {
-    final r = _restaurante;
-    if (r?.horarioApertura == null || r?.horarioCierre == null) return true;
-    final mins = t.hour * 60 + t.minute;
-    final apertura = _parseMins(r!.horarioApertura!);
-    final cierre = _parseMins(r.horarioCierre!);
-    if (cierre > apertura) {
-      return mins >= apertura && mins < cierre;
-    } else {
-      return mins >= apertura || mins < cierre;
-    }
-  }
+  // Con horariosDia los slots ya están definidos por turno (comida/cena),
+  // no hay filtrado adicional por rango: todos los slots del turno son válidos.
+  bool _horaEnRango(TimeOfDay t) => true;
 
   List<TimeOfDay> _horasFiltradas(String turno) =>
       _horasPorTurno[turno]!.where(_horaEnRango).toList();
@@ -939,12 +918,10 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
                   size: 16,
                 ),
                 const SizedBox(width: 10),
-                Expanded(
+                const Expanded(
                   child: Text(
-                    _restaurante?.horarioApertura != null
-                        ? 'El restaurante no tiene horario de ${_turnoSeleccionado == 'comida' ? 'comida' : 'cena'} · Abre ${_restaurante!.horarioApertura} – ${_restaurante!.horarioCierre}'
-                        : 'No hay horarios disponibles para este turno',
-                    style: const TextStyle(color: Colors.white38, fontSize: 12),
+                    'No hay horarios disponibles para este turno',
+                    style: TextStyle(color: Colors.white38, fontSize: 12),
                   ),
                 ),
               ],

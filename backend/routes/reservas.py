@@ -261,21 +261,47 @@ def crear_reserva(
         if rid_jwt:
             restaurante_id_final = rid_jwt
 
-    # Validar horario del restaurante si se proporcionó
+    # Validar horario del restaurante usando horarios_dia
     if restaurante_id_final:
         try:
             rest = coleccion_restaurantes.find_one({"_id": ObjectId(restaurante_id_final)})
         except Exception:
             rest = None
         if rest:
-            apertura = rest.get("horario_apertura")
-            cierre = rest.get("horario_cierre")
-            if apertura and cierre:
-                if not _hora_en_rango(reserva.hora, apertura, cierre):
-                    raise HTTPException(
-                        status_code=400,
-                        detail=f"El restaurante no acepta reservas a las {reserva.hora}. Horario de apertura: {apertura} – {cierre}",
-                    )
+            horarios_dia = rest.get("horarios_dia")
+            if horarios_dia:
+                _DIAS_ES = [
+                    "lunes", "martes", "miercoles", "jueves",
+                    "viernes", "sabado", "domingo",
+                ]
+                try:
+                    fecha_dt = date.fromisoformat(reserva.fecha)
+                    dia_key = _DIAS_ES[fecha_dt.weekday()]
+                except (ValueError, IndexError):
+                    dia_key = None
+                if dia_key:
+                    entrada_dia = horarios_dia.get(dia_key, {})
+                    abierto_raw = entrada_dia.get("abierto", True)
+                    if isinstance(abierto_raw, str):
+                        abierto = abierto_raw.lower() not in ("false", "0", "no")
+                    else:
+                        abierto = bool(abierto_raw)
+                    if not abierto:
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"El restaurante está cerrado el {dia_key}",
+                        )
+                    apertura = entrada_dia.get("apertura")
+                    cierre = entrada_dia.get("cierre")
+                    if apertura and cierre:
+                        if not _hora_en_rango(reserva.hora, apertura, cierre):
+                            raise HTTPException(
+                                status_code=400,
+                                detail=(
+                                    f"El restaurante no acepta reservas a las {reserva.hora}. "
+                                    f"Horario del {dia_key}: {apertura} – {cierre}"
+                                ),
+                            )
 
     ocupadas = _mesas_ocupadas_por_hora(reserva.fecha, reserva.hora, restaurante_id_final)
 

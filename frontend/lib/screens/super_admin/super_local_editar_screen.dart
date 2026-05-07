@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -12,6 +10,9 @@ import '../../models/restaurante_model.dart';
 import '../../services/http_client.dart';
 import '../../services/restaurante_service.dart';
 import '../../services/super_admin_service.dart';
+import '../shared/restaurante_editor/components/glass_card.dart';
+import '../shared/restaurante_editor/components/campo_form.dart';
+import '../shared/restaurante_editor/components/selector_hora.dart';
 
 // ─── Constantes locales ───────────────────────────────────────────────────────
 
@@ -277,7 +278,10 @@ class _SuperLocalEditarScreenState extends State<SuperLocalEditarScreen> {
             onSurface: Colors.white,
           ),
         ),
-        child: child!,
+        child: MediaQuery(
+          data: MediaQuery.of(ctx).copyWith(alwaysUse24HourFormat: true),
+          child: child!,
+        ),
       ),
     );
     if (picked == null) return null;
@@ -488,10 +492,10 @@ class _SuperLocalEditarScreenState extends State<SuperLocalEditarScreen> {
   // ── Datos básicos ─────────────────────────────────────────────────────────
 
   Widget _buildDatosBasicos() {
-    return _GlassCard(
+    return GlassCard(
       child: Column(
         children: [
-          _Campo(
+          CampoForm(
             ctrl: _nombreCtrl,
             label: 'Nombre',
             icono: Icons.storefront_outlined,
@@ -499,7 +503,7 @@ class _SuperLocalEditarScreenState extends State<SuperLocalEditarScreen> {
                 v == null || v.trim().isEmpty ? 'Campo obligatorio' : null,
           ),
           const SizedBox(height: 14),
-          _Campo(
+          CampoForm(
             ctrl: _direccionCtrl,
             label: 'Dirección',
             icono: Icons.location_on_outlined,
@@ -507,7 +511,7 @@ class _SuperLocalEditarScreenState extends State<SuperLocalEditarScreen> {
                 v == null || v.trim().isEmpty ? 'Campo obligatorio' : null,
           ),
           const SizedBox(height: 14),
-          _Campo(
+          CampoForm(
             ctrl: _codigoCtrl,
             label: 'Código de sucursal',
             icono: Icons.tag_outlined,
@@ -523,7 +527,7 @@ class _SuperLocalEditarScreenState extends State<SuperLocalEditarScreen> {
     final tieneLogoServidor = _logoUrl != null && _logoUrl!.isNotEmpty;
     final tieneLogoNuevo = _logoBytes != null;
 
-    return _GlassCard(
+    return GlassCard(
       child: Column(
         children: [
           // Preview
@@ -648,7 +652,7 @@ class _SuperLocalEditarScreenState extends State<SuperLocalEditarScreen> {
     // Tomamos el horario del lunes como modelo para "aplicar a todos".
     final modeloLunes = _horariosDia['lunes'] ?? const HorarioDia();
 
-    return _GlassCard(
+    return GlassCard(
       child: Column(
         children: [
           // Filas de días
@@ -730,7 +734,7 @@ class _SuperLocalEditarScreenState extends State<SuperLocalEditarScreen> {
           // Selectores de hora (solo cuando está abierto)
           if (horario.abierto) ...[
             const SizedBox(width: 8),
-            _BotoraHora(
+            SelectorHora(
               hora: horario.apertura,
               tooltip: 'Hora de apertura del ${dia.etiqueta}',
               onTap: () async {
@@ -746,7 +750,7 @@ class _SuperLocalEditarScreenState extends State<SuperLocalEditarScreen> {
               padding: EdgeInsets.symmetric(horizontal: 6),
               child: Text('–', style: TextStyle(color: Colors.white54)),
             ),
-            _BotoraHora(
+            SelectorHora(
               hora: horario.cierre,
               tooltip: 'Hora de cierre del ${dia.etiqueta}',
               onTap: () async {
@@ -774,10 +778,10 @@ class _SuperLocalEditarScreenState extends State<SuperLocalEditarScreen> {
   // ── Datos fiscales ────────────────────────────────────────────────────────
 
   Widget _buildDatosFiscales() {
-    return _GlassCard(
+    return GlassCard(
       child: Column(
         children: [
-          _Campo(
+          CampoForm(
             ctrl: _cifCtrl,
             label: 'CIF',
             icono: Icons.fingerprint_outlined,
@@ -792,13 +796,13 @@ class _SuperLocalEditarScreenState extends State<SuperLocalEditarScreen> {
             },
           ),
           const SizedBox(height: 14),
-          _Campo(
+          CampoForm(
             ctrl: _razonSocialCtrl,
             label: 'Razón social',
             icono: Icons.business_outlined,
           ),
           const SizedBox(height: 14),
-          _Campo(
+          CampoForm(
             ctrl: _dirFiscalCtrl,
             label: 'Dirección fiscal',
             icono: Icons.location_city_outlined,
@@ -808,7 +812,7 @@ class _SuperLocalEditarScreenState extends State<SuperLocalEditarScreen> {
             children: [
               Expanded(
                 flex: 2,
-                child: _Campo(
+                child: CampoForm(
                   ctrl: _cpCtrl,
                   label: 'Código postal',
                   icono: Icons.markunread_mailbox_outlined,
@@ -827,7 +831,7 @@ class _SuperLocalEditarScreenState extends State<SuperLocalEditarScreen> {
               const SizedBox(width: 12),
               Expanded(
                 flex: 3,
-                child: _Campo(
+                child: CampoForm(
                   ctrl: _ciudadCtrl,
                   label: 'Ciudad',
                   icono: Icons.location_on_outlined,
@@ -839,7 +843,7 @@ class _SuperLocalEditarScreenState extends State<SuperLocalEditarScreen> {
           Row(
             children: [
               Expanded(
-                child: _Campo(
+                child: CampoForm(
                   ctrl: _provinciaCtrl,
                   label: 'Provincia',
                   icono: Icons.map_outlined,
@@ -847,7 +851,7 @@ class _SuperLocalEditarScreenState extends State<SuperLocalEditarScreen> {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: _Campo(
+                child: CampoForm(
                   ctrl: _paisCtrl,
                   label: 'País',
                   icono: Icons.public_outlined,
@@ -863,7 +867,7 @@ class _SuperLocalEditarScreenState extends State<SuperLocalEditarScreen> {
   // ── Métodos de pago ───────────────────────────────────────────────────────
 
   Widget _buildMetodosPago() {
-    return _GlassCard(
+    return GlassCard(
       child: Wrap(
         spacing: 10,
         runSpacing: 10,
@@ -1161,161 +1165,7 @@ class _SuperLocalEditarScreenState extends State<SuperLocalEditarScreen> {
   }
 }
 
-// ─── Widgets auxiliares ───────────────────────────────────────────────────────
-
-/// Contenedor glass reutilizable para cada sección del formulario.
-class _GlassCard extends StatelessWidget {
-  final Widget child;
-  const _GlassCard({required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.45),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.15),
-              width: 1.5,
-            ),
-          ),
-          child: child,
-        ),
-      ),
-    );
-  }
-}
-
-/// Campo de texto con estilo glass coherente con el resto del panel.
-class _Campo extends StatelessWidget {
-  final TextEditingController ctrl;
-  final String label;
-  final IconData? icono;
-  final String? hint;
-  final bool mayusculas;
-  final TextInputType? teclado;
-  final List<TextInputFormatter>? formatos;
-  final FormFieldValidator<String>? validador;
-
-  const _Campo({
-    required this.ctrl,
-    required this.label,
-    this.icono,
-    this.hint,
-    this.mayusculas = false,
-    this.teclado,
-    this.formatos,
-    this.validador,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final allFormatos = [
-      if (mayusculas) _UpperCaseFormatter(),
-      ...?formatos,
-    ];
-
-    return TextFormField(
-      controller: ctrl,
-      keyboardType: teclado,
-      inputFormatters: allFormatos.isEmpty ? null : allFormatos,
-      style: const TextStyle(color: Colors.white, fontSize: 14),
-      validator: validador,
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        labelStyle: const TextStyle(color: Colors.white60, fontSize: 13),
-        hintStyle: const TextStyle(color: Colors.white38, fontSize: 13),
-        prefixIcon: icono != null
-            ? Icon(icono, color: AppColors.button, size: 20)
-            : null,
-        filled: true,
-        fillColor: Colors.white.withValues(alpha: 0.06),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 14,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Colors.white24),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Colors.white24),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: AppColors.button, width: 1.5),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: AppColors.error),
-        ),
-      ),
-    );
-  }
-}
-
-/// Convierte automáticamente el texto a mayúsculas al escribir.
-class _UpperCaseFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    return newValue.copyWith(text: newValue.text.toUpperCase());
-  }
-}
-
-/// Botón compacto que muestra una hora y abre el selector al pulsarlo.
-class _BotoraHora extends StatelessWidget {
-  final String hora;
-  final String tooltip;
-  final VoidCallback onTap;
-
-  const _BotoraHora({
-    required this.hora,
-    required this.tooltip,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      label: tooltip,
-      button: true,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.white24),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.access_time, color: AppColors.button, size: 14),
-              const SizedBox(width: 4),
-              Text(
-                hora,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
+// Widgets auxiliares extraídos a:
+//   lib/screens/shared/restaurante_editor/components/glass_card.dart   → GlassCard
+//   lib/screens/shared/restaurante_editor/components/campo_form.dart    → CampoForm
+//   lib/screens/shared/restaurante_editor/components/selector_hora.dart → SelectorHora

@@ -3,11 +3,11 @@ import random
 import string
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel
 from database import coleccion_restaurantes
 from bson import ObjectId
 from bson.errors import InvalidId
-from security import require_role
+from security import require_role, get_current_user, normalizar_rol
 from models import RestauranteActualizar
 
 router = APIRouter(prefix="/restaurantes", tags=["Restaurantes"])
@@ -16,28 +16,10 @@ class RestauranteCrear(BaseModel):
     nombre: str
     direccion: str
 
-class RestauranteEditar(BaseModel):
-    nombre: str
-    direccion: str
-    horario_apertura: Optional[str] = None
-    horario_cierre: Optional[str] = None
-
-    @field_validator("horario_apertura", "horario_cierre", mode="before")
-    @classmethod
-    def validar_hora(cls, v):
-        if v is None or v == "":
-            return v
-        parts = str(v).split(":")
-        if len(parts) != 2:
-            raise ValueError("Formato inválido. Use HH:MM")
-        h, m = int(parts[0]), int(parts[1])
-        if not (0 <= h <= 23 and 0 <= m <= 59):
-            raise ValueError("Hora fuera de rango")
-        return f"{h:02d}:{m:02d}"
 
 def _serializar_restaurante(r: dict) -> dict:
-    """Serializa un documento de restaurante; incluye campos activo/suspendido_at."""
-    doc = {
+    """Serializa un documento de restaurante con todos los campos públicos."""
+    return {
         "id": str(r["_id"]),
         "nombre": r.get("nombre", ""),
         "direccion": r.get("direccion", ""),
@@ -45,12 +27,22 @@ def _serializar_restaurante(r: dict) -> dict:
         # Docs legacy sin el campo se tratan como activos
         "activo": r.get("activo", True),
         "suspendido_at": r.get("suspendido_at"),
+        # Logo
+        "logo_url": r.get("logo_url"),
+        "logo_public_id": r.get("logo_public_id"),
+        # Horarios por día (formato {lunes: {apertura, cierre, abierto}, ...})
+        "horarios_dia": r.get("horarios_dia"),
+        # Datos fiscales
+        "cif": r.get("cif"),
+        "razon_social": r.get("razon_social"),
+        "direccion_fiscal": r.get("direccion_fiscal"),
+        "codigo_postal": r.get("codigo_postal"),
+        "ciudad": r.get("ciudad"),
+        "provincia": r.get("provincia"),
+        "pais": r.get("pais"),
+        # Métodos de pago
+        "metodos_pago": r.get("metodos_pago", []),
     }
-    # Campos opcionales
-    for campo in ("horario_apertura", "horario_cierre"):
-        if campo in r:
-            doc[campo] = r[campo]
-    return doc
 
 
 @router.get("")
@@ -122,14 +114,37 @@ def _validar_hora_formato(valor: str, campo: str) -> str:
     return valor
 
 
-@router.put("/{id}", summary="Editar sucursal completa (super_admin)")
+@router.put("/{id}", summary="Editar sucursal (super_admin global; admin solo su sucursal)")
 def editar_restaurante(
     id: str,
     datos: RestauranteActualizar,
-    _actor: dict = Depends(require_role(["super_admin"])),
+    current_user: dict = Depends(get_current_user),
 ):
     """Actualiza los campos de una sucursal. Solo persiste los campos que llegan
-    con valor no-None. Requiere rol super_admin."""
+    con valor no-None.
+
+    - super_admin: puede editar cualquier sucursal.
+    - admin: solo puede editar la sucursal asociada a su propio restaurante_id del JWT.
+    - Cualquier otro rol: 403.
+    """
+    rol = normalizar_rol(current_user.get("rol", ""))
+    if rol == "super_admin":
+        pass  # acceso global
+    elif rol == "admin":
+        # El admin solo puede editar su propia sucursal
+        rid_usuario = current_user.get("restaurante_id", "")
+        # Comparar como strings (ambos llegan como str desde JWT y URL)
+        if str(rid_usuario) != str(id):
+            raise HTTPException(
+                status_code=403,
+                detail="No tienes permiso para editar otra sucursal",
+            )
+    else:
+        raise HTTPException(
+            status_code=403,
+            detail="No tienes permiso para esta acción",
+        )
+
     try:
         oid = ObjectId(id)
     except (InvalidId, TypeError):
@@ -146,22 +161,6 @@ def editar_restaurante(
         valor = getattr(datos, campo)
         if valor is not None:
             set_data[campo] = valor.strip()
-
-    # ── Horarios legacy ───────────────────────────────────────────────────────
-    for campo in ("horario_apertura", "horario_cierre"):
-        valor = getattr(datos, campo)
-        if valor is not None:
-            # Reutiliza el validator del modelo legacy RestauranteEditar inline
-            partes = valor.strip().split(":")
-            if len(partes) != 2:
-                raise HTTPException(status_code=422, detail=f"Formato inválido para {campo}. Use HH:MM")
-            try:
-                h, m = int(partes[0]), int(partes[1])
-            except ValueError:
-                raise HTTPException(status_code=422, detail=f"Hora no numérica en {campo}")
-            if not (0 <= h <= 23 and 0 <= m <= 59):
-                raise HTTPException(status_code=422, detail=f"Hora fuera de rango en {campo}")
-            set_data[campo] = f"{h:02d}:{m:02d}"
 
     # ── CIF ───────────────────────────────────────────────────────────────────
     if datos.cif is not None:
@@ -235,7 +234,11 @@ class RestauranteActivo(BaseModel):
     activo: bool
 
 @router.patch("/{id}/activo")
-def toggle_activo_restaurante(id: str, datos: RestauranteActivo):
+def toggle_activo_restaurante(
+    id: str,
+    datos: RestauranteActivo,
+    _actor: dict = Depends(require_role(["super_admin"])),
+):
     resultado = coleccion_restaurantes.update_one(
         {"_id": ObjectId(id)},
         {"$set": {"activo": datos.activo}},

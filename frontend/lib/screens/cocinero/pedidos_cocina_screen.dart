@@ -589,7 +589,7 @@ class _KanbanColumn extends StatelessWidget {
             height: 30,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: AppColors.gold, width: 1.5),
+              border: Border.all(color: AppColors.bottomSheetBg, width: 1.5),
             ),
             child: Icon(_iconoEstado(estado), color: color, size: 15),
           ),
@@ -799,9 +799,9 @@ class _PedidoCard extends StatelessWidget {
             height: 34,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: AppColors.gold, width: 1.5),
+              border: Border.all(color: AppColors.bottomSheetBg, width: 1.5),
             ),
-            child: Icon(info.icono, color: AppColors.gold, size: 16),
+            child: Icon(info.icono, color: AppColors.bottomSheetBg, size: 16),
           ),
           const SizedBox(width: 9),
           Expanded(
@@ -1080,7 +1080,7 @@ class _Boton extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 8),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
-            side: const BorderSide(color: AppColors.gold, width: 1.5),
+            side: const BorderSide(color: AppColors.bottomSheetBg, width: 1.5),
           ),
         ),
         child: Row(

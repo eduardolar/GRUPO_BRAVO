@@ -327,10 +327,11 @@ def test_actualizar_horarios_dia_hora_mal_formada_422(client):
     assert resp.status_code == 422, resp.json()
 
 
-def test_actualizar_solo_super_admin_403(client):
-    """Un admin no puede usar PUT /restaurantes/{id} → 403."""
+def test_actualizar_admin_otra_sucursal_403(client):
+    """Admin con restaurante_id distinto al del recurso → 403."""
     rid = _insertar_restaurante("Bravo Solo Super")
     body = {"nombre": "Intentando cambiar"}
+    # _tok_admin("R1") tiene restaurante_id="R1", que no coincide con rid (ObjectId real)
     resp = client.put(f"/api/v1/restaurantes/{rid}", json=body, headers=_tok_admin("R1"))
     assert resp.status_code == 403, resp.json()
 
@@ -357,3 +358,140 @@ def test_actualizar_codigo_postal_no_digitos_422(client):
     body = {"codigo_postal": "2800A"}
     resp = client.put(f"/api/v1/restaurantes/{rid}", json=body, headers=_tok_super())
     assert resp.status_code == 422, resp.json()
+
+
+# ── Tests F8-bis — admin puede editar su propia sucursal ─────────────────────
+
+def _tok_admin_rid(rid: str) -> dict:
+    """Token de admin cuyo restaurante_id coincide exactamente con rid."""
+    token = crear_token({
+        "sub": "admin_own",
+        "correo": "admin_own@bravo.com",
+        "rol": "admin",
+        "restaurante_id": rid,
+    })
+    return {"Authorization": f"Bearer {token}"}
+
+
+def _tok_rol(rol: str) -> dict:
+    """Token genérico para un rol dado, sin restaurante_id."""
+    token = crear_token({"sub": f"{rol}_id", "correo": f"{rol}@bravo.com", "rol": rol})
+    return {"Authorization": f"Bearer {token}"}
+
+
+def test_admin_puede_editar_su_propia_sucursal_200(client):
+    """Admin con restaurante_id == id del recurso → 200."""
+    rid = _insertar_restaurante("Bravo Admin Own")
+    body = {"nombre": "Nombre Actualizado por Admin"}
+    resp = client.put(
+        f"/api/v1/restaurantes/{rid}",
+        json=body,
+        headers=_tok_admin_rid(rid),
+    )
+    assert resp.status_code == 200, resp.json()
+
+    from database import coleccion_restaurantes
+    doc = coleccion_restaurantes.find_one({"_id": ObjectId(rid)})
+    assert doc["nombre"] == "Nombre Actualizado por Admin"
+
+
+def test_admin_no_puede_editar_otra_sucursal_403(client):
+    """Admin cuyo restaurante_id no coincide con el id de la URL → 403."""
+    rid = _insertar_restaurante("Bravo Ajena")
+    rid_otro = str(ObjectId())  # id diferente al del token
+    body = {"nombre": "Hackeo"}
+    resp = client.put(
+        f"/api/v1/restaurantes/{rid}",
+        json=body,
+        headers=_tok_admin_rid(rid_otro),
+    )
+    assert resp.status_code == 403, resp.json()
+
+
+def test_camarero_no_puede_editar_restaurante_403(client):
+    """Camarero → 403 en PUT /restaurantes/{id}."""
+    rid = _insertar_restaurante("Bravo Camarero Guard")
+    body = {"nombre": "Intruso"}
+    resp = client.put(
+        f"/api/v1/restaurantes/{rid}",
+        json=body,
+        headers=_tok_rol("camarero"),
+    )
+    assert resp.status_code == 403, resp.json()
+
+
+def test_cocinero_no_puede_editar_restaurante_403(client):
+    """Cocinero → 403 en PUT /restaurantes/{id}."""
+    rid = _insertar_restaurante("Bravo Cocinero Guard")
+    body = {"nombre": "Intruso"}
+    resp = client.put(
+        f"/api/v1/restaurantes/{rid}",
+        json=body,
+        headers=_tok_rol("cocinero"),
+    )
+    assert resp.status_code == 403, resp.json()
+
+
+def test_cliente_no_puede_editar_restaurante_403(client):
+    """Cliente → 403 en PUT /restaurantes/{id}."""
+    rid = _insertar_restaurante("Bravo Cliente Guard")
+    body = {"nombre": "Intruso"}
+    resp = client.put(
+        f"/api/v1/restaurantes/{rid}",
+        json=body,
+        headers=_tok_rol("cliente"),
+    )
+    assert resp.status_code == 403, resp.json()
+
+
+def test_put_restaurante_sin_token_401(client):
+    """Sin token → 401 en PUT /restaurantes/{id}."""
+    rid = _insertar_restaurante("Bravo Sin Token")
+    resp = client.put(f"/api/v1/restaurantes/{rid}", json={"nombre": "X"})
+    assert resp.status_code == 401, resp.json()
+
+
+# ── Tests de PATCH /{id}/activo (toggle activo) ───────────────────────────────
+
+def test_toggle_activo_super_admin_200(client):
+    """super_admin puede cambiar el flag activo."""
+    rid = _insertar_restaurante("Bravo Toggle")
+    resp = client.patch(
+        f"/api/v1/restaurantes/{rid}/activo",
+        json={"activo": False},
+        headers=_tok_super(),
+    )
+    assert resp.status_code == 200, resp.json()
+
+
+def test_toggle_activo_admin_403(client):
+    """admin (incluso de la misma sucursal) NO puede tocar el flag activo."""
+    rid = _insertar_restaurante("Bravo Toggle Admin")
+    resp = client.patch(
+        f"/api/v1/restaurantes/{rid}/activo",
+        json={"activo": False},
+        headers=_tok_admin(rid),
+    )
+    assert resp.status_code == 403, resp.json()
+
+
+def test_toggle_activo_otros_roles_403(client):
+    """camarero/cocinero/cliente → 403."""
+    rid = _insertar_restaurante("Bravo Toggle Otros")
+    for rol in ("camarero", "cocinero", "cliente"):
+        resp = client.patch(
+            f"/api/v1/restaurantes/{rid}/activo",
+            json={"activo": False},
+            headers=_tok_rol(rol),
+        )
+        assert resp.status_code == 403, (rol, resp.json())
+
+
+def test_toggle_activo_sin_token_401(client):
+    """Sin token → 401."""
+    rid = _insertar_restaurante("Bravo Toggle Sin Token")
+    resp = client.patch(
+        f"/api/v1/restaurantes/{rid}/activo",
+        json={"activo": False},
+    )
+    assert resp.status_code == 401, resp.json()

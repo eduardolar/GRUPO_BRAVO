@@ -90,6 +90,10 @@ class _EditarReservaDialogState extends State<EditarReservaDialog> {
       initialTime: TimeOfDay.fromDateTime(
         DateFormat('HH:mm').parse(widget.reserva.hora),
       ),
+      builder: (ctx, child) => MediaQuery(
+        data: MediaQuery.of(ctx).copyWith(alwaysUse24HourFormat: true),
+        child: child!,
+      ),
     );
     if (picked != null) {
       setState(() {

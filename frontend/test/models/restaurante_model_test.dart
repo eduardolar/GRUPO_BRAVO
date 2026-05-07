@@ -9,28 +9,11 @@ void main() {
         'nombre': 'Bravo Centro',
         'direccion': 'Calle 1',
         'codigo': 'BC',
-        'horario_apertura': '09:00',
-        'horario_cierre': '23:00',
       });
       expect(r.id, 'r1');
       expect(r.nombre, 'Bravo Centro');
       expect(r.codigo, 'BC');
-      expect(r.horarioApertura, '09:00');
-      expect(r.horarioCierre, '23:00');
       expect(r.activo, isTrue);
-    });
-
-    test('camelCase también se acepta', () {
-      final r = Restaurante.fromJson({
-        'id': 'r2',
-        'nombre': '',
-        'direccion': '',
-        'codigo': '',
-        'horarioApertura': '08:00',
-        'horarioCierre': '22:00',
-      });
-      expect(r.horarioApertura, '08:00');
-      expect(r.horarioCierre, '22:00');
     });
 
     test('activo == false se respeta', () {
@@ -186,27 +169,98 @@ void main() {
   });
 
   group('Restaurante.estaAbierto()', () {
-    Restaurante con(String? open, String? close) => Restaurante(
-      id: 'r',
-      nombre: '',
-      direccion: '',
-      codigo: '',
-      horarioApertura: open,
-      horarioCierre: close,
-    );
-
-    test('sin horario configurado siempre está abierto', () {
-      expect(con(null, null).estaAbierto(), isTrue);
+    test('sin horarios configurados → false', () {
+      final r = Restaurante(
+        id: 'r',
+        nombre: '',
+        direccion: '',
+        codigo: '',
+      );
+      expect(r.estaAbierto(), isFalse);
     });
 
-    // Nota: estaAbierto() depende de DateTime.now(), no podemos
-    // controlarlo sin inyección. Sólo validamos que retorne bool.
-    test('con horario válido devuelve un bool sin lanzar', () {
-      expect(con('00:00', '23:59').estaAbierto(), isA<bool>());
-      expect(
-        con('22:00', '02:00').estaAbierto(),
-        isA<bool>(),
-      ); // cruza medianoche
+    test('horariosDia con todos los días abiertos 00:00-23:59 → true', () {
+      const semana = HorarioDia(
+        apertura: '00:00',
+        cierre: '23:59',
+        abierto: true,
+      );
+      final r = Restaurante(
+        id: 'r',
+        nombre: '',
+        direccion: '',
+        codigo: '',
+        horariosDia: const {
+          'lunes': semana,
+          'martes': semana,
+          'miercoles': semana,
+          'jueves': semana,
+          'viernes': semana,
+          'sabado': semana,
+          'domingo': semana,
+        },
+      );
+      expect(r.estaAbierto(), isTrue);
+    });
+
+    test('horariosDia con todos los días cerrados → false', () {
+      // Aunque haya un día con abierto:true para que la rama por día se
+      // active, el día actual estará cerrado en al menos 6 de 7 escenarios.
+      // Para cubrir los 7 días marcamos todos cerrados con un sentinel
+      // mediante un día simbólico abierto que nunca matchea (sólo activa la
+      // rama por día); el día real siempre estará cerrado.
+      const cerrado = HorarioDia(abierto: false);
+      const abiertoSentinel = HorarioDia(
+        apertura: '00:00',
+        cierre: '00:01',
+        abierto: true,
+      );
+      // Marcamos un día cualquiera como abiertoSentinel para activar la
+      // rama por día y todos como cerrados; el test solo es determinístico
+      // si DateTime.now() no cae justo en ese día y minuto sentinel, que
+      // es prácticamente imposible.
+      final r = Restaurante(
+        id: 'r',
+        nombre: '',
+        direccion: '',
+        codigo: '',
+        horariosDia: const {
+          'lunes': cerrado,
+          'martes': cerrado,
+          'miercoles': cerrado,
+          'jueves': cerrado,
+          'viernes': cerrado,
+          'sabado': cerrado,
+          'domingo': abiertoSentinel,
+        },
+      );
+      // Si hoy es domingo entre 00:00-00:01 el test falla (caso despreciable).
+      final now = DateTime.now();
+      final esDomingoEnVentana =
+          now.weekday == DateTime.sunday && now.hour == 0 && now.minute == 0;
+      if (!esDomingoEnVentana) {
+        expect(r.estaAbierto(), isFalse);
+      }
+    });
+
+    test('horariosDia sin ningún día abierto → false', () {
+      const cerrado = HorarioDia(abierto: false);
+      final r = Restaurante(
+        id: 'r',
+        nombre: '',
+        direccion: '',
+        codigo: '',
+        horariosDia: const {
+          'lunes': cerrado,
+          'martes': cerrado,
+          'miercoles': cerrado,
+          'jueves': cerrado,
+          'viernes': cerrado,
+          'sabado': cerrado,
+          'domingo': cerrado,
+        },
+      );
+      expect(r.estaAbierto(), isFalse);
     });
   });
 }

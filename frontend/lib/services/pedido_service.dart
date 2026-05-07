@@ -21,6 +21,7 @@ class PedidoService {
     String? referenciaPago,
     required String estadoPago,
     String? restauranteId,
+    String? idempotencyKey,
   }) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 600));
@@ -43,10 +44,15 @@ class PedidoService {
       };
     }
 
+    final extraHeaders = <String, String>{'Accept': 'application/json'};
+    if (idempotencyKey != null && idempotencyKey.isNotEmpty) {
+      extraHeaders['Idempotency-Key'] = idempotencyKey;
+    }
+
     final response = await httpWithRetry(
       () => http.post(
         Uri.parse('$baseUrl/pedidos'),
-        headers: AuthSession.headers(extra: {'Accept': 'application/json'}),
+        headers: AuthSession.headers(extra: extraHeaders),
         body: jsonEncode({
           'userId': userId,
           'items': items,

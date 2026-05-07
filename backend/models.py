@@ -237,12 +237,9 @@ class RestauranteActualizar(BaseModel):
     Todos los campos son opcionales: el endpoint solo persiste los que lleguen
     con valor no-None (patrón PATCH semántico sobre verbo PUT).
     """
-    # Campos legacy, se mantienen para compatibilidad
     nombre: Optional[str] = None
     direccion: Optional[str] = None
     codigo: Optional[str] = None
-    horario_apertura: Optional[str] = None
-    horario_cierre: Optional[str] = None
 
     # Logo de la sucursal (gestionado preferentemente via POST /restaurantes/{id}/logo,
     # pero se permite actualizar la URL directamente si ya se subió por otro medio)

@@ -78,7 +78,13 @@ class CartProvider with ChangeNotifier {
   }
 
   void removeProduct(String productId) {
-    _items.remove(productId);
+    final keysToRemove = _items.keys
+        .where((k) => k == productId || k.startsWith('${productId}_sin_'))
+        .toList();
+    if (keysToRemove.isEmpty) return;
+    for (final k in keysToRemove) {
+      _items.remove(k);
+    }
     notifyListeners();
   }
 

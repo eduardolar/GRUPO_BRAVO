@@ -86,7 +86,7 @@ class _CodigoQrState extends State<CodigoQr> {
               width: 3,
               height: 56,
               decoration: BoxDecoration(
-                color: AppColors.gold,
+                color: AppColors.bottomSheetBg,
                 borderRadius: BorderRadius.circular(3),
               ),
             ),
