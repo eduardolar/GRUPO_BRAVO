@@ -154,7 +154,7 @@ class _AdminCategoriasTabState extends State<AdminCategoriasTab> {
           style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(
             hintText: 'Nombre',
-            hintStyle: const TextStyle(color: Colors.white38),
+            hintStyle: const TextStyle(color: Colors.white70),
             filled: true,
             fillColor: Colors.white.withValues(alpha: 0.07),
             enabledBorder: OutlineInputBorder(

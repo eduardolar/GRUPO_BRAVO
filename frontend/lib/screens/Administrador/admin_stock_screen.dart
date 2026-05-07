@@ -4,14 +4,15 @@ import 'package:flutter/services.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/models/ingrediente_model.dart';
 import 'package:frontend/providers/auth_provider.dart';
-import 'package:frontend/screens/Administrador/admin_duplicados_screen.dart';
 import 'package:frontend/services/ingredientes_service.dart';
 import 'package:provider/provider.dart';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const _kSheetBg = Color(0xFF1A1A1A);
-const _kFieldFill = Color(0x12FFFFFF);
+// Negro translúcido (alpha ~55%): sobre la imagen Bravo de fondo el blanco
+// translúcido se confundía con el papel claro y dejaba el texto invisible.
+const _kFieldFill = Color(0x8C000000);
 const _kBorder = Color(0x33FFFFFF);
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
@@ -290,18 +291,6 @@ class _AdminStockScreenState extends State<AdminStockScreen> {
             letterSpacing: 0.5,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.auto_fix_high),
-            tooltip: 'Limpiar duplicados',
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const AdminDuplicadosScreen(),
-              ),
-            ),
-          ),
-        ],
       ),
       body: Stack(
         children: [
@@ -410,28 +399,31 @@ class _AdminStockScreenState extends State<AdminStockScreen> {
           child: Container(
             height: 44,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.08),
+              // Fondo blanco sólido + texto/iconos negros: la imagen Bravo
+              // de fondo es muy clara y cualquier overlay translúcido daba
+              // poco contraste. Patrón de input "claro" tipo Google.
+              color: Colors.white,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+              border: Border.all(color: Colors.black.withValues(alpha: 0.15)),
             ),
             child: TextField(
               controller: _busquedaCtrl,
               cursorColor: AppColors.button,
-              style: const TextStyle(color: Colors.white, fontSize: 14),
+              style: const TextStyle(color: Colors.black87, fontSize: 14),
               onChanged: (v) => setState(() => _busqueda = v.toLowerCase()),
               decoration: InputDecoration(
                 hintText: 'Buscar ingrediente...',
-                hintStyle: const TextStyle(color: Colors.white70, fontSize: 14),
+                hintStyle: const TextStyle(color: Colors.black54, fontSize: 14),
                 prefixIcon: const Icon(
                   Icons.search,
-                  color: Colors.white60,
+                  color: Colors.black54,
                   size: 20,
                 ),
                 suffixIcon: _busqueda.isNotEmpty
                     ? IconButton(
                         icon: const Icon(
                           Icons.clear,
-                          color: Colors.white60,
+                          color: Colors.black54,
                           size: 18,
                         ),
                         onPressed: () {
@@ -1020,7 +1012,7 @@ class _IngredienteCard extends StatelessWidget {
                         Text(
                           'Mín: ${_fmt(ing.stockMinimo)} ${ing.unidad}',
                           style: const TextStyle(
-                            color: Colors.white38,
+                            color: Colors.white54,
                             fontSize: 12,
                           ),
                         ),

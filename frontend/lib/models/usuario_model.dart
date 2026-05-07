@@ -20,6 +20,8 @@ class Usuario {
   final bool totpEnabled;
   final bool emailDosFactoresEnabled;
   final bool activo;
+  // Fecha en que el usuario fue suspendido (null si está activo o nunca fue suspendido)
+  final String? suspendidoAt;
 
   String get rolRaw => rol.name;
 
@@ -38,6 +40,7 @@ class Usuario {
     bool? totpEnabled,
     bool? emailDosFactoresEnabled,
     bool? activo,
+    String? suspendidoAt,
   }) {
     return Usuario(
       id: id ?? this.id,
@@ -54,6 +57,7 @@ class Usuario {
       emailDosFactoresEnabled:
           emailDosFactoresEnabled ?? this.emailDosFactoresEnabled,
       activo: activo ?? this.activo,
+      suspendidoAt: suspendidoAt ?? this.suspendidoAt,
     );
   }
 
@@ -71,6 +75,7 @@ class Usuario {
     this.totpEnabled = false,
     this.emailDosFactoresEnabled = false,
     this.activo = true,
+    this.suspendidoAt,
   });
 
   factory Usuario.fromJson(Map<String, dynamic> json) {
@@ -93,6 +98,7 @@ class Usuario {
       totpEnabled: json['totp_enabled'] == true,
       emailDosFactoresEnabled: json['email_2fa_enabled'] == true,
       activo: json['activo'] != false,
+      suspendidoAt: json['suspendido_at'] as String?,
     );
   }
 
@@ -130,6 +136,7 @@ class Usuario {
       'email_2fa_enabled': emailDosFactoresEnabled,
       'activo': activo,
       if (restauranteId != null) 'restaurante_id': restauranteId,
+      if (suspendidoAt != null) 'suspendido_at': suspendidoAt,
     };
   }
 }

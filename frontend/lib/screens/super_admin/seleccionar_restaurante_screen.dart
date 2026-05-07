@@ -69,12 +69,12 @@ class _SeleccionarRestauranteScreenState
             children: [
               TextFormField(
                 controller: nombreCtrl,
-                style: GoogleFonts.manrope(color: AppColors.textPrimary),
+                style: GoogleFonts.manrope(color: Colors.white),
                 decoration: InputDecoration(
                   labelText: 'Nombre',
                   labelStyle: GoogleFonts.manrope(
                     fontSize: 13,
-                    color: AppColors.textSecondary,
+                    color: Colors.white70,
                   ),
                   prefixIcon: const Icon(
                     Icons.storefront_outlined,
@@ -82,7 +82,7 @@ class _SeleccionarRestauranteScreenState
                     size: 20,
                   ),
                   filled: true,
-                  fillColor: Colors.white,
+                  fillColor: const Color(0x8C000000),
                   border: const OutlineInputBorder(
                     borderRadius: BorderRadius.zero,
                   ),
@@ -101,12 +101,12 @@ class _SeleccionarRestauranteScreenState
               const SizedBox(height: 14),
               TextFormField(
                 controller: direccionCtrl,
-                style: GoogleFonts.manrope(color: AppColors.textPrimary),
+                style: GoogleFonts.manrope(color: Colors.white),
                 decoration: InputDecoration(
                   labelText: 'Dirección',
                   labelStyle: GoogleFonts.manrope(
                     fontSize: 13,
-                    color: AppColors.textSecondary,
+                    color: Colors.white70,
                   ),
                   prefixIcon: const Icon(
                     Icons.location_on_outlined,
@@ -114,7 +114,7 @@ class _SeleccionarRestauranteScreenState
                     size: 20,
                   ),
                   filled: true,
-                  fillColor: Colors.white,
+                  fillColor: const Color(0x8C000000),
                   border: const OutlineInputBorder(
                     borderRadius: BorderRadius.zero,
                   ),
@@ -136,18 +136,18 @@ class _SeleccionarRestauranteScreenState
                   Expanded(
                     child: TextFormField(
                       controller: aperturaCtrl,
-                      style: GoogleFonts.manrope(color: AppColors.textPrimary),
+                      style: GoogleFonts.manrope(color: Colors.white),
                       keyboardType: TextInputType.datetime,
                       decoration: InputDecoration(
                         labelText: 'Apertura (HH:MM)',
                         labelStyle: GoogleFonts.manrope(
                           fontSize: 12,
-                          color: AppColors.textSecondary,
+                          color: Colors.white70,
                         ),
                         hintText: '09:00',
                         hintStyle: GoogleFonts.manrope(
                           fontSize: 12,
-                          color: AppColors.line,
+                          color: Colors.white60,
                         ),
                         prefixIcon: const Icon(
                           Icons.schedule_outlined,
@@ -155,7 +155,7 @@ class _SeleccionarRestauranteScreenState
                           size: 18,
                         ),
                         filled: true,
-                        fillColor: Colors.white,
+                        fillColor: const Color(0x8C000000),
                         border: const OutlineInputBorder(
                           borderRadius: BorderRadius.zero,
                         ),
@@ -178,18 +178,18 @@ class _SeleccionarRestauranteScreenState
                   Expanded(
                     child: TextFormField(
                       controller: cierreCtrl,
-                      style: GoogleFonts.manrope(color: AppColors.textPrimary),
+                      style: GoogleFonts.manrope(color: Colors.white),
                       keyboardType: TextInputType.datetime,
                       decoration: InputDecoration(
                         labelText: 'Cierre (HH:MM)',
                         labelStyle: GoogleFonts.manrope(
                           fontSize: 12,
-                          color: AppColors.textSecondary,
+                          color: Colors.white70,
                         ),
                         hintText: '23:00',
                         hintStyle: GoogleFonts.manrope(
                           fontSize: 12,
-                          color: AppColors.line,
+                          color: Colors.white60,
                         ),
                         prefixIcon: const Icon(
                           Icons.schedule_outlined,
@@ -197,7 +197,7 @@ class _SeleccionarRestauranteScreenState
                           size: 18,
                         ),
                         filled: true,
-                        fillColor: Colors.white,
+                        fillColor: const Color(0x8C000000),
                         border: const OutlineInputBorder(
                           borderRadius: BorderRadius.zero,
                         ),

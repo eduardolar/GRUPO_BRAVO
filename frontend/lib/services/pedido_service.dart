@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import '../models/pedido_model.dart';
 import '../data/mock_data.dart';
@@ -333,6 +334,79 @@ class PedidoService {
       return data
           .map((json) => Pedido.fromMap(json as Map<String, dynamic>))
           .toList();
+    }
+    throw toApiException(response.statusCode, decodeBody(response));
+  }
+
+  /// Llama a GET /api/v1/pedidos/resumen y devuelve el JSON parseado.
+  /// El backend aplica aislamiento por sucursal automáticamente para admin
+  /// (super_admin ve todos).  [restauranteId] es opcional: si el token ya
+  /// identifica la sucursal, el backend lo ignora.
+  static Future<Map<String, dynamic>> obtenerResumenContabilidad({
+    required DateTime fechaDesde,
+    required DateTime fechaHasta,
+    String? restauranteId,
+  }) async {
+    final params = <String, String>{
+      'fecha_desde': fechaDesde.toIso8601String().substring(0, 10),
+      'fecha_hasta': fechaHasta.toIso8601String().substring(0, 10),
+    };
+    if (restauranteId != null && restauranteId.isNotEmpty) {
+      params['restauranteId'] = restauranteId;
+    }
+    final uri = Uri.parse(
+      '$baseUrl/pedidos/resumen',
+    ).replace(queryParameters: params);
+
+    final response = await httpWithRetry(
+      () => http.get(
+        uri,
+        headers: AuthSession.headers(extra: {'Accept': 'application/json'}),
+      ),
+    );
+
+    if (response.statusCode == 200) {
+      final decoded = jsonDecode(response.body);
+      return decoded is Map<String, dynamic> ? decoded : {};
+    }
+    throw toApiException(response.statusCode, decodeBody(response));
+  }
+
+  /// Llama a GET /api/v1/pedidos/exportar?formato=csv y devuelve los bytes
+  /// crudos del CSV.  El caller decide si guarda a disco (móvil/desktop) o
+  /// dispara una descarga en el navegador (web).
+  /// Lanza [ApiException] con status 400 si el rango supera 90 días.
+  static Future<Uint8List> exportarContabilidadCsv({
+    required DateTime fechaDesde,
+    required DateTime fechaHasta,
+    String? restauranteId,
+  }) async {
+    final params = <String, String>{
+      'fecha_desde': fechaDesde.toIso8601String().substring(0, 10),
+      'fecha_hasta': fechaHasta.toIso8601String().substring(0, 10),
+      'formato': 'csv',
+    };
+    if (restauranteId != null && restauranteId.isNotEmpty) {
+      params['restauranteId'] = restauranteId;
+    }
+    final uri = Uri.parse(
+      '$baseUrl/pedidos/exportar',
+    ).replace(queryParameters: params);
+
+    // No reintentar: la exportación puede ser costosa en el backend.
+    final response = await httpWithRetry(
+      () => http.get(
+        uri,
+        headers: AuthSession.headers(
+          extra: {'Accept': 'text/csv, application/json'},
+          json: false,
+        ),
+      ),
+      retry: false,
+    );
+
+    if (response.statusCode == 200) {
+      return response.bodyBytes;
     }
     throw toApiException(response.statusCode, decodeBody(response));
   }

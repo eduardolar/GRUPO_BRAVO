@@ -41,10 +41,10 @@ class EmptyState extends StatelessWidget {
     this.subtitle,
     this.actionLabel,
     this.onAction,
-  }) : iconColor = Colors.white38,
+  }) : iconColor = Colors.white54,
        iconBackground = null,
-       titleColor = Colors.white60,
-       subtitleColor = Colors.white38;
+       titleColor = Colors.white70,
+       subtitleColor = Colors.white54;
 
   @override
   Widget build(BuildContext context) {

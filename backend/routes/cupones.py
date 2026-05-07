@@ -1,11 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+import logging
 from typing import Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, field_validator
 from bson import ObjectId
 from bson.errors import InvalidId
 from database import coleccion_cupones
-from security import require_role, get_current_user
+from security import require_role, get_current_user, normalizar_rol
+import audit_general as ag
 import re
+
+logger = logging.getLogger("uvicorn")
 
 router = APIRouter(prefix="/cupones", tags=["Cupones"])
 
@@ -20,6 +25,9 @@ class CuponCrear(BaseModel):
     usos_maximos: Optional[int] = None
     fecha_inicio: Optional[str] = None   # ISO date string "YYYY-MM-DD"
     fecha_fin: Optional[str] = None
+    # Sucursal propietaria del cupón. None = cupón global (válido en todas).
+    # Si el actor es admin, este campo se ignora y se fuerza desde el JWT.
+    restaurante_id: Optional[str] = None
 
     @field_validator("codigo")
     @classmethod
@@ -77,18 +85,67 @@ def _serializar(c: dict) -> dict:
         "usos_actuales": c.get("usos_actuales", 0),
         "fecha_inicio": c.get("fecha_inicio"),
         "fecha_fin": c.get("fecha_fin"),
+        "restaurante_id": c.get("restaurante_id"),
     }
 
 
+def _verificar_propiedad_cupon(cupon: dict, actor: dict) -> None:
+    """Lanza 403 si el admin intenta tocar un cupón que no es de su sucursal.
+
+    - Cupones globales (sin restaurante_id): ningún admin puede editarlos/eliminarlos;
+      solo super_admin.
+    - Cupones de sucursal: admin solo puede tocar los de su misma sucursal.
+    """
+    rol = normalizar_rol(actor.get("rol", ""))
+    if rol == "super_admin":
+        return  # super_admin libre
+
+    rid_actor = actor.get("restaurante_id")
+    rid_cupon = cupon.get("restaurante_id")
+
+    if rid_cupon is None:
+        # Cupón global: solo super_admin puede modificarlo
+        raise HTTPException(
+            status_code=403,
+            detail="Los cupones globales solo pueden ser modificados por super_admin",
+        )
+    if rid_cupon != rid_actor:
+        raise HTTPException(
+            status_code=403,
+            detail="No puedes modificar cupones de otra sucursal",
+        )
+
+
 # ─── Endpoints ─────────────────────────────────────────────────────────────────
-# Lectura permitida a cualquier usuario autenticado; mutación restringida a admins.
 
 @router.get("", summary="Listar cupones")
 def listar_cupones(
     solo_activos: bool = Query(False),
-    _user: dict = Depends(get_current_user),
+    actor: dict = Depends(get_current_user),
 ):
-    filtro = {"activo": True} if solo_activos else {}
+    """Lista cupones según el rol del actor.
+
+    - Admin: ve cupones de su sucursal + cupones globales (restaurante_id=None).
+    - super_admin: ve todos.
+    - Cliente/camarero/cocinero: ve todos (ya que pueden canjear cualquier cupón
+      válido en el momento de pedir; el filtrado de elegibilidad se hace en el
+      endpoint /usar).
+    """
+    rol = normalizar_rol(actor.get("rol", ""))
+    filtro: dict = {}
+    if solo_activos:
+        filtro["activo"] = True
+
+    if rol == "admin":
+        rid = actor.get("restaurante_id")
+        if rid:
+            # Ve los suyos + los globales
+            filtro["$or"] = [
+                {"restaurante_id": rid},
+                {"restaurante_id": None},
+                {"restaurante_id": {"$exists": False}},
+            ]
+
     cupones = list(coleccion_cupones.find(filtro).sort("_id", -1))
     return [_serializar(c) for c in cupones]
 
@@ -104,10 +161,30 @@ def obtener_cupon(cupon_id: str, _user: dict = Depends(get_current_user)):
 @router.post("", summary="Crear cupón (admin)")
 def crear_cupon(
     datos: CuponCrear,
-    _admin: dict = Depends(require_role(["admin", "super_admin"])),
+    actor: dict = Depends(require_role(["admin", "super_admin"])),
 ):
+    """Crea un cupón.
+
+    - Admin: el restaurante_id del body se ignora; se fuerza al del JWT.
+    - super_admin: usa el restaurante_id del body; si es None crea un cupón global.
+    """
+    rol = normalizar_rol(actor.get("rol", ""))
+
+    if rol == "admin":
+        rid = actor.get("restaurante_id")
+        if not rid:
+            raise HTTPException(
+                status_code=403,
+                detail="Falta restaurante asignado en tu sesión",
+            )
+        restaurante_id_final = rid
+    else:
+        # super_admin: usa lo del body (puede ser None para cupón global)
+        restaurante_id_final = datos.restaurante_id
+
     if coleccion_cupones.find_one({"codigo": datos.codigo}):
         raise HTTPException(status_code=409, detail=f"Ya existe un cupón con el código '{datos.codigo}'")
+
     nuevo = {
         "codigo": datos.codigo,
         "tipo": datos.tipo,
@@ -118,8 +195,15 @@ def crear_cupon(
         "usos_actuales": 0,
         "fecha_inicio": datos.fecha_inicio,
         "fecha_fin": datos.fecha_fin,
+        "restaurante_id": restaurante_id_final,
     }
     resultado = coleccion_cupones.insert_one(nuevo)
+    ag.registrar(
+        ag.CUPON_CREADO,
+        actor=actor.get("correo"),
+        objetivo=datos.codigo,
+        detalle=f"Sucursal: {restaurante_id_final or 'global'}",
+    )
     return _serializar({**nuevo, "_id": resultado.inserted_id})
 
 
@@ -127,17 +211,22 @@ def crear_cupon(
 def editar_cupon(
     cupon_id: str,
     datos: CuponEditar,
-    _admin: dict = Depends(require_role(["admin", "super_admin"])),
+    actor: dict = Depends(require_role(["admin", "super_admin"])),
 ):
     oid = _oid(cupon_id)
-    if not coleccion_cupones.find_one({"_id": oid}):
+    cupon = coleccion_cupones.find_one({"_id": oid})
+    if not cupon:
         raise HTTPException(status_code=404, detail="Cupón no encontrado")
+
+    _verificar_propiedad_cupon(cupon, actor)
+
     campos = {k: v for k, v in datos.model_dump().items() if v is not None}
     if not campos:
         raise HTTPException(status_code=400, detail="Ningún campo para actualizar")
     if "valor" in campos:
         campos["valor"] = round(campos["valor"], 2)
     coleccion_cupones.update_one({"_id": oid}, {"$set": campos})
+    ag.registrar(ag.CUPON_EDITADO, actor=actor.get("correo"), objetivo=cupon_id)
     actualizado = coleccion_cupones.find_one({"_id": oid})
     return _serializar(actualizado)
 
@@ -146,29 +235,40 @@ def editar_cupon(
 def toggle_activo(
     cupon_id: str,
     activo: bool = Query(...),
-    _admin: dict = Depends(require_role(["admin", "super_admin"])),
+    actor: dict = Depends(require_role(["admin", "super_admin"])),
 ):
     oid = _oid(cupon_id)
-    resultado = coleccion_cupones.update_one({"_id": oid}, {"$set": {"activo": activo}})
-    if resultado.matched_count == 0:
+    cupon = coleccion_cupones.find_one({"_id": oid})
+    if not cupon:
         raise HTTPException(status_code=404, detail="Cupón no encontrado")
+
+    _verificar_propiedad_cupon(cupon, actor)
+
+    coleccion_cupones.update_one({"_id": oid}, {"$set": {"activo": activo}})
     return {"mensaje": "Cupón " + ("activado" if activo else "desactivado")}
 
 
 @router.delete("/{cupon_id}", summary="Eliminar cupón (admin)")
 def eliminar_cupon(
     cupon_id: str,
-    _admin: dict = Depends(require_role(["admin", "super_admin"])),
+    actor: dict = Depends(require_role(["admin", "super_admin"])),
 ):
-    resultado = coleccion_cupones.delete_one({"_id": _oid(cupon_id)})
-    if resultado.deleted_count == 0:
+    oid = _oid(cupon_id)
+    cupon = coleccion_cupones.find_one({"_id": oid})
+    if not cupon:
         raise HTTPException(status_code=404, detail="Cupón no encontrado")
+
+    _verificar_propiedad_cupon(cupon, actor)
+
+    coleccion_cupones.delete_one({"_id": oid})
+    ag.registrar(ag.CUPON_ELIMINADO, actor=actor.get("correo"), objetivo=cupon_id)
     return {"mensaje": "Cupón eliminado"}
 
 
 @router.post("/{cupon_id}/usar", summary="Registrar uso del cupón")
 def registrar_uso(cupon_id: str, _user: dict = Depends(get_current_user)):
-    """Incrementa el contador de usos. Llámalo al aplicar el cupón en un pedido."""
+    """Incrementa el contador de usos. Llámalo al aplicar el cupón en un pedido.
+    Cualquier usuario autenticado puede canjear cupones de cualquier sucursal."""
     oid = _oid(cupon_id)
     # Operación atómica: sólo incrementa si está activo y aún no agotado.
     c = coleccion_cupones.find_one_and_update(
@@ -186,7 +286,6 @@ def registrar_uso(cupon_id: str, _user: dict = Depends(get_current_user)):
         return_document=True,
     )
     if not c:
-        # Diferenciar si no existe vs. si está agotado/inactivo
         existente = coleccion_cupones.find_one({"_id": oid})
         if not existente:
             raise HTTPException(status_code=404, detail="Cupón no encontrado")

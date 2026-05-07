@@ -9,15 +9,25 @@ from database import coleccion_auditoria
 logger = logging.getLogger("uvicorn")
 
 # Categorías de eventos
-USUARIO_CREADO     = "usuario.creado"
-USUARIO_ELIMINADO  = "usuario.eliminado"
-USUARIO_EDITADO    = "usuario.editado"
-ROL_CAMBIADO       = "usuario.rol_cambiado"
-ESTADO_CAMBIADO    = "usuario.estado_cambiado"
-LOGIN_OK           = "auth.login_ok"
-LOGIN_FALLIDO      = "auth.login_fallido"
-RESTAURANTE_CREADO = "restaurante.creado"
-RESTAURANTE_EDITADO= "restaurante.editado"
+USUARIO_CREADO      = "usuario.creado"
+USUARIO_ELIMINADO   = "usuario.eliminado"
+USUARIO_SUSPENDIDO  = "usuario.suspendido"
+USUARIO_REACTIVADO  = "usuario.reactivado"
+USUARIO_EDITADO     = "usuario.editado"
+ROL_CAMBIADO        = "usuario.rol_cambiado"
+ESTADO_CAMBIADO     = "usuario.estado_cambiado"
+LOGIN_OK            = "auth.login_ok"
+LOGIN_FALLIDO       = "auth.login_fallido"
+RESTAURANTE_CREADO  = "restaurante.creado"
+RESTAURANTE_EDITADO = "restaurante.editado"
+RESERVA_ESTADO_CAMBIADO = "reserva.estado_cambiado"
+RESERVA_MESA_ASIGNADA   = "reserva.mesa_asignada"
+CUPON_CREADO        = "cupon.creado"
+CUPON_EDITADO       = "cupon.editado"
+CUPON_ELIMINADO     = "cupon.eliminado"
+CIERRE_REABIERTO        = "cierre_caja.reabierto"
+RESTAURANTE_SUSPENDIDO  = "restaurante.suspendido"
+RESTAURANTE_REACTIVADO  = "restaurante.reactivado"
 
 
 def registrar(

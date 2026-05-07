@@ -218,9 +218,22 @@ class _ActividadScreenState extends State<ActividadScreen>
     return Scaffold(
       backgroundColor: Colors.black,
       extendBodyBehindAppBar: true,
+      // BravoAppBar no admite actions propias ni leading custom,
+      // por lo que se mantiene AppBar nativo alineando su estilo con BravoAppBar.
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        foregroundColor: Colors.white,
+        iconTheme: const IconThemeData(color: Colors.white),
+        centerTitle: true,
+        title: Text(
+          'Actividad',
+          style: GoogleFonts.manrope(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+            fontSize: 17,
+          ),
+        ),
         leading: IconButton(
           icon: const Icon(
             Icons.arrow_back_ios_new,

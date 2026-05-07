@@ -87,7 +87,33 @@ class UsuarioService {
     return response.statusCode == 200;
   }
 
-  // 6. Crear un usuario (panel admin)
+  // 6. Crear un empleado (panel admin)
+  // No se envía password: el backend genera una y manda correo de activación.
+  // No se envía restaurante_id: el backend lo fuerza por el token del admin.
+  Future<Map<String, dynamic>> crearEmpleado({
+    required String nombre,
+    required String correo,
+    required String rol,
+    String? telefono,
+  }) async {
+    final body = <String, dynamic>{
+      'nombre': nombre,
+      'correo': correo,
+      'rol': rol,
+      if (telefono != null && telefono.isNotEmpty) 'telefono': telefono,
+    };
+    final response = await http.post(
+      Uri.parse('$baseUrl/usuarios/'),
+      headers: _headersConActor(),
+      body: jsonEncode(body),
+    );
+    return {
+      'statusCode': response.statusCode,
+      'body': jsonDecode(response.body),
+    };
+  }
+
+  // 6b. Crear un usuario (panel admin — legacy, mantiene firma anterior)
   Future<bool> crearUsuario({
     required String nombre,
     required String correo,
@@ -111,6 +137,19 @@ class UsuarioService {
     } catch (e) {
       debugPrint('Error al crear usuario: $e');
       return false;
+    }
+  }
+
+  // 9. Reactivar un usuario suspendido
+  Future<void> reactivarUsuario(String id) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/usuarios/$id/reactivar'),
+      headers: _headersConActor(),
+    );
+    if (response.statusCode != 200) {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      final detail = body['detail']?.toString() ?? 'Error al reactivar usuario';
+      throw Exception(detail);
     }
   }
 

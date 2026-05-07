@@ -5,6 +5,10 @@ import 'api_config.dart';
 import 'http_client.dart';
 import 'auth_session.dart';
 
+/// Valor centinela para distinguir "parámetro no pasado" de "null explícito"
+/// en [CuponService.crear]. Un const Object único no puede igualar nada más.
+const Object _noProvidedSentinel = Object();
+
 class CuponService {
   static Map<String, String> get _headers => AuthSession.headers();
 
@@ -30,6 +34,10 @@ class CuponService {
     int? usosMaximos,
     String? fechaInicio,
     String? fechaFin,
+    /// null = cupón global (solo super_admin); valor = cupón de sucursal.
+    /// Se serializa como JSON null cuando es global para que el backend lo distinga
+    /// de "campo omitido".
+    Object? restauranteId = _noProvidedSentinel,
   }) async {
     final body = <String, dynamic>{
       'codigo': codigo,
@@ -41,6 +49,12 @@ class CuponService {
         'fecha_inicio': fechaInicio,
       if (fechaFin != null && fechaFin.isNotEmpty) 'fecha_fin': fechaFin,
     };
+    // Solo incluimos restaurante_id en el body cuando se pasó explícitamente
+    // (incluye null = global). Si el llamador no pasó el parámetro, no lo
+    // incluimos para no romper la lógica de admin normal.
+    if (restauranteId != _noProvidedSentinel) {
+      body['restaurante_id'] = restauranteId;
+    }
     final res = await httpWithRetry(
       () => http.post(
         Uri.parse('$baseUrl/cupones'),

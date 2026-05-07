@@ -39,6 +39,23 @@ except ImportError:
         "Instala con: pip install mongomock"
     )
 
+# 4) Stub de cloudinary para entornos sin la lib instalada.
+# Tiene que instalarse antes que cualquier test importe `routes.uploads`
+# (el TestClient lo carga vía main.app). Sin esto, los tests fuera de
+# test_uploads.py revientan con AttributeError al cargar uploads.py.
+import types
+from unittest.mock import MagicMock
+
+if "cloudinary" not in sys.modules:
+    cloudinary_mod = types.ModuleType("cloudinary")
+    cloudinary_mod.config = MagicMock()  # cloudinary_client.py llama a esto
+    uploader_mod = types.ModuleType("cloudinary.uploader")
+    uploader_mod.upload = MagicMock()
+    uploader_mod.destroy = MagicMock()
+    cloudinary_mod.uploader = uploader_mod
+    sys.modules["cloudinary"] = cloudinary_mod
+    sys.modules["cloudinary.uploader"] = uploader_mod
+
 
 @pytest.fixture(scope="session")
 def client():

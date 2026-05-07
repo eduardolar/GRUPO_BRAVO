@@ -334,7 +334,10 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
                 initialValue: rolActual,
                 decoration: InputDecoration(
                   labelText: 'Nuevo rol',
-                  labelStyle: GoogleFonts.manrope(fontSize: 13),
+                  labelStyle: GoogleFonts.manrope(
+                    fontSize: 13,
+                    color: Colors.white70,
+                  ),
                   border: const OutlineInputBorder(
                     borderRadius: BorderRadius.zero,
                   ),
@@ -351,9 +354,9 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
                     color: AppColors.button,
                   ),
                   filled: true,
-                  fillColor: Colors.white,
+                  fillColor: const Color(0x8C000000),
                 ),
-                style: GoogleFonts.manrope(color: AppColors.textPrimary),
+                style: GoogleFonts.manrope(color: Colors.white),
                 items: _opcionesRol
                     .map(
                       (r) => DropdownMenuItem(

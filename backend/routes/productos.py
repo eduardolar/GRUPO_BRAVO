@@ -83,6 +83,9 @@ def _normalizar_payload(producto: ProductoCrear) -> dict:
 
     - `restaurante_id=None` se omite del `$set` para que un PUT que no envíe
       ese campo NO borre el restaurante asignado al producto.
+    - `imagen=None` se omite también: el schema validator de la colección
+      exige `string` en este campo y mandar null lo rompe. Si el admin quiere
+      borrar la imagen, lo hace con DELETE /productos/{id}/imagen, no aquí.
     - El array `ingredientes` se reduce al esquema mínimo para que no queden
       datos congelados (cantidadActual, unidad, etc.) que se desactualizan.
       Solo se hace al guardar (POST/PUT), nunca en lecturas masivas.
@@ -90,6 +93,8 @@ def _normalizar_payload(producto: ProductoCrear) -> dict:
     datos = producto.dict()
     if datos.get("restaurante_id") is None:
         datos.pop("restaurante_id", None)
+    if datos.get("imagen") is None:
+        datos.pop("imagen", None)
 
     # Bug 3 fix: sanear el array de ingredientes en cada escritura
     items_raw = datos.get("ingredientes") or []

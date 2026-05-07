@@ -9,6 +9,8 @@ class Cupon {
   final int usosActuales;
   final String? fechaInicio;
   final String? fechaFin;
+  /// null = cupón global (aplica en todas las sucursales).
+  final String? restauranteId;
 
   const Cupon({
     required this.id,
@@ -21,7 +23,11 @@ class Cupon {
     required this.usosActuales,
     this.fechaInicio,
     this.fechaFin,
+    this.restauranteId,
   });
+
+  /// true cuando el cupón aplica en todas las sucursales.
+  bool get esGlobal => restauranteId == null;
 
   factory Cupon.fromJson(Map<String, dynamic> j) => Cupon(
     id: j['id'] ?? '',
@@ -34,6 +40,7 @@ class Cupon {
     usosActuales: (j['usos_actuales'] ?? 0) as int,
     fechaInicio: j['fecha_inicio'] as String?,
     fechaFin: j['fecha_fin'] as String?,
+    restauranteId: j['restaurante_id'] as String?,
   );
 
   String get etiquetaValor => tipo == 'porcentaje'
