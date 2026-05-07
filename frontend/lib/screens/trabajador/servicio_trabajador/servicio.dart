@@ -248,7 +248,7 @@ class _ActionButtonsServicio extends StatelessWidget {
           onPressed: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const ModificarComanda()),
+              MaterialPageRoute(builder: (_) => const ModificarComanda()),
             );
           },
         ),

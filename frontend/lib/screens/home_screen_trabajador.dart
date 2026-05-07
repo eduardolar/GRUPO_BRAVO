@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:frontend/components/bravo_app_bar.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/screens/trabajador/Pedidos/gestion_pedidos.dart';
 import 'package:frontend/screens/trabajador/Reservas/gestion_reservas.dart';
 import 'package:frontend/screens/trabajador/Stock/gestion_stock.dart';
+import 'package:frontend/screens/trabajador/appbar_trabajador.dart';
 import 'package:frontend/screens/trabajador/servicio_trabajador/servicio.dart';
 
 class HomeTrabajador extends StatefulWidget {
@@ -74,7 +74,7 @@ class _HomeContent extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       extendBodyBehindAppBar: true,
-      appBar: const BravoAppBar(title: "RESTAURANTE BRAVO"),
+      appBar: const TrabajadorAppBar(title: "RESTAURANTE BRAVO"),
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
         child: Column(children: [const _HeroSection(), const _FooterQuote()]),
