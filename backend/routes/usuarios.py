@@ -4,8 +4,8 @@ from datetime import datetime, timezone
 import bcrypt
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from typing import Optional
-from database import coleccion_usuarios, coleccion_auditoria
-from exceptions import NotFoundError, ConflictError, ValidacionError, AutenticacionError
+from database import coleccion_usuarios, coleccion_auditoria, coleccion_restaurantes
+from exceptions import NotFoundError, ConflictError, ValidacionError, AutenticacionError, AutorizacionError
 from bson import ObjectId
 from database import coleccion_usuarios
 import audit_general as ag
@@ -121,15 +121,32 @@ def listar_usuarios(
     rol: str | None = None,
     limite: int = Query(200, ge=1, le=500, description="Máx. usuarios por página"),
     offset: int = Query(0, ge=0, description="Desplazamiento para paginar"),
-    _admin: dict = Depends(require_role(["admin", "super_admin"])),
+    incluir_suspendidos: bool = Query(True, description="Incluir usuarios con activo=false"),
+    actor: dict = Depends(require_role(["admin", "super_admin"])),
 ):
     """Devuelve una lista de usuarios. La cabecera `X-Total-Count` indica el
     total de documentos que cumplen el filtro (útil para construir paginadores
     en el frontend sin romper la forma actual del JSON).
+
+    Un admin solo ve usuarios de su propia sucursal. super_admin ve todos.
+    El campo `activo` y `suspendido_at` se incluyen en la respuesta.
     """
+    from security import normalizar_rol
+    rol_actor = normalizar_rol(actor.get("rol", ""))
+
     filtro: dict = {}
     if rol:
         filtro["rol"] = rol
+
+    # Aislamiento por sucursal: admin solo ve su restaurante
+    if rol_actor != "super_admin":
+        rid = actor.get("restaurante_id")
+        if rid:
+            filtro["restaurante_id"] = rid
+
+    # Filtrar suspendidos si se solicita
+    if not incluir_suspendidos:
+        filtro["activo"] = {"$ne": False}
 
     response.headers["X-Total-Count"] = str(coleccion_usuarios.count_documents(filtro))
     usuarios = list(
@@ -152,6 +169,7 @@ def listar_usuarios(
             "rol": u.get("rol", "cliente"),
             "restaurante_id": str(res_id) if res_id else None,
             "activo": u.get("activo", True),
+            "suspendido_at": u.get("suspendido_at"),
             "totp_enabled": u.get("totp_enabled", False),
             "email_2fa_enabled": u.get("email_2fa_enabled", False),
         })
@@ -267,23 +285,78 @@ def actualizar_rol(
         detalle=f"Nuevo rol: {rol_limpio}")
     return {"mensaje": f"Rol actualizado exitosamente a {rol_limpio}"}
 
-# Ruta para eliminar un usuario, es buena tenerla para administración futura.
+# Ruta para eliminar (super_admin) o suspender (admin) un usuario.
 @router.delete("/{user_id}")
 def eliminar_usuario(
     user_id: str,
     request: Request,
-    _admin: dict = Depends(require_role(["admin", "super_admin"])),
+    actor: dict = Depends(require_role(["admin", "super_admin"])),
 ):
-    usuario = coleccion_usuarios.find_one({"_id": ObjectId(user_id)})
-    resultado = coleccion_usuarios.delete_one({"_id": ObjectId(user_id)})
-    if resultado.deleted_count == 0:
+    from security import normalizar_rol
+    rol_actor = normalizar_rol(actor.get("rol", ""))
+
+    try:
+        oid = ObjectId(user_id)
+    except Exception:
+        raise ValidacionError("ID de usuario inválido")
+
+    usuario = coleccion_usuarios.find_one({"_id": oid})
+    if not usuario:
         raise NotFoundError("Usuario no encontrado")
-    if usuario:
-        ag.registrar(ag.USUARIO_ELIMINADO,
+
+    if rol_actor != "super_admin":
+        # Admin no puede tocarse a sí mismo
+        if actor.get("sub") == user_id or actor.get("correo") == usuario.get("correo"):
+            raise ValidacionError("No puedes suspender tu propia cuenta")
+
+        # Aislamiento: admin solo puede tocar usuarios de su sucursal
+        rid_actor = actor.get("restaurante_id")
+        if not rid_actor:
+            raise HTTPException(status_code=403, detail="Falta restaurante asignado en tu sesión")
+        if usuario.get("restaurante_id") != rid_actor:
+            raise HTTPException(status_code=403, detail="No puedes gestionar usuarios de otra sucursal")
+
+        # Si el usuario YA está suspendido, el admin puede borrarlo
+        # definitivamente (segundo DELETE = hard-delete). Esto permite hacer
+        # limpieza de cuentas dadas de baja sin necesidad del super_admin.
+        if usuario.get("activo", True) is False:
+            coleccion_usuarios.delete_one({"_id": oid})
+            ag.registrar(
+                ag.USUARIO_ELIMINADO,
+                actor=_actor_de(request),
+                objetivo=usuario.get("correo", user_id),
+                detalle=f"Rol: {usuario.get('rol', '?')} | Hard-delete por admin de sucursal {rid_actor} (ya estaba suspendido)",
+            )
+            return {"mensaje": "Usuario eliminado", "activo": False}
+
+        # Soft-delete: marcar como suspendido (primer DELETE)
+        ahora = datetime.now(timezone.utc).isoformat()
+        coleccion_usuarios.update_one(
+            {"_id": oid},
+            {"$set": {"activo": False, "suspendido_at": ahora}},
+        )
+        ag.registrar(
+            ag.USUARIO_SUSPENDIDO,
             actor=_actor_de(request),
             objetivo=usuario.get("correo", user_id),
-            detalle=f"Rol: {usuario.get('rol', '?')}")
-    return {"mensaje": "Usuario eliminado"}
+            detalle=f"Rol: {usuario.get('rol', '?')} | Sucursal: {rid_actor}",
+        )
+        return {"mensaje": "Usuario suspendido", "activo": False}
+    else:
+        # super_admin: borrado físico siempre
+        coleccion_usuarios.delete_one({"_id": oid})
+        ag.registrar(
+            ag.USUARIO_ELIMINADO,
+            actor=_actor_de(request),
+            objetivo=usuario.get("correo", user_id),
+            detalle=f"Rol: {usuario.get('rol', '?')}",
+        )
+        return {"mensaje": "Usuario eliminado"}
+
+# Roles que un admin puede asignar al crear empleados
+_ROLES_ADMIN_PUEDE_CREAR = {"camarero", "cocinero"}
+# Roles que super_admin puede crear (excluye super_admin; nadie lo crea desde la app)
+_ROLES_SUPER_PUEDE_CREAR = {"camarero", "cocinero", "admin"}
 
 # --- NUEVA RUTA PARA QUE EL ADMIN CREE USUARIOS ---
 @router.post("/")
@@ -291,8 +364,39 @@ def eliminar_usuario(
 async def crear_usuario(
     request: Request,
     datos: UsuarioCrear,
-    _admin: dict = Depends(require_role(["admin", "super_admin"])),
+    actor: dict = Depends(require_role(["admin", "super_admin"])),
 ):
+    from security import normalizar_rol
+    rol_actor = normalizar_rol(actor.get("rol", ""))
+    rol_nuevo = normalizar_rol(datos.rol)
+
+    # Whitelist de roles según quién crea
+    if rol_actor == "super_admin":
+        if rol_nuevo not in _ROLES_SUPER_PUEDE_CREAR:
+            raise AutorizacionError(
+                f"No puedes crear usuarios con rol '{rol_nuevo}'. "
+                "Los super_admin solo pueden crear: camarero, cocinero, admin."
+            )
+        # super_admin debe indicar siempre la sucursal destino
+        restaurante_id_final = datos.restaurante_id
+        if not restaurante_id_final or not str(restaurante_id_final).strip():
+            raise ValidacionError("Falta restaurante_id. El super_admin debe indicar la sucursal destino.")
+        # Verificar que la sucursal existe en la BD
+        if not coleccion_restaurantes.find_one({"_id": ObjectId(restaurante_id_final)}):
+            raise NotFoundError("Sucursal no encontrada")
+    else:
+        # admin: solo puede crear camarero/cocinero
+        if rol_nuevo not in _ROLES_ADMIN_PUEDE_CREAR:
+            raise AutorizacionError(
+                f"No puedes crear usuarios con rol '{rol_nuevo}'. "
+                "Los admin solo pueden crear: camarero, cocinero."
+            )
+        # Forzar restaurante_id del JWT, ignorar el del body
+        rid_jwt = actor.get("restaurante_id")
+        if not rid_jwt:
+            raise AutorizacionError("Falta restaurante asignado en tu sesión")
+        restaurante_id_final = rid_jwt
+
     correo_limpio = datos.correo.lower().strip()
 
     if coleccion_usuarios.find_one({"correo": correo_limpio}):
@@ -310,12 +414,12 @@ async def crear_usuario(
         "nombre": datos.nombre,
         "correo": correo_limpio,
         "password_hash": hash_password,
-        "rol": datos.rol.lower().strip(),
-        "restaurante_id": datos.restaurante_id,
+        "rol": rol_nuevo,
+        "restaurante_id": restaurante_id_final,
         "is_verified": False,  # Debe activar su cuenta vía email
+        "activo": True,
         "telefono": "",
         "direccion": "",
-        # AGREGADO: Inicializamos coordenadas en None
         "latitud": None,
         "longitud": None,
         "verification_code": None,
@@ -329,13 +433,53 @@ async def crear_usuario(
         ag.registrar(ag.USUARIO_CREADO,
             actor=_actor_de(request),
             objetivo=correo_limpio,
-            detalle=f"Rol: {datos.rol} | Sucursal: {datos.restaurante_id}")
+            detalle=f"Rol: {rol_nuevo} | Sucursal: {restaurante_id_final}")
         return {
             "mensaje": "Usuario creado exitosamente. Se envió un correo de activación.",
             "id": str(resultado.inserted_id)
         }
 
     raise RuntimeError("No se pudo crear el usuario")
+
+
+@router.post("/{user_id}/reactivar", summary="Reactivar un usuario suspendido (admin/super_admin)")
+def reactivar_usuario(
+    user_id: str,
+    request: Request,
+    actor: dict = Depends(require_role(["admin", "super_admin"])),
+):
+    """Revierte una suspensión: pone activo=true y elimina suspendido_at.
+    El admin solo puede reactivar usuarios de su misma sucursal."""
+    from security import normalizar_rol
+    rol_actor = normalizar_rol(actor.get("rol", ""))
+
+    try:
+        oid = ObjectId(user_id)
+    except Exception:
+        raise ValidacionError("ID de usuario inválido")
+
+    usuario = coleccion_usuarios.find_one({"_id": oid})
+    if not usuario:
+        raise NotFoundError("Usuario no encontrado")
+
+    if rol_actor != "super_admin":
+        rid_actor = actor.get("restaurante_id")
+        if not rid_actor:
+            raise HTTPException(status_code=403, detail="Falta restaurante asignado en tu sesión")
+        if usuario.get("restaurante_id") != rid_actor:
+            raise HTTPException(status_code=403, detail="No puedes gestionar usuarios de otra sucursal")
+
+    coleccion_usuarios.update_one(
+        {"_id": oid},
+        {"$set": {"activo": True}, "$unset": {"suspendido_at": ""}},
+    )
+    ag.registrar(
+        ag.USUARIO_REACTIVADO,
+        actor=_actor_de(request),
+        objetivo=usuario.get("correo", user_id),
+        detalle=f"Rol: {usuario.get('rol', '?')}",
+    )
+    return {"mensaje": "Usuario reactivado", "activo": True}
 
 
 # ── RGPD: derechos ARSULIPO ────────────────────────────────────────────────────

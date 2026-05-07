@@ -51,6 +51,27 @@ void main() {
     });
   });
 
+  group('Cupon.restauranteId y esGlobal', () {
+    test('restaurante_id null → esGlobal true', () {
+      final c = Cupon.fromJson({'restaurante_id': null});
+      expect(c.restauranteId, isNull);
+      expect(c.esGlobal, isTrue);
+    });
+
+    test('restaurante_id con valor → esGlobal false', () {
+      final c = Cupon.fromJson({'restaurante_id': 'rest_abc'});
+      expect(c.restauranteId, 'rest_abc');
+      expect(c.esGlobal, isFalse);
+    });
+
+    test('restaurante_id ausente del json → esGlobal true', () {
+      // Si el backend no manda el campo, se trata como global
+      final c = Cupon.fromJson({});
+      expect(c.restauranteId, isNull);
+      expect(c.esGlobal, isTrue);
+    });
+  });
+
   group('Cupon.etiquetaValor', () {
     test('porcentaje muestra %', () {
       final c = Cupon.fromJson({'tipo': 'porcentaje', 'valor': 20});

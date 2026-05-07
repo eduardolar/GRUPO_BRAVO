@@ -30,6 +30,10 @@ class _AdminMenuScreenState extends State<AdminMenuScreen>
   bool _cargando = true;
   String? _errorCarga;
 
+  // Búsqueda de productos en la pestaña Productos
+  final TextEditingController _busquedaCtrl = TextEditingController();
+  String _busqueda = '';
+
   @override
   void initState() {
     super.initState();
@@ -43,6 +47,7 @@ class _AdminMenuScreenState extends State<AdminMenuScreen>
   @override
   void dispose() {
     _tabController.dispose();
+    _busquedaCtrl.dispose();
     super.dispose();
   }
 
@@ -109,6 +114,25 @@ class _AdminMenuScreenState extends State<AdminMenuScreen>
   Future<void> _abrirEditor({Producto? producto}) async {
     final hayCambios = await mostrarEditorProducto(context, producto: producto);
     if (hayCambios) await _cargarDatos();
+  }
+
+  /// Alterna la disponibilidad del producto y recarga la lista.
+  Future<void> _toggleDisponible(Producto producto) async {
+    final nuevoEstado = !producto.estaDisponible;
+    try {
+      // El backend acepta `disponible` (snake_case en BD); el campo
+      // `estaDisponible` que tiene el modelo es solo nombre Dart interno.
+      await ProductoService.actualizarProducto(producto.id, {
+        'disponible': nuevoEstado,
+      });
+      if (!mounted) return;
+      final etiqueta = nuevoEstado ? 'disponible' : 'agotado';
+      showAppSuccess(context, 'Producto marcado como $etiqueta');
+      await _cargarDatos();
+    } catch (e) {
+      if (!mounted) return;
+      showAppError(context, 'No se pudo actualizar la disponibilidad: $e');
+    }
   }
 
   @override
@@ -297,12 +321,16 @@ class _AdminMenuScreenState extends State<AdminMenuScreen>
     final currentCategory = _categorias[_selectedCategoryIndex];
     final filteredProducts = _productos
         .where((p) => p.categoria == currentCategory)
+        .where((p) =>
+            _busqueda.isEmpty ||
+            p.nombre.toLowerCase().contains(_busqueda))
         .toList();
 
     return Column(
       children: [
         const SizedBox(height: 6),
         _buildCategorySelector(),
+        _buildSearchBar(),
         Expanded(
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 250),
@@ -360,6 +388,8 @@ class _AdminMenuScreenState extends State<AdminMenuScreen>
                                   producto: product,
                                   onEditar: () =>
                                       _abrirEditor(producto: product),
+                                  onToggleDisponible: () =>
+                                      _toggleDisponible(product),
                                 ),
                                 Positioned(
                                   top: 8,
@@ -392,6 +422,60 @@ class _AdminMenuScreenState extends State<AdminMenuScreen>
           ),
         ),
       ],
+    );
+  }
+
+  /// Buscador glass idéntico al de admin_stock_screen.dart.
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+          child: Container(
+            height: 44,
+            decoration: BoxDecoration(
+              // Fondo blanco sólido + texto/iconos negros: la imagen Bravo
+              // de fondo es muy clara y cualquier overlay translúcido daba
+              // poco contraste. Patrón de input "claro" tipo Google.
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.black.withValues(alpha: 0.15)),
+            ),
+            child: TextField(
+              controller: _busquedaCtrl,
+              cursorColor: AppColors.button,
+              style: const TextStyle(color: Colors.black87, fontSize: 14),
+              onChanged: (v) => setState(() => _busqueda = v.toLowerCase()),
+              decoration: InputDecoration(
+                hintText: 'Buscar producto...',
+                hintStyle: const TextStyle(color: Colors.black54, fontSize: 14),
+                prefixIcon: const Icon(
+                  Icons.search,
+                  color: Colors.black54,
+                  size: 20,
+                ),
+                suffixIcon: _busqueda.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(
+                          Icons.clear,
+                          color: Colors.black54,
+                          size: 18,
+                        ),
+                        onPressed: () {
+                          _busquedaCtrl.clear();
+                          setState(() => _busqueda = '');
+                        },
+                      )
+                    : null,
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -614,8 +698,13 @@ class _AdminMenuScreenState extends State<AdminMenuScreen>
 class _ProductoAdminCard extends StatelessWidget {
   final Producto producto;
   final VoidCallback onEditar;
+  final VoidCallback onToggleDisponible;
 
-  const _ProductoAdminCard({required this.producto, required this.onEditar});
+  const _ProductoAdminCard({
+    required this.producto,
+    required this.onEditar,
+    required this.onToggleDisponible,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -729,6 +818,28 @@ class _ProductoAdminCard extends StatelessWidget {
                         ),
                       ),
                       const Spacer(),
+                      // Toggle disponibilidad rápida sin abrir el editor
+                      IconButton(
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(
+                          minWidth: 36,
+                          minHeight: 36,
+                        ),
+                        tooltip: producto.estaDisponible
+                            ? 'Marcar como agotado'
+                            : 'Marcar como disponible',
+                        icon: Icon(
+                          producto.estaDisponible
+                              ? Icons.toggle_on_outlined
+                              : Icons.toggle_off_outlined,
+                          color: producto.estaDisponible
+                              ? const Color(0xFF4CAF50)
+                              : const Color(0xFFEF5350),
+                          size: 28,
+                        ),
+                        onPressed: onToggleDisponible,
+                      ),
+                      const SizedBox(width: 6),
                       _EditarPill(onTap: onEditar),
                     ],
                   ),

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:frontend/core/colors_style.dart';
@@ -5,6 +6,9 @@ import 'package:frontend/models/ingrediente_model.dart';
 import 'package:frontend/models/producto_model.dart';
 import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/services/api_service.dart';
+import 'package:frontend/services/producto_service.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 
 const _kSheetBg = Color(0xFF1A1A1A);
@@ -40,7 +44,16 @@ class _EditorProductoSheetState extends State<_EditorProductoSheet> {
   late final TextEditingController _nombre;
   late final TextEditingController _descripcion;
   late final TextEditingController _precio;
-  late final TextEditingController _imagen;
+
+  // ── Estado de imagen ──────────────────────────────────────────────────────
+  /// URL actual del producto (viene del backend, puede ser null).
+  String? _imagenUrlActual;
+  /// Bytes de la imagen elegida en esta sesión (todavía no subida).
+  Uint8List? _imagenBytesNueva;
+  String? _imagenNombreNuevo;
+  String? _imagenContentTypeNuevo;
+  /// true cuando el admin pulsó "Eliminar imagen" en esta sesión.
+  bool _eliminarImagenPendiente = false;
 
   String? _categoriaSeleccionada;
   bool _disponible = true;
@@ -63,7 +76,7 @@ class _EditorProductoSheetState extends State<_EditorProductoSheet> {
     _precio = TextEditingController(
       text: p == null ? '' : p.precio.toStringAsFixed(2),
     );
-    _imagen = TextEditingController(text: p?.imagenUrl ?? '');
+    _imagenUrlActual = p?.imagenUrl;
     _categoriaSeleccionada = p?.categoria;
     _disponible = p?.estaDisponible ?? true;
 
@@ -85,7 +98,6 @@ class _EditorProductoSheetState extends State<_EditorProductoSheet> {
     _nombre.dispose();
     _descripcion.dispose();
     _precio.dispose();
-    _imagen.dispose();
     for (final item in _items.values) {
       item.controller.dispose();
     }
@@ -179,6 +191,102 @@ class _EditorProductoSheetState extends State<_EditorProductoSheet> {
     });
   }
 
+  // ─── Selección de imagen desde galería ───────────────────────────────────
+
+  static const _mimePermitidos = {'image/jpeg', 'image/png', 'image/webp'};
+
+  Future<void> _seleccionarImagen({bool camara = false}) async {
+    final picker = ImagePicker();
+    XFile? archivo;
+    try {
+      archivo = await picker.pickImage(
+        source: camara ? ImageSource.camera : ImageSource.gallery,
+        imageQuality: 85,
+        maxWidth: 1600,
+      );
+    } on MissingPluginException {
+      // Plugin no registrado (típico en web tras añadir image_picker sin
+      // reiniciar `flutter run`). Mostramos guía clara en vez de crashear.
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Selector de imagen no disponible. Reinicia la app '
+            '(flutter clean && flutter run) para registrar el plugin.',
+          ),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 6),
+        ),
+      );
+      return;
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No se pudo abrir el selector: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    if (archivo == null) return;
+    // Variable local non-null: el analyzer pierde la promoción dentro del
+    // closure de setState más abajo, así que la fijamos explícitamente.
+    final XFile elegido = archivo;
+    final bytes = await elegido.readAsBytes();
+
+    // Validar tamaño en cliente (5 MB)
+    if (bytes.lengthInBytes > 5 * 1024 * 1024) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Imagen demasiado grande. Máx 5 MB.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Detectar MIME a partir del mimeType del XFile o la extensión.
+    final mime = _inferirMime(elegido);
+    if (!_mimePermitidos.contains(mime)) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Formato no permitido. Usa JPG, PNG o WebP.',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _imagenBytesNueva = bytes;
+      _imagenNombreNuevo = elegido.name;
+      _imagenContentTypeNuevo = mime;
+      // Si el usuario elige una imagen nueva, ya no queremos eliminar la anterior.
+      _eliminarImagenPendiente = false;
+    });
+  }
+
+  /// Infiere el MIME de un [XFile] usando su campo `mimeType` si está disponible,
+  /// o la extensión del nombre de archivo como respaldo.
+  String _inferirMime(XFile archivo) {
+    final mt = archivo.mimeType;
+    if (mt != null && mt.isNotEmpty) return mt.toLowerCase();
+    final ext = archivo.name.split('.').last.toLowerCase();
+    return switch (ext) {
+      'jpg' || 'jpeg' => 'image/jpeg',
+      'png' => 'image/png',
+      'webp' => 'image/webp',
+      _ => 'application/octet-stream',
+    };
+  }
+
+  // ─── Guardado principal ───────────────────────────────────────────────────
+
   Future<void> _guardar() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     if (_categoriaSeleccionada == null) {
@@ -203,7 +311,6 @@ class _EditorProductoSheetState extends State<_EditorProductoSheet> {
         };
       }).toList();
 
-      final imagen = _imagen.text.trim();
       final restauranteId =
           widget.producto?.restauranteId ??
           context.read<AuthProvider>().usuarioActual?.restauranteId;
@@ -212,18 +319,68 @@ class _EditorProductoSheetState extends State<_EditorProductoSheet> {
         'descripcion': _descripcion.text.trim(),
         'precio': double.tryParse(_precio.text.replaceAll(',', '.')) ?? 0,
         'categoria': _categoriaSeleccionada,
-        'imagen': imagen,
+        // Si el admin marcó eliminar imagen, lo comunicamos al backend.
+        // Si no hay cambio de imagen, la URL existente se mantiene en BD
+        // sin necesidad de reenviársela; el backend la conserva.
+        if (_eliminarImagenPendiente) 'imagen': null,
         'disponible': _disponible,
         'ingredientes': ingredientes,
         if (restauranteId != null && restauranteId.isNotEmpty)
           'restaurante_id': restauranteId,
       };
 
+      String productoId;
       if (_esEdicion) {
         await ApiService.actualizarProducto(widget.producto!.id, datos);
+        productoId = widget.producto!.id;
       } else {
-        await ApiService.crearProducto(datos);
+        final creado = await ApiService.crearProducto(datos);
+        productoId = creado.id;
       }
+
+      // ── Operaciones de imagen post-guardado ───────────────────────────────
+      // Se ejecutan solo si el save base tuvo éxito. Un fallo aquí avisa
+      // mediante snackbar pero NO deshace el guardado del producto.
+      if (_eliminarImagenPendiente && _esEdicion) {
+        try {
+          await ProductoService.eliminarImagenProducto(productoId);
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('No se pudo eliminar la imagen: $e'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
+        }
+      } else if (_imagenBytesNueva != null) {
+        try {
+          await ProductoService.subirImagenProducto(
+            productoId: productoId,
+            bytes: _imagenBytesNueva!,
+            nombreArchivo: _imagenNombreNuevo ?? 'imagen.jpg',
+            contentType: _imagenContentTypeNuevo ?? 'image/jpeg',
+          );
+        } on Object catch (e) {
+          if (!mounted) return;
+          // 503 indica que Cloudinary no está configurado en el backend.
+          final msg = e.toString().contains('503') ||
+                  e.toString().toLowerCase().contains('cloudinary') ||
+                  e.toString().toLowerCase().contains('no disponible')
+              ? 'Subida no disponible. El backend necesita configurar Cloudinary.'
+              : 'No se pudo subir la imagen: $e';
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(msg),
+              backgroundColor:
+                  e.toString().contains('503') ? Colors.orange : Colors.red,
+            ),
+          );
+          // El producto sí fue creado/actualizado; cerramos igualmente.
+        }
+      }
+
       if (!mounted) return;
       Navigator.pop(context, true);
     } catch (e) {
@@ -369,11 +526,7 @@ class _EditorProductoSheetState extends State<_EditorProductoSheet> {
                             titulo: 'Imagen',
                           ),
                           const SizedBox(height: 10),
-                          _buildCampoTexto(
-                            controlador: _imagen,
-                            etiqueta: 'URL de imagen (opcional)',
-                            icono: Icons.image_outlined,
-                          ),
+                          _buildSelectorImagen(),
                           const SizedBox(height: 8),
                           _buildSectionHeader(
                             icono: Icons.toggle_on_outlined,
@@ -399,6 +552,198 @@ class _EditorProductoSheetState extends State<_EditorProductoSheet> {
           ),
         );
       },
+    );
+  }
+
+  // ─── Selector / previsualización de imagen ───────────────────────────────────
+
+  Widget _buildSelectorImagen() {
+    // Determina qué mostrar en el área de previsualización:
+    // 1) Bytes recién elegidos → Image.memory
+    // 2) URL existente en BD (sin cambios) → CachedNetworkImage
+    // 3) Nada → placeholder con icono
+
+    final hayBytesNuevos = _imagenBytesNueva != null;
+    final hayUrlExistente =
+        _imagenUrlActual != null &&
+        _imagenUrlActual!.isNotEmpty &&
+        !_eliminarImagenPendiente;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── Área principal: tap abre galería ──────────────────────────────
+        GestureDetector(
+          onTap: () => _seleccionarImagen(),
+          child: Container(
+            height: 180,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.07),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: _kBorder),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: hayBytesNuevos
+                ? Image.memory(
+                    _imagenBytesNueva!,
+                    fit: BoxFit.cover,
+                  )
+                : hayUrlExistente
+                ? CachedNetworkImage(
+                    imageUrl: _imagenUrlActual!,
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => const Center(
+                      child: CircularProgressIndicator(
+                        color: Colors.white54,
+                        strokeWidth: 2,
+                      ),
+                    ),
+                    errorWidget: (context, url, error) => _placeholderImagen(),
+                  )
+                : _placeholderImagen(),
+          ),
+        ),
+
+        const SizedBox(height: 8),
+
+        // ── Botones secundarios ────────────────────────────────────────────
+        Row(
+          children: [
+            // "Cambiar imagen" siempre visible
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => _seleccionarImagen(),
+                icon: const Icon(Icons.photo_library_outlined, size: 18),
+                label: Text(
+                  hayUrlExistente || hayBytesNuevos
+                      ? 'Cambiar imagen'
+                      : 'Elegir imagen',
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white70,
+                  side: const BorderSide(color: _kBorder),
+                  backgroundColor: Colors.white.withValues(alpha: 0.05),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                ),
+              ),
+            ),
+
+            // Botón cámara: solo en plataformas no-web
+            if (!kIsWeb) ...[
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 48,
+                height: 44,
+                child: Tooltip(
+                  message: 'Usar cámara',
+                  child: OutlinedButton(
+                    onPressed: () => _seleccionarImagen(camara: true),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white70,
+                      side: const BorderSide(color: _kBorder),
+                      backgroundColor: Colors.white.withValues(alpha: 0.05),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      padding: EdgeInsets.zero,
+                    ),
+                    child: const Icon(Icons.camera_alt_outlined, size: 20),
+                  ),
+                ),
+              ),
+            ],
+
+            // "Eliminar imagen": solo si hay algo que eliminar
+            if (hayUrlExistente || hayBytesNuevos) ...[
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 48,
+                height: 44,
+                child: Tooltip(
+                  message: 'Eliminar imagen',
+                  child: OutlinedButton(
+                    onPressed: () {
+                      setState(() {
+                        _imagenBytesNueva = null;
+                        _imagenNombreNuevo = null;
+                        _imagenContentTypeNuevo = null;
+                        // Solo marcamos eliminación pendiente si había URL en BD.
+                        if (_imagenUrlActual != null &&
+                            _imagenUrlActual!.isNotEmpty) {
+                          _eliminarImagenPendiente = true;
+                        }
+                      });
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.error,
+                      side: BorderSide(
+                        color: AppColors.error.withValues(alpha: 0.5),
+                      ),
+                      backgroundColor: AppColors.error.withValues(alpha: 0.07),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      padding: EdgeInsets.zero,
+                    ),
+                    child: const Icon(Icons.delete_outline, size: 20),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+
+        // Aviso cuando el usuario ha marcado "eliminar imagen"
+        if (_eliminarImagenPendiente)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.info_outline,
+                  size: 14,
+                  color: AppColors.error.withValues(alpha: 0.8),
+                ),
+                const SizedBox(width: 6),
+                const Text(
+                  'La imagen se eliminará al guardar.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.error,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+        const SizedBox(height: 6),
+      ],
+    );
+  }
+
+  /// Placeholder centrado con icono y texto cuando no hay imagen.
+  Widget _placeholderImagen() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          Icons.add_photo_alternate_outlined,
+          size: 48,
+          color: Colors.white.withValues(alpha: 0.3),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Pulsa para seleccionar imagen',
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.4),
+            fontSize: 13,
+          ),
+        ),
+      ],
     );
   }
 

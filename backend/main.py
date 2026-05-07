@@ -17,8 +17,8 @@ import log_redactor
 # antes de escribir en los logs (cumple PCI-DSS y RGPD).
 log_redactor.install("uvicorn", "uvicorn.error", "uvicorn.access", "fastapi")
 
-from routes import auth, usuarios, categorias, productos, pedidos, mesas, reservas, ingredientes, cupones
-from routes import restaurantes
+from routes import auth, usuarios, categorias, productos, pedidos, mesas, reservas, ingredientes, cupones, cierres_caja
+from routes import restaurantes, uploads, super_admin
 import pagos
 from tickets import router as tickets_router
 
@@ -85,6 +85,9 @@ v1.include_router(ingredientes.router)
 v1.include_router(pagos.router)
 v1.include_router(tickets_router)
 v1.include_router(cupones.router)
+v1.include_router(cierres_caja.router)
+v1.include_router(uploads.router)
+v1.include_router(super_admin.router)
 app.include_router(v1)
 
 @app.get("/", summary="Healthcheck básico", tags=["health"])

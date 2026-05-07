@@ -1,11 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from exceptions import AppError, NotFoundError, ConflictError, ValidacionError
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from bson import ObjectId
 from bson.errors import InvalidId
 from fastapi_mail import FastMail, MessageSchema, MessageType
 from pydantic import BaseModel
 from typing import Optional
+import csv
+import io
 import logging
 from pymongo.errors import OperationFailure
 
@@ -551,6 +554,317 @@ def _normalizar_fecha_query(valor: str, fin_de_dia: bool) -> str:
         return valor + sufijo
     # Si llega con hora explícita, respetarla tal cual
     return valor
+
+
+# ── Estados que representan ventas reales (contabilidad) ─────────────────────
+# "listo" equivale a servido en este proyecto ("entregado" no se usa como
+# estado final en el flujo actual, pero lo incluimos por si se añade).
+_ESTADOS_VENTA = {"listo", "entregado"}
+
+# Límite máximo de días permitido en export para evitar OOM
+_MAX_DIAS_EXPORT = 90
+
+
+def _construir_filtro_contabilidad(
+    fecha_desde: Optional[str],
+    fecha_hasta: Optional[str],
+    restaurante_id: Optional[str],
+    current_user: dict,
+) -> dict:
+    """Devuelve el filtro Mongo para los endpoints de contabilidad.
+
+    Aplica aislamiento igual que GET /pedidos: el admin usa su propio
+    restaurante_id del JWT; el super_admin puede recibir uno por query.
+    """
+    rol = normalizar_rol(current_user.get("rol", ""))
+    filtro: dict = {"estado": {"$in": list(_ESTADOS_VENTA)}}
+
+    # Aislamiento por sucursal
+    if rol == "super_admin":
+        # El super_admin puede filtrar por restaurante_id explícito
+        rid = restaurante_id
+    else:
+        # Admin (y cualquier otro rol de personal): usa el del JWT, ignora el query
+        rid = current_user.get("restaurante_id")
+
+    if rid:
+        filtro["$or"] = [
+            {"restaurante_id": rid},
+            {"restaurante_id": {"$exists": False}},
+        ]
+
+    # Filtro temporal
+    rango_fecha: dict = {}
+    if fecha_desde:
+        rango_fecha["$gte"] = _normalizar_fecha_query(fecha_desde, fin_de_dia=False)
+    if fecha_hasta:
+        rango_fecha["$lte"] = _normalizar_fecha_query(fecha_hasta, fin_de_dia=True)
+    if rango_fecha:
+        filtro["fecha"] = rango_fecha
+
+    return filtro
+
+
+@router.get("/resumen")
+def obtener_resumen_pedidos(
+    fecha_desde: Optional[str] = Query(None),
+    fecha_hasta: Optional[str] = Query(None),
+    restaurante_id: Optional[str] = Query(None),
+    current_user: dict = Depends(get_current_user),
+):
+    """Devuelve agregados de contabilidad: totales, por día, por método de
+    pago, por tipo de entrega y top 10 productos más vendidos.
+
+    Solo cuenta pedidos en estado 'listo' o 'entregado' (ventas reales).
+    El cálculo se hace en Python sobre el cursor para máxima compatibilidad
+    con mongomock y volúmenes típicos de cientos de pedidos por sucursal/mes.
+    """
+    filtro = _construir_filtro_contabilidad(
+        fecha_desde, fecha_hasta, restaurante_id, current_user
+    )
+
+    pedidos = list(coleccion_pedidos.find(filtro))
+
+    # Acumuladores
+    total_ingresos = 0.0
+    total_pedidos = 0
+    total_items = 0
+
+    # Clave: "YYYY-MM-DD", valor: {"ingresos": float, "pedidos": int}
+    por_dia: dict[str, dict] = {}
+
+    # Clave: método de pago, valor: {"ingresos": float, "pedidos": int}
+    por_metodo: dict[str, dict] = {}
+
+    # Clave: tipo de entrega, valor: {"ingresos": float, "pedidos": int}
+    por_tipo: dict[str, dict] = {}
+
+    # Clave: (producto_id o nombre), valor: {"nombre": str, "unidades": int, "ingresos": float}
+    productos: dict[str, dict] = {}
+
+    for p in pedidos:
+        total_pedido = float(p.get("total", 0))
+        fecha_raw = p.get("fecha", "")
+        # Normalizamos a minúsculas + strip para evitar duplicados
+        # ("Efectivo" y "efectivo" deben agruparse en la misma card).
+        metodo_raw = p.get("metodo_pago") or "desconocido"
+        metodo = (
+            metodo_raw.strip().lower()
+            if isinstance(metodo_raw, str) and metodo_raw.strip()
+            else "desconocido"
+        )
+        tipo_raw = p.get("tipo_entrega") or "local"
+        tipo = (
+            tipo_raw.strip().lower()
+            if isinstance(tipo_raw, str) and tipo_raw.strip()
+            else "local"
+        )
+        items_doc = p.get("items", [])
+        if not isinstance(items_doc, list):
+            items_doc = []
+
+        # Contar solo items con cantidad > 0 y precio > 0
+        items_validos = [
+            it for it in items_doc
+            if isinstance(it, dict)
+            and it.get("cantidad", 0) > 0
+            and it.get("precio", 0) > 0
+        ]
+        n_items = sum(int(it.get("cantidad", 0)) for it in items_validos)
+
+        total_ingresos += total_pedido
+        total_pedidos += 1
+        total_items += n_items
+
+        # Agrupación por día (extrae YYYY-MM-DD del string ISO)
+        dia = fecha_raw[:10] if len(fecha_raw) >= 10 else "desconocido"
+        if dia not in por_dia:
+            por_dia[dia] = {"fecha": dia, "ingresos": 0.0, "pedidos": 0}
+        por_dia[dia]["ingresos"] += total_pedido
+        por_dia[dia]["pedidos"] += 1
+
+        # Agrupación por método de pago
+        if metodo not in por_metodo:
+            por_metodo[metodo] = {"metodo": metodo, "ingresos": 0.0, "pedidos": 0}
+        por_metodo[metodo]["ingresos"] += total_pedido
+        por_metodo[metodo]["pedidos"] += 1
+
+        # Agrupación por tipo de entrega
+        if tipo not in por_tipo:
+            por_tipo[tipo] = {"tipo": tipo, "ingresos": 0.0, "pedidos": 0}
+        por_tipo[tipo]["ingresos"] += total_pedido
+        por_tipo[tipo]["pedidos"] += 1
+
+        # Agrupación de productos
+        for it in items_validos:
+            pid = str(it.get("producto_id", "")).strip()
+            nombre = it.get("nombre") or it.get("producto_nombre") or "Desconocido"
+            # Prefiere agrupar por producto_id si existe; si no, por nombre
+            clave = pid if pid else nombre
+            cant = int(it.get("cantidad", 0))
+            ingreso_item = float(it.get("precio", 0)) * cant
+            if clave not in productos:
+                productos[clave] = {"producto_id": pid or None, "nombre": nombre, "unidades": 0, "ingresos": 0.0}
+            productos[clave]["unidades"] += cant
+            productos[clave]["ingresos"] += ingreso_item
+
+    # Ticket medio
+    ticket_medio = round(total_ingresos / total_pedidos, 2) if total_pedidos > 0 else 0.0
+
+    # Porcentajes por método de pago — devolvemos el label canónico
+    # (_ETIQUETA_PAGO) para que la UI muestre "Efectivo" / "Tarjeta" siempre
+    # igual, independientemente de cómo esté guardado en BBDD legacy.
+    lista_metodos = []
+    for v in por_metodo.values():
+        pct = round(v["pedidos"] / total_pedidos * 100, 1) if total_pedidos > 0 else 0.0
+        clave = v["metodo"]
+        label = _ETIQUETA_PAGO.get(clave, clave.capitalize())
+        lista_metodos.append({
+            "metodo": label,
+            "ingresos": round(v["ingresos"], 2),
+            "pedidos": v["pedidos"],
+            "porcentaje": pct,
+        })
+
+    # Top 10 productos ordenados desc por unidades
+    top_productos = sorted(productos.values(), key=lambda x: x["unidades"], reverse=True)[:10]
+    for tp in top_productos:
+        tp["ingresos"] = round(tp["ingresos"], 2)
+
+    return {
+        "totales": {
+            "ingresos": round(total_ingresos, 2),
+            "pedidos": total_pedidos,
+            "ticket_medio": ticket_medio,
+            "items_vendidos": total_items,
+        },
+        "por_dia": sorted(
+            [{"fecha": v["fecha"], "ingresos": round(v["ingresos"], 2), "pedidos": v["pedidos"]}
+             for v in por_dia.values()],
+            key=lambda x: x["fecha"],
+        ),
+        "por_metodo_pago": lista_metodos,
+        "por_tipo_entrega": [
+            {"tipo": v["tipo"], "ingresos": round(v["ingresos"], 2), "pedidos": v["pedidos"]}
+            for v in por_tipo.values()
+        ],
+        "top_productos": top_productos,
+    }
+
+
+@router.get("/exportar")
+def exportar_pedidos(
+    fecha_desde: Optional[str] = Query(None),
+    fecha_hasta: Optional[str] = Query(None),
+    restaurante_id: Optional[str] = Query(None),
+    formato: str = Query("csv", pattern="^(csv|pdf)$"),
+    current_user: dict = Depends(get_current_user),
+):
+    """Exporta el listado de pedidos en CSV o PDF.
+
+    Restricciones:
+    - Rango máximo de 90 días (evita OOM con volúmenes grandes).
+    - Misma lógica de aislamiento que GET /pedidos/resumen.
+    - PDF devuelve 501 porque reportlab no está instalado.
+    """
+    # Validar rango máximo de 90 días si se proporcionan ambas fechas
+    if fecha_desde and fecha_hasta:
+        try:
+            dt_desde = datetime.fromisoformat(fecha_desde.strip()[:10])
+            dt_hasta = datetime.fromisoformat(fecha_hasta.strip()[:10])
+        except ValueError:
+            # _construir_filtro_contabilidad llamará a _normalizar_fecha_query
+            # y lanzará ValidacionError con mensaje apropiado
+            dt_desde = dt_hasta = None
+
+        if dt_desde and dt_hasta:
+            delta = (dt_hasta - dt_desde).days
+            if delta > _MAX_DIAS_EXPORT:
+                raise ValidacionError(
+                    f"Reduce el rango a {_MAX_DIAS_EXPORT} días o menos "
+                    f"(solicitado: {delta} días)."
+                )
+
+    if formato == "pdf":
+        # reportlab no está instalado; devolvemos 501 claro
+        raise HTTPException(
+            status_code=501,
+            detail=(
+                "El backend no tiene biblioteca PDF disponible. "
+                "Solicita instalar reportlab (pip install reportlab) "
+                "y añadirlo a requirements.txt."
+            ),
+        )
+
+    # Construir filtro con los mismos criterios que el resumen
+    filtro = _construir_filtro_contabilidad(
+        fecha_desde, fecha_hasta, restaurante_id, current_user
+    )
+    pedidos = list(coleccion_pedidos.find(filtro))
+
+    # Determinar nombre de archivo
+    rid_label = (
+        current_user.get("restaurante_id")
+        or restaurante_id
+        or "todos"
+    )
+    desde_label = fecha_desde or "inicio"
+    hasta_label = fecha_hasta or "fin"
+    filename = f"contabilidad_{rid_label}_{desde_label}_{hasta_label}.csv"
+
+    # Generar CSV en memoria (RFC 4180).
+    # Delimitador `;`: Excel en es-ES usa `,` como decimal, así que el
+    # separador esperado para autorrellenar columnas es el punto y coma.
+    output = io.StringIO()
+    writer = csv.writer(output, delimiter=";", quoting=csv.QUOTE_MINIMAL)
+    writer.writerow(
+        ["fecha", "id", "total", "metodo_pago", "tipo_entrega", "estado", "items"]
+    )
+
+    for p in pedidos:
+        items_raw = p.get("items", [])
+        n_items = len(items_raw) if isinstance(items_raw, list) else 0
+
+        # Fecha legible dd/mm/yyyy HH:MM (Excel la entiende como datetime ES)
+        fecha_raw = p.get("fecha", "") or ""
+        try:
+            fecha_fmt = datetime.fromisoformat(fecha_raw).strftime("%d/%m/%Y %H:%M")
+        except (ValueError, TypeError):
+            fecha_fmt = fecha_raw
+
+        # Normalizar método de pago y tipo de entrega al label canónico
+        metodo_raw = (p.get("metodo_pago") or "").strip().lower()
+        metodo_label = _ETIQUETA_PAGO.get(metodo_raw, metodo_raw.capitalize())
+        tipo_raw = (p.get("tipo_entrega") or "").strip().lower()
+        tipo_label = _ETIQUETA_ENTREGA.get(tipo_raw, tipo_raw.capitalize())
+
+        # Total con coma decimal (formato es-ES) — Excel en es-ES lo parsea
+        # como número directo cuando se combina con delimitador `;`.
+        total_raw = p.get("total", 0) or 0
+        try:
+            total_fmt = f"{float(total_raw):.2f}".replace(".", ",")
+        except (ValueError, TypeError):
+            total_fmt = str(total_raw)
+
+        writer.writerow([
+            fecha_fmt,
+            str(p["_id"]),
+            total_fmt,
+            metodo_label,
+            tipo_label,
+            p.get("estado", ""),
+            n_items,
+        ])
+
+    output.seek(0)
+    # Codificar a bytes con BOM UTF-8 para compatibilidad con Excel
+    contenido = output.getvalue().encode("utf-8-sig")
+
+    return StreamingResponse(
+        io.BytesIO(contenido),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get("")

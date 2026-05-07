@@ -306,6 +306,13 @@ async def iniciar_sesion(request: Request, credenciales: UsuarioLogin):
         if not usuario_db.get("is_verified", False):
             raise AutorizacionError("Cuenta no verificada. Por favor, revisa tu correo.")
 
+        # Bloqueo de cuentas suspendidas (soft-delete del admin). Usuarios
+        # legacy sin el campo `activo` se tratan como activos por defecto.
+        if usuario_db.get("activo", True) is False:
+            raise AutorizacionError(
+                "Tu cuenta está suspendida. Contacta con el administrador.",
+            )
+
         password_escrita = credenciales.password.encode('utf-8')
         hash_almacenado = usuario_db["password_hash"].encode('utf-8')
 

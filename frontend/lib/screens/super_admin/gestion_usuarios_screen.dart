@@ -139,14 +139,15 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
     final rolFijo = widget.rolAFiltrar.toLowerCase() == 'administrador'
         ? 'administrador'
         : null;
-        
-    final rId = _selectedRestauranteId ?? '';
 
+    // Si hay una sucursal filtrada actualmente la pasamos como contexto;
+    // si no, abrimos el modo libre (sin restauranteId) para que el super_admin
+    // elija sucursal y rol en la propia pantalla de creación.
     await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => CrearUsuarioScreen(
-          restauranteId: rId,
+          restauranteId: _selectedRestauranteId,
           rolFijo: rolFijo,
         ),
       ),

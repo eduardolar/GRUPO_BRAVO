@@ -1,7 +1,7 @@
 import re
 from enum import Enum
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 
 # ── Enums ─────────────────────────────────────────────────────────────────────
@@ -227,3 +227,41 @@ class ProductoCrear(BaseModel):
 class VerificarLogin2FA(BaseModel):
     correo: EmailStr
     codigo: str
+
+
+# ── Restaurante ────────────────────────────────────────────────────────────────
+
+class RestauranteActualizar(BaseModel):
+    """Campos editables de un restaurante vía PUT /restaurantes/{id}.
+
+    Todos los campos son opcionales: el endpoint solo persiste los que lleguen
+    con valor no-None (patrón PATCH semántico sobre verbo PUT).
+    """
+    # Campos legacy, se mantienen para compatibilidad
+    nombre: Optional[str] = None
+    direccion: Optional[str] = None
+    codigo: Optional[str] = None
+    horario_apertura: Optional[str] = None
+    horario_cierre: Optional[str] = None
+
+    # Logo de la sucursal (gestionado preferentemente via POST /restaurantes/{id}/logo,
+    # pero se permite actualizar la URL directamente si ya se subió por otro medio)
+    logo_url: Optional[str] = None
+    logo_public_id: Optional[str] = None
+
+    # Horarios detallados por día (lunes-domingo independientes)
+    # Shape: {"lunes": {"apertura": "09:00", "cierre": "23:00", "abierto": true}, ...}
+    # Se usa Dict[str, Any] para el valor interno porque 'abierto' puede ser bool o str.
+    horarios_dia: Optional[Dict[str, Dict[str, Any]]] = None
+
+    # Datos fiscales
+    cif: Optional[str] = None
+    razon_social: Optional[str] = None
+    direccion_fiscal: Optional[str] = None
+    codigo_postal: Optional[str] = None
+    ciudad: Optional[str] = None
+    provincia: Optional[str] = None
+    pais: Optional[str] = None
+
+    # Métodos de pago habilitados en la sucursal
+    metodos_pago: Optional[List[str]] = None

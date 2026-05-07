@@ -243,6 +243,94 @@ class ReservaService {
     throw toApiException(response.statusCode, decodeBody(response));
   }
 
+  // ─── Endpoints de gestión admin ────────────────────────────
+
+  /// Devuelve reservas del día para la vista de administrador/camarero.
+  /// [fecha] en formato YYYY-MM-DD. [estado] es opcional para filtrar.
+  static Future<List<Map<String, dynamic>>> obtenerReservasAdmin({
+    String? fecha,
+    String? estado,
+  }) async {
+    final params = <String, String>{};
+    if (fecha != null && fecha.isNotEmpty) params['fecha'] = fecha;
+    if (estado != null && estado.isNotEmpty) params['estado'] = estado;
+
+    final uri = Uri.parse(
+      '$baseUrl/reservas/admin',
+    ).replace(queryParameters: params.isEmpty ? null : params);
+
+    final response = await httpWithRetry(
+      () => http.get(uri, headers: AuthSession.headers()),
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.cast<Map<String, dynamic>>();
+    }
+    throw toApiException(response.statusCode, decodeBody(response));
+  }
+
+  /// Cambia el estado de una reserva.
+  /// [estado] puede ser: Confirmada, Cancelada, Pendiente, Llegado, NoShow.
+  static Future<void> cambiarEstadoReserva(String id, String estado) async {
+    final response = await httpWithRetry(
+      () => http.patch(
+        Uri.parse('$baseUrl/reservas/$id/estado'),
+        headers: AuthSession.headers(),
+        body: jsonEncode({'estado': estado}),
+      ),
+      retry: false,
+    );
+    if (response.statusCode != 200) {
+      throw toApiException(response.statusCode, decodeBody(response));
+    }
+  }
+
+  /// Variante para super_admin: permite filtrar por [restauranteId] además de
+  /// [fecha] y [estado]. Sin [restauranteId] devuelve reservas de todas las
+  /// sucursales. Consume el mismo endpoint /reservas/admin que el admin normal.
+  static Future<List<Map<String, dynamic>>> obtenerReservasSuperAdmin({
+    String? restauranteId,
+    String? fecha,
+    String? estado,
+  }) async {
+    final params = <String, String>{};
+    if (restauranteId != null && restauranteId.isNotEmpty) {
+      params['restaurante_id'] = restauranteId;
+    }
+    if (fecha != null && fecha.isNotEmpty) params['fecha'] = fecha;
+    if (estado != null && estado.isNotEmpty) params['estado'] = estado;
+
+    final uri = Uri.parse(
+      '$baseUrl/reservas/admin',
+    ).replace(queryParameters: params.isEmpty ? null : params);
+
+    final response = await httpWithRetry(
+      () => http.get(uri, headers: AuthSession.headers()),
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.cast<Map<String, dynamic>>();
+    }
+    throw toApiException(response.statusCode, decodeBody(response));
+  }
+
+  /// Asigna una mesa a una reserva.
+  static Future<void> asignarMesaReserva(String id, String mesaId) async {
+    final response = await httpWithRetry(
+      () => http.patch(
+        Uri.parse('$baseUrl/reservas/$id/asignar-mesa'),
+        headers: AuthSession.headers(),
+        body: jsonEncode({'mesaId': mesaId}),
+      ),
+      retry: false,
+    );
+    if (response.statusCode != 200) {
+      throw toApiException(response.statusCode, decodeBody(response));
+    }
+  }
+
   // ─── Helpers privados ────────────────────────────────────────
 
   static int _horaAMinutos(String hora) {

@@ -654,3 +654,224 @@ def test_descuento_legacy_solo_nombre_sigue_funcionando(client):
     call_filtro = mock_ing.update_one.call_args[0][0]
     assert "nombre" in call_filtro, "Sin ingrediente_id debe filtrar por nombre"
     assert "_id" not in call_filtro, "No debe haber _id en filtro legacy"
+
+
+# ── GET /pedidos/resumen ──────────────────────────────────────────────────────
+
+def _pedido_doc(
+    total: float,
+    fecha: str,
+    metodo: str = "efectivo",
+    tipo: str = "local",
+    estado: str = "listo",
+    items: list | None = None,
+    restaurante_id: str = "r1",
+) -> dict:
+    """Factoría de documentos de pedido para los tests de resumen."""
+    if items is None:
+        items = [{"producto_id": "p1", "nombre": "Pizza", "cantidad": 1, "precio": total}]
+    return {
+        "_id": ObjectId(),
+        "fecha": fecha,
+        "total": total,
+        "estado": estado,
+        "metodo_pago": metodo,
+        "tipo_entrega": tipo,
+        "items": items,
+        "restaurante_id": restaurante_id,
+    }
+
+
+def test_resumen_calcula_totales(client):
+    """3 pedidos 'listo' → ingresos, pedidos y ticket_medio correctos."""
+    docs = [
+        _pedido_doc(10.0, "2025-05-01T10:00:00"),
+        _pedido_doc(20.0, "2025-05-01T11:00:00"),
+        _pedido_doc(30.0, "2025-05-02T09:00:00"),
+    ]
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_col:
+        mock_col.find.return_value = docs
+        resp = client.get("/api/v1/pedidos/resumen", headers=_auth_admin())
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["totales"]["ingresos"] == 60.0
+    assert data["totales"]["pedidos"] == 3
+    assert data["totales"]["ticket_medio"] == 20.0
+
+
+def test_resumen_agrupa_por_dia(client):
+    """2 pedidos el día A y 1 el día B → 2 entradas en por_dia."""
+    docs = [
+        _pedido_doc(10.0, "2025-05-01T10:00:00"),
+        _pedido_doc(10.0, "2025-05-01T15:00:00"),
+        _pedido_doc(10.0, "2025-05-02T09:00:00"),
+    ]
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_col:
+        mock_col.find.return_value = docs
+        resp = client.get("/api/v1/pedidos/resumen", headers=_auth_admin())
+
+    assert resp.status_code == 200
+    por_dia = resp.json()["por_dia"]
+    assert len(por_dia) == 2
+    dias = {d["fecha"] for d in por_dia}
+    assert "2025-05-01" in dias
+    assert "2025-05-02" in dias
+    dia_a = next(d for d in por_dia if d["fecha"] == "2025-05-01")
+    assert dia_a["pedidos"] == 2
+    assert dia_a["ingresos"] == 20.0
+
+
+def test_resumen_filtra_por_metodo_pago(client):
+    """Mezcla 'Efectivo'/'efectivo' + 'tarjeta' → backend agrupa case-insensitive
+    y devuelve el label canónico ('Efectivo', 'Tarjeta')."""
+    docs = [
+        _pedido_doc(50.0, "2025-05-01T10:00:00", metodo="efectivo"),
+        _pedido_doc(50.0, "2025-05-01T11:00:00", metodo="Efectivo"),
+        _pedido_doc(100.0, "2025-05-01T12:00:00", metodo="tarjeta"),
+    ]
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_col:
+        mock_col.find.return_value = docs
+        resp = client.get("/api/v1/pedidos/resumen", headers=_auth_admin())
+
+    assert resp.status_code == 200
+    metodos = {m["metodo"]: m for m in resp.json()["por_metodo_pago"]}
+    assert metodos["Efectivo"]["pedidos"] == 2
+    assert metodos["Tarjeta"]["pedidos"] == 1
+    # Los porcentajes deben sumar 100 (con tolerancia de redondeo)
+    suma_pct = sum(m["porcentaje"] for m in resp.json()["por_metodo_pago"])
+    assert abs(suma_pct - 100.0) < 0.2
+
+
+def test_resumen_top_productos_ordena_desc(client):
+    """3 productos con distintas unidades → orden descendente por unidades."""
+    docs = [
+        _pedido_doc(10.0, "2025-05-01T10:00:00", items=[
+            {"producto_id": "pA", "nombre": "Paella", "cantidad": 5, "precio": 2.0},
+        ]),
+        _pedido_doc(10.0, "2025-05-01T11:00:00", items=[
+            {"producto_id": "pB", "nombre": "Burger", "cantidad": 10, "precio": 1.0},
+        ]),
+        _pedido_doc(10.0, "2025-05-01T12:00:00", items=[
+            {"producto_id": "pC", "nombre": "Wrap", "cantidad": 2, "precio": 5.0},
+        ]),
+    ]
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_col:
+        mock_col.find.return_value = docs
+        resp = client.get("/api/v1/pedidos/resumen", headers=_auth_admin())
+
+    assert resp.status_code == 200
+    top = resp.json()["top_productos"]
+    assert top[0]["nombre"] == "Burger"   # 10 unidades
+    assert top[1]["nombre"] == "Paella"   # 5 unidades
+    assert top[2]["nombre"] == "Wrap"     # 2 unidades
+
+
+def test_resumen_top_productos_limita_a_10(client):
+    """15 productos distintos → solo devuelve 10 en top_productos."""
+    items_15 = [
+        {"producto_id": f"p{i}", "nombre": f"Prod{i}", "cantidad": i + 1, "precio": 1.0}
+        for i in range(15)
+    ]
+    doc = _pedido_doc(100.0, "2025-05-01T10:00:00", items=items_15)
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_col:
+        mock_col.find.return_value = [doc]
+        resp = client.get("/api/v1/pedidos/resumen", headers=_auth_admin())
+
+    assert resp.status_code == 200
+    assert len(resp.json()["top_productos"]) == 10
+
+
+def test_resumen_sin_token_devuelve_401(client):
+    """Sin Authorization Bearer → 401."""
+    resp = client.get("/api/v1/pedidos/resumen")
+    assert resp.status_code == 401
+
+
+def test_resumen_aislamiento_admin(client):
+    """Admin de r1 con query restaurante_id=r2 → el filtro usa r1 (del JWT), no r2."""
+    with patch("routes.pedidos.coleccion_pedidos") as mock_col:
+        mock_col.find.return_value = []
+        resp = client.get(
+            "/api/v1/pedidos/resumen?restaurante_id=r2",
+            headers=_auth_admin(),  # JWT lleva restaurante_id=r1
+        )
+
+    assert resp.status_code == 200
+    filtro = mock_col.find.call_args[0][0]
+    # El $or debe referenciar r1 (del JWT), nunca r2
+    or_vals = [c.get("restaurante_id") for c in filtro.get("$or", [])]
+    assert "r1" in or_vals, "Debe filtrar por el restaurante del JWT"
+    assert "r2" not in or_vals, "No debe respetar el restaurante_id del query param en admin"
+
+
+# ── GET /pedidos/exportar ─────────────────────────────────────────────────────
+
+def test_export_csv_content_type_y_disposition(client):
+    """Exportar en CSV → Content-Type text/csv y Content-Disposition attachment."""
+    doc = _pedido_doc(25.0, "2025-05-01T10:00:00")
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_col:
+        mock_col.find.return_value = [doc]
+        resp = client.get(
+            "/api/v1/pedidos/exportar?formato=csv&fecha_desde=2025-05-01&fecha_hasta=2025-05-01",
+            headers=_auth_admin(),
+        )
+
+    assert resp.status_code == 200
+    ct = resp.headers.get("content-type", "")
+    assert "text/csv" in ct
+    cd = resp.headers.get("content-disposition", "")
+    assert "attachment" in cd
+    assert ".csv" in cd
+    # Verificar cabecera CSV (delimitador `;` para Excel en es-ES)
+    texto = resp.content.decode("utf-8-sig")
+    assert texto.startswith("fecha;id;total")
+
+
+def test_export_pdf_si_disponible(client):
+    """Si reportlab no está instalado → 501; si está → 200 con content-type pdf."""
+    try:
+        import reportlab  # noqa: F401
+        reportlab_disponible = True
+    except ImportError:
+        reportlab_disponible = False
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_col:
+        mock_col.find.return_value = []
+        resp = client.get(
+            "/api/v1/pedidos/exportar?formato=pdf",
+            headers=_auth_admin(),
+        )
+
+    if reportlab_disponible:
+        assert resp.status_code == 200
+        assert "application/pdf" in resp.headers.get("content-type", "")
+    else:
+        assert resp.status_code == 501
+        assert "reportlab" in resp.json()["detail"].lower()
+
+
+def test_export_rango_excesivo_devuelve_400(client):
+    """Un rango de más de 90 días → 422 (ValidacionError)."""
+    resp = client.get(
+        "/api/v1/pedidos/exportar?fecha_desde=2025-01-01&fecha_hasta=2025-04-20&formato=csv",
+        headers=_auth_admin(),
+    )
+    # ValidacionError devuelve 422 según el handler del proyecto
+    assert resp.status_code == 422
+    assert "90" in resp.json()["detail"]
+
+
+def test_export_formato_invalido_devuelve_422(client):
+    """Un valor de ?formato distinto de 'csv' o 'pdf' → 422 por validación FastAPI."""
+    resp = client.get(
+        "/api/v1/pedidos/exportar?formato=excel",
+        headers=_auth_admin(),
+    )
+    assert resp.status_code == 422

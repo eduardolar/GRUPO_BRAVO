@@ -337,29 +337,32 @@ class _AdminMesasScreenState extends State<AdminMesasScreen> {
           child: Container(
             height: 42,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.08),
+              // Fondo blanco sólido + texto/iconos negros: la imagen Bravo
+              // de fondo es muy clara y cualquier overlay translúcido daba
+              // poco contraste. Patrón de input "claro" tipo Google.
+              color: Colors.white,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+              border: Border.all(color: Colors.black.withValues(alpha: 0.15)),
             ),
             child: TextField(
               controller: _busquedaCtrl,
               cursorColor: AppColors.button,
-              style: const TextStyle(color: Colors.white, fontSize: 13),
+              style: const TextStyle(color: Colors.black87, fontSize: 13),
               onChanged: (v) => setState(() => _busqueda = v.toLowerCase()),
               decoration: InputDecoration(
                 hintText: 'Buscar por número o código QR...',
                 hintStyle:
-                    const TextStyle(color: Colors.white70, fontSize: 13),
+                    const TextStyle(color: Colors.black54, fontSize: 13),
                 prefixIcon: const Icon(
                   Icons.search,
-                  color: Colors.white60,
+                  color: Colors.black54,
                   size: 18,
                 ),
                 suffixIcon: _busqueda.isNotEmpty
                     ? IconButton(
                         icon: const Icon(
                           Icons.clear,
-                          color: Colors.white60,
+                          color: Colors.black54,
                           size: 16,
                         ),
                         onPressed: () {
@@ -1886,7 +1889,7 @@ class _Campo extends StatelessWidget {
           style: const TextStyle(color: Colors.white, fontSize: 14),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: const TextStyle(color: Colors.white38, fontSize: 13),
+            hintStyle: const TextStyle(color: Colors.white70, fontSize: 13),
             filled: true,
             fillColor: Colors.black45,
             contentPadding: const EdgeInsets.symmetric(
