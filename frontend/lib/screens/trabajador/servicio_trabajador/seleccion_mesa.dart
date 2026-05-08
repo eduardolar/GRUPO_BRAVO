@@ -117,7 +117,7 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
-        AppRoute.slide(CrearComanda(mesaId: mesa.id)),
+        AppRoute.slide(CrearComanda(mesaId: mesa.id, numeroMesa: mesa.numero)),
       );
     } catch (_) {
       if (!mounted) return;

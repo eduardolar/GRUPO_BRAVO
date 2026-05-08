@@ -6,6 +6,7 @@ import 'package:frontend/services/api_service.dart';
 import 'package:frontend/services/mesa_service.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
 
 class SacarCuenta extends StatefulWidget {
   const SacarCuenta({super.key});
@@ -65,13 +66,27 @@ class _SacarCuentaState extends State<SacarCuenta> {
   }
 
   Future<void> _cobrarYLiberarMesa(String metodoPago) async {
+    // Guard de doble-tap: _procesando ya actúa como flag; comprobamos antes
+    // de entrar para que sea explícito y simétrico con crear_comanda.
+    if (_procesando) return;
+
     final pedidoId = (_pedido?['id'] ?? _pedido?['_id'])?.toString();
     final mesa = _mesaSeleccionada;
     if (pedidoId == null || mesa == null) return;
 
+    // Generamos la clave UNA VEZ por intento de cobro.  Si el usuario
+    // pulsa de nuevo después de un error, _procesando lo bloquea antes de
+    // llegar aquí, por lo que no hace falta persistir la clave entre reintentos
+    // a nivel de campo de estado (la pantalla completa de cobro se resetea).
+    final idempotencyKey = const Uuid().v4();
+
     setState(() => _procesando = true);
     try {
-      await ApiService.cerrarPedido(pedidoId: pedidoId, metodoPago: metodoPago);
+      await ApiService.cerrarPedido(
+        pedidoId: pedidoId,
+        metodoPago: metodoPago,
+        idempotencyKey: idempotencyKey,
+      );
       await ApiService.marcarMesaLibre(mesa.id);
       if (!mounted) return;
       _showSnack('Mesa ${mesa.numero} cerrada y liberada');

@@ -411,3 +411,87 @@ def test_reserva_dia_cerrado_devuelve_400(client):
     )
     assert resp.status_code == 400, resp.json()
     assert "cerrado" in resp.json()["detail"].lower()
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Pendiente 3 — Reservas con datos del cliente real (camarero/admin como actor)
+# ═══════════════════════════════════════════════════════════════════════════
+
+def test_camarero_crea_reserva_con_datos_cliente_real(client):
+    """Camarero crea reserva con nombreCompleto, telefonoCliente, correoCliente.
+    El documento persistido debe tener esos datos y creado_por_actor.sub == sub_camarero."""
+    rid = "R1"
+    mesa_id = _insertar_mesa(rid, numero=10)
+
+    payload = {
+        "usuarioId": "u_cliente_real",
+        "nombreCompleto": "Juan Perez",
+        "fecha": "2026-12-15",
+        "hora": "14:00",
+        "comensales": 2,
+        "turno": "comida",
+        "restauranteId": rid,
+        "mesaId": mesa_id,
+        "telefonoCliente": "600123456",
+        "correoCliente": "juan@example.com",
+    }
+
+    resp = client.post(
+        "/api/v1/reservas",
+        json=payload,
+        headers=_tok_camarero(rid),
+    )
+    assert resp.status_code in (200, 201), resp.json()
+
+    # Verificar que el documento en BD tiene los datos del cliente real y la auditoría del actor
+    from database import coleccion_reservas
+    from bson import ObjectId as BsonOid
+    reserva_id = resp.json()["id"]
+    doc = coleccion_reservas.find_one({"_id": BsonOid(reserva_id)})
+    assert doc is not None
+    assert doc.get("telefono_cliente") == "600123456", (
+        f"telefono_cliente esperado '600123456', obtenido '{doc.get('telefono_cliente')}'"
+    )
+    assert doc.get("correo_cliente") == "juan@example.com"
+    assert doc.get("creado_por_actor") is not None, "creado_por_actor debe estar presente"
+    assert doc["creado_por_actor"]["sub"] == "camarero_id", (
+        f"sub esperado 'camarero_id', obtenido '{doc['creado_por_actor'].get('sub')}'"
+    )
+    assert doc["creado_por_actor"]["rol"] == "camarero"
+
+
+def test_cliente_crea_reserva_ignora_telefono_correo_cliente(client):
+    """Un cliente no puede inyectar telefonoCliente/correoCliente — esos campos
+    no deben persistirse cuando el actor es cliente."""
+    rid = "R1"
+    mesa_id = _insertar_mesa(rid, numero=11)
+
+    payload = {
+        "usuarioId": "u_propio",
+        "nombreCompleto": "Ana Lopez",
+        "fecha": "2026-12-16",
+        "hora": "14:00",
+        "comensales": 1,
+        "turno": "comida",
+        "restauranteId": rid,
+        "mesaId": mesa_id,
+        "telefonoCliente": "700000000",   # debe ser ignorado
+        "correoCliente": "hacker@evil.com",  # debe ser ignorado
+    }
+
+    resp = client.post(
+        "/api/v1/reservas",
+        json=payload,
+        headers=_tok_cliente("u_propio"),
+    )
+    assert resp.status_code in (200, 201), resp.json()
+
+    from database import coleccion_reservas
+    from bson import ObjectId as BsonOid
+    reserva_id = resp.json()["id"]
+    doc = coleccion_reservas.find_one({"_id": BsonOid(reserva_id)})
+    assert doc is not None
+    # Para clientes, estos campos no deben haberse persistido
+    assert doc.get("telefono_cliente") is None, "telefono_cliente no debe persistirse para clientes"
+    assert doc.get("correo_cliente") is None, "correo_cliente no debe persistirse para clientes"
+    assert doc.get("creado_por_actor") is None, "creado_por_actor no debe existir cuando el actor es cliente"

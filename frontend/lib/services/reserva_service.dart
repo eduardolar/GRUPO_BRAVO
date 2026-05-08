@@ -19,6 +19,8 @@ class ReservaService {
     required String turno,
     String? notas,
     String? restauranteId,
+    String? telefonoCliente,
+    String? correoCliente,
   }) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 500));
@@ -58,20 +60,24 @@ class ReservaService {
       return reserva;
     }
 
+    final body = <String, dynamic>{
+      'nombreCompleto': nombreCompleto,
+      'fecha': fecha.toIso8601String().split('T').first,
+      'hora': hora,
+      'comensales': comensales,
+      'turno': turno,
+    };
+    if (userId.isNotEmpty) body['usuarioId'] = userId;
+    if (notas != null) body['notas'] = notas;
+    if (restauranteId != null) body['restauranteId'] = restauranteId;
+    if (telefonoCliente != null) body['telefonoCliente'] = telefonoCliente;
+    if (correoCliente != null) body['correoCliente'] = correoCliente;
+
     final response = await httpWithRetry(
       () => http.post(
         Uri.parse('$baseUrl/reservas'),
         headers: AuthSession.headers(),
-        body: jsonEncode({
-          'usuarioId': userId,
-          'nombreCompleto': nombreCompleto,
-          'fecha': fecha.toIso8601String().split('T').first,
-          'hora': hora,
-          'comensales': comensales,
-          'turno': turno,
-          'notas': notas,
-          'restauranteId': restauranteId,
-        }),
+        body: jsonEncode(body),
       ),
       retry: false,
     );

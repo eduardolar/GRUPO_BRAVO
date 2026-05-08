@@ -235,7 +235,12 @@ class ApiService {
   static Future<void> cerrarPedido({
     required String pedidoId,
     required String metodoPago,
-  }) => PedidoService.cerrarPedido(pedidoId: pedidoId, metodoPago: metodoPago);
+    String? idempotencyKey,
+  }) => PedidoService.cerrarPedido(
+    pedidoId: pedidoId,
+    metodoPago: metodoPago,
+    idempotencyKey: idempotencyKey,
+  );
 
   static Future<void> marcarMesaLibre(String mesaId) =>
       MesaService.marcarMesaLibre(mesaId);
@@ -547,6 +552,8 @@ class ApiService {
     required String turno,
     String? notas,
     String? restauranteId,
+    String? telefonoCliente,
+    String? correoCliente,
   }) => ReservaService.crearReserva(
     userId: userId,
     nombreCompleto: nombreCompleto,
@@ -556,6 +563,8 @@ class ApiService {
     turno: turno,
     notas: notas,
     restauranteId: restauranteId,
+    telefonoCliente: telefonoCliente,
+    correoCliente: correoCliente,
   );
 
   static Future<bool> hayDisponibilidad({
