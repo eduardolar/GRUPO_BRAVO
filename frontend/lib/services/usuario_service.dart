@@ -4,17 +4,16 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import '../models/usuario_model.dart';
-import 'actor_context.dart';
 import 'api_config.dart';
 import 'auth_session.dart';
 import 'http_client.dart';
 
 class UsuarioService {
-  /// Cabeceras para peticiones que registran auditoría:
-  /// añade `X-Actor` con el correo del usuario actualmente logueado y el
-  /// `Authorization: Bearer ...` cuando hay sesión activa.
-  static Map<String, String> _headersConActor() =>
-      AuthSession.headers(extra: ActorContext.instance.headers);
+  /// Cabeceras para peticiones autenticadas. El backend identifica al actor
+  /// por el JWT (`Authorization: Bearer ...`); ya no aceptamos `X-Actor`
+  /// (eliminado por seguridad), por lo que tampoco lo enviamos desde aquí
+  /// (CORS lo bloquearía y rompería el preflight).
+  static Map<String, String> _headersConActor() => AuthSession.headers();
 
   static Map<String, String> get _headersJson => AuthSession.headers();
 

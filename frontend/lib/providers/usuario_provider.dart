@@ -86,13 +86,18 @@ class UsuarioProvider with ChangeNotifier {
     }
   }
 
-  /// Extrae el `detail` del backend de una `ApiException` para mostrarlo
-  /// limpio. Para excepciones desconocidas devuelve `e.toString()`.
+  /// Extrae el `detail` del backend de la excepción para mostrarlo limpio.
+  /// `ApiException.toString()` ya devuelve el `message` directamente, así
+  /// que basta con `e.toString()` y un fallback si quedase vacío.
   String _extraerDetail(Object e) {
-    final s = e.toString();
-    // ApiException(404, "Pedido no encontrado") → "Pedido no encontrado".
-    final match = RegExp(r'ApiException\(\d+,\s*"?(.+?)"?\)$').firstMatch(s);
-    return match?.group(1) ?? s;
+    final s = e.toString().trim();
+    if (s.isEmpty) return 'Error desconocido (sin detalle)';
+    // Por si el toString viene como `Exception: foo` o `ApiException(...)`.
+    final cleaned = s
+        .replaceFirst(RegExp(r'^Exception:\s*'), '')
+        .replaceFirst(RegExp(r'^ApiException\(\d+,\s*"?'), '')
+        .replaceFirst(RegExp(r'"?\)$'), '');
+    return cleaned.isEmpty ? s : cleaned;
   }
 
   Future<bool> cambiarRol(String id, String nuevoRol) async {
