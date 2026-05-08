@@ -235,7 +235,10 @@ def test_actualizar_estado_valido(client):
     mock_result.matched_count = 1
     mock_result.modified_count = 1
 
+    pedido_doc = {"_id": ObjectId(pedido_id), "restaurante_id": "r1", "estado": "pendiente"}
+
     with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
+        mock_pedidos.find_one.return_value = pedido_doc
         mock_pedidos.update_one.return_value = mock_result
         resp = client.patch(
             f"/api/v1/pedidos/{pedido_id}/estado",
@@ -259,11 +262,9 @@ def test_actualizar_estado_invalido_devuelve_422(client):
 
 def test_actualizar_estado_pedido_inexistente_devuelve_404(client):
     pedido_id = str(ObjectId())
-    mock_result = MagicMock()
-    mock_result.matched_count = 0
 
     with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
-        mock_pedidos.update_one.return_value = mock_result
+        mock_pedidos.find_one.return_value = None  # pedido no existe
         resp = client.patch(
             f"/api/v1/pedidos/{pedido_id}/estado",
             json={"estado": "listo"},
@@ -1027,3 +1028,632 @@ def test_misma_idempotency_key_usuario_distinto_crea_pedido_nuevo(client):
     assert resp1.json()["id"] == str(id_u1)
     assert resp2.json()["id"] == str(id_u2)
     assert resp1.json()["id"] != resp2.json()["id"]
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Bloqueantes de seguridad — auditoría rol cocinero
+# ═══════════════════════════════════════════════════════════════════════════
+
+def _make_pedido_doc(
+    pedido_id,
+    restaurante_id: str = "r1",
+    usuario_id: str = "u_cliente",
+) -> dict:
+    """Documento mínimo de pedido para mockear coleccion_pedidos.find_one."""
+    return {
+        "_id": ObjectId(pedido_id) if isinstance(pedido_id, str) else pedido_id,
+        "restaurante_id": restaurante_id,
+        "usuario_id": usuario_id,
+        "items": [],
+        "total": 10.0,
+        "estado": "pendiente",
+        "estado_pago": "pendiente",
+        "fecha": "2025-01-01T12:00:00",
+    }
+
+
+def _auth_cocinero_r2() -> dict:
+    """Cocinero de la sucursal r2 (distinta a r1)."""
+    token = crear_token({
+        "sub": "u_cocinero_r2", "correo": "cocinero2@test.com",
+        "rol": "cocinero", "restaurante_id": "r2",
+    })
+    return {"Authorization": f"Bearer {token}"}
+
+
+def _auth_camarero_r2() -> dict:
+    """Camarero de la sucursal r2 (distinta a r1)."""
+    token = crear_token({
+        "sub": "u_camarero_r2", "correo": "camarero2@test.com",
+        "rol": "camarero", "restaurante_id": "r2",
+    })
+    return {"Authorization": f"Bearer {token}"}
+
+
+# ── Bloqueante 1: GET /pedidos/{id} ──────────────────────────────────────────
+
+def test_obtener_pedido_sin_token_devuelve_401(client):
+    """GET /pedidos/{id} sin token → 401."""
+    pedido_id = str(ObjectId())
+    resp = client.get(f"/api/v1/pedidos/{pedido_id}")
+    assert resp.status_code == 401
+
+
+def test_obtener_pedido_cliente_pedido_ajeno_devuelve_403(client):
+    """Cliente con usuario_id distinto al del pedido → 403."""
+    pedido_id = str(ObjectId())
+    doc = _make_pedido_doc(pedido_id, restaurante_id="r1", usuario_id="u_otro")
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
+        mock_pedidos.find_one.return_value = doc
+        resp = client.get(
+            f"/api/v1/pedidos/{pedido_id}",
+            headers=_auth_cliente("u_cliente"),  # sub != u_otro
+        )
+
+    assert resp.status_code == 403
+
+
+def test_obtener_pedido_cliente_pedido_propio_devuelve_200(client):
+    """Cliente cuyo sub coincide con usuario_id del pedido → 200."""
+    pedido_id = str(ObjectId())
+    doc = _make_pedido_doc(pedido_id, restaurante_id="r1", usuario_id="u_cliente")
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
+        mock_pedidos.find_one.return_value = doc
+        resp = client.get(
+            f"/api/v1/pedidos/{pedido_id}",
+            headers=_auth_cliente("u_cliente"),
+        )
+
+    assert resp.status_code == 200
+
+
+def test_obtener_pedido_cocinero_otra_sucursal_devuelve_403(client):
+    """Cocinero de sucursal r2 accede a pedido de r1 → 403."""
+    pedido_id = str(ObjectId())
+    doc = _make_pedido_doc(pedido_id, restaurante_id="r1")
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
+        mock_pedidos.find_one.return_value = doc
+        resp = client.get(
+            f"/api/v1/pedidos/{pedido_id}",
+            headers=_auth_cocinero_r2(),
+        )
+
+    assert resp.status_code == 403
+
+
+def test_obtener_pedido_cocinero_misma_sucursal_devuelve_200(client):
+    """Cocinero de sucursal r1 accede a pedido de r1 → 200."""
+    pedido_id = str(ObjectId())
+    doc = _make_pedido_doc(pedido_id, restaurante_id="r1")
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
+        mock_pedidos.find_one.return_value = doc
+        resp = client.get(
+            f"/api/v1/pedidos/{pedido_id}",
+            headers=_auth_cocinero(),
+        )
+
+    assert resp.status_code == 200
+
+
+def test_obtener_pedido_super_admin_devuelve_200(client):
+    """super_admin puede leer cualquier pedido sin restricción de sucursal."""
+    pedido_id = str(ObjectId())
+    doc = _make_pedido_doc(pedido_id, restaurante_id="cualquier_sucursal")
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
+        mock_pedidos.find_one.return_value = doc
+        resp = client.get(
+            f"/api/v1/pedidos/{pedido_id}",
+            headers=_auth_super_admin(),
+        )
+
+    assert resp.status_code == 200
+
+
+# ── Bloqueante 2: PATCH /pedidos/{id} y /pedidos/{id}/items ──────────────────
+
+def test_patch_pedido_sin_token_devuelve_401(client):
+    """PATCH /pedidos/{id} sin token → 401."""
+    pedido_id = str(ObjectId())
+    resp = client.patch(f"/api/v1/pedidos/{pedido_id}", json={"estado": "listo"})
+    assert resp.status_code == 401
+
+
+def test_patch_pedido_cliente_devuelve_403(client):
+    """Cliente no puede hacer PATCH /pedidos/{id} (solo camarero/admin/super_admin)."""
+    pedido_id = str(ObjectId())
+    resp = client.patch(
+        f"/api/v1/pedidos/{pedido_id}",
+        json={"estado": "listo"},
+        headers=_auth_cliente(),
+    )
+    assert resp.status_code == 403
+
+
+def test_patch_pedido_cocinero_devuelve_403(client):
+    """Cocinero no puede modificar items completos ni total (no es su rol)."""
+    pedido_id = str(ObjectId())
+    resp = client.patch(
+        f"/api/v1/pedidos/{pedido_id}",
+        json={"estado": "listo"},
+        headers=_auth_cocinero(),
+    )
+    assert resp.status_code == 403
+
+
+def test_patch_pedido_camarero_misma_sucursal_devuelve_200(client):
+    """Camarero de la misma sucursal puede hacer PATCH /pedidos/{id} → 200."""
+    pedido_id = str(ObjectId())
+    doc = _make_pedido_doc(pedido_id, restaurante_id="r1")
+    mock_result = MagicMock()
+    mock_result.matched_count = 1
+    mock_result.modified_count = 1
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
+        mock_pedidos.find_one.return_value = doc
+        mock_pedidos.update_one.return_value = mock_result
+        resp = client.patch(
+            f"/api/v1/pedidos/{pedido_id}",
+            json={"estado": "listo"},
+            headers=_auth_camarero(),
+        )
+
+    assert resp.status_code == 200
+
+
+def test_patch_pedido_camarero_otra_sucursal_devuelve_403(client):
+    """Camarero de sucursal r2 no puede modificar pedido de r1 → 403."""
+    pedido_id = str(ObjectId())
+    doc = _make_pedido_doc(pedido_id, restaurante_id="r1")
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
+        mock_pedidos.find_one.return_value = doc
+        resp = client.patch(
+            f"/api/v1/pedidos/{pedido_id}",
+            json={"estado": "listo"},
+            headers=_auth_camarero_r2(),
+        )
+
+    assert resp.status_code == 403
+
+
+def test_patch_items_sin_token_devuelve_401(client):
+    """PATCH /pedidos/{id}/items sin token → 401."""
+    pedido_id = str(ObjectId())
+    resp = client.patch(
+        f"/api/v1/pedidos/{pedido_id}/items",
+        json={"items": [], "total": 0},
+    )
+    assert resp.status_code == 401
+
+
+def test_patch_items_camarero_otra_sucursal_devuelve_403(client):
+    """Camarero de otra sucursal no puede modificar items del pedido → 403."""
+    pedido_id = str(ObjectId())
+    doc = _make_pedido_doc(pedido_id, restaurante_id="r1")
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
+        mock_pedidos.find_one.return_value = doc
+        resp = client.patch(
+            f"/api/v1/pedidos/{pedido_id}/items",
+            json={"items": [], "total": 0},
+            headers=_auth_camarero_r2(),
+        )
+
+    assert resp.status_code == 403
+
+
+def test_patch_items_camarero_misma_sucursal_devuelve_200(client):
+    """Camarero de la misma sucursal puede modificar items → 200."""
+    pedido_id = str(ObjectId())
+    doc = _make_pedido_doc(pedido_id, restaurante_id="r1")
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
+        mock_pedidos.find_one.return_value = doc
+        mock_pedidos.update_one.return_value = MagicMock()
+        resp = client.patch(
+            f"/api/v1/pedidos/{pedido_id}/items",
+            json={"items": [], "total": 0},
+            headers=_auth_camarero(),
+        )
+
+    assert resp.status_code == 200
+
+
+# ── Bloqueante 3: PATCH /pedidos/actualizar-estado-pago ──────────────────────
+
+def test_actualizar_estado_pago_sin_token_devuelve_401(client):
+    """Sin token → 401."""
+    resp = client.patch(
+        "/api/v1/pedidos/actualizar-estado-pago",
+        json={"referenciaPago": "ref_123", "estadoPago": "pagado"},
+    )
+    assert resp.status_code == 401
+
+
+def test_actualizar_estado_pago_cliente_propio_devuelve_200(client):
+    """Cliente puede actualizar el pago de su propio pedido (referencia suya) → 200."""
+    mock_result = MagicMock()
+    mock_result.matched_count = 1
+    mock_result.modified_count = 1
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
+        mock_pedidos.update_one.return_value = mock_result
+        resp = client.patch(
+            "/api/v1/pedidos/actualizar-estado-pago",
+            json={"referenciaPago": "ref_123", "estadoPago": "pagado"},
+            headers=_auth_cliente("u_cliente"),
+        )
+
+    assert resp.status_code == 200
+    # El filtro debe incluir usuario_id del cliente
+    filtro = mock_pedidos.update_one.call_args[0][0]
+    assert filtro["usuario_id"] == "u_cliente"
+    assert filtro["referencia_pago"] == "ref_123"
+
+
+def test_actualizar_estado_pago_cocinero_devuelve_403(client):
+    """Cocinero no tiene permiso para marcar pagos → 403."""
+    resp = client.patch(
+        "/api/v1/pedidos/actualizar-estado-pago",
+        json={"referenciaPago": "ref_123", "estadoPago": "pagado"},
+        headers=_auth_cocinero(),
+    )
+    assert resp.status_code == 403
+
+
+def test_actualizar_estado_pago_camarero_sin_restriccion_usuario(client):
+    """Camarero puede actualizar el pago sin restricción de usuario_id."""
+    mock_result = MagicMock()
+    mock_result.matched_count = 1
+    mock_result.modified_count = 1
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
+        mock_pedidos.update_one.return_value = mock_result
+        resp = client.patch(
+            "/api/v1/pedidos/actualizar-estado-pago",
+            json={"referenciaPago": "ref_456", "estadoPago": "pagado"},
+            headers=_auth_camarero(),
+        )
+
+    assert resp.status_code == 200
+    filtro = mock_pedidos.update_one.call_args[0][0]
+    # Camarero no filtra por usuario_id
+    assert "usuario_id" not in filtro
+
+
+# ── Bloqueante 4: PATCH /pedidos/{id}/estado y /items/{idx}/hecho ────────────
+
+def test_actualizar_estado_cocinero_otra_sucursal_devuelve_403(client):
+    """Cocinero de otra sucursal no puede cambiar estado de pedido ajeno → 403."""
+    pedido_id = str(ObjectId())
+    doc = _make_pedido_doc(pedido_id, restaurante_id="r1")
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
+        mock_pedidos.find_one.return_value = doc
+        resp = client.patch(
+            f"/api/v1/pedidos/{pedido_id}/estado",
+            json={"estado": "preparando"},
+            headers=_auth_cocinero_r2(),
+        )
+
+    assert resp.status_code == 403
+
+
+def test_marcar_item_hecho_cocinero_otra_sucursal_devuelve_403(client):
+    """Cocinero de otra sucursal no puede marcar item como hecho → 403."""
+    pedido_id = str(ObjectId())
+    item_id = "item-uuid-r2-test"
+    doc = _make_pedido_doc(pedido_id, restaurante_id="r1")
+    doc["items"] = [{"nombre": "Pizza", "hecho": False, "item_id": item_id}]
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
+        mock_pedidos.find_one.return_value = doc
+        resp = client.patch(
+            f"/api/v1/pedidos/{pedido_id}/items/{item_id}/hecho",
+            json={"hecho": True},
+            headers=_auth_cocinero_r2(),
+        )
+
+    assert resp.status_code == 403
+
+
+def test_marcar_item_hecho_cocinero_misma_sucursal_devuelve_200(client):
+    """Cocinero de la misma sucursal puede marcar item como hecho → 200 (endpoint por item_id)."""
+    pedido_id = str(ObjectId())
+    item_id = "item-uuid-1234"
+    doc = _make_pedido_doc(pedido_id, restaurante_id="r1")
+    doc["items"] = [{"nombre": "Pizza", "hecho": False, "item_id": item_id}]
+    doc["estado"] = "preparando"
+    doc_actualizado = {**doc, "items": [{"nombre": "Pizza", "hecho": True, "item_id": item_id}]}
+    doc_actualizado["estado"] = "preparando"
+
+    mock_update = MagicMock()
+    mock_update.matched_count = 1
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
+        mock_pedidos.find_one.side_effect = [doc, doc_actualizado]
+        mock_pedidos.update_one.return_value = mock_update
+        resp = client.patch(
+            f"/api/v1/pedidos/{pedido_id}/items/{item_id}/hecho",
+            json={"hecho": True},
+            headers=_auth_cocinero(),
+        )
+
+    assert resp.status_code == 200
+    assert resp.json()["hecho"] is True
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Nuevos tests — importantes cerrados (rol cocinero)
+# ═══════════════════════════════════════════════════════════════════════════
+
+# ── Importante 1: Máquina de estados ─────────────────────────────────────────
+
+def test_estado_entregado_a_pendiente_devuelve_409(client):
+    """Transición terminal entregado → pendiente debe devolver 409 Conflict."""
+    pedido_id = str(ObjectId())
+    doc = _make_pedido_doc(pedido_id, restaurante_id="r1")
+    doc["estado"] = "entregado"
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
+        mock_pedidos.find_one.return_value = doc
+        resp = client.patch(
+            f"/api/v1/pedidos/{pedido_id}/estado",
+            json={"estado": "pendiente"},
+            headers=_auth_cocinero(),
+        )
+
+    assert resp.status_code == 409
+    assert "entregado" in resp.json()["detail"].lower() or "terminal" in resp.json()["detail"].lower()
+
+
+def test_estado_cancelado_a_listo_devuelve_409(client):
+    """Transición terminal cancelado → listo debe devolver 409 Conflict."""
+    pedido_id = str(ObjectId())
+    doc = _make_pedido_doc(pedido_id, restaurante_id="r1")
+    doc["estado"] = "cancelado"
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
+        mock_pedidos.find_one.return_value = doc
+        resp = client.patch(
+            f"/api/v1/pedidos/{pedido_id}/estado",
+            json={"estado": "listo"},
+            headers=_auth_cocinero(),
+        )
+
+    assert resp.status_code == 409
+
+
+def test_estado_pendiente_a_preparando_devuelve_200(client):
+    """Transición válida pendiente → preparando debe devolver 200."""
+    pedido_id = str(ObjectId())
+    doc = _make_pedido_doc(pedido_id, restaurante_id="r1")
+    doc["estado"] = "pendiente"
+    mock_result = MagicMock()
+    mock_result.matched_count = 1
+    mock_result.modified_count = 1
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
+        mock_pedidos.find_one.return_value = doc
+        mock_pedidos.update_one.return_value = mock_result
+        resp = client.patch(
+            f"/api/v1/pedidos/{pedido_id}/estado",
+            json={"estado": "preparando"},
+            headers=_auth_cocinero(),
+        )
+
+    assert resp.status_code == 200
+    assert resp.json()["estado"] == "preparando"
+
+
+def test_estado_listo_a_entregado_devuelve_200(client):
+    """Transición válida listo → entregado debe devolver 200."""
+    pedido_id = str(ObjectId())
+    doc = _make_pedido_doc(pedido_id, restaurante_id="r1")
+    doc["estado"] = "listo"
+    mock_result = MagicMock()
+    mock_result.matched_count = 1
+    mock_result.modified_count = 1
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
+        mock_pedidos.find_one.return_value = doc
+        mock_pedidos.update_one.return_value = mock_result
+        resp = client.patch(
+            f"/api/v1/pedidos/{pedido_id}/estado",
+            json={"estado": "entregado"},
+            headers=_auth_cocinero(),
+        )
+
+    assert resp.status_code == 200
+    assert resp.json()["estado"] == "entregado"
+
+
+def test_estado_noop_devuelve_200_sin_cambio(client):
+    """Transición no-op (mismo estado) debe devolver 200 con updated=False."""
+    pedido_id = str(ObjectId())
+    doc = _make_pedido_doc(pedido_id, restaurante_id="r1")
+    doc["estado"] = "preparando"
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
+        mock_pedidos.find_one.return_value = doc
+        resp = client.patch(
+            f"/api/v1/pedidos/{pedido_id}/estado",
+            json={"estado": "preparando"},
+            headers=_auth_cocinero(),
+        )
+
+    assert resp.status_code == 200
+    assert resp.json()["updated"] is False
+
+
+def test_estado_salto_invalido_pendiente_a_listo_devuelve_409(client):
+    """No se puede saltar directamente de pendiente a listo (sin pasar por preparando)."""
+    pedido_id = str(ObjectId())
+    doc = _make_pedido_doc(pedido_id, restaurante_id="r1")
+    doc["estado"] = "pendiente"
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
+        mock_pedidos.find_one.return_value = doc
+        resp = client.patch(
+            f"/api/v1/pedidos/{pedido_id}/estado",
+            json={"estado": "listo"},
+            headers=_auth_cocinero(),
+        )
+
+    assert resp.status_code == 409
+
+
+def test_estado_pendiente_a_cancelado_devuelve_200(client):
+    """pendiente → cancelado es una transición válida."""
+    pedido_id = str(ObjectId())
+    doc = _make_pedido_doc(pedido_id, restaurante_id="r1")
+    doc["estado"] = "pendiente"
+    mock_result = MagicMock()
+    mock_result.matched_count = 1
+    mock_result.modified_count = 1
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
+        mock_pedidos.find_one.return_value = doc
+        mock_pedidos.update_one.return_value = mock_result
+        resp = client.patch(
+            f"/api/v1/pedidos/{pedido_id}/estado",
+            json={"estado": "cancelado"},
+            headers=_auth_cocinero(),
+        )
+
+    assert resp.status_code == 200
+
+
+# ── Importante 2: extra="forbid" en modelos ───────────────────────────────────
+
+def test_actualizar_estado_con_campo_extra_devuelve_422(client):
+    """ActualizarEstado con campo extra → 422 (extra='forbid')."""
+    pedido_id = str(ObjectId())
+    resp = client.patch(
+        f"/api/v1/pedidos/{pedido_id}/estado",
+        json={"estado": "preparando", "campo_inventado": "x"},
+        headers=_auth_cocinero(),
+    )
+    assert resp.status_code == 422
+
+
+def test_item_pedido_campo_extra_devuelve_422(client):
+    """POST /pedidos con item que tiene campo extra → 422."""
+    item_con_extra = {**ITEM_VALIDO, "campo_secreto": "hack"}
+    resp = client.post(
+        "/api/v1/pedidos",
+        json={**PEDIDO_VALIDO, "items": [item_con_extra]},
+        headers=_auth_cliente(),
+    )
+    assert resp.status_code == 422
+
+
+# ── Importante 3 y 4: marcar_item_hecho con item_id ──────────────────────────
+
+def test_marcar_item_hecho_item_id_valido_devuelve_200(client):
+    """Marcar item como hecho con item_id válido → 200."""
+    pedido_id = str(ObjectId())
+    item_id = "uuid-item-valido-001"
+    doc = _make_pedido_doc(pedido_id, restaurante_id="r1")
+    doc["estado"] = "preparando"
+    doc["items"] = [
+        {"nombre": "Burger", "hecho": False, "item_id": item_id},
+        {"nombre": "Fries", "hecho": True, "item_id": "uuid-item-002"},
+    ]
+    doc_actualizado = {**doc, "items": [
+        {"nombre": "Burger", "hecho": True, "item_id": item_id},
+        {"nombre": "Fries", "hecho": True, "item_id": "uuid-item-002"},
+    ]}
+
+    mock_update = MagicMock()
+    mock_update.matched_count = 1
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
+        mock_pedidos.find_one.side_effect = [doc, doc_actualizado]
+        mock_pedidos.update_one.return_value = mock_update
+        resp = client.patch(
+            f"/api/v1/pedidos/{pedido_id}/items/{item_id}/hecho",
+            json={"hecho": True},
+            headers=_auth_cocinero(),
+        )
+
+    assert resp.status_code == 200
+    assert resp.json()["hecho"] is True
+    assert resp.json()["todosHechos"] is True
+
+
+def test_marcar_item_hecho_item_id_invalido_devuelve_404(client):
+    """Marcar item con item_id inexistente → 404."""
+    pedido_id = str(ObjectId())
+    doc = _make_pedido_doc(pedido_id, restaurante_id="r1")
+    doc["estado"] = "preparando"
+    doc["items"] = [{"nombre": "Pizza", "hecho": False, "item_id": "uuid-correcto"}]
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
+        mock_pedidos.find_one.return_value = doc
+        resp = client.patch(
+            f"/api/v1/pedidos/{pedido_id}/items/uuid-inexistente/hecho",
+            json={"hecho": True},
+            headers=_auth_cocinero(),
+        )
+
+    assert resp.status_code == 404
+
+
+def test_marcar_item_hecho_pedido_entregado_devuelve_409(client):
+    """Marcar item en pedido entregado (estado terminal) → 409."""
+    pedido_id = str(ObjectId())
+    item_id = "uuid-item-terminal"
+    doc = _make_pedido_doc(pedido_id, restaurante_id="r1")
+    doc["estado"] = "entregado"
+    doc["items"] = [{"nombre": "Pizza", "hecho": True, "item_id": item_id}]
+
+    # matched_count=0 simula que el update_one no matcheó (estado terminal)
+    mock_update = MagicMock()
+    mock_update.matched_count = 0
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
+        mock_pedidos.find_one.return_value = doc
+        mock_pedidos.update_one.return_value = mock_update
+        resp = client.patch(
+            f"/api/v1/pedidos/{pedido_id}/items/{item_id}/hecho",
+            json={"hecho": True},
+            headers=_auth_cocinero(),
+        )
+
+    assert resp.status_code == 409
+
+
+def test_marcar_item_todos_hechos_transiciona_a_listo(client):
+    """Cuando todos los items quedan hechos, el pedido transiciona automáticamente a listo."""
+    pedido_id = str(ObjectId())
+    item_id = "uuid-unico"
+    doc = _make_pedido_doc(pedido_id, restaurante_id="r1")
+    doc["estado"] = "preparando"
+    doc["items"] = [{"nombre": "Pizza", "hecho": False, "item_id": item_id}]
+    doc_actualizado = {**doc, "items": [{"nombre": "Pizza", "hecho": True, "item_id": item_id}]}
+    doc_actualizado["estado"] = "preparando"  # el estado no ha cambiado aún
+
+    mock_update = MagicMock()
+    mock_update.matched_count = 1
+    mock_update_listo = MagicMock()
+    mock_update_listo.matched_count = 1
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
+        mock_pedidos.find_one.side_effect = [doc, doc_actualizado]
+        mock_pedidos.update_one.return_value = mock_update
+        resp = client.patch(
+            f"/api/v1/pedidos/{pedido_id}/items/{item_id}/hecho",
+            json={"hecho": True},
+            headers=_auth_cocinero(),
+        )
+
+    assert resp.status_code == 200
+    assert resp.json()["todosHechos"] is True
+    # Debe haberse llamado update_one al menos 2 veces: marcar hecho + transición a listo
+    assert mock_pedidos.update_one.call_count >= 2

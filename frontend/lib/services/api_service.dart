@@ -218,10 +218,12 @@ class ApiService {
 
   static Future<Map<String, dynamic>> marcarItemHecho({
     required String pedidoId,
-    required int itemIndex,
+    String? itemId,
+    int? itemIndex,
     required bool hecho,
   }) => PedidoService.marcarItemHecho(
     pedidoId: pedidoId,
+    itemId: itemId,
     itemIndex: itemIndex,
     hecho: hecho,
   );

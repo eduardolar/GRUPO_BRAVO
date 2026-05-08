@@ -42,9 +42,16 @@ class TestItemPedido:
         item = ItemPedido(producto_id="abc", cantidad=1, precio=5.0, sin=["cebolla", "tomate"])
         assert "cebolla" in item.sin
 
-    def test_campos_extra_permitidos(self):
+    def test_campo_nombre_permitido(self):
+        """nombre es campo declarado en ItemPedido, debe aceptarse."""
         item = ItemPedido(producto_id="abc", cantidad=1, precio=5.0, nombre="Pizza")
         assert item.nombre == "Pizza"
+
+    def test_campo_extra_rechazado(self):
+        """extra='forbid': cualquier campo no declarado debe lanzar ValidationError."""
+        from pydantic import ValidationError
+        with pytest.raises(ValidationError):
+            ItemPedido(producto_id="abc", cantidad=1, precio=5.0, campo_inventado="x")
 
 
 # ── PedidoCrear ───────────────────────────────────────────────────────────────

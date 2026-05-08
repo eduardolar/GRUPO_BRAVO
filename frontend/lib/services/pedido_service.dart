@@ -233,21 +233,37 @@ class PedidoService {
   }
 
   /// Marca un item de un pedido como hecho/no hecho.
+  ///
+  /// Pasa [itemId] (UUID estable asignado por el backend) cuando esté
+  /// disponible. Si el pedido es legacy y no tiene `item_id` en BD, pasa
+  /// [itemIndex] como fallback y el método llamará a la URL deprecada
+  /// `/items/{idx}/hecho-por-indice`.
+  ///
   /// El backend devuelve `todosHechos: true` cuando todos los items están
-  /// completados; en ese caso el propio backend mueve el pedido a estado `listo`.
+  /// completados; en ese caso el propio backend mueve el pedido a `listo`.
   static Future<Map<String, dynamic>> marcarItemHecho({
     required String pedidoId,
-    required int itemIndex,
+    String? itemId,
+    int? itemIndex,
     required bool hecho,
   }) async {
+    assert(
+      itemId != null || itemIndex != null,
+      'marcarItemHecho requiere itemId o itemIndex',
+    );
+
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 200));
       return {'updated': true, 'hecho': hecho, 'todosHechos': false};
     }
 
+    final url = itemId != null
+        ? '$baseUrl/pedidos/$pedidoId/items/$itemId/hecho'
+        : '$baseUrl/pedidos/$pedidoId/items/$itemIndex/hecho-por-indice';
+
     final response = await httpWithRetry(
       () => http.patch(
-        Uri.parse('$baseUrl/pedidos/$pedidoId/items/$itemIndex/hecho'),
+        Uri.parse(url),
         headers: AuthSession.headers(extra: {'Accept': 'application/json'}),
         body: jsonEncode({'hecho': hecho}),
       ),

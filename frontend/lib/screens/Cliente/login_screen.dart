@@ -10,6 +10,7 @@ import 'package:frontend/models/destino_login.dart';
 
 import 'package:frontend/screens/cliente/recuperar_contrasena_screen.dart';
 import 'package:frontend/screens/cliente/carta_screen.dart';
+import 'package:frontend/screens/cliente/inicio_screen.dart';
 import 'package:frontend/screens/cliente/registro_screen.dart';
 import 'package:frontend/screens/cliente/reservar_mesa_screen.dart';
 import 'package:frontend/screens/cocinero/home_screen_cocinero.dart';
@@ -273,12 +274,25 @@ class _LoginScreenState extends State<LoginScreen> {
         destino = const HomeScreenSuperAdmin();
         break;
       case RolUsuario.cliente:
-        destino = sel_rest_cliente.SeleccionarRestauranteScreen(
-          siguiente: widget.destino == DestinoLogin.reservar
-              ? const ReservarMesaScreen()
-              : const CartaScreen(),
+        // Reset de pila a InicioScreen (cliente home) y empujar encima el
+        // flujo de selección de restaurante. Así el botón atrás desde
+        // Carta/Reservar vuelve a Inicio en lugar de pantalla en blanco.
+        Navigator.pushAndRemoveUntil(
+          context,
+          AppRoute.reveal(const InicioScreen()),
+          (route) => false,
         );
-        break;
+        Navigator.push(
+          context,
+          AppRoute.slide(
+            sel_rest_cliente.SeleccionarRestauranteScreen(
+              siguiente: widget.destino == DestinoLogin.reservar
+                  ? const ReservarMesaScreen()
+                  : const CartaScreen(),
+            ),
+          ),
+        );
+        return;
       case RolUsuario.cocinero:
         destino = const HomeCocinero();
         break;

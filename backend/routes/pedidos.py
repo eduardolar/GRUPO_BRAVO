@@ -5,11 +5,12 @@ from datetime import datetime, timezone, timedelta
 from bson import ObjectId
 from bson.errors import InvalidId
 from fastapi_mail import FastMail, MessageSchema, MessageType
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 import csv
 import io
 import logging
+import uuid
 from pymongo.errors import DuplicateKeyError, OperationFailure
 
 from database import coleccion_pedidos, coleccion_productos, coleccion_ingredientes, coleccion_usuarios, cliente
@@ -297,11 +298,15 @@ async def _enviar_factura(email_destino: str, nombre_usuario: str, pedido_id: st
 # ── Modelos ───────────────────────────────────────────────────────────────────
 
 class ActualizarEstadoPago(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     referenciaPago: str
     estadoPago: str = "pagado"
 
 
 class ActualizarItemsPedido(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     items: Optional[list[dict]] = None
     total: Optional[float] = None
     estadoPago: Optional[str] = None
@@ -310,14 +315,75 @@ class ActualizarItemsPedido(BaseModel):
 
 
 class ActualizarEstado(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     estado: str
 
 
 class ActualizarItemHecho(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     hecho: bool
 
 
+# ── Estados y máquina de transiciones ────────────────────────────────────────
+# Estados que el sistema reconoce como válidos para un pedido.
 _ESTADOS_VALIDOS = {"pendiente", "preparando", "listo", "entregado", "cancelado"}
+
+# Transiciones permitidas: de cada estado, qué estados destino son válidos.
+# Estados terminales (entregado, cancelado): ninguna transición saliente.
+_TRANSICIONES_VALIDAS: dict[str, set[str]] = {
+    "pendiente":   {"preparando", "cancelado"},
+    "preparando":  {"listo", "cancelado"},
+    "listo":       {"entregado"},
+    "entregado":   set(),   # terminal
+    "cancelado":   set(),   # terminal
+}
+
+
+# ── Helpers de aislamiento por sucursal ──────────────────────────────────────
+
+def _verificar_acceso_pedido(pedido: dict, current_user: dict) -> None:
+    """Verifica que el usuario autenticado tiene permiso para acceder al pedido.
+
+    Reglas:
+    - super_admin: acceso total.
+    - cliente: solo puede acceder a sus propios pedidos (por usuario_id).
+    - camarero / cocinero / admin: solo pueden acceder a pedidos de su sucursal.
+
+    Lanza HTTPException 403 si el acceso no está autorizado.
+    """
+    rol = normalizar_rol(current_user.get("rol", ""))
+
+    if rol == "super_admin":
+        return  # acceso total
+
+    if rol == "cliente":
+        if pedido.get("usuario_id") != current_user.get("sub"):
+            raise HTTPException(
+                status_code=403,
+                detail="No puedes acceder a pedidos de otros usuarios",
+            )
+        return
+
+    # Roles de personal (camarero, cocinero, admin y cualquier otro)
+    jwt_restaurante = current_user.get("restaurante_id")
+    pedido_restaurante = pedido.get("restaurante_id")
+    # Solo rechazamos si ambos tienen restaurante_id y son distintos.
+    # Si el pedido es legacy (sin restaurante_id) lo dejamos pasar.
+    if jwt_restaurante and pedido_restaurante and jwt_restaurante != pedido_restaurante:
+        raise HTTPException(
+            status_code=403,
+            detail="No puedes acceder a pedidos de otra sucursal",
+        )
+
+
+def _obtener_pedido_o_404(pedido_id: str) -> dict:
+    """Recupera el documento del pedido o lanza NotFoundError."""
+    pedido = coleccion_pedidos.find_one({"_id": ObjectId(pedido_id)})
+    if not pedido:
+        raise NotFoundError("Pedido no encontrado")
+    return pedido
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
@@ -343,6 +409,13 @@ async def crear_pedido(
     idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
 ):
     items_dict = [item.model_dump() for item in pedido.items]
+
+    # Asignar un item_id estable a cada item (UUID v4) si no lo trae ya.
+    # Esto permite identificar items por id y evitar bugs de índice posicional
+    # cuando dos camareros editan un pedido concurrentemente (importante 4).
+    for item in items_dict:
+        if not item.get("item_id"):
+            item["item_id"] = str(uuid.uuid4())
 
     # Compute total from authoritative DB prices — never trust client-supplied totals
     total_calculado = 0.0
@@ -484,9 +557,33 @@ async def crear_pedido(
 
 
 @router.patch("/actualizar-estado-pago")
-def actualizar_estado_pago(payload: ActualizarEstadoPago):
+def actualizar_estado_pago(
+    payload: ActualizarEstadoPago,
+    current_user: dict = Depends(get_current_user),
+):
+    """Marca el estado de pago de un pedido identificado por su referencia.
+
+    Lo llama el frontend del cliente tras un checkout de Stripe/PayPal.
+    Requiere token JWT. Si el llamante es cliente, se verifica que la
+    referencia de pago pertenezca a un pedido suyo.
+    Camarero / admin / super_admin pueden actualizarlo sin esa restricción.
+    """
+    rol = normalizar_rol(current_user.get("rol", ""))
+
+    filtro: dict = {"referencia_pago": payload.referenciaPago}
+
+    if rol == "cliente":
+        # El cliente solo puede actualizar pagos de sus propios pedidos
+        filtro["usuario_id"] = current_user["sub"]
+
+    elif rol not in {"camarero", "admin", "super_admin"}:
+        raise HTTPException(
+            status_code=403,
+            detail="No tienes permiso para esta acción",
+        )
+
     result = coleccion_pedidos.update_one(
-        {"referencia_pago": payload.referenciaPago},
+        filtro,
         {"$set": {"estado_pago": payload.estadoPago}},
     )
     if result.matched_count == 0:
@@ -498,12 +595,34 @@ def actualizar_estado_pago(payload: ActualizarEstadoPago):
 def actualizar_estado_pedido(
     pedido_id: str,
     payload: ActualizarEstado,
-    _user: dict = Depends(require_role(["cocinero", "camarero", "admin", "super_admin"])),
+    current_user: dict = Depends(require_role(["cocinero", "camarero", "admin", "super_admin"])),
 ):
     if not ObjectId.is_valid(pedido_id):
         raise ValidacionError("ID de pedido inválido")
     if payload.estado not in _ESTADOS_VALIDOS:
-        raise ValidacionError(f"Estado inválido. Válidos: {_ESTADOS_VALIDOS}")
+        raise ValidacionError(f"Estado inválido. Válidos: {sorted(_ESTADOS_VALIDOS)}")
+
+    pedido = _obtener_pedido_o_404(pedido_id)
+    _verificar_acceso_pedido(pedido, current_user)
+
+    estado_actual = pedido.get("estado", "pendiente")
+
+    # No-op: misma transición → 200 sin cambio
+    if estado_actual == payload.estado:
+        logger.info(
+            "actualizar_estado_pedido no-op | sub=%s correo=%s pedido_id=%s estado=%s",
+            current_user.get("sub"), current_user.get("correo"),
+            pedido_id, payload.estado,
+        )
+        return {"updated": False, "estado": payload.estado}
+
+    # Validación de la máquina de estados
+    transiciones_permitidas = _TRANSICIONES_VALIDAS.get(estado_actual, set())
+    if payload.estado not in transiciones_permitidas:
+        raise ConflictError(
+            f"Transición inválida: '{estado_actual}' → '{payload.estado}'. "
+            f"Desde '{estado_actual}' solo se permite: {sorted(transiciones_permitidas) or '(estado terminal)'}"
+        )
 
     update: dict = {"$set": {"estado": payload.estado}}
     # RGPD-03 — minimización de datos de geolocalización: cuando un pedido
@@ -521,46 +640,178 @@ def actualizar_estado_pedido(
     result = coleccion_pedidos.update_one({"_id": ObjectId(pedido_id)}, update)
     if result.matched_count == 0:
         raise NotFoundError("Pedido no encontrado")
+
+    # Auditoría mínima (importante 5)
+    logger.info(
+        "actualizar_estado_pedido | sub=%s correo=%s pedido_id=%s transicion=%s→%s",
+        current_user.get("sub"), current_user.get("correo"),
+        pedido_id, estado_actual, payload.estado,
+    )
+
     return {"updated": result.modified_count > 0, "estado": payload.estado}
 
 
-@router.patch("/{pedido_id}/items/{item_idx}/hecho")
-def marcar_item_hecho(
+def _marcar_item_hecho_por_id(
     pedido_id: str,
-    item_idx: int,
+    item_id: str,
     payload: ActualizarItemHecho,
-    _user: dict = Depends(require_role(["cocinero", "camarero", "admin", "super_admin"])),
-):
+    current_user: dict,
+) -> dict:
+    """Lógica compartida para marcar un item como hecho/no hecho usando su item_id.
+
+    Usa un único update_one con condición de estado en el filtro para
+    evitar race conditions (importante 3): solo actualiza si el pedido
+    está en estado activo. La transición automática a 'listo' se protege
+    con un segundo update_one condicional (idempotente).
+    """
     if not ObjectId.is_valid(pedido_id):
         raise ValidacionError("ID de pedido inválido")
-    if item_idx < 0:
-        raise ValidacionError("Índice de item inválido")
 
-    pedido = coleccion_pedidos.find_one({"_id": ObjectId(pedido_id)})
-    if not pedido:
-        raise NotFoundError("Pedido no encontrado")
+    pedido = _obtener_pedido_o_404(pedido_id)
+    _verificar_acceso_pedido(pedido, current_user)
 
     items = pedido.get("items", [])
-    if not isinstance(items, list) or item_idx >= len(items):
-        raise ValidacionError(f"Índice de item fuera de rango (0..{len(items) - 1})")
+    if not isinstance(items, list):
+        raise ValidacionError("El pedido no tiene items válidos")
 
-    coleccion_pedidos.update_one(
-        {"_id": ObjectId(pedido_id)},
-        {"$set": {f"items.{item_idx}.hecho": payload.hecho}},
+    # Buscar el item por su item_id
+    item_idx_encontrado = None
+    for idx, it in enumerate(items):
+        if it.get("item_id") == item_id:
+            item_idx_encontrado = idx
+            break
+
+    if item_idx_encontrado is None:
+        raise NotFoundError(f"Item con id '{item_id}' no encontrado en el pedido")
+
+    # Actualización atómica: solo marca si el pedido está en estado activo.
+    # Esto evita doble disparo de la transición en requests concurrentes.
+    result = coleccion_pedidos.update_one(
+        {
+            "_id": ObjectId(pedido_id),
+            "estado": {"$in": ["pendiente", "preparando", "listo"]},
+        },
+        {"$set": {f"items.{item_idx_encontrado}.hecho": payload.hecho}},
     )
 
+    if result.matched_count == 0:
+        # El pedido existe (ya lo obtuvimos) pero está en estado terminal o no matchea
+        estado_actual = pedido.get("estado", "")
+        if estado_actual in {"entregado", "cancelado"}:
+            raise ConflictError(
+                f"No se puede modificar un item de un pedido en estado '{estado_actual}'"
+            )
+        raise NotFoundError("Pedido no encontrado o en estado no modificable")
+
+    # Comprobar si todos los items están hechos y hacer la transición a 'listo'
+    # de forma condicional (idempotente): solo si AÚN no está en 'listo'.
     pedido_actualizado = coleccion_pedidos.find_one({"_id": ObjectId(pedido_id)})
-    items_actualizados = pedido_actualizado.get("items", [])
+    items_actualizados = pedido_actualizado.get("items", []) if pedido_actualizado else []
     todos_hechos = (
         len(items_actualizados) > 0
         and all(it.get("hecho", False) for it in items_actualizados)
     )
 
-    if todos_hechos and pedido_actualizado.get("estado") in {"pendiente", "preparando"}:
+    if todos_hechos:
+        # Condición explícita en filtro: solo avanza si el estado es activo.
+        # Dos requests concurrentes que lleguen aquí solo uno matcheará.
         coleccion_pedidos.update_one(
-            {"_id": ObjectId(pedido_id)},
+            {
+                "_id": ObjectId(pedido_id),
+                "estado": {"$in": ["pendiente", "preparando"]},
+            },
             {"$set": {"estado": "listo"}},
         )
+
+    # Auditoría mínima (importante 5)
+    logger.info(
+        "marcar_item_hecho | sub=%s correo=%s pedido_id=%s item_id=%s hecho=%s todos_hechos=%s",
+        current_user.get("sub"), current_user.get("correo"),
+        pedido_id, item_id, payload.hecho, todos_hechos,
+    )
+
+    return {
+        "updated": True,
+        "hecho": payload.hecho,
+        "todosHechos": todos_hechos,
+    }
+
+
+@router.patch("/{pedido_id}/items/{item_id}/hecho")
+def marcar_item_hecho_por_id(
+    pedido_id: str,
+    item_id: str,
+    payload: ActualizarItemHecho,
+    current_user: dict = Depends(require_role(["cocinero", "camarero", "admin", "super_admin"])),
+):
+    """Marca un item de pedido como hecho/no hecho usando su item_id estable.
+
+    El item_id es un UUID generado al crear el pedido; no cambia aunque se
+    reordenen los items, lo que evita el bug de índice posicional (importante 4).
+    """
+    return _marcar_item_hecho_por_id(pedido_id, item_id, payload, current_user)
+
+
+# TODO: deprecar cuando frontend migre a item_id (usar /items/{item_id}/hecho)
+@router.patch("/{pedido_id}/items/{item_idx}/hecho-por-indice")
+def marcar_item_hecho(
+    pedido_id: str,
+    item_idx: int,
+    payload: ActualizarItemHecho,
+    current_user: dict = Depends(require_role(["cocinero", "camarero", "admin", "super_admin"])),
+):
+    """[DEPRECATED] Marca un item como hecho usando su índice posicional.
+
+    Usar /items/{item_id}/hecho en su lugar. Este endpoint se mantiene
+    temporalmente para retrocompatibilidad con clientes que envían el índice.
+    """
+    if not ObjectId.is_valid(pedido_id):
+        raise ValidacionError("ID de pedido inválido")
+    if item_idx < 0:
+        raise ValidacionError("Índice de item inválido")
+
+    pedido = _obtener_pedido_o_404(pedido_id)
+    _verificar_acceso_pedido(pedido, current_user)
+
+    items = pedido.get("items", [])
+    if not isinstance(items, list) or item_idx >= len(items):
+        raise ValidacionError(f"Índice de item fuera de rango (0..{max(len(items) - 1, 0)})")
+
+    # Resolución del item_id a partir del índice, si existe
+    item_id_from_idx = items[item_idx].get("item_id")
+    if item_id_from_idx:
+        return _marcar_item_hecho_por_id(pedido_id, item_id_from_idx, payload, current_user)
+
+    # Fallback legacy: el item no tiene item_id (datos anteriores a este cambio)
+    coleccion_pedidos.update_one(
+        {
+            "_id": ObjectId(pedido_id),
+            "estado": {"$in": ["pendiente", "preparando", "listo"]},
+        },
+        {"$set": {f"items.{item_idx}.hecho": payload.hecho}},
+    )
+
+    pedido_actualizado = coleccion_pedidos.find_one({"_id": ObjectId(pedido_id)})
+    items_actualizados = pedido_actualizado.get("items", []) if pedido_actualizado else []
+    todos_hechos = (
+        len(items_actualizados) > 0
+        and all(it.get("hecho", False) for it in items_actualizados)
+    )
+
+    if todos_hechos:
+        coleccion_pedidos.update_one(
+            {
+                "_id": ObjectId(pedido_id),
+                "estado": {"$in": ["pendiente", "preparando"]},
+            },
+            {"$set": {"estado": "listo"}},
+        )
+
+    logger.info(
+        "marcar_item_hecho_legacy | sub=%s correo=%s pedido_id=%s item_idx=%s hecho=%s",
+        current_user.get("sub"), current_user.get("correo"),
+        pedido_id, item_idx, payload.hecho,
+    )
 
     return {
         "updated": True,
@@ -570,9 +821,16 @@ def marcar_item_hecho(
 
 
 @router.patch("/{pedido_id}")
-def actualizar_pedido(pedido_id: str, payload: ActualizarItemsPedido):
+def actualizar_pedido(
+    pedido_id: str,
+    payload: ActualizarItemsPedido,
+    current_user: dict = Depends(require_role(["camarero", "admin", "super_admin"])),
+):
     if not ObjectId.is_valid(pedido_id):
         raise ValidacionError("ID de pedido inválido")
+
+    pedido = _obtener_pedido_o_404(pedido_id)
+    _verificar_acceso_pedido(pedido, current_user)
 
     campos = {}
     if payload.items is not None:
@@ -1056,12 +1314,14 @@ def obtener_pedidos(
 
 
 @router.get("/{pedido_id}")
-def obtener_pedido(pedido_id: str):
+def obtener_pedido(
+    pedido_id: str,
+    current_user: dict = Depends(get_current_user),
+):
     if not ObjectId.is_valid(pedido_id):
         raise ValidacionError("ID de pedido inválido")
-    p = coleccion_pedidos.find_one({"_id": ObjectId(pedido_id)})
-    if not p:
-        raise NotFoundError("Pedido no encontrado")
+    p = _obtener_pedido_o_404(pedido_id)
+    _verificar_acceso_pedido(p, current_user)
     items_raw = p.get("items", [])
     return {
         "id": str(p["_id"]),
@@ -1081,13 +1341,16 @@ def obtener_pedido(pedido_id: str):
 
 
 @router.patch("/{pedido_id}/items")
-def actualizar_items_pedido(pedido_id: str, payload: ActualizarItemsPedido):
+def actualizar_items_pedido(
+    pedido_id: str,
+    payload: ActualizarItemsPedido,
+    current_user: dict = Depends(require_role(["camarero", "admin", "super_admin"])),
+):
     if not ObjectId.is_valid(pedido_id):
         raise ValidacionError("ID de pedido inválido")
 
-    pedido = coleccion_pedidos.find_one({"_id": ObjectId(pedido_id)})
-    if not pedido:
-        raise NotFoundError("Pedido no encontrado")
+    pedido = _obtener_pedido_o_404(pedido_id)
+    _verificar_acceso_pedido(pedido, current_user)
 
     total = payload.total if payload.total is not None else sum(
         it.get("cantidad", 1) * it.get("precio", 0) for it in payload.items

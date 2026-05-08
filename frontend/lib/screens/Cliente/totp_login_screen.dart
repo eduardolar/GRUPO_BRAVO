@@ -11,6 +11,7 @@ import '../../components/Cliente/auth_scaffold.dart';
 import '../../components/Cliente/auth_header.dart';
 
 import 'carta_screen.dart';
+import 'inicio_screen.dart';
 import 'reservar_mesa_screen.dart';
 import '../home_screen_trabajador.dart';
 import '../cocinero/home_screen_cocinero.dart';
@@ -87,10 +88,23 @@ class _TotpLoginScreenState extends State<TotpLoginScreen> {
         destino = const HomeCocinero();
         break;
       case RolUsuario.cliente:
-        destino = widget.destino == DestinoLogin.reservar
-            ? const ReservarMesaScreen()
-            : const CartaScreen();
-        break;
+        // Reset de pila a InicioScreen y empujar encima el destino concreto.
+        // Sin esto, atrás desde Carta/Reservar deja el Navigator vacío y se
+        // ve la pantalla en blanco del MaterialApp.
+        Navigator.pushAndRemoveUntil(
+          context,
+          AppRoute.reveal(const InicioScreen()),
+          (route) => false,
+        );
+        Navigator.push(
+          context,
+          AppRoute.slide(
+            widget.destino == DestinoLogin.reservar
+                ? const ReservarMesaScreen()
+                : const CartaScreen(),
+          ),
+        );
+        return;
     }
     Navigator.pushAndRemoveUntil(
       context,
