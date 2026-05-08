@@ -7,6 +7,7 @@ import '../models/usuario_model.dart';
 import 'actor_context.dart';
 import 'api_config.dart';
 import 'auth_session.dart';
+import 'http_client.dart';
 
 class UsuarioService {
   /// Cabeceras para peticiones que registran auditoría:
@@ -160,22 +161,20 @@ class UsuarioService {
     String? correo,
     bool? activo,
   }) async {
-    try {
-      final body = <String, dynamic>{
-        'nombre': ?nombre,
-        'correo': ?correo,
-        'activo': ?activo,
-      };
-      final response = await http.put(
-        Uri.parse('$baseUrl/usuarios/$id'),
-        headers: _headersConActor(),
-        body: jsonEncode(body),
-      );
-      return response.statusCode == 200;
-    } catch (e) {
-      debugPrint('Error al editar usuario: $e');
-      return false;
-    }
+    final body = <String, dynamic>{
+      'nombre': ?nombre,
+      'correo': ?correo,
+      'activo': ?activo,
+    };
+    final response = await http.put(
+      Uri.parse('$baseUrl/usuarios/$id'),
+      headers: _headersConActor(),
+      body: jsonEncode(body),
+    );
+    if (response.statusCode == 200) return true;
+    // Propagamos el error con el detail del backend para que el caller pueda
+    // mostrarlo (antes el catch silencioso ocultaba el motivo real).
+    throw toApiException(response.statusCode, decodeBody(response));
   }
 
   // 8. Persistencia de Dirección y Coordenadas (perfil propio del cliente)
