@@ -87,7 +87,12 @@ class _SacarCuentaState extends State<SacarCuenta> {
         metodoPago: metodoPago,
         idempotencyKey: idempotencyKey,
       );
-      await ApiService.marcarMesaLibre(mesa.id);
+      // Comparte la misma clave: si el flujo completo se reintenta
+      // (cobro + liberación) el backend deduplica ambas operaciones.
+      await ApiService.marcarMesaLibre(
+        mesa.id,
+        idempotencyKey: idempotencyKey,
+      );
       if (!mounted) return;
       _showSnack('Mesa ${mesa.numero} cerrada y liberada');
       setState(() {

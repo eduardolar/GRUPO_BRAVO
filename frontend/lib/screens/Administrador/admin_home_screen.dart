@@ -15,7 +15,9 @@ import 'package:frontend/screens/Administrador/admin_mesas_screen.dart';
 import 'package:frontend/screens/Administrador/admin_reservas_screen.dart';
 import 'package:frontend/screens/Administrador/admin_stock_screen.dart';
 import 'package:frontend/screens/Administrador/admin_usuarios_screen.dart';
+import 'package:frontend/screens/Administrador/admin_avisos_falta_screen.dart';
 import 'package:frontend/services/api_service.dart';
+import 'package:frontend/services/aviso_falta_service.dart';
 import 'package:frontend/services/cierre_caja_service.dart';
 import 'package:frontend/services/mesa_service.dart';
 import 'package:frontend/services/pedido_service.dart';
@@ -44,6 +46,9 @@ class _MenuAdministradorState extends State<MenuAdministrador> {
   List<String> _stockBajoNombres = const [];
   int? _reservasHoy;
 
+  // Avisos de falta de stock pendientes (trabajadores → admin).
+  int _avisosPendientes = 0;
+
   // Aviso de cierre de caja: si el admin no ha abierto el turno actual
   // (comida o cena), guardamos aquí el nombre del turno para mostrar banner.
   String? _turnoSinAbrir;
@@ -67,7 +72,19 @@ class _MenuAdministradorState extends State<MenuAdministrador> {
       _cargarReservasHoy(),
       _verificarTurnoAbierto(),
       _verificarCierresPendientes(),
+      _cargarAvisosPendientes(),
     ]);
+  }
+
+  Future<void> _cargarAvisosPendientes() async {
+    try {
+      final lista = await AvisoFaltaService.listar(estado: 'pendiente');
+      if (!mounted) return;
+      setState(() => _avisosPendientes = lista.length);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _avisosPendientes = 0);
+    }
   }
 
   /// Devuelve la hora de fin del turno indicado, dado YYYY-MM-DD.
@@ -392,6 +409,24 @@ class _MenuAdministradorState extends State<MenuAdministrador> {
                               ),
                             );
                             _verificarCierresPendientes();
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+
+                      // ── Avisos de falta de stock ───────────────
+                      if (_avisosPendientes > 0) ...[
+                        _BannerAvisosFalta(
+                          cantidad: _avisosPendientes,
+                          onTap: () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    const AdminAvisosFaltaScreen(),
+                              ),
+                            );
+                            _cargarAvisosPendientes();
                           },
                         ),
                         const SizedBox(height: 16),
@@ -1259,6 +1294,68 @@ class _BannerTurnoSinAbrir extends StatelessWidget {
                         color: Colors.white70,
                         fontSize: 12,
                       ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: Colors.white54),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Banner informativo (azul) que avisa al admin de avisos de falta de stock
+/// pendientes enviados por los trabajadores.
+class _BannerAvisosFalta extends StatelessWidget {
+  final int cantidad;
+  final VoidCallback onTap;
+
+  const _BannerAvisosFalta({required this.cantidad, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: AppColors.info.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: AppColors.info.withValues(alpha: 0.55),
+              width: 1.2,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.inventory_2_outlined,
+                color: AppColors.info,
+                size: 26,
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '$cantidad ${cantidad == 1 ? 'aviso' : 'avisos'} de falta de stock pendiente${cantidad == 1 ? '' : 's'}.',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    const Text(
+                      'Toca para revisarlos.',
+                      style: TextStyle(color: Colors.white70, fontSize: 12),
                     ),
                   ],
                 ),

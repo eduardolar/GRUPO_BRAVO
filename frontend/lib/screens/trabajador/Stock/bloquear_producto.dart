@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/colors_style.dart';
+import '../../../core/app_snackbar.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../services/api_service.dart';
+import '../../../services/ingredientes_service.dart';
 import '../../../models/ingrediente_model.dart';
 
 class BloquearProducto extends StatefulWidget {
@@ -41,85 +43,76 @@ class _BloquearProductoState extends State<BloquearProducto> {
     } catch (e) {
       if (mounted) {
         setState(() => _cargando = false);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Error de conexión: $e")));
+        handleApiError(context, e, prefix: 'Error al cargar ingredientes');
       }
     }
   }
 
-  void _confirmarBloqueo() {
-    // Aquí llamarías a tu API para bloquear los IDs en _seleccionados
-    showDialog(
+  Future<void> _confirmarBloqueo() async {
+    if (_seleccionados.isEmpty) return;
+
+    // Obtener nombres de los seleccionados para el diálogo
+    final seleccionadosList = _productos
+        .where((p) => _seleccionados.contains(p.id))
+        .toList();
+    final nombres = seleccionadosList.map((p) => p.nombre).join(', ');
+
+    final confirmar = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.panel,
         title: const Text(
-          "¿Bloquear ingredientes?",
+          '¿Marcar como agotado?',
           style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
         ),
         content: Text(
-          "Se anularán ${_seleccionados.length} ingredientes del menú.",
+          '¿Marcar ${_seleccionados.length == 1 ? '"$nombres"' : '${_seleccionados.length} ingredientes'} como agotado${_seleccionados.length == 1 ? '' : 's'}? '
+          'Su stock pasará a 0 y los platos que los usen quedarán no disponibles automáticamente.',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("CANCELAR"),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('CANCELAR'),
           ),
-          Tooltip(
-            message: 'No disponible aún',
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.backgroundButton,
-              ),
-              onPressed: null,
-              child: const Text(
-                "BLOQUEAR",
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontWeight: FontWeight.bold,
-                ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.backgroundButton,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(
+              'BLOQUEAR',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
               ),
             ),
           ),
         ],
       ),
     );
-  }
 
-  Widget _buildBannerDesarrollo() {
-    return Container(
-      width: double.infinity,
-      color: const Color(0xFFF59E0B),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: const Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('⚠', style: TextStyle(fontSize: 16)),
-          SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Funcionalidad en desarrollo',
-                  style: TextStyle(
-                    color: Colors.black87,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
-                ),
-                SizedBox(height: 2),
-                Text(
-                  'Aún no se persiste al servidor. Usa el panel de admin si necesitas ejecutar esta acción.',
-                  style: TextStyle(color: Colors.black87, fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
+    if (confirmar != true || !mounted) return;
+
+    // Ejecutar en paralelo para todos los seleccionados
+    final ids = List<String>.from(_seleccionados);
+    try {
+      await Future.wait(
+        ids.map((id) => IngredienteService.ponerStockACero(id)),
+      );
+      if (!mounted) return;
+      // Quitar de la lista local los que ya están en 0
+      setState(() {
+        _productos.removeWhere((p) => ids.contains(p.id));
+        _seleccionados.clear();
+      });
+      showAppSuccess(
+        context,
+        '${ids.length == 1 ? 'Ingrediente marcado' : '${ids.length} ingredientes marcados'} como agotado${ids.length == 1 ? '' : 's'}.',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      handleApiError(context, e, prefix: 'No se pudo bloquear');
+    }
   }
 
   @override
@@ -130,7 +123,6 @@ class _BloquearProductoState extends State<BloquearProducto> {
         child: Column(
           children: [
             _buildHeader(),
-            _buildBannerDesarrollo(),
             Expanded(
               child: _cargando
                   ? const Center(child: CircularProgressIndicator())

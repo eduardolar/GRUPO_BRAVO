@@ -321,6 +321,34 @@ def actualizar_ingrediente(
     return {"mensaje": "Ingrediente actualizado"}
 
 
+@router.post("/{ingrediente_id}/poner-a-cero", summary="Poner stock a 0 (camarero/admin/super_admin)")
+def poner_stock_a_cero(
+    ingrediente_id: str,
+    usuario: dict = Depends(require_role(["camarero", "admin", "super_admin"])),
+):
+    """Marca un ingrediente como agotado poniendo cantidad_actual = 0.
+
+    Disponible para camarero, admin y super_admin con aislamiento por sucursal.
+    El camarero solo puede actuar sobre ingredientes de su propia sucursal.
+    """
+    oid = _oid(ingrediente_id)
+    existente = coleccion_ingredientes.find_one({"_id": oid})
+    if not existente:
+        raise HTTPException(status_code=404, detail="Ingrediente no encontrado")
+    _exigir_misma_sucursal(existente, usuario)
+
+    coleccion_ingredientes.update_one({"_id": oid}, {"$set": {"cantidad_actual": 0}})
+    logger.info(
+        "poner_stock_a_cero | sub=%s correo=%s rol=%s ingrediente_id=%s nombre=%s",
+        usuario.get("sub"),
+        usuario.get("correo"),
+        normalizar_rol(usuario.get("rol", "") or ""),
+        ingrediente_id,
+        existente.get("nombre", ""),
+    )
+    return {"mensaje": "Stock puesto a 0", "ingrediente_id": ingrediente_id}
+
+
 @router.delete("/{ingrediente_id}", summary="Eliminar ingrediente (admin)")
 def eliminar_ingrediente(
     ingrediente_id: str,

@@ -137,7 +137,10 @@ class MesaService {
     }
   }
 
-  static Future<void> marcarMesaOcupada(String mesaId) async {
+  static Future<void> marcarMesaOcupada(
+    String mesaId, {
+    String? idempotencyKey,
+  }) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 200));
       final index = MockData.mesas.indexWhere((m) => m.id == mesaId);
@@ -149,10 +152,14 @@ class MesaService {
       return;
     }
 
+    final extra = <String, String>{};
+    if (idempotencyKey != null && idempotencyKey.isNotEmpty) {
+      extra['Idempotency-Key'] = idempotencyKey;
+    }
     final response = await httpWithRetry(
       () => http.patch(
         Uri.parse('$baseUrl/mesas/$mesaId'),
-        headers: AuthSession.headers(),
+        headers: AuthSession.headers(extra: extra),
         body: jsonEncode({'disponible': false}),
       ),
       retry: false,
@@ -212,7 +219,10 @@ class MesaService {
     throw toApiException(response.statusCode, decodeBody(response));
   }
 
-  static Future<void> marcarMesaLibre(String mesaId) async {
+  static Future<void> marcarMesaLibre(
+    String mesaId, {
+    String? idempotencyKey,
+  }) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 200));
       final index = MockData.mesas.indexWhere((m) => m.id == mesaId);
@@ -224,10 +234,14 @@ class MesaService {
       return;
     }
 
+    final extra = <String, String>{};
+    if (idempotencyKey != null && idempotencyKey.isNotEmpty) {
+      extra['Idempotency-Key'] = idempotencyKey;
+    }
     final response = await httpWithRetry(
       () => http.patch(
         Uri.parse('$baseUrl/mesas/$mesaId'),
-        headers: AuthSession.headers(),
+        headers: AuthSession.headers(extra: extra),
         body: jsonEncode({'disponible': true}),
       ),
       retry: false,

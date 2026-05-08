@@ -29,6 +29,7 @@ from database import (
     coleccion_cupones,
     coleccion_auditoria,
     coleccion_auditoria_pagos,
+    coleccion_avisos_falta,
 )
 
 
@@ -102,6 +103,12 @@ def crear_indices() -> None:
     coleccion_auditoria_pagos.create_index(
         [("proveedor", ASCENDING), ("estado", ASCENDING)],
         name="ix_auditoria_pagos_proveedor_estado",
+    )
+
+    # AVISOS DE FALTA — por restaurante + estado + fecha desc
+    coleccion_avisos_falta.create_index(
+        [("restaurante_id", ASCENDING), ("estado", ASCENDING), ("creado_at", DESCENDING)],
+        name="ix_avisos_falta_restaurante_estado_fecha",
     )
 
     print("Índices creados/verificados correctamente.")

@@ -1,8 +1,9 @@
 import logging
+from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 from bson import ObjectId
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import BaseModel
 
 from database import coleccion_mesas
@@ -104,7 +105,14 @@ def actualizar_estado_mesa(
     mesa_id: str,
     datos: ActualizarEstadoMesa,
     usuario: dict = Depends(require_role(["admin", "super_admin", "camarero", "trabajador"])),
+    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
 ):
+    """Cambia el estado libre/ocupada de una mesa.
+
+    Acepta el header opcional `Idempotency-Key`. Si la misma clave llega
+    dentro de un margen de 30 segundos, devuelve el estado actual sin
+    aplicar el cambio (protección contra doble tap).
+    """
     try:
         object_id = ObjectId(mesa_id)
     except Exception:
@@ -113,6 +121,23 @@ def actualizar_estado_mesa(
     mesa = coleccion_mesas.find_one({"_id": object_id})
     if not mesa:
         raise HTTPException(status_code=404, detail="Mesa no encontrada")
+
+    # ── Idempotency-Key: protección contra doble tap ──────────────────────────
+    if idempotency_key and idempotency_key.strip():
+        ik = idempotency_key.strip()
+        ultima_ik = mesa.get("ultima_idempotency_key")
+        ultima_at_raw = mesa.get("ultima_idempotency_at")
+        if ultima_ik == ik and ultima_at_raw:
+            try:
+                ultima_at = datetime.fromisoformat(ultima_at_raw)
+                if ultima_at.tzinfo is None:
+                    ultima_at = ultima_at.replace(tzinfo=timezone.utc)
+                diferencia = datetime.now(timezone.utc) - ultima_at
+                if diferencia <= timedelta(seconds=30):
+                    # Misma clave en < 30 s → devolver estado actual sin modificar
+                    return {"ok": True, "estado": mesa.get("estado", "libre"), "idempotent": True}
+            except (ValueError, TypeError):
+                pass  # fecha corrupta: dejamos pasar el cambio normal
 
     # Aislamiento por sucursal: super_admin tiene acceso global; admin y
     # camarero/trabajador solo pueden tocar mesas de su propia sucursal.
@@ -127,7 +152,14 @@ def actualizar_estado_mesa(
             )
 
     nuevo_estado = "libre" if datos.disponible else "ocupada"
-    coleccion_mesas.update_one({"_id": object_id}, {"$set": {"estado": nuevo_estado}})
+    set_fields: dict = {"estado": nuevo_estado}
+
+    # Persistir la idempotency key para detectar duplicados futuros
+    if idempotency_key and idempotency_key.strip():
+        set_fields["ultima_idempotency_key"] = idempotency_key.strip()
+        set_fields["ultima_idempotency_at"] = datetime.now(timezone.utc).isoformat()
+
+    coleccion_mesas.update_one({"_id": object_id}, {"$set": set_fields})
     return {"ok": True, "estado": nuevo_estado}
 
 

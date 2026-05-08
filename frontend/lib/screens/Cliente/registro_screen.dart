@@ -118,7 +118,11 @@ class _RegistroScreenState extends State<RegistroScreen> {
 
   String? _validarEmail(String? v) {
     if (v == null || v.trim().isEmpty) return 'Introduce tu correo';
-    final regex = RegExp(r'^[\w.+\-]+@[\w\-]+\.[a-z]{2,}$', caseSensitive: false);
+    // Acepta subdominios (p.ej. eln0001@alu.medac.es, foo@bar.co.uk).
+    final regex = RegExp(
+      r'^[\w.+\-]+@([\w\-]+\.)+[a-z]{2,}$',
+      caseSensitive: false,
+    );
     if (!regex.hasMatch(v.trim())) return 'Correo electrónico no válido';
     return null;
   }

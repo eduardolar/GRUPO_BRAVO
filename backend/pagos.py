@@ -40,7 +40,11 @@ router = APIRouter(prefix="/payments", tags=["Pagos"])
 # ── Modelos ────────────────────────────────────────────────────────────────────
 
 class PaymentIntentCreate(BaseModel):
-    pedido_id: str
+    # pedido_id opcional: el flujo del cliente crea el pedido DESPUÉS del pago.
+    # Si llega, se autoriza propiedad y el total se lee de BD (seguro).
+    # Si no llega, se usa amount del cliente (flujo legacy compat).
+    pedido_id: Optional[str] = None
+    amount: Optional[float] = Field(default=None, ge=0)
     currency: str = "eur"
 
 class CardConfirmRequest(BaseModel):
@@ -48,12 +52,14 @@ class CardConfirmRequest(BaseModel):
     payment_method_id: str
 
 class ApplePayInitRequest(BaseModel):
-    pedido_id: str
+    pedido_id: Optional[str] = None
+    amount: Optional[float] = Field(default=None, ge=0)
     currency: str = "EUR"
     country: str = "ES"
 
 class GooglePayInitRequest(BaseModel):
-    pedido_id: str
+    pedido_id: Optional[str] = None
+    amount: Optional[float] = Field(default=None, ge=0)
     currency: str = "EUR"
 
 class ConfirmPaymentIntentRequest(BaseModel):
@@ -127,9 +133,18 @@ def crear_payment_intent(
     payload: PaymentIntentCreate,
     current_user: dict = Depends(get_current_user),
 ):
-    _autorizar_pedido(payload.pedido_id, current_user)  # 403 antes de tocar Stripe
-    _exigir_stripe()
-    total = _total_pedido(payload.pedido_id)
+    # Si llega pedido_id: autorizamos propiedad y leemos total de BD (seguro).
+    # Si no llega: el flujo del cliente está creando el pedido DESPUÉS del
+    # pago, así que aceptamos el amount del frontend (compat legacy).
+    if payload.pedido_id:
+        _autorizar_pedido(payload.pedido_id, current_user)
+        _exigir_stripe()
+        total = _total_pedido(payload.pedido_id)
+    else:
+        if payload.amount is None or payload.amount <= 0:
+            raise HTTPException(status_code=400, detail="amount o pedido_id requerido")
+        _exigir_stripe()
+        total = float(payload.amount)
     logger.info(
         "payment.intent_create sub=%s correo=%s pedido_id=%s monto=%.2f",
         current_user.get("sub"), current_user.get("correo"), payload.pedido_id, total,
@@ -190,9 +205,15 @@ async def iniciar_apple_pay(
     payload: ApplePayInitRequest,
     current_user: dict = Depends(get_current_user),
 ):
-    _autorizar_pedido(payload.pedido_id, current_user)  # 403 antes de tocar Stripe
-    _exigir_stripe()
-    total = _total_pedido(payload.pedido_id)
+    if payload.pedido_id:
+        _autorizar_pedido(payload.pedido_id, current_user)
+        _exigir_stripe()
+        total = _total_pedido(payload.pedido_id)
+    else:
+        if payload.amount is None or payload.amount <= 0:
+            raise HTTPException(status_code=400, detail="amount o pedido_id requerido")
+        _exigir_stripe()
+        total = float(payload.amount)
     logger.info(
         "payment.apple_pay.init sub=%s correo=%s pedido_id=%s monto=%.2f",
         current_user.get("sub"), current_user.get("correo"), payload.pedido_id, total,
@@ -275,9 +296,15 @@ async def iniciar_google_pay(
     payload: GooglePayInitRequest,
     current_user: dict = Depends(get_current_user),
 ):
-    _autorizar_pedido(payload.pedido_id, current_user)  # 403 antes de tocar Stripe
-    _exigir_stripe()
-    total = _total_pedido(payload.pedido_id)
+    if payload.pedido_id:
+        _autorizar_pedido(payload.pedido_id, current_user)
+        _exigir_stripe()
+        total = _total_pedido(payload.pedido_id)
+    else:
+        if payload.amount is None or payload.amount <= 0:
+            raise HTTPException(status_code=400, detail="amount o pedido_id requerido")
+        _exigir_stripe()
+        total = float(payload.amount)
     logger.info(
         "payment.google_pay.init sub=%s correo=%s pedido_id=%s monto=%.2f",
         current_user.get("sub"), current_user.get("correo"), payload.pedido_id, total,

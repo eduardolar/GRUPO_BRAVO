@@ -183,14 +183,16 @@ class ApiService {
     idempotencyKey: idempotencyKey,
   );
 
-  static Future<void> agregarItemsPedido({
+  static Future<Map<String, dynamic>> agregarItemsPedido({
     required String pedidoId,
     required List<Map<String, dynamic>> items,
     required double totalExtra,
+    int? version,
   }) => PedidoService.agregarItemsPedido(
     pedidoId: pedidoId,
     items: items,
     totalExtra: totalExtra,
+    version: version,
   );
 
   static Future<List<Pedido>> obtenerHistorialPedidos({
@@ -242,8 +244,15 @@ class ApiService {
     idempotencyKey: idempotencyKey,
   );
 
-  static Future<void> marcarMesaLibre(String mesaId) =>
-      MesaService.marcarMesaLibre(mesaId);
+  static Future<void> marcarMesaLibre(
+    String mesaId, {
+    String? idempotencyKey,
+  }) => MesaService.marcarMesaLibre(mesaId, idempotencyKey: idempotencyKey);
+
+  static Future<void> marcarMesaOcupada(
+    String mesaId, {
+    String? idempotencyKey,
+  }) => MesaService.marcarMesaOcupada(mesaId, idempotencyKey: idempotencyKey);
 
   // ─── PAGOS TARJETA / STRIPE ──────────────────────────────────
 
