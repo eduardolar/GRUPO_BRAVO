@@ -59,30 +59,46 @@ class _CartaScreenState extends State<CartaScreen> {
       _errorCarga = false;
     });
     try {
+      // Filtrar por la sucursal seleccionada en el carrito; si no hay,
+      // caemos al catálogo global (compatibilidad con flujos antiguos).
+      final restauranteId = context.read<CartProvider>().restauranteId;
       final results = await Future.wait([
         ApiService.obtenerCategorias(),
-        ApiService.obtenerProductos(),
+        ApiService.obtenerProductos(restauranteId: restauranteId),
       ]);
       if (!mounted) return;
 
       final rawCategorias = results[0] as List<String>;
       final rawProductos = results[1] as List<Producto>;
 
-      final categoriasUnicas = rawCategorias.toSet().toList();
-
-      // ¡NUEVA MAGIA! Filtramos por el NOMBRE del plato en minúsculas
+      // Dedupe por nombre del plato, respetando mayúsculas/espacios
       final Map<String, Producto> productosUnicos = {};
       for (var p in rawProductos) {
-        // Ponemos el nombre en minúsculas y sin espacios a los lados 
-        // para asegurarnos de que detecte los duplicados exactos
         final llaveNombre = p.nombre.toLowerCase().trim();
-        productosUnicos[llaveNombre] = p; 
+        productosUnicos[llaveNombre] = p;
+      }
+      final productosList = productosUnicos.values.toList();
+
+      // Si hay sucursal elegida, ocultamos categorías sin platos en este
+      // restaurante (las categorías son globales en backend pero los productos
+      // sí están asignados a sucursal). Si no hay sucursal, mostramos todas.
+      // TODO: mover el filtrado a backend (`GET /categorias?restauranteId=X`)
+      // derivando de los productos de la sucursal, para evitar enviar la
+      // lista global completa al cliente y ahorrar el cómputo en frontend.
+      final categoriasGlobales = rawCategorias.toSet().toList();
+      final List<String> categoriasUnicas;
+      if (restauranteId != null && restauranteId.isNotEmpty) {
+        final usadas = productosList.map((p) => p.categoria).toSet();
+        categoriasUnicas = categoriasGlobales
+            .where(usadas.contains)
+            .toList(growable: false);
+      } else {
+        categoriasUnicas = categoriasGlobales;
       }
 
       setState(() {
         _categorias = categoriasUnicas;
-        // Recuperamos la lista ya limpia de duplicados
-        _productos = productosUnicos.values.toList();
+        _productos = productosList;
         _selectedCategory = 0;
         _cargando = false;
       });
