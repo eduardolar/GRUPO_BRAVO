@@ -89,7 +89,7 @@ class CierreCajaService {
   // ── Listar cierres ─────────────────────────────────────────────────────────
 
   /// Devuelve la lista de cierres filtrada por los parámetros indicados.
-  /// El backend los ordena por fecha desc y turno (desayuno→comida→cena).
+  /// El backend los ordena por fecha desc y turno (comida→cena).
   static Future<List<Map<String, dynamic>>> listar({
     String? fecha,
     String? turno,

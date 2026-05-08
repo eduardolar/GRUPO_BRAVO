@@ -6,6 +6,7 @@ import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/models/mesa_model.dart';
 import 'package:frontend/models/pedido_model.dart';
 import 'package:frontend/providers/auth_provider.dart';
+import 'package:frontend/screens/Administrador/admin_cierre_caja_screen.dart';
 import 'package:frontend/screens/Administrador/admin_contabilidad_screen.dart';
 import 'package:frontend/screens/Administrador/admin_cupones_screen.dart';
 import 'package:frontend/screens/Administrador/admin_local_screen.dart';
@@ -15,6 +16,7 @@ import 'package:frontend/screens/Administrador/admin_reservas_screen.dart';
 import 'package:frontend/screens/Administrador/admin_stock_screen.dart';
 import 'package:frontend/screens/Administrador/admin_usuarios_screen.dart';
 import 'package:frontend/services/api_service.dart';
+import 'package:frontend/services/cierre_caja_service.dart';
 import 'package:frontend/services/mesa_service.dart';
 import 'package:frontend/services/pedido_service.dart';
 import 'package:frontend/services/reserva_service.dart';
@@ -42,6 +44,14 @@ class _MenuAdministradorState extends State<MenuAdministrador> {
   List<String> _stockBajoNombres = const [];
   int? _reservasHoy;
 
+  // Aviso de cierre de caja: si el admin no ha abierto el turno actual
+  // (comida o cena), guardamos aquí el nombre del turno para mostrar banner.
+  String? _turnoSinAbrir;
+
+  // Cierre que ya debería haberse cerrado: rango horario terminado hace >15min
+  // y aún en estado "abierto". Mostramos banner con CTA a cerrarlo.
+  Map<String, dynamic>? _cierrePendienteCerrar;
+
   @override
   void initState() {
     super.initState();
@@ -49,9 +59,78 @@ class _MenuAdministradorState extends State<MenuAdministrador> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _cargarTodo());
   }
 
-  // ── Carga completa (KPIs + stock + reservas) ──────────────────
+  // ── Carga completa (KPIs + stock + reservas + turno actual) ──
   Future<void> _cargarTodo() async {
-    await Future.wait([_cargarKpis(), _cargarStockBajo(), _cargarReservasHoy()]);
+    await Future.wait([
+      _cargarKpis(),
+      _cargarStockBajo(),
+      _cargarReservasHoy(),
+      _verificarTurnoAbierto(),
+      _verificarCierresPendientes(),
+    ]);
+  }
+
+  /// Devuelve la hora de fin del turno indicado, dado YYYY-MM-DD.
+  /// Cena cruza medianoche → fin = día siguiente 04:59.
+  DateTime _finTurno(String fecha, String turno) {
+    final base = DateTime.parse(fecha);
+    if (turno == 'comida') {
+      return DateTime(base.year, base.month, base.day, 16, 59);
+    }
+    final manana = base.add(const Duration(days: 1));
+    return DateTime(manana.year, manana.month, manana.day, 4, 59);
+  }
+
+  /// Lista cierres en estado abierto y se queda con el primero cuyo rango
+  /// ya terminó hace más de 15 min. El backend filtra por sucursal del JWT,
+  /// así que solo recibimos los nuestros.
+  Future<void> _verificarCierresPendientes() async {
+    try {
+      final lista = await CierreCajaService.listar(estado: 'abierto');
+      final ahora = DateTime.now();
+      final pendiente = lista.firstWhere(
+        (doc) {
+          final fecha = doc['fecha'] as String?;
+          final turno = doc['turno'] as String?;
+          if (fecha == null || turno == null) return false;
+          final fin = _finTurno(fecha, turno);
+          return ahora.isAfter(fin.add(const Duration(minutes: 15)));
+        },
+        orElse: () => <String, dynamic>{},
+      );
+      if (!mounted) return;
+      setState(() {
+        _cierrePendienteCerrar = pendiente.isEmpty ? null : pendiente;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _cierrePendienteCerrar = null);
+    }
+  }
+
+  /// Calcula el turno que cubre la hora actual según los rangos del backend
+  /// (`comida` 05:00–16:59, `cena` 17:00–04:59). Siempre estamos en uno.
+  String _turnoActual() {
+    final now = DateTime.now();
+    final mins = now.hour * 60 + now.minute;
+    // comida: 05:00 (300) → 16:59 (1019). Resto cae en cena.
+    if (mins >= 5 * 60 && mins < 17 * 60) return 'comida';
+    return 'cena';
+  }
+
+  /// Comprueba si hay un cierre abierto para el turno actual. Si el endpoint
+  /// devuelve null (404), guardamos el turno para mostrar el banner. Cualquier
+  /// otro error se ignora (no queremos saturar al admin con errores de red).
+  Future<void> _verificarTurnoAbierto() async {
+    final turno = _turnoActual();
+    try {
+      final doc = await CierreCajaService.abiertoActual(turno);
+      if (!mounted) return;
+      setState(() => _turnoSinAbrir = doc == null ? turno : null);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _turnoSinAbrir = null);
+    }
   }
 
   /// Tres llamadas en paralelo. Si alguna falla, las otras continúan;
@@ -278,6 +357,46 @@ class _MenuAdministradorState extends State<MenuAdministrador> {
 
                       const SizedBox(height: 24),
 
+                      // ── Aviso de turno sin abrir ──────────────
+                      if (_turnoSinAbrir != null) ...[
+                        _BannerTurnoSinAbrir(
+                          turno: _turnoSinAbrir!,
+                          onAbrir: () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const AdminCierreCajaScreen(),
+                              ),
+                            );
+                            // Al volver, refrescamos por si lo abrió.
+                            _verificarTurnoAbierto();
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+
+                      // ── Aviso de turno por cerrar ─────────────
+                      if (_cierrePendienteCerrar != null) ...[
+                        _BannerCierrePendiente(
+                          turno:
+                              _cierrePendienteCerrar!['turno'] as String? ??
+                              '',
+                          fecha:
+                              _cierrePendienteCerrar!['fecha'] as String? ??
+                              '',
+                          onCerrar: () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const AdminCierreCajaScreen(),
+                              ),
+                            );
+                            _verificarCierresPendientes();
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+
                       // ── Sección de KPIs ────────────────────────
                       _SeccionKpis(
                         ventasHoy: _ventasHoy,
@@ -384,6 +503,15 @@ class _MenuAdministradorState extends State<MenuAdministrador> {
                         subtitle: "Información del restaurante",
                         icon: Icons.storefront_outlined,
                         destination: const AdminLocalScreen(),
+                        isFullWidth: true,
+                      ),
+                      const SizedBox(height: 16),
+                      _buildAdminCard(
+                        context: context,
+                        title: "Cierre de caja",
+                        subtitle: "Apertura, cierre y descuadre por turno",
+                        icon: Icons.point_of_sale_outlined,
+                        destination: const AdminCierreCajaScreen(),
                         isFullWidth: true,
                       ),
                       const SizedBox(height: 16),
@@ -1071,6 +1199,143 @@ class _AdminKpiCard extends StatelessWidget {
                 ],
               ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Banner que avisa al admin de que el turno actual de caja no está abierto.
+/// Tap → navega a la pantalla de cierres para que pueda abrirlo.
+class _BannerTurnoSinAbrir extends StatelessWidget {
+  final String turno;
+  final VoidCallback onAbrir;
+
+  const _BannerTurnoSinAbrir({required this.turno, required this.onAbrir});
+
+  @override
+  Widget build(BuildContext context) {
+    final etiqueta = turno == 'comida' ? 'comida' : 'cena';
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onAbrir,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: AppColors.warning.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: AppColors.warning.withValues(alpha: 0.55),
+              width: 1.2,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.warning_amber_rounded,
+                color: AppColors.warning,
+                size: 26,
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Turno de $etiqueta sin abrir',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    const Text(
+                      'Toca para abrir el cierre de caja correspondiente',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: Colors.white54),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Banner que avisa de un cierre cuyo rango horario ya terminó y sigue abierto.
+/// Usa el color "error" del DS para diferenciarlo del banner de "sin abrir".
+class _BannerCierrePendiente extends StatelessWidget {
+  final String turno;
+  final String fecha;
+  final VoidCallback onCerrar;
+
+  const _BannerCierrePendiente({
+    required this.turno,
+    required this.fecha,
+    required this.onCerrar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final etiqueta = turno == 'comida' ? 'comida' : 'cena';
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onCerrar,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: AppColors.error.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: AppColors.error.withValues(alpha: 0.55),
+              width: 1.2,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.lock_clock_outlined,
+                color: AppColors.error,
+                size: 26,
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Turno de $etiqueta pendiente de cerrar',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Abierto el $fecha. Toca para cerrarlo y cuadrar caja',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: Colors.white54),
+            ],
           ),
         ),
       ),

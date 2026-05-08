@@ -26,10 +26,10 @@ router = APIRouter(prefix="/cierres-caja", tags=["Cierres de caja"])
 
 # ── Constantes de turno ──────────────────────────────────────────────────────
 # Cada turno: (hora_inicio "HH:MM", hora_fin "HH:MM", cruza_medianoche)
+# Dos turnos: comida (mañana + mediodía) y cena (tarde + noche).
 _TURNOS: dict[str, tuple[tuple[str, str], bool]] = {
-    "desayuno": (("05:00", "11:59"), False),
-    "comida":   (("12:00", "16:59"), False),
-    "cena":     (("17:00", "04:59"), True),   # la cena cruza medianoche
+    "comida": (("05:00", "16:59"), False),
+    "cena":   (("17:00", "04:59"), True),   # la cena cruza medianoche
 }
 
 _TURNOS_VALIDOS = set(_TURNOS.keys())
@@ -38,7 +38,7 @@ _TURNOS_VALIDOS = set(_TURNOS.keys())
 _ESTADOS_BLOQUEANTES = {"pendiente", "preparando", "listo"}
 
 # Orden numérico para ordenar turnos en las consultas
-_ORDEN_TURNO = {"desayuno": 0, "comida": 1, "cena": 2}
+_ORDEN_TURNO = {"comida": 0, "cena": 1}
 
 
 # ── Helper de rango horario ──────────────────────────────────────────────────

@@ -121,7 +121,7 @@ def test_abrir_turno_campos_opcionales_default_hoy(client):
     hoy = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     resp = client.post(
         "/api/v1/cierres-caja/abrir",
-        json={"turno": "desayuno"},
+        json={"turno": "comida"},
         headers=_tok_admin("R1"),
     )
     assert resp.status_code == 200, resp.json()
@@ -238,7 +238,7 @@ def test_cerrar_correctamente_calcula_totales(client):
 
 def test_cerrar_sin_pedidos_totales_en_cero(client):
     """Sin pedidos de venta en el turno, los totales son cero y no bloquea."""
-    cierre_id = _insertar_cierre(rid="R1", turno="desayuno", fecha="2025-05-02", estado="abierto")
+    cierre_id = _insertar_cierre(rid="R1", turno="comida", fecha="2025-05-02", estado="abierto")
 
     resp = client.post(
         f"/api/v1/cierres-caja/{cierre_id}/cerrar",
@@ -357,7 +357,7 @@ def test_listar_devuelve_solo_cierres_de_la_sucursal(client):
 def test_listar_filtra_por_fecha(client):
     """?fecha=2025-05-01 devuelve solo cierres de ese día."""
     _insertar_cierre(rid="R1", turno="comida", fecha="2025-05-01", estado="abierto")
-    _insertar_cierre(rid="R1", turno="desayuno", fecha="2025-05-02", estado="abierto")
+    _insertar_cierre(rid="R1", turno="cena", fecha="2025-05-02", estado="abierto")
 
     resp = client.get("/api/v1/cierres-caja?fecha=2025-05-01", headers=_tok_admin("R1"))
     assert resp.status_code == 200
@@ -378,7 +378,7 @@ def test_listar_filtra_por_turno(client):
 
 def test_listar_filtra_por_estado(client):
     """?estado=cerrado devuelve solo cierres cerrados."""
-    _insertar_cierre(rid="R1", turno="desayuno", fecha="2025-05-01", estado="abierto")
+    _insertar_cierre(rid="R1", turno="cena", fecha="2025-05-01", estado="abierto")
     _insertar_cierre(rid="R1", turno="comida", fecha="2025-05-01", estado="cerrado")
 
     resp = client.get("/api/v1/cierres-caja?estado=cerrado", headers=_tok_admin("R1"))
@@ -523,11 +523,11 @@ def test_abierto_actual_sin_token_devuelve_401(client):
 # ─── Tests: GET /{id} ────────────────────────────────────────────────────────
 
 def test_obtener_cierre_por_id_ok(client):
-    cierre_id = _insertar_cierre(rid="R1", turno="desayuno", fecha="2025-05-01", estado="abierto")
+    cierre_id = _insertar_cierre(rid="R1", turno="comida", fecha="2025-05-01", estado="abierto")
     resp = client.get(f"/api/v1/cierres-caja/{cierre_id}", headers=_tok_admin("R1"))
     assert resp.status_code == 200
     assert resp.json()["id"] == cierre_id
-    assert resp.json()["turno"] == "desayuno"
+    assert resp.json()["turno"] == "comida"
 
 
 def test_obtener_cierre_id_invalido_devuelve_422(client):
@@ -540,7 +540,9 @@ def test_obtener_cierre_id_invalido_devuelve_422(client):
 def test_rango_turno_comida_no_cruza_medianoche():
     from routes.cierres_caja import _rango_turno
     ini, fin = _rango_turno("2025-05-01", "comida")
-    assert ini.hour == 12 and ini.minute == 0
+    # Comida cubre desde primera hora hasta las 16:59 (incluye lo que antes
+    # era el turno desayuno).
+    assert ini.hour == 5 and ini.minute == 0
     assert fin.hour == 16 and fin.minute == 59
     assert ini.date() == fin.date()
 
@@ -554,11 +556,14 @@ def test_rango_turno_cena_cruza_medianoche():
     assert fin.date() > ini.date()
 
 
-def test_rango_turno_desayuno():
+def test_rango_turno_desayuno_ya_no_existe():
     from routes.cierres_caja import _rango_turno
-    ini, fin = _rango_turno("2025-06-15", "desayuno")
-    assert ini.hour == 5
-    assert fin.hour == 11 and fin.minute == 59
+    from exceptions import ValidacionError
+    try:
+        _rango_turno("2025-06-15", "desayuno")
+        assert False, "Debería haber lanzado por turno inválido"
+    except (ValidacionError, KeyError):
+        pass
 
 
 def test_rango_turno_fecha_invalida_lanza_error():
@@ -590,8 +595,8 @@ def test_pedidos_de_r2_no_bloquean_cierre_de_r1(client):
 
 def test_pedidos_fuera_de_rango_no_bloquean_cierre(client):
     """Pedido pendiente fuera de la franja del turno no bloquea el cierre."""
-    cierre_id = _insertar_cierre(rid="R1", turno="desayuno", fecha="2025-05-01", estado="abierto")
-    # Pedido pendiente en la franja de comida (fuera de desayuno 05:00-11:59)
+    cierre_id = _insertar_cierre(rid="R1", turno="cena", fecha="2025-05-01", estado="abierto")
+    # Pedido pendiente a las 13:30 (fuera del rango cena 17:00-04:59)
     _insertar_pedido(rid="R1", estado="pendiente", fecha="2025-05-01T13:30:00")
 
     resp = client.post(
