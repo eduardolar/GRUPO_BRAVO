@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/core/app_routes.dart';
 import 'package:frontend/components/Cliente/producto_card.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/models/producto_model.dart';
@@ -499,9 +500,7 @@ class _CrearPedidosState extends State<CrearComanda> {
                         ),
                         onPressed: () => Navigator.push(
                           context,
-                          MaterialPageRoute(
-                            builder: (_) => const PerfilScreen(),
-                          ),
+                          AppRoute.slideUp(const PerfilScreen()),
                         ),
                       ),
                     ],

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:frontend/core/app_routes.dart';
 import 'package:flutter/services.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/models/reserva_model.dart';
@@ -638,7 +639,7 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
             ),
             onPressed: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const PerfilScreen()),
+              AppRoute.slideUp(const PerfilScreen()),
             ),
           ),
         ],

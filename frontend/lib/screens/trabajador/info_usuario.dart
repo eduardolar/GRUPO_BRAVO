@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/core/app_routes.dart';
 import 'package:frontend/screens/Cliente/totp_setup_screen.dart';
 import 'package:frontend/screens/cliente/login_screen.dart';
 import 'package:frontend/screens/home_screen_trabajador.dart';
@@ -168,7 +169,7 @@ class _PerfilTrabajadorScreenState extends State<PerfilTrabajadorScreen> {
       await auth.eliminarCuenta();
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        AppRoute.reveal(const LoginScreen()),
         (route) => false,
       );
     } catch (e) {
@@ -186,7 +187,7 @@ class _PerfilTrabajadorScreenState extends State<PerfilTrabajadorScreen> {
   Future<void> _mostrarActivar2FA() async {
     final activado = await Navigator.push<bool>(
       context,
-      MaterialPageRoute(builder: (_) => const TotpSetupScreen()),
+      AppRoute.slideUp(const TotpSetupScreen()),
     );
     if (activado == true && mounted) setState(() {});
   }
@@ -676,7 +677,7 @@ class _PerfilTrabajadorScreenState extends State<PerfilTrabajadorScreen> {
                                   .cerrarSesion();
                               if (!context.mounted) return;
                               Navigator.of(context).pushAndRemoveUntil(
-                                MaterialPageRoute(builder: (_) => const HomeTrabajador()),
+                                AppRoute.reveal(const HomeTrabajador()),
                                 (route) => false,
                               );
                             },

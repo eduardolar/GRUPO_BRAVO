@@ -1,9 +1,15 @@
+import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
+import 'package:frontend/components/trabajador/bravo_splash.dart';
+import 'package:frontend/core/app_routes.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/screens/trabajador/Reservas/borrar_reservas.dart';
 import 'package:frontend/screens/trabajador/Reservas/historial_reservas.dart';
 import 'package:frontend/screens/trabajador/Reservas/modificar_reservas.dart';
 import 'package:frontend/screens/trabajador/Reservas/reserva_mesa_trabajador.dart';
+import 'package:frontend/screens/trabajador/appbar_trabajador.dart';
+
+const BorderRadius _kRadius = BorderRadius.all(Radius.circular(12));
 
 class GestionReservas extends StatefulWidget {
   const GestionReservas({super.key});
@@ -20,46 +26,25 @@ class _GestionReservasState extends State<GestionReservas> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 600),
-        child: _isAppReady
-            ? const _ReservasContent()
-            : _SimpleSplash(
-                onFinished: () => setState(() => _isAppReady = true),
-              ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────
-// SPLASH
-// ─────────────────────────────────────────────────────────────
-class _SimpleSplash extends StatefulWidget {
-  final VoidCallback onFinished;
-  const _SimpleSplash({required this.onFinished});
-
-  @override
-  State<_SimpleSplash> createState() => _SimpleSplashState();
-}
-
-class _SimpleSplashState extends State<_SimpleSplash> {
-  @override
-  void initState() {
-    super.initState();
-    Future.delayed(const Duration(seconds: 2), widget.onFinished);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: AppColors.background,
-      child: Center(
-        child: TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0.8, end: 1.0),
-          duration: const Duration(milliseconds: 800),
-          builder: (context, value, child) =>
-              Transform.scale(scale: value, child: child),
-          child: Image.asset('assets/images/Bravo restaurante.jpg', width: 220),
+        duration: const Duration(milliseconds: 850),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (child, animation) {
+          final scale = Tween<double>(begin: 0.96, end: 1.0).animate(
+            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+          );
+          return FadeTransition(
+            opacity: animation,
+            child: ScaleTransition(scale: scale, child: child),
+          );
+        },
+        child: KeyedSubtree(
+          key: ValueKey(_isAppReady),
+          child: _isAppReady
+              ? const _ReservasContent()
+              : BravoSplash(
+                  onFinished: () => setState(() => _isAppReady = true),
+                ),
         ),
       ),
     );
@@ -77,42 +62,13 @@ class _ReservasContent extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       extendBodyBehindAppBar: true,
-      appBar: const _CustomAppBar(),
+      appBar: const TrabajadorAppBar(title: 'GESTIÓN DE RESERVAS'),
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
         child: Column(children: const [_HeroSectionReservas(), _FooterQuote()]),
       ),
     );
   }
-}
-
-// ─────────────────────────────────────────────────────────────
-// APPBAR
-// ─────────────────────────────────────────────────────────────
-class _CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
-  const _CustomAppBar();
-
-  @override
-  Widget build(BuildContext context) {
-    return AppBar(
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      centerTitle: true,
-      title: const Text(
-        "GESTIÓN DE RESERVAS",
-        style: TextStyle(
-          fontFamily: 'Playfair Display',
-          color: AppColors.textAppBar,
-          fontSize: 18,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 2.0,
-        ),
-      ),
-    );
-  }
-
-  @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -126,13 +82,14 @@ class _HeroSectionReservas extends StatelessWidget {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final isWeb = screenWidth > 600;
+    final heroHeight = (screenHeight * (isWeb ? 0.85 : 0.75)).clamp(540.0, 920.0);
 
     return Stack(
       alignment: Alignment.bottomCenter,
       children: [
         SizedBox(
           width: screenWidth,
-          height: isWeb ? screenHeight * 0.85 : screenHeight * 0.75,
+          height: heroHeight,
           child: Image.asset(
             'assets/images/Bravo restaurante.jpg',
             fit: BoxFit.cover,
@@ -198,13 +155,13 @@ class _HeroSectionReservas extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.backgroundButton,
-        border: Border.all(color: AppColors.background, width: 1.5),
+        border: Border.all(color: AppColors.button, width: 1.5),
+        borderRadius: BorderRadius.circular(4),
       ),
       child: const Text(
-        "GESTIÓN DE RESERVAS",
+        'GESTIÓN DE RESERVAS',
         style: TextStyle(
-          color: AppColors.background,
+          color: AppColors.line,
           fontSize: 10,
           letterSpacing: 4,
           fontWeight: FontWeight.w600,
@@ -224,49 +181,44 @@ class _ActionButtonsReservas extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _MainButton(
+        _BotonAccion(
           icon: Icons.add_circle_outlined,
           label: "Crear reserva",
+          isPrimary: true,
           onPressed: () {
             Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (context) => const ReservaMesaTrabajador(),
-              ),
+              AppRoute.slide(const ReservaMesaTrabajador()),
             );
           },
         ),
-        _MainButton(
+        _BotonAccion(
           icon: Icons.edit_outlined,
           label: "Modificar reserva",
           onPressed: () {
             Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (context) => const ModificarReservas(),
-              ),
+              AppRoute.slide(const ModificarReservas()),
             );
           },
         ),
-        _MainButton(
+        _BotonAccion(
           icon: Icons.delete_outline,
           label: "Eliminar reserva",
           onPressed: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const BorrarReservas()),
+              AppRoute.slide(const BorrarReservas()),
             );
           },
         ),
-        _MainButton(
+        _BotonAccion(
           icon: Icons.list_alt_outlined,
           label: "Lista de reservas",
           onPressed: () {
             Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (context) => const HistorialReservas(),
-              ),
+              AppRoute.slide(const HistorialReservas()),
             );
           },
         ),
@@ -278,52 +230,76 @@ class _ActionButtonsReservas extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────
 // BOTÓN MODULAR
 // ─────────────────────────────────────────────────────────────
-class _MainButton extends StatelessWidget {
+class _BotonAccion extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback onPressed;
+  final bool isPrimary;
 
-  const _MainButton({
+  const _BotonAccion({
     required this.icon,
     required this.label,
     required this.onPressed,
+    this.isPrimary = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: Material(
-        color: AppColors.button,
-        child: InkWell(
-          onTap: onPressed,
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 24),
-            child: Row(
-              children: [
-                Icon(icon, color: Colors.white, size: 20),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Text(
-                    label.toUpperCase(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                      letterSpacing: 1.0,
-                    ),
+    final fondo = isPrimary
+        ? AppColors.button
+        : Colors.black.withValues(alpha: 0.25);
+
+    final boton = Material(
+      color: fondo,
+      borderRadius: _kRadius,
+      elevation: isPrimary ? 4 : 0,
+      shadowColor: Colors.black54,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: _kRadius,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 24),
+          decoration: BoxDecoration(
+            borderRadius: _kRadius,
+            border: isPrimary ? null : Border.all(color: Colors.white24),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, color: Colors.white, size: 20),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  label.toUpperCase(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    letterSpacing: 1.0,
                   ),
                 ),
-                const Icon(
-                  Icons.chevron_right,
-                  color: Colors.white54,
-                  size: 18,
-                ),
-              ],
-            ),
+              ),
+              const Icon(
+                Icons.chevron_right,
+                color: Colors.white54,
+                size: 18,
+              ),
+            ],
           ),
         ),
       ),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: isPrimary
+          ? boton
+          : ClipRRect(
+              borderRadius: _kRadius,
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                child: boton,
+              ),
+            ),
     );
   }
 }
@@ -336,8 +312,7 @@ class _FooterQuote extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
+    return ColoredBox(
       color: AppColors.background,
       child: Center(
         child: Container(
@@ -346,6 +321,7 @@ class _FooterQuote extends StatelessWidget {
           padding: const EdgeInsets.all(30),
           decoration: BoxDecoration(
             color: AppColors.panel,
+            borderRadius: _kRadius,
             border: Border.all(color: AppColors.line),
           ),
           child: Column(
