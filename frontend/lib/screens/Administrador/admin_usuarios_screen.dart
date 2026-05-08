@@ -56,7 +56,10 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen>
           if (u.rol == RolUsuario.superadministrador) return false;
           if (miRestaurante == null || miRestaurante.isEmpty) return true;
           final r = u.restauranteId;
-          if (r == null || r.isEmpty) return true;
+          // Si el admin pertenece a una sucursal, oculta usuarios sin sucursal
+          // asignada: el backend los rechazará (403) porque no coinciden con
+          // el restaurante_id del admin. Solo super_admin puede gestionarlos.
+          if (r == null || r.isEmpty) return false;
           return r == miRestaurante;
         }).toList();
       });
