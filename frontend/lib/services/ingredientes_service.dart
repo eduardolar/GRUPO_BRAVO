@@ -17,6 +17,7 @@ class IngredienteService {
     'Almidones y Cereales',
     'Huevos',
     'Frutas',
+    'Bebidas',
     'Otros',
   ];
 
