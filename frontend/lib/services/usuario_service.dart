@@ -177,28 +177,23 @@ class UsuarioService {
   }
 
   // 8. Persistencia de Dirección y Coordenadas (perfil propio del cliente)
+  // Propaga el error del backend (ApiException) para que el caller pueda
+  // mostrar el detail real al usuario en lugar de un fallo silencioso.
   Future<bool> actualizarDireccion({
     required String direccion,
     required double latitud,
     required double longitud,
   }) async {
-    try {
-      final response = await http.put(
-        Uri.parse('$baseUrl/clientes/me'),
-        headers: _headersConActor(),
-        body: jsonEncode({
-          'direccion': direccion,
-          'latitud': latitud,
-          'longitud': longitud,
-        }),
-      );
-
-      if (response.statusCode == 200) return true;
-      debugPrint('Error del servidor: ${response.body}');
-      return false;
-    } catch (e) {
-      debugPrint('Error al conectar con el backend: $e');
-      return false;
-    }
+    final response = await http.put(
+      Uri.parse('$baseUrl/clientes/me'),
+      headers: _headersConActor(),
+      body: jsonEncode({
+        'direccion': direccion,
+        'latitud': latitud,
+        'longitud': longitud,
+      }),
+    );
+    if (response.statusCode == 200) return true;
+    throw toApiException(response.statusCode, decodeBody(response));
   }
 }
