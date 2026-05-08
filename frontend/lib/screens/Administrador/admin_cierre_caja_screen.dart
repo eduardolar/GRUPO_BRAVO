@@ -9,7 +9,7 @@ import 'package:intl/intl.dart';
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 
-const _kTurnos = ['desayuno', 'comida', 'cena'];
+const _kTurnos = ['comida', 'cena'];
 
 final _fmtFecha = DateFormat('dd/MM/yyyy');
 final _fmtHora = DateFormat('HH:mm');
@@ -32,7 +32,6 @@ class _AdminCierreCajaScreenState extends State<AdminCierreCajaScreen> {
 
   /// Mapa turno → doc cierre (null si no existe para ese turno+fecha)
   final Map<String, Map<String, dynamic>?> _cierres = {
-    'desayuno': null,
     'comida': null,
     'cena': null,
   };
@@ -58,7 +57,6 @@ class _AdminCierreCajaScreenState extends State<AdminCierreCajaScreen> {
 
       // Reiniciamos el mapa antes de rellenarlo
       final nuevo = <String, Map<String, dynamic>?>{
-        'desayuno': null,
         'comida': null,
         'cena': null,
       };
@@ -382,22 +380,19 @@ class _CardTurno extends StatelessWidget {
   });
 
   String get _labelTurno => switch (turno) {
-        'desayuno' => 'DESAYUNO',
         'comida' => 'COMIDA',
         'cena' => 'CENA',
         _ => turno.toUpperCase(),
       };
 
   IconData get _iconoTurno => switch (turno) {
-        'desayuno' => Icons.wb_sunny_outlined,
         'comida' => Icons.restaurant_outlined,
         'cena' => Icons.nights_stay_outlined,
         _ => Icons.schedule,
       };
 
   String get _horasTurno => switch (turno) {
-        'desayuno' => '05:00 - 12:00',
-        'comida' => '12:00 - 17:00',
+        'comida' => '05:00 - 17:00',
         'cena' => '17:00 - 05:00',
         _ => '',
       };
@@ -684,7 +679,6 @@ class _SheetAbrirState extends State<_SheetAbrir> {
   bool _enviando = false;
 
   String get _labelTurno => switch (widget.turno) {
-        'desayuno' => 'Desayuno',
         'comida' => 'Comida',
         'cena' => 'Cena',
         _ => widget.turno,
@@ -784,7 +778,6 @@ class _SheetCerrarState extends State<_SheetCerrar> {
   String get _labelTurno {
     final t = widget.cierre['turno'] as String? ?? '';
     return switch (t) {
-      'desayuno' => 'Desayuno',
       'comida' => 'Comida',
       'cena' => 'Cena',
       _ => t,
