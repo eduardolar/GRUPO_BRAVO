@@ -100,22 +100,30 @@ class PedidoService {
     throw toApiException(response.statusCode, decodeBody(response));
   }
 
-  static Future<void> agregarItemsPedido({
+  /// Reemplaza items y total del pedido. Si pasas [version], el backend
+  /// aplica concurrencia optimista: si tu version está desfasada → 409.
+  /// Devuelve la respuesta del backend (con la nueva `version` incrementada).
+  static Future<Map<String, dynamic>> agregarItemsPedido({
     required String pedidoId,
     required List<Map<String, dynamic>> items,
     required double totalExtra,
+    int? version,
   }) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 400));
-      return;
+      return {'updated': true, if (version != null) 'version': version + 1};
     }
 
-    // PATCH: reemplaza items y total con la lista completa acumulada
+    final body = <String, dynamic>{
+      'items': items,
+      'total': totalExtra,
+      'version': ?version,
+    };
     final response = await httpWithRetry(
       () => http.patch(
         Uri.parse('$baseUrl/pedidos/$pedidoId'),
         headers: AuthSession.headers(extra: {'Accept': 'application/json'}),
-        body: jsonEncode({'items': items, 'total': totalExtra}),
+        body: jsonEncode(body),
       ),
       retry: false,
     );
@@ -123,6 +131,7 @@ class PedidoService {
     if (response.statusCode >= 400) {
       throw toApiException(response.statusCode, decodeBody(response));
     }
+    return Map<String, dynamic>.from(decodeBody(response));
   }
 
   static Future<Map<String, dynamic>?> obtenerPedidoActivoPorMesa(

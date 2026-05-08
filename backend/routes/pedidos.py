@@ -312,6 +312,7 @@ class ActualizarItemsPedido(BaseModel):
     estadoPago: Optional[str] = None
     estado: Optional[str] = None
     metodoPago: Optional[str] = None
+    version: Optional[int] = None
 
 
 class ActualizarEstado(BaseModel):
@@ -399,6 +400,7 @@ def _pedido_a_respuesta(pedido_doc: dict, n_items: int) -> dict:
         "items": n_items,
         "mesaId": pedido_doc.get("mesa_id"),
         "numeroMesa": pedido_doc.get("numero_mesa"),
+        "version": pedido_doc.get("version", 1),
     }
 
 
@@ -469,6 +471,7 @@ async def crear_pedido(
         "creado_por_sub": current_user.get("sub"),
         "creado_por_correo": current_user.get("correo"),
         "creado_por_rol": normalizar_rol(current_user.get("rol", "")),
+        "version": 1,
     }
 
     if idempotency_key and idempotency_key.strip():
@@ -947,13 +950,31 @@ def actualizar_pedido(
     if not campos:
         return {"updated": False}
 
-    result = coleccion_pedidos.update_one(
-        {"_id": ObjectId(pedido_id)},
-        {"$set": campos},
-    )
-
-    if result.matched_count == 0:
-        raise NotFoundError("Pedido no encontrado")
+    # ── Concurrencia optimista con version ────────────────────────────────────
+    # Si el cliente envía `version`, el update solo aplica si el documento
+    # aún tiene esa versión. Si no coincide → 409 (otro usuario modificó antes).
+    # Sin `version` → comportamiento clásico last-writer-wins (compat antigua).
+    version_actual = pedido.get("version", 1)
+    if payload.version is not None:
+        # Cuando se mutan items o estado, incrementar la versión
+        if payload.items is not None or payload.estado is not None:
+            campos["version"] = payload.version + 1
+        filtro_version = {"_id": ObjectId(pedido_id), "version": payload.version}
+        result = coleccion_pedidos.update_one(filtro_version, {"$set": campos})
+        if result.matched_count == 0:
+            raise ConflictError(
+                "Conflicto de versión: el pedido fue modificado por otro usuario"
+            )
+    else:
+        # Sin version: comportamiento anterior (last-writer-wins)
+        if payload.items is not None or payload.estado is not None:
+            campos["version"] = version_actual + 1
+        result = coleccion_pedidos.update_one(
+            {"_id": ObjectId(pedido_id)},
+            {"$set": campos},
+        )
+        if result.matched_count == 0:
+            raise NotFoundError("Pedido no encontrado")
 
     logger.info(
         "actualizar_pedido | sub=%s correo=%s pedido_id=%s campos=%s",

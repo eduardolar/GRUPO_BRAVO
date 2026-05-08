@@ -40,6 +40,10 @@ class _CrearPedidosState extends State<CrearComanda> {
   bool _cargando = true;
   final Map<Producto, int> _carrito = {};
   String? _pedidoId;
+  // Versión del pedido para concurrencia optimista. Cada PATCH exige enviar
+  // la versión actual; el backend la incrementa y devuelve la nueva. Si dos
+  // camareros editan a la vez, el segundo recibe 409 y debe recargar.
+  int? _pedidoVersion;
   // Acumulado de todos los items ya enviados, clave = producto_id
   final Map<String, Map<String, dynamic>> _itemsAcumulados = {};
   double _totalAcumulado = 0.0;
@@ -296,12 +300,18 @@ class _CrearPedidosState extends State<CrearComanda> {
       final allItems = _itemsAcumulados.values.toList();
 
       if (_pedidoId != null) {
-        // Pedido ya existente: reemplazar items con la lista completa acumulada
-        await ApiService.agregarItemsPedido(
+        // Pedido ya existente: reemplazar items con la lista completa
+        // acumulada. Pasamos la versión actual para concurrencia optimista;
+        // si otro camarero editó este pedido entre tanto, el backend
+        // devuelve 409 y este reintento falla limpiamente.
+        final resultado = await ApiService.agregarItemsPedido(
           pedidoId: _pedidoId!,
           items: allItems,
           totalExtra: _totalAcumulado,
+          version: _pedidoVersion,
         );
+        final nuevaVersion = resultado['version'];
+        if (nuevaVersion is int) _pedidoVersion = nuevaVersion;
       } else {
         // Primer envío: crear pedido nuevo y guardar su id.
         // _idempotencyKey persiste entre reintentos fallidos; se renueva
@@ -323,6 +333,8 @@ class _CrearPedidosState extends State<CrearComanda> {
           idempotencyKey: _idempotencyKey,
         );
         _pedidoId = (resultado['id'] ?? resultado['_id'])?.toString();
+        final v = resultado['version'];
+        _pedidoVersion = v is int ? v : 1;
       }
 
       if (!mounted) return;
