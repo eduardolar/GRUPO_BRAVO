@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 
 import '../../core/colors_style.dart';
+import '../../providers/pedido_activo_provider.dart';
 import '../../services/api_service.dart';
 
 const BorderRadius _kRadius = BorderRadius.all(Radius.circular(12));
@@ -111,6 +113,8 @@ class _PedidoConfirmadoScreenState extends State<PedidoConfirmadoScreen>
   Timer? _pollTimer;
 
   late final _TipoEntregaInfo _entregaInfo;
+  // Referencia capturada para usar en dispose() sin tocar context.
+  PedidoActivoProvider? _pedidoActivoProvider;
 
   @override
   void initState() {
@@ -126,12 +130,21 @@ class _PedidoConfirmadoScreenState extends State<PedidoConfirmadoScreen>
       _pollEstado();
       _pollTimer = Timer.periodic(_kPollInterval, (_) => _pollEstado());
     }
+
+    // Pausamos el polling del PedidoActivoProvider para no duplicar tráfico
+    // mientras esta pantalla muestra el detalle del mismo pedido.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _pedidoActivoProvider = context.read<PedidoActivoProvider>();
+      _pedidoActivoProvider?.pausarPolling();
+    });
   }
 
   @override
   void dispose() {
     _pollTimer?.cancel();
     _ctrl.dispose();
+    _pedidoActivoProvider?.reanudarPolling();
     super.dispose();
   }
 

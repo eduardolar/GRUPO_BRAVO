@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../components/Cliente/empty_state.dart';
+import '../../components/Cliente/pedido_activo_pill.dart';
 import '../../components/Cliente/producto_card.dart';
 import '../../components/Cliente/producto_detalle_sheet.dart';
 import '../../core/app_routes.dart';
@@ -321,6 +322,10 @@ class _CartaScreenState extends State<CartaScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Si el FAB del carrito está visible (hay productos), elevar la pill
+    // para que no quede tapada por el botón flotante.
+    final hayCarrito = context.watch<CartProvider>().totalQuantity > 0;
+    final pillBottom = hayCarrito ? 96.0 : 16.0;
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
@@ -332,6 +337,18 @@ class _CartaScreenState extends State<CartaScreen> {
                 : _errorCarga
                 ? _ErrorCarta(onRetry: _cargarDatos)
                 : _buildContenido(),
+          ),
+          // Pill persistente de seguimiento del último pedido activo.
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: pillBottom,
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 480),
+                child: const PedidoActivoPill(),
+              ),
+            ),
           ),
         ],
       ),
