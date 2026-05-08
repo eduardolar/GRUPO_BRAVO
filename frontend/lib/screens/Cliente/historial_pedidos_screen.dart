@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../components/Cliente/empty_state.dart';
+import '../../components/Cliente/pedido_activo_pill.dart';
 import '../../components/Cliente/skeleton.dart';
 import '../../core/app_snackbar.dart';
 import '../../core/colors_style.dart';
@@ -281,6 +282,18 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
                       ),
                     ),
                 ],
+              ),
+            ),
+          ),
+          // Pill persistente de seguimiento del último pedido activo.
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: 16,
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 480),
+                child: const PedidoActivoPill(),
               ),
             ),
           ),

@@ -10,7 +10,9 @@ import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/core/url_helper.dart';
 import 'package:frontend/models/destino_login.dart';
 import 'package:frontend/providers/auth_provider.dart';
+import 'package:frontend/components/Cliente/pedido_activo_pill.dart';
 import 'package:frontend/providers/cart_provider.dart';
+import 'package:frontend/providers/pedido_activo_provider.dart';
 import 'package:frontend/screens/cliente/carta_screen.dart';
 import 'package:frontend/screens/cliente/login_screen.dart';
 import 'package:frontend/screens/cliente/pedido_confirmado_screen.dart';
@@ -373,15 +375,31 @@ class _ContenidoInicio extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cart = context.watch<CartProvider>();
+    final pillVisible = context.watch<PedidoActivoProvider>().pillVisible;
     final tituloRestaurante =
         cart.restauranteNombre?.toUpperCase() ?? 'RESTAURANTE BRAVO';
     return Scaffold(
       backgroundColor: AppColors.background,
       extendBodyBehindAppBar: true,
       appBar: BravoAppBar(title: tituloRestaurante, isRoot: true),
-      body: const SingleChildScrollView(
-        physics: BouncingScrollPhysics(),
-        child: Column(children: [_HeroSection(), _FooterQuote()]),
+      body: Stack(
+        children: [
+          SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Column(
+              children: [
+                const _HeroSection(),
+                _FooterQuote(extraBottomPadding: pillVisible ? 76.0 : 0.0),
+              ],
+            ),
+          ),
+          const Positioned(
+            bottom: 16,
+            left: 16,
+            right: 16,
+            child: PedidoActivoPill(),
+          ),
+        ],
       ),
     );
   }
@@ -686,7 +704,8 @@ class _BotonAccion extends StatelessWidget {
 // ── FOOTER ───────────────────────────────────────────────────────────────
 
 class _FooterQuote extends StatelessWidget {
-  const _FooterQuote();
+  const _FooterQuote({this.extraBottomPadding = 0.0});
+  final double extraBottomPadding;
 
   @override
   Widget build(BuildContext context) {
@@ -695,7 +714,7 @@ class _FooterQuote extends StatelessWidget {
       child: Center(
         child: Container(
           constraints: const BoxConstraints(maxWidth: 600),
-          margin: const EdgeInsets.fromLTRB(24, 20, 24, 60),
+          margin: EdgeInsets.fromLTRB(24, 20, 24, 60 + extraBottomPadding),
           padding: const EdgeInsets.all(30),
           decoration: BoxDecoration(
             color: AppColors.panel,
