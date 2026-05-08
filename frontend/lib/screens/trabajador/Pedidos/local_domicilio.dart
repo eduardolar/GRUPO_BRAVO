@@ -1,16 +1,22 @@
+import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
+import 'package:frontend/components/trabajador/bravo_splash.dart';
+import 'package:frontend/core/app_routes.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/screens/trabajador/Pedidos/pedido_domicilio.dart';
 import 'package:frontend/screens/trabajador/servicio_trabajador/seleccion_mesa.dart';
+import 'package:frontend/screens/trabajador/appbar_trabajador.dart';
 
-class SeleccionPedido extends StatefulWidget {
-  const SeleccionPedido({super.key});
+const BorderRadius _kRadius = BorderRadius.all(Radius.circular(12));
+
+class SeleccionTipoPedido extends StatefulWidget {
+  const SeleccionTipoPedido({super.key});
 
   @override
-  State<SeleccionPedido> createState() => _SeleccionPedidoState();
+  State<SeleccionTipoPedido> createState() => _SeleccionTipoPedidoState();
 }
 
-class _SeleccionPedidoState extends State<SeleccionPedido> {
+class _SeleccionTipoPedidoState extends State<SeleccionTipoPedido> {
   bool _isAppReady = false;
 
   @override
@@ -18,46 +24,25 @@ class _SeleccionPedidoState extends State<SeleccionPedido> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 600),
-        child: _isAppReady
-            ? const _StockContent()
-            : _SimpleSplash(
-                onFinished: () => setState(() => _isAppReady = true),
-              ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────
-// SPLASH
-// ─────────────────────────────────────────────────────────────
-class _SimpleSplash extends StatefulWidget {
-  final VoidCallback onFinished;
-  const _SimpleSplash({required this.onFinished});
-
-  @override
-  State<_SimpleSplash> createState() => _SimpleSplashState();
-}
-
-class _SimpleSplashState extends State<_SimpleSplash> {
-  @override
-  void initState() {
-    super.initState();
-    Future.delayed(const Duration(seconds: 2), widget.onFinished);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: AppColors.background,
-      child: Center(
-        child: TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0.8, end: 1.0),
-          duration: const Duration(milliseconds: 800),
-          builder: (context, value, child) =>
-              Transform.scale(scale: value, child: child),
-          child: Image.asset('assets/images/Bravo restaurante.jpg', width: 220),
+        duration: const Duration(milliseconds: 850),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (child, animation) {
+          final scale = Tween<double>(begin: 0.96, end: 1.0).animate(
+            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+          );
+          return FadeTransition(
+            opacity: animation,
+            child: ScaleTransition(scale: scale, child: child),
+          );
+        },
+        child: KeyedSubtree(
+          key: ValueKey(_isAppReady),
+          child: _isAppReady
+              ? const _StockContent()
+              : BravoSplash(
+                  onFinished: () => setState(() => _isAppReady = true),
+                ),
         ),
       ),
     );
@@ -75,7 +60,7 @@ class _StockContent extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       extendBodyBehindAppBar: true,
-      appBar: const _CustomAppBar(),
+      appBar: const TrabajadorAppBar(title: 'GESTIÓN DE PEDIDOS'),
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
         child: Column(children: const [_HeroSectionStock(), _FooterQuote()]),
@@ -85,36 +70,7 @@ class _StockContent extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────
-// APPBAR
-// ─────────────────────────────────────────────────────────────
-class _CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
-  const _CustomAppBar();
-
-  @override
-  Widget build(BuildContext context) {
-    return AppBar(
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      centerTitle: true,
-      title: const Text(
-        "GESTIÓN DE PEDIDOS",
-        style: TextStyle(
-          fontFamily: 'Playfair Display',
-          color: AppColors.textAppBar,
-          fontSize: 18,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 2.0,
-        ),
-      ),
-    );
-  }
-
-  @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
-}
-
-// ─────────────────────────────────────────────────────────────
-// HERO SECTION (con badge granate encima del título)
+// HERO SECTION
 // ─────────────────────────────────────────────────────────────
 class _HeroSectionStock extends StatelessWidget {
   const _HeroSectionStock();
@@ -124,13 +80,14 @@ class _HeroSectionStock extends StatelessWidget {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final isWeb = screenWidth > 600;
+    final heroHeight = (screenHeight * (isWeb ? 0.85 : 0.75)).clamp(540.0, 920.0);
 
     return Stack(
       alignment: Alignment.bottomCenter,
       children: [
         SizedBox(
           width: screenWidth,
-          height: isWeb ? screenHeight * 0.85 : screenHeight * 0.75,
+          height: heroHeight,
           child: Image.asset(
             'assets/images/Bravo restaurante.jpg',
             fit: BoxFit.cover,
@@ -164,23 +121,23 @@ class _HeroSectionStock extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // BADGE GRANATE
+                  // BADGE
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 14,
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.backgroundButton,
                       border: Border.all(
-                        color: AppColors.background,
+                        color: AppColors.button,
                         width: 1.5,
                       ),
+                      borderRadius: BorderRadius.circular(4),
                     ),
                     child: const Text(
-                      "GESTIÓN DE PEDIDOS",
+                      'GESTIÓN DE PEDIDOS',
                       style: TextStyle(
-                        color: AppColors.background,
+                        color: AppColors.line,
                         fontSize: 10,
                         letterSpacing: 4,
                         fontWeight: FontWeight.w600,
@@ -226,23 +183,24 @@ class _ActionButtonsStock extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _MainButton(
-          icon: Icons.restaurant_menu_outlined,
-          label: "Comanda en mesa",
+        _BotonAccion(
+          icon: Icons.storefront_outlined,
+          label: "Para recoger en local",
+          isPrimary: true,
           onPressed: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const SeleccionMesa()),
+              AppRoute.slide(const SeleccionMesa()),
             );
           },
         ),
-        _MainButton(
+        _BotonAccion(
           icon: Icons.home_outlined,
           label: "A domicilio",
           onPressed: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const PedidoDomicilio()),
+              AppRoute.slide(const PedidoDomicilio()),
             );
           },
         ),
@@ -254,52 +212,76 @@ class _ActionButtonsStock extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────
 // BOTÓN MODULAR
 // ─────────────────────────────────────────────────────────────
-class _MainButton extends StatelessWidget {
+class _BotonAccion extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback onPressed;
+  final bool isPrimary;
 
-  const _MainButton({
+  const _BotonAccion({
     required this.icon,
     required this.label,
     required this.onPressed,
+    this.isPrimary = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: Material(
-        color: AppColors.button,
-        child: InkWell(
-          onTap: onPressed,
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 24),
-            child: Row(
-              children: [
-                Icon(icon, color: Colors.white, size: 20),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Text(
-                    label.toUpperCase(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                      letterSpacing: 1.0,
-                    ),
+    final fondo = isPrimary
+        ? AppColors.button
+        : Colors.black.withValues(alpha: 0.25);
+
+    final boton = Material(
+      color: fondo,
+      borderRadius: _kRadius,
+      elevation: isPrimary ? 4 : 0,
+      shadowColor: Colors.black54,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: _kRadius,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 24),
+          decoration: BoxDecoration(
+            borderRadius: _kRadius,
+            border: isPrimary ? null : Border.all(color: Colors.white24),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, color: Colors.white, size: 20),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  label.toUpperCase(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    letterSpacing: 1.0,
                   ),
                 ),
-                const Icon(
-                  Icons.chevron_right,
-                  color: Colors.white54,
-                  size: 18,
-                ),
-              ],
-            ),
+              ),
+              const Icon(
+                Icons.chevron_right,
+                color: Colors.white54,
+                size: 18,
+              ),
+            ],
           ),
         ),
       ),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: isPrimary
+          ? boton
+          : ClipRRect(
+              borderRadius: _kRadius,
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                child: boton,
+              ),
+            ),
     );
   }
 }
@@ -312,8 +294,7 @@ class _FooterQuote extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
+    return ColoredBox(
       color: AppColors.background,
       child: Center(
         child: Container(
@@ -322,6 +303,7 @@ class _FooterQuote extends StatelessWidget {
           padding: const EdgeInsets.all(30),
           decoration: BoxDecoration(
             color: AppColors.panel,
+            borderRadius: _kRadius,
             border: Border.all(color: AppColors.line),
           ),
           child: Column(

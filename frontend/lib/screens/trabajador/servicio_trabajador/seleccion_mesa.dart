@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:frontend/core/app_routes.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/models/mesa_model.dart';
 import 'package:frontend/providers/auth_provider.dart';
@@ -116,7 +117,7 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => CrearComanda(mesaId: mesa.id)),
+        AppRoute.slide(CrearComanda(mesaId: mesa.id)),
       );
     } catch (_) {
       if (!mounted) return;

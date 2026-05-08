@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/core/app_routes.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/models/mesa_model.dart';
 import 'package:frontend/providers/auth_provider.dart';
@@ -397,8 +398,8 @@ class _DetalleComandaSheet extends StatelessWidget {
                       onTap: () {
                         Navigator.pop(context);
                         Navigator.of(parentContext).push(
-                          MaterialPageRoute(
-                            builder: (_) => CrearComanda(
+                          AppRoute.slide(
+                            CrearComanda(
                               mesaId: mesa.id,
                               pedidoIdExistente: pedidoId,
                               productosExistentes: productos,
