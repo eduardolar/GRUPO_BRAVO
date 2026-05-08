@@ -32,26 +32,33 @@ class _HomeTrabajadorState extends State<HomeTrabajador> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: AnimatedSwitcher(
-        duration: _kSwitchDuration,
-        switchInCurve: Curves.easeOutCubic,
-        switchOutCurve: Curves.easeInCubic,
-        transitionBuilder: (child, animation) {
-          final scale = Tween<double>(begin: 0.96, end: 1.0).animate(
-            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
-          );
-          return FadeTransition(
-            opacity: animation,
-            child: ScaleTransition(scale: scale, child: child),
-          );
-        },
-        child: KeyedSubtree(
-          key: ValueKey(_appReady),
-          child: _appReady
-              ? const _ContenidoHome()
-              : _Splash(onFinished: _onSplashFinished),
+    // PopScope bloquea el gesto "atrás" del sistema (Android/web).
+    // La pila de navegación queda vacía tras pushAndRemoveUntil en login,
+    // así que permitir pop dejaría pantalla en blanco. El trabajador sale
+    // únicamente a través del botón de cerrar sesión en el AppBar.
+    return PopScope(
+      canPop: false,
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: AnimatedSwitcher(
+          duration: _kSwitchDuration,
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeInCubic,
+          transitionBuilder: (child, animation) {
+            final scale = Tween<double>(begin: 0.96, end: 1.0).animate(
+              CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+            );
+            return FadeTransition(
+              opacity: animation,
+              child: ScaleTransition(scale: scale, child: child),
+            );
+          },
+          child: KeyedSubtree(
+            key: ValueKey(_appReady),
+            child: _appReady
+                ? const _ContenidoHome()
+                : _Splash(onFinished: _onSplashFinished),
+          ),
         ),
       ),
     );

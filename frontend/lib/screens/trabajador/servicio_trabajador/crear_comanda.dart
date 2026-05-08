@@ -8,9 +8,12 @@ import 'package:frontend/screens/Cliente/perfil_screen.dart';
 import 'package:frontend/services/api_service.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
 
 class CrearComanda extends StatefulWidget {
   final String mesaId;
+  /// Número visible de la mesa (e.g. 5), distinto del ObjectId.
+  final int? numeroMesa;
   final String? pedidoIdExistente;
   final List<Map<String, dynamic>> productosExistentes;
   final double totalExistente;
@@ -19,6 +22,7 @@ class CrearComanda extends StatefulWidget {
   const CrearComanda({
     super.key,
     required this.mesaId,
+    this.numeroMesa,
     this.pedidoIdExistente,
     this.productosExistentes = const [],
     this.totalExistente = 0.0,
@@ -39,6 +43,13 @@ class _CrearPedidosState extends State<CrearComanda> {
   // Acumulado de todos los items ya enviados, clave = producto_id
   final Map<String, Map<String, dynamic>> _itemsAcumulados = {};
   double _totalAcumulado = 0.0;
+
+  // Guard de doble-tap: true mientras hay un POST/PATCH en vuelo.
+  bool _enviando = false;
+  // Clave de idempotencia reutilizada en reintentos del mismo intento de envío.
+  // Se renueva solo cuando el envío tiene éxito (carrito limpio) o cuando
+  // el usuario navega fuera y vuelve (nuevo State).
+  String _idempotencyKey = const Uuid().v4();
 
   @override
   void initState() {
@@ -256,7 +267,12 @@ class _CrearPedidosState extends State<CrearComanda> {
   }
 
   void _enviarPedido(BuildContext context) async {
+    // Guard de doble-tap: ignora pulsaciones mientras hay una petición en vuelo.
+    if (_enviando) return;
+
     final messenger = ScaffoldMessenger.of(context);
+    setState(() => _enviando = true);
+
     try {
       final mesaId = widget.mesaId;
 
@@ -287,7 +303,9 @@ class _CrearPedidosState extends State<CrearComanda> {
           totalExtra: _totalAcumulado,
         );
       } else {
-        // Primer envío: crear pedido nuevo y guardar su id
+        // Primer envío: crear pedido nuevo y guardar su id.
+        // _idempotencyKey persiste entre reintentos fallidos; se renueva
+        // solo tras éxito (ver abajo).
         final auth = Provider.of<AuthProvider>(context, listen: false);
         final resultado = await ApiService.crearPedido(
           userId: "TRABAJADOR",
@@ -297,39 +315,48 @@ class _CrearPedidosState extends State<CrearComanda> {
           total: _totalAcumulado,
           direccionEntrega: null,
           mesaId: mesaId,
-          numeroMesa: int.tryParse(mesaId),
+          numeroMesa: widget.numeroMesa,
           notas: "",
           referenciaPago: "",
           estadoPago: "pendiente",
           restauranteId: auth.usuarioActual?.restauranteId,
+          idempotencyKey: _idempotencyKey,
         );
         _pedidoId = (resultado['id'] ?? resultado['_id'])?.toString();
       }
 
-    if (!mounted) return;
-    setState(() => _carrito.clear());
-    _showSnack(messenger, "Pedido enviado a cocina · puedes añadir más platos");
-    widget.onPedidoEnviado?.call();
+      if (!mounted) return;
+      // Éxito: limpiamos carrito y renovamos la clave para el próximo envío.
+      setState(() {
+        _carrito.clear();
+        _idempotencyKey = const Uuid().v4();
+      });
+      _showSnack(messenger, "Pedido enviado a cocina · puedes añadir más platos");
+      widget.onPedidoEnviado?.call();
 
-  } catch (e) {
-    if (!mounted) return;
-    // Si falla, deshacer el merge para no corromper el acumulado
-    for (final entry in _carrito.entries) {
-      final id = entry.key.id;
-      final item = _itemsAcumulados[id];
-      if (item != null) {
-        final nuevaCantidad = (item['cantidad'] as int) - entry.value;
-        if (nuevaCantidad <= 0) {
-          _itemsAcumulados.remove(id);
-        } else {
-          item['cantidad'] = nuevaCantidad;
+    } catch (e) {
+      if (!mounted) return;
+      // Si falla, deshacer el merge para no corromper el acumulado.
+      // La _idempotencyKey NO se renueva: el usuario puede reintentar
+      // con la misma clave y el backend lo tratará idempotentemente.
+      for (final entry in _carrito.entries) {
+        final id = entry.key.id;
+        final item = _itemsAcumulados[id];
+        if (item != null) {
+          final nuevaCantidad = (item['cantidad'] as int) - entry.value;
+          if (nuevaCantidad <= 0) {
+            _itemsAcumulados.remove(id);
+          } else {
+            item['cantidad'] = nuevaCantidad;
+          }
         }
       }
+      _totalAcumulado -= _totalPrecio;
+      _showSnack(messenger, "Error al enviar pedido", error: true);
+    } finally {
+      if (mounted) setState(() => _enviando = false);
     }
-    _totalAcumulado -= _totalPrecio;
-    _showSnack(messenger, "Error al enviar pedido", error: true);
   }
-}
 
   void _showSnack(
     ScaffoldMessengerState messenger,

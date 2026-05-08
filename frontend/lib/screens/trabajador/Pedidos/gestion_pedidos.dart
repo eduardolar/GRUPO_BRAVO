@@ -176,8 +176,8 @@ class _HeroSectionPedidos extends StatelessWidget {
 class _ActionButtonsPedidos extends StatelessWidget {
   const _ActionButtonsPedidos();
 
-  void _proximamente(BuildContext context, String accion) {
-    showAppInfo(context, '$accion: próximamente disponible');
+  void _noDisponible(BuildContext context, String accion) {
+    showAppInfo(context, '$accion: No disponible — usa el panel de admin');
   }
 
   @override
@@ -208,12 +208,12 @@ class _ActionButtonsPedidos extends StatelessWidget {
         _BotonAccion(
           icon: Icons.edit_outlined,
           label: "Modificar un pedido",
-          onPressed: () => _proximamente(context, 'Modificar un pedido'),
+          onPressed: () => _noDisponible(context, 'Modificar un pedido'),
         ),
         _BotonAccion(
           icon: Icons.delete_outline,
           label: "Eliminar un pedido",
-          onPressed: () => _proximamente(context, 'Eliminar un pedido'),
+          onPressed: () => _noDisponible(context, 'Eliminar un pedido'),
         ),
       ],
     );

@@ -99,11 +99,11 @@ def crear_mesa(
     return _serializar({**nueva, "_id": result.inserted_id})
 
 
-@router.patch("/{mesa_id}", summary="Cambiar estado libre/ocupada (admin)")
+@router.patch("/{mesa_id}", summary="Cambiar estado libre/ocupada (admin/camarero)")
 def actualizar_estado_mesa(
     mesa_id: str,
     datos: ActualizarEstadoMesa,
-    usuario: dict = Depends(require_role(["admin", "super_admin"])),
+    usuario: dict = Depends(require_role(["admin", "super_admin", "camarero", "trabajador"])),
 ):
     try:
         object_id = ObjectId(mesa_id)
@@ -114,13 +114,17 @@ def actualizar_estado_mesa(
     if not mesa:
         raise HTTPException(status_code=404, detail="Mesa no encontrada")
 
-    # Aislamiento: un admin no puede tocar mesas de otra sucursal.
+    # Aislamiento por sucursal: super_admin tiene acceso global; admin y
+    # camarero/trabajador solo pueden tocar mesas de su propia sucursal.
     rol = normalizar_rol(usuario.get("rol", "") or "")
     if rol != "super_admin":
         rid_user = usuario.get("restaurante_id") or usuario.get("restauranteId")
         rid_mesa = mesa.get("restaurante_id")
         if rid_mesa and rid_user and rid_mesa != rid_user:
-            raise HTTPException(status_code=403, detail="Mesa de otra sucursal")
+            raise HTTPException(
+                status_code=403,
+                detail="No puedes modificar mesas de otra sucursal",
+            )
 
     nuevo_estado = "libre" if datos.disponible else "ocupada"
     coleccion_mesas.update_one({"_id": object_id}, {"$set": {"estado": nuevo_estado}})

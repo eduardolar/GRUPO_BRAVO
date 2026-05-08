@@ -66,24 +66,55 @@ class _BloquearProductoState extends State<BloquearProducto> {
             onPressed: () => Navigator.pop(context),
             child: const Text("CANCELAR"),
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.backgroundButton,
-            ),
-            onPressed: () {
-              // Lógica API aquí
-              Navigator.pop(context);
-              setState(() {
-                _productos.removeWhere((p) => _seleccionados.contains(p.id));
-                _seleccionados.clear();
-              });
-            },
-            child: const Text(
-              "BLOQUEAR",
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
+          Tooltip(
+            message: 'No disponible aún',
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.backgroundButton,
               ),
+              onPressed: null,
+              child: const Text(
+                "BLOQUEAR",
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBannerDesarrollo() {
+    return Container(
+      width: double.infinity,
+      color: const Color(0xFFF59E0B),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: const Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('⚠', style: TextStyle(fontSize: 16)),
+          SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Funcionalidad en desarrollo',
+                  style: TextStyle(
+                    color: Colors.black87,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  'Aún no se persiste al servidor. Usa el panel de admin si necesitas ejecutar esta acción.',
+                  style: TextStyle(color: Colors.black87, fontSize: 12),
+                ),
+              ],
             ),
           ),
         ],
@@ -99,6 +130,7 @@ class _BloquearProductoState extends State<BloquearProducto> {
         child: Column(
           children: [
             _buildHeader(),
+            _buildBannerDesarrollo(),
             Expanded(
               child: _cargando
                   ? const Center(child: CircularProgressIndicator())

@@ -155,16 +155,23 @@ class PedidoService {
   static Future<void> cerrarPedido({
     required String pedidoId,
     required String metodoPago,
+    String? idempotencyKey,
   }) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 300));
       return;
     }
 
+    final extraHeaders = <String, String>{'Accept': 'application/json'};
+    if (idempotencyKey != null && idempotencyKey.isNotEmpty) {
+      // El header se envía siempre; si el backend aún no lo soporta lo ignora.
+      extraHeaders['Idempotency-Key'] = idempotencyKey;
+    }
+
     final response = await httpWithRetry(
       () => http.patch(
         Uri.parse('$baseUrl/pedidos/$pedidoId'),
-        headers: AuthSession.headers(extra: {'Accept': 'application/json'}),
+        headers: AuthSession.headers(extra: extraHeaders),
         body: jsonEncode({
           'estadoPago': 'pagado',
           'estado': 'entregado',

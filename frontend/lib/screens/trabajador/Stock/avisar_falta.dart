@@ -36,16 +36,39 @@ class _AvisarFaltaScreenState extends State<AvisarFaltaScreen> {
     });
   }
 
-  void _enviarReporte() {
-    // Simulación de envío de correo
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          "Enviando aviso de ${_seleccionados.length} ingredientes al jefe...",
-        ),
+  Widget _buildBannerDesarrollo() {
+    return Container(
+      width: double.infinity,
+      color: const Color(0xFFF59E0B),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: const Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('⚠', style: TextStyle(fontSize: 16)),
+          SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Funcionalidad en desarrollo',
+                  style: TextStyle(
+                    color: Colors.black87,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  'Aún no se persiste al servidor. Usa el panel de admin si necesitas ejecutar esta acción.',
+                  style: TextStyle(color: Colors.black87, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
-    setState(() => _seleccionados.clear());
   }
 
   @override
@@ -58,6 +81,7 @@ class _AvisarFaltaScreenState extends State<AvisarFaltaScreen> {
         child: Column(
           children: [
             const SizedBox(height: kToolbarHeight + 40),
+            _buildBannerDesarrollo(),
             Expanded(
               child: _cargando
                   ? const Center(child: CircularProgressIndicator())
@@ -126,20 +150,23 @@ class _AvisarFaltaScreenState extends State<AvisarFaltaScreen> {
                             child: SizedBox(
                               width: double.infinity,
                               height: 55,
-                              child: ElevatedButton.icon(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.backgroundButton,
-                                ),
-                                onPressed: _enviarReporte,
-                                icon: const Icon(
-                                  Icons.mail_outline,
-                                  color: Colors.white,
-                                ),
-                                label: const Text(
-                                  "NOTIFICAR AL JEFE",
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
+                              child: Tooltip(
+                                message: 'No disponible aún',
+                                child: ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.backgroundButton,
+                                  ),
+                                  onPressed: null,
+                                  icon: const Icon(
+                                    Icons.mail_outline,
+                                    color: Colors.white70,
+                                  ),
+                                  label: const Text(
+                                    "NOTIFICAR AL JEFE",
+                                    style: TextStyle(
+                                      color: Colors.white70,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
                               ),

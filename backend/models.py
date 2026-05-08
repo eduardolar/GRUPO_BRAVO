@@ -151,6 +151,10 @@ class ReservaCrear(BaseModel):
     mesaId: Optional[str] = None
     notas: Optional[str] = None
     restauranteId: Optional[str] = None
+    # Campos opcionales para que camarero/admin registre datos del cliente real
+    # (ignorados si el actor es cliente: el cliente solo se reserva a sí mismo)
+    telefonoCliente: Optional[str] = None
+    correoCliente: Optional[str] = None
 
 class ValidarQR(BaseModel):
     codigoQr: str

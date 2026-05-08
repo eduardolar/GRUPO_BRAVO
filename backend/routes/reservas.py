@@ -254,12 +254,26 @@ def crear_reserva(
     if rol == "cliente":
         usuario_id_final = actor.get("sub", reserva.usuarioId)
 
-    # Forzar restaurante para admin
+    # Forzar restaurante para admin/camarero
     restaurante_id_final = reserva.restauranteId
-    if rol == "admin":
+    if rol in {"admin", "camarero"}:
         rid_jwt = actor.get("restaurante_id")
         if rid_jwt:
             restaurante_id_final = rid_jwt
+
+    # Datos del cliente real cuando el actor es staff (camarero/admin)
+    # Si el actor es cliente, estos campos se ignoran: el cliente solo se reserva a sí mismo.
+    telefono_cliente_final: Optional[str] = None
+    correo_cliente_final: Optional[str] = None
+    creado_por_actor: Optional[dict] = None
+    if rol in {"camarero", "admin", "super_admin"}:
+        telefono_cliente_final = reserva.telefonoCliente
+        correo_cliente_final = reserva.correoCliente
+        creado_por_actor = {
+            "sub": actor.get("sub"),
+            "correo": actor.get("correo"),
+            "rol": rol,
+        }
 
     # Validar horario del restaurante usando horarios_dia
     if restaurante_id_final:
@@ -361,6 +375,14 @@ def crear_reserva(
     }
     if reserva.notas is None:
         reserva_dict.pop("notas")
+    # Persistir datos del cliente real (solo cuando los provee staff)
+    if telefono_cliente_final is not None:
+        reserva_dict["telefono_cliente"] = telefono_cliente_final
+    if correo_cliente_final is not None:
+        reserva_dict["correo_cliente"] = correo_cliente_final
+    if creado_por_actor is not None:
+        reserva_dict["creado_por_actor"] = creado_por_actor
+
     resultado = coleccion_reservas.insert_one(reserva_dict)
     return {
         "id": str(resultado.inserted_id),
@@ -374,6 +396,8 @@ def crear_reserva(
         "mesaId": mesa_id,
         "numeroMesa": numero_mesa,
         "notas": reserva.notas,
+        "telefonoCliente": telefono_cliente_final,
+        "correoCliente": correo_cliente_final,
     }
 
 

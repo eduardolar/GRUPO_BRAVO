@@ -14,7 +14,7 @@ import uuid
 from pymongo.errors import DuplicateKeyError, OperationFailure
 
 from database import coleccion_pedidos, coleccion_productos, coleccion_ingredientes, coleccion_usuarios, cliente
-from models import PedidoCrear
+from models import PedidoCrear, MetodoPago
 from routes.auth import conf
 from security import require_role, get_current_user, normalizar_rol
 
@@ -465,6 +465,10 @@ async def crear_pedido(
         "estado": "pendiente",
         "referencia_pago": pedido.referenciaPago,
         "estado_pago": pedido.estadoPago or "pendiente",
+        # Auditoría de creación: sub/correo/rol del actor que abrió el pedido
+        "creado_por_sub": current_user.get("sub"),
+        "creado_por_correo": current_user.get("correo"),
+        "creado_por_rol": normalizar_rol(current_user.get("rol", "")),
     }
 
     if idempotency_key and idempotency_key.strip():
@@ -476,12 +480,25 @@ async def crear_pedido(
         pedido_dict["mesa_id"] = pedido.mesaId
     if pedido.numeroMesa is not None:
         pedido_dict["numero_mesa"] = pedido.numeroMesa
-    if pedido.restauranteId:
-        pedido_dict["restaurante_id"] = pedido.restauranteId
 
-    # Sucursal del pedido — el descuento de stock va contra ESTA sucursal,
-    # nunca contra otra (aunque haya un ingrediente con el mismo nombre).
-    rid_pedido = pedido.restauranteId
+    # Bloqueante 2 — forzar restaurante_id desde JWT para camarero/admin;
+    # el super_admin puede gestionar cualquier sucursal (acepta el del body).
+    if rol_actor in {"camarero", "admin"}:
+        rid_jwt = current_user.get("restaurante_id")
+        if not rid_jwt:
+            raise HTTPException(
+                status_code=400,
+                detail="El token no contiene restaurante_id; contacta con soporte",
+            )
+        rid_pedido = rid_jwt
+    elif rol_actor == "super_admin":
+        rid_pedido = pedido.restauranteId
+    else:
+        # cliente u otro rol
+        rid_pedido = pedido.restauranteId
+
+    if rid_pedido:
+        pedido_dict["restaurante_id"] = rid_pedido
 
     resultado = None
     try:
@@ -576,15 +593,38 @@ def actualizar_estado_pago(
         # El cliente solo puede actualizar pagos de sus propios pedidos
         filtro["usuario_id"] = current_user["sub"]
 
-    elif rol not in {"camarero", "admin", "super_admin"}:
+    elif rol in {"camarero", "admin"}:
+        # Bloqueante 1 — IDOR cross-sucursal: forzar restaurante_id del JWT
+        rid = current_user.get("restaurante_id")
+        if not rid:
+            raise HTTPException(
+                status_code=400,
+                detail="El token no contiene restaurante_id; contacta con soporte",
+            )
+        filtro["restaurante_id"] = rid
+
+    elif rol == "super_admin":
+        pass  # sin restricción adicional
+
+    else:
         raise HTTPException(
             status_code=403,
             detail="No tienes permiso para esta acción",
         )
 
+    set_fields: dict = {"estado_pago": payload.estadoPago}
+    # Auditoría de cobro: cuando la transición es hacia "pagado", registrar quién cobró
+    if payload.estadoPago == "pagado":
+        # Comprobamos si ya estaba pagado para no sobreescribir cobrado_at en reintentos
+        pedido_prev = coleccion_pedidos.find_one(filtro, {"estado_pago": 1})
+        if pedido_prev and pedido_prev.get("estado_pago") != "pagado":
+            set_fields["cobrado_por_sub"] = current_user.get("sub")
+            set_fields["cobrado_por_correo"] = current_user.get("correo")
+            set_fields["cobrado_at"] = datetime.now(timezone.utc).isoformat()
+
     result = coleccion_pedidos.update_one(
         filtro,
-        {"$set": {"estado_pago": payload.estadoPago}},
+        {"$set": set_fields},
     )
     if result.matched_count == 0:
         raise NotFoundError("Pedido no encontrado con esa referencia de pago")
@@ -832,13 +872,73 @@ def actualizar_pedido(
     pedido = _obtener_pedido_o_404(pedido_id)
     _verificar_acceso_pedido(pedido, current_user)
 
+    estado_actual = pedido.get("estado", "pendiente")
+    es_terminal = estado_actual in {"entregado", "cancelado"}
+
+    # ── Máquina de estados ────────────────────────────────────────────────────
+    if payload.estado is not None:
+        if payload.estado not in _ESTADOS_VALIDOS:
+            raise ValidacionError(
+                f"Estado inválido. Válidos: {sorted(_ESTADOS_VALIDOS)}"
+            )
+        if payload.estado != estado_actual:
+            transiciones_permitidas = _TRANSICIONES_VALIDAS.get(estado_actual, set())
+            if payload.estado not in transiciones_permitidas:
+                raise ConflictError(
+                    f"Transición inválida: '{estado_actual}' → '{payload.estado}'. "
+                    f"Desde '{estado_actual}' solo se permite: "
+                    f"{sorted(transiciones_permitidas) or '(estado terminal)'}"
+                )
+
+    # ── Protección de estado terminal ─────────────────────────────────────────
+    # En pedidos terminales (entregado/cancelado) solo se permite cambiar
+    # estadoPago (ej: post-cobro pendiente → pagado). El resto se rechaza.
+    if es_terminal:
+        campos_bloqueados = []
+        if payload.items is not None:
+            campos_bloqueados.append("items")
+        if payload.total is not None:
+            campos_bloqueados.append("total")
+        if payload.metodoPago is not None:
+            campos_bloqueados.append("metodoPago")
+        if payload.estado is not None and payload.estado != estado_actual:
+            campos_bloqueados.append("estado")
+        if campos_bloqueados:
+            raise ConflictError(
+                f"El pedido está en estado terminal '{estado_actual}'. "
+                f"No se pueden modificar: {', '.join(campos_bloqueados)}. "
+                "Solo se permite actualizar estadoPago."
+            )
+
+    # ── Validar metodoPago contra enum ────────────────────────────────────────
+    if payload.metodoPago is not None:
+        metodos_validos = {m.value for m in MetodoPago}
+        if payload.metodoPago not in metodos_validos:
+            raise ValidacionError(
+                f"metodoPago inválido: '{payload.metodoPago}'. "
+                f"Valores válidos: {sorted(metodos_validos)}"
+            )
+
     campos = {}
     if payload.items is not None:
+        # Recalcular total desde los precios del payload (cantidad * precio por ítem)
+        # para no fiarnos del campo total que envíe el cliente.
+        total_recalculado = sum(
+            float(it.get("precio", 0)) * int(it.get("cantidad", 1))
+            for it in payload.items
+        )
         campos["items"] = payload.items
-    if payload.total is not None:
+        campos["total"] = total_recalculado
+    if payload.total is not None and payload.items is None:
+        # Si solo viene total (sin items), lo aceptamos tal cual (ej: ajuste manual por admin)
         campos["total"] = payload.total
     if payload.estadoPago is not None:
         campos["estado_pago"] = payload.estadoPago
+        # Auditoría de cobro: cuando la transición es hacia "pagado", persistir quién cobró
+        if payload.estadoPago == "pagado" and pedido.get("estado_pago") != "pagado":
+            campos["cobrado_por_sub"] = current_user.get("sub")
+            campos["cobrado_por_correo"] = current_user.get("correo")
+            campos["cobrado_at"] = datetime.now(timezone.utc).isoformat()
     if payload.estado is not None:
         campos["estado"] = payload.estado
     if payload.metodoPago is not None:
@@ -854,6 +954,12 @@ def actualizar_pedido(
 
     if result.matched_count == 0:
         raise NotFoundError("Pedido no encontrado")
+
+    logger.info(
+        "actualizar_pedido | sub=%s correo=%s pedido_id=%s campos=%s",
+        current_user.get("sub"), current_user.get("correo"),
+        pedido_id, list(campos.keys()),
+    )
 
     return {"updated": result.modified_count > 0}
 

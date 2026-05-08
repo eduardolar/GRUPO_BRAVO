@@ -4,6 +4,7 @@ import 'package:frontend/core/app_routes.dart';
 import 'package:flutter/services.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/models/reserva_model.dart';
+import 'package:frontend/models/usuario_model.dart';
 import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/providers/cart_provider.dart';
 import 'package:frontend/providers/restaurante_provider.dart';
@@ -40,6 +41,8 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
   int _maxComensales = 12;
   final TextEditingController _nombreController = TextEditingController();
   final TextEditingController _notasController = TextEditingController();
+  final TextEditingController _telefonoClienteController = TextEditingController();
+  final TextEditingController _correoClienteController = TextEditingController();
   bool _isLoading = false;
   bool _cargandoDisponibilidad = false;
   Timer? _debounce;
@@ -145,6 +148,8 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
     _dateScrollController.dispose();
     _nombreController.dispose();
     _notasController.dispose();
+    _telefonoClienteController.dispose();
+    _correoClienteController.dispose();
     super.dispose();
   }
 
@@ -283,8 +288,11 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
     try {
       final auth = Provider.of<AuthProvider>(context, listen: false);
       final restauranteId = context.read<CartProvider>().restauranteId;
+      final esTrabajador = auth.usuarioActual?.rol == RolUsuario.trabajador;
+      final telefono = _telefonoClienteController.text.trim();
+      final correo = _correoClienteController.text.trim();
       final resultado = await ApiService.crearReserva(
-        userId: auth.usuarioActual?.id ?? '',
+        userId: esTrabajador ? '' : (auth.usuarioActual?.id ?? ''),
         nombreCompleto: _nombreController.text.trim(),
         fecha: _fechaSeleccionada,
         hora: _hora(_horaSeleccionada),
@@ -294,6 +302,8 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
             ? _notasController.text.trim()
             : null,
         restauranteId: restauranteId,
+        telefonoCliente: telefono.isNotEmpty ? telefono : null,
+        correoCliente: correo.isNotEmpty ? correo : null,
       );
       if (!mounted) return;
       _mostrarConfirmacion(resultado);
@@ -719,6 +729,21 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
                         icono: Icons.note_outlined,
                         maxLines: 3,
                       ),
+                      const SizedBox(height: 20),
+                      _buildSeccion('DATOS DEL CLIENTE (OPCIONAL)'),
+                      _buildCampoTexto(
+                        controller: _telefonoClienteController,
+                        hint: 'Teléfono del cliente',
+                        icono: Icons.phone_outlined,
+                        teclado: TextInputType.phone,
+                      ),
+                      const SizedBox(height: 14),
+                      _buildCampoTexto(
+                        controller: _correoClienteController,
+                        hint: 'Correo del cliente',
+                        icono: Icons.email_outlined,
+                        teclado: TextInputType.emailAddress,
+                      ),
                     ],
                   ),
                 ),
@@ -1085,12 +1110,14 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
     required IconData icono,
     int maxLines = 1,
     TextCapitalization capitalizacion = TextCapitalization.none,
+    TextInputType? teclado,
     String? Function(String?)? validator,
   }) {
     return TextFormField(
       controller: controller,
       maxLines: maxLines,
       textCapitalization: capitalizacion,
+      keyboardType: teclado,
       validator: validator,
       style: const TextStyle(color: AppColors.textPrimary, fontSize: 15),
       decoration: InputDecoration(
