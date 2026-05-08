@@ -538,17 +538,18 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
   Future<void> _toggleActivo(BuildContext context, Usuario user) async {
     final messenger = ScaffoldMessenger.of(context);
     final nuevoEstado = !user.activo;
-    final ok = await context.read<UsuarioProvider>().toggleActivo(
-      user.id,
-      nuevoEstado,
-    );
+    final provider = context.read<UsuarioProvider>();
+    final ok = await provider.toggleActivo(user.id, nuevoEstado);
     if (!mounted) return;
+    final detail = provider.error;
     messenger.showSnackBar(
       SnackBar(
         content: Text(
           ok
               ? (nuevoEstado ? 'Usuario activado' : 'Usuario suspendido')
-              : 'Error al cambiar estado',
+              : (detail != null && detail.isNotEmpty
+                    ? detail
+                    : 'Error al cambiar estado'),
           style: GoogleFonts.manrope(),
         ),
         backgroundColor: ok

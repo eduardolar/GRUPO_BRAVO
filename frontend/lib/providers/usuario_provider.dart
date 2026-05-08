@@ -58,20 +58,41 @@ class UsuarioProvider with ChangeNotifier {
     required String nombre,
     required String correo,
   }) async {
-    final ok = await _service.editarUsuario(id, nombre: nombre, correo: correo);
-    if (ok) await cargar();
-    return ok;
+    _error = null;
+    try {
+      await _service.editarUsuario(id, nombre: nombre, correo: correo);
+      await cargar();
+      return true;
+    } catch (e) {
+      _error = _extraerDetail(e);
+      notifyListeners();
+      return false;
+    }
   }
 
   Future<bool> toggleActivo(String id, bool nuevoEstado) async {
-    final ok = await _service.editarUsuario(id, activo: nuevoEstado);
-    if (ok) {
+    _error = null;
+    try {
+      await _service.editarUsuario(id, activo: nuevoEstado);
       _usuarios = _usuarios
           .map((u) => u.id == id ? u.copyWith(activo: nuevoEstado) : u)
           .toList();
       notifyListeners();
+      return true;
+    } catch (e) {
+      _error = _extraerDetail(e);
+      notifyListeners();
+      return false;
     }
-    return ok;
+  }
+
+  /// Extrae el `detail` del backend de una `ApiException` para mostrarlo
+  /// limpio. Para excepciones desconocidas devuelve `e.toString()`.
+  String _extraerDetail(Object e) {
+    final s = e.toString();
+    // ApiException(404, "Pedido no encontrado") → "Pedido no encontrado".
+    final match = RegExp(r'ApiException\(\d+,\s*"?(.+?)"?\)$').firstMatch(s);
+    return match?.group(1) ?? s;
   }
 
   Future<bool> cambiarRol(String id, String nuevoRol) async {
