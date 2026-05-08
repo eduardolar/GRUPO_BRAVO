@@ -112,14 +112,21 @@ class _PedidoConfirmadoScreenState extends State<PedidoConfirmadoScreen>
   String _estadoActual = 'pendiente';
   Timer? _pollTimer;
 
-  late final _TipoEntregaInfo _entregaInfo;
+  late _TipoEntregaInfo _entregaInfo;
+  // Datos mutables: arrancan con lo que pasó el llamante (puede venir vacío
+  // desde la pill de seguimiento) y se completan en cada poll con la
+  // respuesta del backend.
+  late String _tipoEntrega = widget.tipoEntrega;
+  late String _tipoPago = widget.tipoPago;
+  late double _total = widget.total;
+  late List<Map<String, dynamic>> _items = List.of(widget.items);
   // Referencia capturada para usar en dispose() sin tocar context.
   PedidoActivoProvider? _pedidoActivoProvider;
 
   @override
   void initState() {
     super.initState();
-    _entregaInfo = _TipoEntregaInfo.from(widget.tipoEntrega);
+    _entregaInfo = _TipoEntregaInfo.from(_tipoEntrega);
 
     _ctrl = AnimationController(vsync: this, duration: _kEntradaDuration);
     _scaleAnim = CurvedAnimation(parent: _ctrl, curve: Curves.elasticOut);
@@ -153,7 +160,30 @@ class _PedidoConfirmadoScreenState extends State<PedidoConfirmadoScreen>
     try {
       final pedido = await ApiService.obtenerPedido(widget.pedidoId!);
       if (!mounted) return;
-      setState(() => _estadoActual = pedido.estado);
+      setState(() {
+        _estadoActual = pedido.estado;
+        // Rellenar/actualizar con los datos reales del backend. Si la
+        // pantalla se abrió desde la pill (sin total/items), aquí los
+        // recibimos por primera vez.
+        if (pedido.total > 0) _total = pedido.total;
+        if (pedido.metodoPago.isNotEmpty) _tipoPago = pedido.metodoPago;
+        if (pedido.tipoEntrega.isNotEmpty) {
+          _tipoEntrega = pedido.tipoEntrega;
+          _entregaInfo = _TipoEntregaInfo.from(_tipoEntrega);
+        }
+        if (pedido.productos.isNotEmpty) {
+          _items = pedido.productos
+              .map(
+                (p) => <String, dynamic>{
+                  'nombre': p.nombre,
+                  'cantidad': p.cantidad,
+                  'precio': p.precio,
+                  'sin': p.sin,
+                },
+              )
+              .toList();
+        }
+      });
       if (pedido.estado == 'entregado' || pedido.estado == 'cancelado') {
         _pollTimer?.cancel();
       }
@@ -275,13 +305,13 @@ class _PedidoConfirmadoScreenState extends State<PedidoConfirmadoScreen>
                           ],
                           _PanelDetalles(
                             iconoEntrega: _entregaInfo.icono,
-                            tipoEntrega: widget.tipoEntrega,
-                            tipoPago: widget.tipoPago,
-                            total: widget.total,
+                            tipoEntrega: _tipoEntrega,
+                            tipoPago: _tipoPago,
+                            total: _total,
                           ),
-                          if (widget.items.isNotEmpty) ...[
+                          if (_items.isNotEmpty) ...[
                             const SizedBox(height: 16),
-                            _ResumenArticulos(items: widget.items),
+                            _ResumenArticulos(items: _items),
                           ],
                           const SizedBox(height: 40),
                           _CtaVolverInicio(onTap: _volverAlInicio),
@@ -495,13 +525,13 @@ class _PanelDetalles extends StatelessWidget {
           _FilaDetalle(
             icono: iconoEntrega,
             etiqueta: 'ENTREGA',
-            valor: tipoEntrega,
+            valor: tipoEntrega.isNotEmpty ? tipoEntrega : '—',
           ),
           _Separador(),
           _FilaDetalle(
             icono: Icons.credit_card_outlined,
             etiqueta: 'PAGO',
-            valor: tipoPago,
+            valor: tipoPago.isNotEmpty ? tipoPago : '—',
           ),
           _Separador(),
           Padding(
@@ -519,7 +549,9 @@ class _PanelDetalles extends StatelessWidget {
                 ),
                 const Spacer(),
                 Text(
-                  '${total.toStringAsFixed(2).replaceAll('.', ',')} €',
+                  total > 0
+                      ? '${total.toStringAsFixed(2).replaceAll('.', ',')} €'
+                      : '—',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 20,
