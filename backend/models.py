@@ -29,7 +29,7 @@ class EstadoPago(str, Enum):
 # ── Item de pedido ─────────────────────────────────────────────────────────────
 
 class ItemPedido(BaseModel):
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="forbid")
 
     producto_id: str
     nombre: Optional[str] = None

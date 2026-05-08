@@ -54,4 +54,7 @@ class AppColors {
   // Google Pay branding (obligatorio por las guidelines de Google)
   static const Color googlePayGrey = Color(0xFF5F6368);
   static const Color googlePayGreen = Color(0xFF1A8E3E);
+
+  // Estado "pendiente" en cocina: marrón-ámbar cálido que indica espera
+  static const Color surfacePending = Color(0xFFB45309);
 }

@@ -1,5 +1,9 @@
 class ProductoPedido {
   final String? productoId;
+  /// UUID estable del item dentro del pedido. Lo asigna el backend al crear.
+  /// Pedidos antiguos pueden no tenerlo; en ese caso usa la URL legacy
+  /// `/items/{idx}/hecho-por-indice`.
+  final String? itemId;
   final String nombre;
   final int cantidad;
   final double precio;
@@ -8,6 +12,7 @@ class ProductoPedido {
 
   ProductoPedido({
     this.productoId,
+    this.itemId,
     required this.nombre,
     required this.cantidad,
     required this.precio,
@@ -18,6 +23,7 @@ class ProductoPedido {
   factory ProductoPedido.fromMap(Map<String, dynamic> mapa) {
     return ProductoPedido(
       productoId: mapa['producto_id'] as String?,
+      itemId: mapa['item_id'] as String?,
       nombre: mapa['nombre'] ?? mapa['producto_nombre'] ?? '',
       cantidad: mapa['cantidad'] ?? 1,
       precio: (mapa['precio'] ?? 0.0).toDouble(),
@@ -30,6 +36,7 @@ class ProductoPedido {
 
   Map<String, dynamic> toMap() {
     return {
+      if (itemId != null) 'item_id': itemId,
       'nombre': nombre,
       'cantidad': cantidad,
       'precio': precio,
