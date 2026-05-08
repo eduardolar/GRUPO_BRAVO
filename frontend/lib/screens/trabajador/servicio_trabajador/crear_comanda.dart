@@ -73,9 +73,15 @@ class _CrearPedidosState extends State<CrearComanda> {
 
   Future<void> _cargarDatos() async {
     try {
+      // Pasamos el restauranteId del JWT para que la carta solo muestre los
+      // productos de la sucursal del camarero. Sin esto, se mezclan platos
+      // de todas las sucursales y un pedido a un producto ajeno fallaría
+      // luego al descontar stock o al validar en el backend.
+      final restauranteId =
+          context.read<AuthProvider>().usuarioActual?.restauranteId;
       final results = await Future.wait([
         ApiService.obtenerCategorias(),
-        ApiService.obtenerProductos(),
+        ApiService.obtenerProductos(restauranteId: restauranteId),
         if (_pedidoId == null)
           ApiService.obtenerPedidoActivoPorMesa(widget.mesaId),
       ]);
