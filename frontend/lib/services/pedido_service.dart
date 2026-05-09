@@ -248,6 +248,36 @@ class PedidoService {
     }
   }
 
+  /// Cancela un pedido enviando [motivoCancelacion] al backend.
+  ///
+  /// El backend exige que [motivoCancelacion] sea un string no vacío cuando
+  /// el campo `estado` lleva el valor `"cancelado"`. Si falta, devuelve 422.
+  static Future<void> cancelarPedido({
+    required String pedidoId,
+    required String motivoCancelacion,
+  }) async {
+    if (!usarApiReal) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      return;
+    }
+
+    final response = await httpWithRetry(
+      () => http.patch(
+        Uri.parse('$baseUrl/pedidos/$pedidoId'),
+        headers: AuthSession.headers(extra: {'Accept': 'application/json'}),
+        body: jsonEncode({
+          'estado': 'cancelado',
+          'motivo_cancelacion': motivoCancelacion.trim(),
+        }),
+      ),
+      retry: false,
+    );
+
+    if (response.statusCode >= 400) {
+      throw toApiException(response.statusCode, decodeBody(response));
+    }
+  }
+
   /// Marca un item de un pedido como hecho/no hecho.
   ///
   /// Pasa [itemId] (UUID estable asignado por el backend) cuando esté

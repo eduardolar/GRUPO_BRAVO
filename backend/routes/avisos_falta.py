@@ -8,11 +8,12 @@ from typing import Optional
 
 from bson import ObjectId
 from bson.errors import InvalidId
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 
 from database import coleccion_avisos_falta
 from security import get_current_user, normalizar_rol, require_role
+from limiter import limiter
 
 router = APIRouter(prefix="/avisos-falta", tags=["Avisos de falta"])
 
@@ -60,7 +61,9 @@ def _serializar(doc: dict) -> dict:
 # ─── Endpoints ───────────────────────────────────────────────────────────────
 
 @router.post("", summary="Crear aviso de falta de ingrediente (camarero/admin/super_admin)")
+@limiter.limit("30/minute")
 def crear_aviso_falta(
+    request: Request,
     payload: AvisoFaltaCrear,
     usuario: dict = Depends(require_role(["camarero", "admin", "super_admin"])),
 ):

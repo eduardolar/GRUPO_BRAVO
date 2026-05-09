@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from exceptions import AppError, NotFoundError, ConflictError, ValidacionError
 from datetime import datetime, timezone, timedelta
@@ -17,6 +17,8 @@ from database import coleccion_pedidos, coleccion_productos, coleccion_ingredien
 from models import PedidoCrear, MetodoPago
 from routes.auth import conf
 from security import require_role, get_current_user, normalizar_rol
+from limiter import limiter
+import audit_general as ag
 
 router = APIRouter(prefix="/pedidos", tags=["Pedidos"])
 logger = logging.getLogger("uvicorn")
@@ -302,6 +304,9 @@ class ActualizarEstadoPago(BaseModel):
 
     referenciaPago: str
     estadoPago: str = "pagado"
+    # Método de pago empleado al cobrar manualmente (efectivo/tarjeta_fisica).
+    # Obligatorio cuando camarero/admin marca pagado directamente.
+    metodoPago: Optional[str] = None
 
 
 class ActualizarItemsPedido(BaseModel):
@@ -313,6 +318,8 @@ class ActualizarItemsPedido(BaseModel):
     estado: Optional[str] = None
     metodoPago: Optional[str] = None
     version: Optional[int] = None
+    # Fix 2 — motivo obligatorio cuando se cancela un pedido
+    motivo_cancelacion: Optional[str] = None
 
 
 class ActualizarEstado(BaseModel):
@@ -405,7 +412,9 @@ def _pedido_a_respuesta(pedido_doc: dict, n_items: int) -> dict:
 
 
 @router.post("")
+@limiter.limit("20/minute")
 async def crear_pedido(
+    request: Request,
     pedido: PedidoCrear,
     current_user: dict = Depends(get_current_user),
     idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
@@ -546,6 +555,19 @@ async def crear_pedido(
 
     pedido_id = str(resultado.inserted_id)
 
+    # Auditoría: queda traza persistida del pedido creado, quién lo creó y para qué mesa.
+    ag.registrar(
+        ag.PEDIDO_CREADO,
+        actor=current_user.get("correo"),
+        objetivo=pedido_id,
+        detalle=f"items={len(pedido.items)} total={total_calculado} mesa={pedido_dict.get('numero_mesa')}",
+        extra={
+            "restaurante_id": rid_pedido,
+            "creado_por_rol": normalizar_rol(current_user.get("rol", "")),
+            "tipo_entrega": pedido_dict.get("tipo_entrega"),
+        },
+    )
+
     # Enviar factura al correo del usuario (sin bloquear la respuesta si falla)
     usuario = coleccion_usuarios.find_one({"_id": ObjectId(pedido.userId)}) if ObjectId.is_valid(pedido.userId) else None
     if not usuario:
@@ -587,7 +609,17 @@ def actualizar_estado_pago(
     Requiere token JWT. Si el llamante es cliente, se verifica que la
     referencia de pago pertenezca a un pedido suyo.
     Camarero / admin / super_admin pueden actualizarlo sin esa restricción.
+
+    Fix 1 — cobro manual: cuando el actor es camarero/admin y marca pagado,
+    el método de pago debe ser "efectivo" o "tarjeta_fisica". Los métodos de
+    pasarela (stripe, paypal, etc.) solo pueden confirmarse vía webhook;
+    si un humano intenta usarlos aquí → 400.
     """
+    # Métodos que representan pasarelas de pago online (no deben usarse en cobro manual)
+    _METODOS_PASARELA = {"stripe", "paypal", "apple_pay", "applepay", "google_pay", "googlepay"}
+    # Métodos válidos para cobro en mano por personal de sala
+    _METODOS_COBRO_MANUAL = {"efectivo", "tarjeta_fisica"}
+
     rol = normalizar_rol(current_user.get("rol", ""))
 
     filtro: dict = {"referencia_pago": payload.referenciaPago}
@@ -606,6 +638,18 @@ def actualizar_estado_pago(
             )
         filtro["restaurante_id"] = rid
 
+        # Fix 1 — si el personal marca pagado, exigir método de cobro manual
+        if payload.estadoPago == "pagado":
+            metodo = (payload.metodoPago or "").strip().lower()
+            if metodo in _METODOS_PASARELA:
+                raise ValidacionError(
+                    "Los pagos por pasarela deben confirmarse vía webhook"
+                )
+            if metodo not in _METODOS_COBRO_MANUAL:
+                raise ValidacionError(
+                    f"Para cobro manual el método debe ser uno de: {sorted(_METODOS_COBRO_MANUAL)}"
+                )
+
     elif rol == "super_admin":
         pass  # sin restricción adicional
 
@@ -619,11 +663,22 @@ def actualizar_estado_pago(
     # Auditoría de cobro: cuando la transición es hacia "pagado", registrar quién cobró
     if payload.estadoPago == "pagado":
         # Comprobamos si ya estaba pagado para no sobreescribir cobrado_at en reintentos
-        pedido_prev = coleccion_pedidos.find_one(filtro, {"estado_pago": 1})
+        pedido_prev = coleccion_pedidos.find_one(filtro, {"estado_pago": 1, "total": 1})
         if pedido_prev and pedido_prev.get("estado_pago") != "pagado":
             set_fields["cobrado_por_sub"] = current_user.get("sub")
             set_fields["cobrado_por_correo"] = current_user.get("correo")
             set_fields["cobrado_at"] = datetime.now(timezone.utc).isoformat()
+            if payload.metodoPago:
+                set_fields["metodo_pago"] = payload.metodoPago.strip().lower()
+            # Auditoría de cobro manual
+            if rol in {"camarero", "admin"}:
+                ag.registrar(
+                    ag.PEDIDO_COBRADO_MANUAL,
+                    actor=current_user.get("sub"),
+                    objetivo=str(pedido_prev.get("_id", "")),
+                    detalle=f"metodo={payload.metodoPago} total={pedido_prev.get('total')}",
+                    extra={"metodo_pago": payload.metodoPago, "total": pedido_prev.get("total")},
+                )
 
     result = coleccion_pedidos.update_one(
         filtro,
@@ -807,7 +862,15 @@ def marcar_item_hecho(
 
     Usar /items/{item_id}/hecho en su lugar. Este endpoint se mantiene
     temporalmente para retrocompatibilidad con clientes que envían el índice.
+    Nota: con concurrencia el índice puede apuntar a un item distinto.
     """
+    logger.warning(
+        "DEPRECATED endpoint hecho-por-indice usado por sub=%s rol=%s pedido=%s. "
+        "Migrar el caller a PATCH /items/{item_id}/hecho.",
+        current_user.get("sub"),
+        normalizar_rol(current_user.get("rol", "")),
+        pedido_id,
+    )
     if not ObjectId.is_valid(pedido_id):
         raise ValidacionError("ID de pedido inválido")
     if item_idx < 0:
@@ -893,6 +956,13 @@ def actualizar_pedido(
                     f"{sorted(transiciones_permitidas) or '(estado terminal)'}"
                 )
 
+        # Fix 2 — cancelación con motivo obligatorio para personal de sala.
+        # El motivo queda en el documento y en la auditoría para trazabilidad.
+        if payload.estado == "cancelado":
+            motivo = (payload.motivo_cancelacion or "").strip()
+            if not motivo:
+                raise ValidacionError("Debes indicar el motivo de la cancelación")
+
     # ── Protección de estado terminal ─────────────────────────────────────────
     # En pedidos terminales (entregado/cancelado) solo se permite cambiar
     # estadoPago (ej: post-cobro pendiente → pagado). El resto se rechaza.
@@ -922,6 +992,35 @@ def actualizar_pedido(
                 f"Valores válidos: {sorted(metodos_validos)}"
             )
 
+    # ── Defensa en profundidad: cobro manual desde sala ──────────────────────
+    # Cuando un camarero/admin marca un pedido como pagado por esta vía
+    # (ruta usada por `cerrarPedido` del frontend), debe usar un método
+    # físico. Las pasarelas (paypal, stripe…) solo pueden confirmarse vía
+    # webhook, nunca por un humano. super_admin queda exento por si necesita
+    # corregir un cobro a posteriori.
+    _METODOS_PASARELA = {"paypal", "google_pay", "googlepay", "apple_pay", "applepay", "stripe"}
+    _METODOS_COBRO_MANUAL = {"efectivo", "tarjeta_fisica"}
+    rol_actor = normalizar_rol(current_user.get("rol", ""))
+    if (
+        payload.estadoPago == "pagado"
+        and pedido.get("estado_pago") != "pagado"
+        and rol_actor in {"camarero", "admin"}
+    ):
+        metodo = (payload.metodoPago or "").strip().lower()
+        if not metodo:
+            raise ValidacionError(
+                "Indica el método de pago (efectivo o tarjeta_fisica) al cobrar manualmente"
+            )
+        if metodo in _METODOS_PASARELA:
+            raise ValidacionError(
+                "Los pagos por pasarela deben confirmarse vía webhook, no manualmente"
+            )
+        if metodo not in _METODOS_COBRO_MANUAL:
+            raise ValidacionError(
+                f"Método de pago manual inválido: '{metodo}'. "
+                f"Valores válidos: {sorted(_METODOS_COBRO_MANUAL)}"
+            )
+
     campos = {}
     if payload.items is not None:
         # Recalcular total desde los precios del payload (cantidad * precio por ítem)
@@ -944,6 +1043,12 @@ def actualizar_pedido(
             campos["cobrado_at"] = datetime.now(timezone.utc).isoformat()
     if payload.estado is not None:
         campos["estado"] = payload.estado
+        # Fix 2 — persistir metadatos de cancelación para trazabilidad
+        if payload.estado == "cancelado":
+            campos["motivo_cancelacion"] = (payload.motivo_cancelacion or "").strip()
+            campos["cancelado_por_sub"] = current_user.get("sub")
+            campos["cancelado_por_correo"] = current_user.get("correo")
+            campos["cancelado_at"] = datetime.now(timezone.utc).isoformat()
     if payload.metodoPago is not None:
         campos["metodo_pago"] = payload.metodoPago
 
@@ -981,6 +1086,16 @@ def actualizar_pedido(
         current_user.get("sub"), current_user.get("correo"),
         pedido_id, list(campos.keys()),
     )
+
+    # Fix 2 — auditoría de cancelación
+    if payload.estado == "cancelado" and result.modified_count > 0:
+        ag.registrar(
+            ag.PEDIDO_CANCELADO,
+            actor=current_user.get("sub"),
+            objetivo=pedido_id,
+            detalle=campos.get("motivo_cancelacion", ""),
+            extra={"motivo": campos.get("motivo_cancelacion")},
+        )
 
     return {"updated": result.modified_count > 0}
 
@@ -1034,8 +1149,20 @@ def _construir_filtro_contabilidad(
         # El super_admin puede filtrar por restaurante_id explícito
         rid = restaurante_id
     else:
-        # Admin (y cualquier otro rol de personal): usa el del JWT, ignora el query
+        # Admin (y cualquier otro rol de personal): usa el del JWT, ignora el query.
+        # Si no hay restaurante_id en el JWT, rechazamos para evitar devolver
+        # totales globales a una cuenta mal configurada.
         rid = current_user.get("restaurante_id")
+        if not rid:
+            logger.warning(
+                "_construir_filtro_contabilidad: usuario personal sin restaurante_id "
+                "en JWT (rol=%s sub=%s). Rechazando request.",
+                rol, current_user.get("sub"),
+            )
+            raise HTTPException(
+                status_code=400,
+                detail="Tu cuenta no está asignada a una sucursal",
+            )
 
     if rid:
         filtro["$or"] = [
@@ -1346,18 +1473,21 @@ def obtener_pedidos(
     else:
         # Personal: si el JWT lleva restaurante_id, restringimos a esa sucursal
         # salvo que sea super_admin (puede ver todas las sucursales).
-        # NOTA: si en el futuro el JWT no incluyera restaurante_id para algún
-        # rol de personal legacy, simplemente no se aplica la restricción aquí
-        # y se loguea un aviso para que quede trazabilidad.
         jwt_restaurante = current_user.get("restaurante_id")
         if rol != "super_admin":
             if jwt_restaurante:
                 restauranteId = jwt_restaurante
             else:
+                # Cuenta de personal sin sucursal asignada: rechazamos para
+                # evitar que se devuelvan pedidos de todas las sucursales.
                 logger.warning(
                     "obtener_pedidos: usuario personal sin restaurante_id en JWT "
-                    "(rol=%s sub=%s). No se aplica restricción por sucursal.",
+                    "(rol=%s sub=%s). Rechazando request.",
                     rol, current_user.get("sub"),
+                )
+                raise HTTPException(
+                    status_code=400,
+                    detail="Tu cuenta no está asignada a una sucursal",
                 )
 
     # ── Validar y resolver filtro de estado(s) ────────────────────────────────
@@ -1473,11 +1603,38 @@ def actualizar_items_pedido(
     payload: ActualizarItemsPedido,
     current_user: dict = Depends(require_role(["camarero", "admin", "super_admin"])),
 ):
+    """[DEPRECATED] Actualiza los items de un pedido.
+
+    Fix 4 — este endpoint coexiste con PATCH /{id} que cubre el mismo caso
+    y sí valida máquina de estados. El frontend actual usa PATCH /{id}.
+    Se añaden aquí las mismas guardas de estados terminales para cerrar el
+    vector por el que un camarero podría mutar items de un pedido ya entregado,
+    cancelado o pagado usando esta ruta alternativa.
+
+    Plan de retiro: cuando confirmemos que ningún cliente legacy lo usa
+    (revisar logs ~30 días sin warnings) se puede eliminar.
+    """
     if not ObjectId.is_valid(pedido_id):
         raise ValidacionError("ID de pedido inválido")
 
+    logger.warning(
+        "DEPRECATED endpoint PATCH /pedidos/%s/items usado por sub=%s rol=%s. "
+        "Migrar el caller a PATCH /pedidos/{id}.",
+        pedido_id,
+        current_user.get("sub"),
+        normalizar_rol(current_user.get("rol", "")),
+    )
+
     pedido = _obtener_pedido_o_404(pedido_id)
     _verificar_acceso_pedido(pedido, current_user)
+
+    # Fix 4 — estados en los que NO se deben aceptar cambios de items
+    _ESTADOS_TERMINALES_ITEMS = {"entregado", "cancelado", "pagado"}
+    estado_actual = pedido.get("estado", "pendiente")
+    if estado_actual in _ESTADOS_TERMINALES_ITEMS:
+        raise ConflictError(
+            f"No se pueden modificar items de un pedido en estado '{estado_actual}'"
+        )
 
     total = payload.total if payload.total is not None else sum(
         it.get("cantidad", 1) * it.get("precio", 0) for it in payload.items

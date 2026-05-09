@@ -614,7 +614,7 @@ class _PanelCuenta extends StatelessWidget {
                       icon: Icons.credit_card,
                       label: 'TARJETA',
                       procesando: procesando,
-                      onTap: () => onCobrar('tarjeta'),
+                      onTap: () => onCobrar('tarjeta_fisica'),
                     ),
                   ],
                 ),

@@ -9,29 +9,21 @@ Cubre:
   - Endpoint /usar no está restringido por sucursal.
 """
 from bson import ObjectId
-from security import crear_token
+from tests.tok_helpers import tok
 
 
 # ─── Helpers de tokens ────────────────────────────────────────────────────────
 
 def _tok_admin(rid: str = "R1") -> dict:
-    token = crear_token({
-        "sub": "admin_id",
-        "correo": "admin@r1.com",
-        "rol": "admin",
-        "restaurante_id": rid,
-    })
-    return {"Authorization": f"Bearer {token}"}
+    return tok("admin", restaurante_id=rid)
 
 
 def _tok_super() -> dict:
-    token = crear_token({"sub": "super_id", "correo": "super@bravo.com", "rol": "super_admin"})
-    return {"Authorization": f"Bearer {token}"}
+    return tok("super_admin")
 
 
 def _tok_cliente() -> dict:
-    token = crear_token({"sub": "cli_id", "correo": "cliente@test.com", "rol": "cliente"})
-    return {"Authorization": f"Bearer {token}"}
+    return tok("cliente")
 
 
 # ─── Helpers BD ───────────────────────────────────────────────────────────────

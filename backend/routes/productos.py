@@ -209,14 +209,35 @@ def obtener_productos(
         })
     return resultado
 
-@router.post("/asignar-sucursal", summary="Asignar sucursal a productos en masa (super admin)")
+@router.post("/asignar-sucursal", summary="Asignar sucursal a productos en masa (admin/super_admin)")
 def asignar_sucursal(
     payload: AsignarSucursalRequest,
-    _admin: dict = Depends(require_role(["admin", "super_admin"])),
+    current_user: dict = Depends(require_role(["admin", "super_admin"])),
 ):
     """Reasigna `restaurante_id` en bloque. Útil para migrar productos
-    legacy (sin sucursal) a una sucursal concreta."""
-    rid = payload.restaurante_id.strip()
+    legacy (sin sucursal) a una sucursal concreta.
+
+    Aislamiento multi-tenant:
+    - super_admin puede operar sobre cualquier sucursal (usa el payload tal cual).
+    - admin solo puede reasignar a SU propia sucursal del JWT; el campo
+      restaurante_id del payload se ignora silenciosamente para evitar IDOR.
+    """
+    from security import normalizar_rol
+    rol = normalizar_rol(current_user.get("rol", "") or "")
+
+    if rol == "super_admin":
+        # super_admin puede operar sobre cualquier sucursal
+        rid = payload.restaurante_id.strip()
+    else:
+        # admin: se fuerza la sucursal del JWT, se ignora lo que llegue en payload
+        rid = current_user.get("restaurante_id") or ""
+        if not rid:
+            raise HTTPException(
+                status_code=400,
+                detail="Tu cuenta no está asignada a una sucursal, contacta con super admin",
+            )
+        rid = rid.strip()
+
     if not rid:
         raise HTTPException(status_code=400, detail="restaurante_id requerido")
 

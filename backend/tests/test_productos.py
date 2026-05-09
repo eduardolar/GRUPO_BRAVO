@@ -1,4 +1,5 @@
-"""Tests de normalización del array `ingredientes` en los endpoints de productos.
+"""Tests de normalización del array `ingredientes` en los endpoints de productos,
+y aislamiento multi-tenant de POST /asignar-sucursal (Fix 1).
 
 Cubre el Bug 3: _normalizar_payload debe reducir cada item del array al esquema
 mínimo {ingrediente_id?, nombre, cantidad_receta} descartando campos congelados
@@ -7,19 +8,90 @@ como cantidadActual, unidad, stockMinimo, categoria, etc.
 from unittest.mock import MagicMock, patch
 from bson import ObjectId
 
-from security import crear_token
+from tests.tok_helpers import tok
 
 
 # ─── Helpers de autenticación ────────────────────────────────────────────────
 
-def _auth_admin() -> dict:
-    token = crear_token({
-        "sub": "u_admin",
-        "correo": "admin@test.com",
-        "rol": "admin",
-        "restaurante_id": "R1",
-    })
-    return {"Authorization": f"Bearer {token}"}
+def _auth_admin(rid: str = "R1") -> dict:
+    return tok("admin", restaurante_id=rid)
+
+
+def _auth_super_admin() -> dict:
+    return tok("super_admin")
+
+
+# ─── Tests Fix 1 — POST /asignar-sucursal: aislamiento multi-tenant ──────────
+
+def test_asignar_sucursal_admin_usa_rid_del_jwt_ignora_payload(client):
+    """Admin de R1 que manda restaurante_id=R2 en payload debe ver su operación
+    ejecutarse sobre R1 (el JWT manda, el payload se ignora)."""
+    mock_result = MagicMock()
+    mock_result.modified_count = 3
+    mock_result.matched_count = 3
+
+    with patch("routes.productos.coleccion_productos") as mock_col:
+        mock_col.update_many.return_value = mock_result
+        resp = client.post(
+            "/api/v1/productos/asignar-sucursal",
+            json={
+                "restaurante_id": "R2",  # admin intenta apuntar a otra sucursal
+                "ids": [str(ObjectId()), str(ObjectId()), str(ObjectId())],
+            },
+            headers=_auth_admin("R1"),
+        )
+
+    assert resp.status_code == 200, resp.text
+    # El update_many debe haberse llamado con $set = {"restaurante_id": "R1"} (JWT), no "R2"
+    call_args = mock_col.update_many.call_args
+    set_doc = call_args[0][1]["$set"]
+    assert set_doc["restaurante_id"] == "R1", (
+        f"Se esperaba R1 (JWT) pero se usó '{set_doc['restaurante_id']}'"
+    )
+
+
+def test_asignar_sucursal_super_admin_usa_payload(client):
+    """super_admin puede asignar productos a cualquier sucursal usando el payload."""
+    mock_result = MagicMock()
+    mock_result.modified_count = 2
+    mock_result.matched_count = 2
+
+    with patch("routes.productos.coleccion_productos") as mock_col:
+        mock_col.update_many.return_value = mock_result
+        resp = client.post(
+            "/api/v1/productos/asignar-sucursal",
+            json={
+                "restaurante_id": "R2",  # super_admin apunta a R2 → válido
+                "ids": [str(ObjectId()), str(ObjectId())],
+            },
+            headers=_auth_super_admin(),
+        )
+
+    assert resp.status_code == 200, resp.text
+    call_args = mock_col.update_many.call_args
+    set_doc = call_args[0][1]["$set"]
+    assert set_doc["restaurante_id"] == "R2"
+
+
+def test_asignar_sucursal_admin_sin_rid_jwt_devuelve_400(client):
+    """Admin cuyo JWT no lleva restaurante_id (legacy) recibe 400."""
+    from security import crear_token
+    from tests.tok_helpers import insertar_usuario_test
+    from bson import ObjectId as OID
+
+    legacy_oid = OID("cccccccccccccccccccccccc")
+    insertar_usuario_test(legacy_oid, "admin", restaurante_id=None)
+    token = crear_token({"sub": str(legacy_oid), "correo": "legacy@test.com", "rol": "admin"})
+    headers = {"Authorization": f"Bearer {token}"}
+
+    resp = client.post(
+        "/api/v1/productos/asignar-sucursal",
+        json={"restaurante_id": "R1", "solo_huerfanos": True},
+        headers=headers,
+    )
+
+    assert resp.status_code == 400
+    assert "sucursal" in resp.json()["detail"].lower()
 
 
 # ─── Tests de normalización en POST /productos ───────────────────────────────

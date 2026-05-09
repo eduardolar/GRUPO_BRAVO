@@ -223,6 +223,14 @@ class ApiService {
   }) =>
       PedidoService.actualizarEstadoPedido(pedidoId: pedidoId, estado: estado);
 
+  static Future<void> cancelarPedido({
+    required String pedidoId,
+    required String motivoCancelacion,
+  }) => PedidoService.cancelarPedido(
+    pedidoId: pedidoId,
+    motivoCancelacion: motivoCancelacion,
+  );
+
   static Future<Map<String, dynamic>> marcarItemHecho({
     required String pedidoId,
     String? itemId,

@@ -3,6 +3,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from bson import ObjectId
 
 from security import crear_token
+from tests.tok_helpers import tok, insertar_usuario_test, TEST_OID_CLIENTE, TEST_OID_CAMARERO, TEST_OID_COCINERO, TEST_OID_ADMIN, TEST_OID_SUPER
+
+# OIDs extra para sucursales secundarias
+_OID_COCINERO_R2 = ObjectId("aaaaaaaaaaaaaaaaaaaaaaad")
+_OID_CAMARERO_R2 = ObjectId("aaaaaaaaaaaaaaaaaaaaaaae")
+# OID extra para camarero sin restaurante_id
+_OID_CAM_SIN_RID = ObjectId("aaaaaaaaaaaaaaaaaaaaaaaf")
 
 
 ITEM_VALIDO = {"producto_id": "507f1f77bcf86cd799439011", "nombre": "Pizza", "cantidad": 2, "precio": 12.50}
@@ -17,28 +24,29 @@ PEDIDO_VALIDO = {
 def _auth_cocinero() -> dict:
     """Header Authorization con un token de cocinero válido para los tests
     de mutación de pedidos (cambiar estado, marcar items)."""
-    token = crear_token({"sub": "u1", "correo": "cocinero@test.com", "rol": "cocinero", "restaurante_id": "r1"})
-    return {"Authorization": f"Bearer {token}"}
+    return tok("cocinero", restaurante_id="r1")
 
 
-def _auth_cliente(user_id: str = "u_cliente") -> dict:
-    token = crear_token({"sub": user_id, "correo": "cliente@test.com", "rol": "cliente"})
-    return {"Authorization": f"Bearer {token}"}
+def _auth_cliente(oid: ObjectId | None = None) -> dict:
+    """Token de cliente. Usa TEST_OID_CLIENTE por defecto.
+
+    Para tests que requieren usuarios distintos, pasa un ObjectId propio.
+    """
+    if oid is None:
+        return tok("cliente")
+    return tok("cliente", oid=oid)
 
 
 def _auth_camarero() -> dict:
-    token = crear_token({"sub": "u2", "correo": "camarero@test.com", "rol": "camarero", "restaurante_id": "r1"})
-    return {"Authorization": f"Bearer {token}"}
+    return tok("camarero", restaurante_id="r1")
 
 
 def _auth_admin() -> dict:
-    token = crear_token({"sub": "u3", "correo": "admin@test.com", "rol": "admin", "restaurante_id": "r1"})
-    return {"Authorization": f"Bearer {token}"}
+    return tok("admin", restaurante_id="r1")
 
 
 def _auth_super_admin() -> dict:
-    token = crear_token({"sub": "u4", "correo": "superadmin@test.com", "rol": "super_admin"})
-    return {"Authorization": f"Bearer {token}"}
+    return tok("super_admin")
 
 
 # ── Validación (sin BD) ───────────────────────────────────────────────────────
@@ -285,11 +293,10 @@ def test_actualizar_estado_con_rol_cliente_devuelve_403(client):
     """Un cliente no debe poder mover su propio pedido a 'listo' saltándose
     a la cocina."""
     pedido_id = str(ObjectId())
-    token = crear_token({"sub": "u2", "correo": "c@x.com", "rol": "cliente"})
     resp = client.patch(
         f"/api/v1/pedidos/{pedido_id}/estado",
         json={"estado": "listo"},
-        headers={"Authorization": f"Bearer {token}"},
+        headers=_auth_cliente(),
     )
     assert resp.status_code == 403
 
@@ -369,19 +376,20 @@ def test_obtener_pedidos_estados_prioriza_sobre_estado(client):
 
 def test_cliente_solo_ve_sus_pedidos(client):
     """Un cliente no puede ver pedidos ajenos pasando userId de otro usuario."""
-    propio_id = "u_cliente"
+    # Con el Fix 3, el sub del token es el OID del cliente (TEST_OID_CLIENTE).
+    propio_id = str(TEST_OID_CLIENTE)
     ajeno_id = "u_otro"
 
     with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
         mock_pedidos.find.return_value = []
         resp = client.get(
             f"/api/v1/pedidos?userId={ajeno_id}",
-            headers=_auth_cliente(propio_id),
+            headers=_auth_cliente(),
         )
 
     assert resp.status_code == 200
     filtro = mock_pedidos.find.call_args[0][0]
-    # Debe usar el sub del JWT, no el userId de la query
+    # Debe usar el sub del JWT (OID del cliente), no el userId de la query
     assert filtro["usuario_id"] == propio_id
     assert filtro["usuario_id"] != ajeno_id
 
@@ -547,8 +555,7 @@ def test_descuento_respeta_cantidad_receta_snake_case(client):
 
 def _auth_admin_r1() -> dict:
     """Header Authorization con un token de admin de la sucursal r1."""
-    token = crear_token({"sub": "u3", "correo": "admin@test.com", "rol": "admin", "restaurante_id": "r1"})
-    return {"Authorization": f"Bearer {token}"}
+    return tok("admin", restaurante_id="r1")
 
 
 def test_obtener_pedidos_filtra_por_fecha_desde(client):
@@ -909,9 +916,10 @@ def test_doble_post_misma_idempotency_key_devuelve_mismo_id(client):
     mock_insert.inserted_id = pedido_id
 
     # Primer pedido existente que devolverá find_one en la segunda llamada
+    # usuario_id coincide con el sub del token (TEST_OID_CLIENTE)
     pedido_existente = {
         "_id": pedido_id,
-        "usuario_id": "u_cliente",
+        "usuario_id": str(TEST_OID_CLIENTE),
         "fecha": "2025-01-01T10:00:00",
         "total": 25.0,
         "estado": "pendiente",
@@ -920,7 +928,7 @@ def test_doble_post_misma_idempotency_key_devuelve_mismo_id(client):
         "idempotency_key": "key-abc-123",
     }
 
-    headers = {**_auth_cliente("u_cliente"), "Idempotency-Key": "key-abc-123"}
+    headers = {**_auth_cliente(), "Idempotency-Key": "key-abc-123"}
 
     with patch("routes.pedidos.cliente") as mock_cliente, \
          patch("routes.pedidos.coleccion_pedidos") as mock_pedidos, \
@@ -973,10 +981,10 @@ def test_doble_post_sin_idempotency_key_crea_dos_pedidos(client):
 
         # Sin header Idempotency-Key: find_one no debe ser llamado para idempotencia
         mock_pedidos.insert_one.return_value = mock_insert1
-        resp1 = client.post("/api/v1/pedidos", json=PEDIDO_VALIDO, headers=_auth_cliente("u_cliente"))
+        resp1 = client.post("/api/v1/pedidos", json=PEDIDO_VALIDO, headers=_auth_cliente())
 
         mock_pedidos.insert_one.return_value = mock_insert2
-        resp2 = client.post("/api/v1/pedidos", json=PEDIDO_VALIDO, headers=_auth_cliente("u_cliente"))
+        resp2 = client.post("/api/v1/pedidos", json=PEDIDO_VALIDO, headers=_auth_cliente())
 
     assert resp1.status_code == 200, resp1.json()
     assert resp2.status_code == 200, resp2.json()
@@ -1009,17 +1017,17 @@ def test_misma_idempotency_key_usuario_distinto_crea_pedido_nuevo(client):
         mock_session = MagicMock()
         mock_cliente.start_session.return_value.__enter__.return_value = mock_session
 
-        # Usuario 1: find_one → None, crea pedido nuevo
+        # Usuario 1: find_one → None, crea pedido nuevo (usa TEST_OID_CLIENTE)
         mock_pedidos.find_one.return_value = None
         mock_pedidos.insert_one.return_value = mock_insert_u1
-        headers_u1 = {**_auth_cliente("u_user1"), "Idempotency-Key": same_key}
+        headers_u1 = {**_auth_cliente(), "Idempotency-Key": same_key}
         resp1 = client.post("/api/v1/pedidos", json=PEDIDO_VALIDO, headers=headers_u1)
 
-        # Usuario 2: find_one → None (clave misma pero usuario distinto, no existe),
-        # crea también su pedido nuevo
+        # Usuario 2: OID diferente → usuario distinto
+        oid_u2 = ObjectId("aaaaaaaaaaaaaaaaaaaaaaab")
         mock_pedidos.find_one.return_value = None
         mock_pedidos.insert_one.return_value = mock_insert_u2
-        headers_u2 = {**_auth_cliente("u_user2"), "Idempotency-Key": same_key}
+        headers_u2 = {**_auth_cliente(oid_u2), "Idempotency-Key": same_key}
         resp2 = client.post("/api/v1/pedidos", json=PEDIDO_VALIDO, headers=headers_u2)
 
     assert resp1.status_code == 200, resp1.json()
@@ -1037,13 +1045,17 @@ def test_misma_idempotency_key_usuario_distinto_crea_pedido_nuevo(client):
 def _make_pedido_doc(
     pedido_id,
     restaurante_id: str = "r1",
-    usuario_id: str = "u_cliente",
+    usuario_id: str | None = None,
 ) -> dict:
-    """Documento mínimo de pedido para mockear coleccion_pedidos.find_one."""
+    """Documento mínimo de pedido para mockear coleccion_pedidos.find_one.
+
+    El usuario_id por defecto es el OID del cliente de tests (TEST_OID_CLIENTE),
+    que coincide con el sub del token de _auth_cliente().
+    """
     return {
         "_id": ObjectId(pedido_id) if isinstance(pedido_id, str) else pedido_id,
         "restaurante_id": restaurante_id,
-        "usuario_id": usuario_id,
+        "usuario_id": usuario_id if usuario_id is not None else str(TEST_OID_CLIENTE),
         "items": [],
         "total": 10.0,
         "estado": "pendiente",
@@ -1054,20 +1066,12 @@ def _make_pedido_doc(
 
 def _auth_cocinero_r2() -> dict:
     """Cocinero de la sucursal r2 (distinta a r1)."""
-    token = crear_token({
-        "sub": "u_cocinero_r2", "correo": "cocinero2@test.com",
-        "rol": "cocinero", "restaurante_id": "r2",
-    })
-    return {"Authorization": f"Bearer {token}"}
+    return tok("cocinero", oid=_OID_COCINERO_R2, restaurante_id="r2")
 
 
 def _auth_camarero_r2() -> dict:
     """Camarero de la sucursal r2 (distinta a r1)."""
-    token = crear_token({
-        "sub": "u_camarero_r2", "correo": "camarero2@test.com",
-        "rol": "camarero", "restaurante_id": "r2",
-    })
-    return {"Authorization": f"Bearer {token}"}
+    return tok("camarero", oid=_OID_CAMARERO_R2, restaurante_id="r2")
 
 
 # ── Bloqueante 1: GET /pedidos/{id} ──────────────────────────────────────────
@@ -1088,7 +1092,7 @@ def test_obtener_pedido_cliente_pedido_ajeno_devuelve_403(client):
         mock_pedidos.find_one.return_value = doc
         resp = client.get(
             f"/api/v1/pedidos/{pedido_id}",
-            headers=_auth_cliente("u_cliente"),  # sub != u_otro
+            headers=_auth_cliente(),  # sub es TEST_OID_CLIENTE, != "u_otro"
         )
 
     assert resp.status_code == 403
@@ -1097,13 +1101,14 @@ def test_obtener_pedido_cliente_pedido_ajeno_devuelve_403(client):
 def test_obtener_pedido_cliente_pedido_propio_devuelve_200(client):
     """Cliente cuyo sub coincide con usuario_id del pedido → 200."""
     pedido_id = str(ObjectId())
-    doc = _make_pedido_doc(pedido_id, restaurante_id="r1", usuario_id="u_cliente")
+    # usuario_id == str(TEST_OID_CLIENTE) == sub del token _auth_cliente()
+    doc = _make_pedido_doc(pedido_id, restaurante_id="r1")
 
     with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
         mock_pedidos.find_one.return_value = doc
         resp = client.get(
             f"/api/v1/pedidos/{pedido_id}",
-            headers=_auth_cliente("u_cliente"),
+            headers=_auth_cliente(),
         )
 
     assert resp.status_code == 200
@@ -1287,13 +1292,13 @@ def test_actualizar_estado_pago_cliente_propio_devuelve_200(client):
         resp = client.patch(
             "/api/v1/pedidos/actualizar-estado-pago",
             json={"referenciaPago": "ref_123", "estadoPago": "pagado"},
-            headers=_auth_cliente("u_cliente"),
+            headers=_auth_cliente(),
         )
 
     assert resp.status_code == 200
-    # El filtro debe incluir usuario_id del cliente
+    # El filtro debe incluir usuario_id del cliente (OID del token)
     filtro = mock_pedidos.update_one.call_args[0][0]
-    assert filtro["usuario_id"] == "u_cliente"
+    assert filtro["usuario_id"] == str(TEST_OID_CLIENTE)
     assert filtro["referencia_pago"] == "ref_123"
 
 
@@ -1308,16 +1313,23 @@ def test_actualizar_estado_pago_cocinero_devuelve_403(client):
 
 
 def test_actualizar_estado_pago_camarero_misma_sucursal(client):
-    """Camarero puede actualizar el pago de su sucursal: filtro incluye restaurante_id del JWT."""
+    """Camarero puede marcar pagado con método de cobro manual (efectivo) → 200.
+    Fix 1: el payload debe incluir metodoPago=efectivo; el filtro incluye restaurante_id del JWT.
+    """
     mock_result = MagicMock()
     mock_result.matched_count = 1
     mock_result.modified_count = 1
 
+    # find_one devuelve pedido en estado "pendiente" (no aún pagado) para que el
+    # bloque de auditoría de cobro se ejecute y no sea un no-op.
+    pedido_prev = {"_id": ObjectId(), "estado_pago": "pendiente", "total": 25.0}
+
     with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
+        mock_pedidos.find_one.return_value = pedido_prev
         mock_pedidos.update_one.return_value = mock_result
         resp = client.patch(
             "/api/v1/pedidos/actualizar-estado-pago",
-            json={"referenciaPago": "ref_456", "estadoPago": "pagado"},
+            json={"referenciaPago": "ref_456", "estadoPago": "pagado", "metodoPago": "efectivo"},
             headers=_auth_camarero(),
         )
 
@@ -1328,17 +1340,44 @@ def test_actualizar_estado_pago_camarero_misma_sucursal(client):
     assert filtro["restaurante_id"] == "r1"
 
 
-def test_actualizar_estado_pago_camarero_cross_sucursal_devuelve_403(client):
-    """IDOR bloqueante 1: camarero R1 con referencia de R2 → 403 (filtro Mongo no matchea)."""
+def test_actualizar_estado_pago_camarero_metodo_pasarela_devuelve_422(client):
+    """Fix 1: camarero que intenta marcar pagado con metodoPago=stripe → 422 ValidacionError."""
+    resp = client.patch(
+        "/api/v1/pedidos/actualizar-estado-pago",
+        json={"referenciaPago": "ref_stripe", "estadoPago": "pagado", "metodoPago": "stripe"},
+        headers=_auth_camarero(),
+    )
+    assert resp.status_code == 422
+    assert "pasarela" in resp.json()["detail"].lower()
+
+
+def test_actualizar_estado_pago_camarero_sin_metodo_devuelve_422(client):
+    """Fix 1: camarero que intenta marcar pagado sin indicar metodoPago → 422 ValidacionError."""
+    resp = client.patch(
+        "/api/v1/pedidos/actualizar-estado-pago",
+        json={"referenciaPago": "ref_sin_metodo", "estadoPago": "pagado"},
+        headers=_auth_camarero(),
+    )
+    assert resp.status_code == 422
+
+
+def test_actualizar_estado_pago_camarero_cross_sucursal_devuelve_404(client):
+    """IDOR bloqueante 1: camarero R1 con referencia de R2 → filtro Mongo no matchea → 404.
+
+    El payload incluye metodoPago=efectivo (Fix 1) para que la validación
+    pase y el bloqueo suceda a nivel de BD (matched_count==0).
+    """
     mock_result = MagicMock()
     mock_result.matched_count = 0  # el filtro con restaurante_id="r1" no matchea pedido de r2
     mock_result.modified_count = 0
+    pedido_prev = {"_id": ObjectId(), "estado_pago": "pendiente", "total": 10.0}
 
     with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
+        mock_pedidos.find_one.return_value = pedido_prev
         mock_pedidos.update_one.return_value = mock_result
         resp = client.patch(
             "/api/v1/pedidos/actualizar-estado-pago",
-            json={"referenciaPago": "ref_r2_secret", "estadoPago": "pagado"},
+            json={"referenciaPago": "ref_r2_secret", "estadoPago": "pagado", "metodoPago": "efectivo"},
             headers=_auth_camarero(),
         )
 
@@ -1742,7 +1781,14 @@ def test_crear_pedido_camarero_restauranteId_ajeno_fuerza_jwt(client):
 
 def test_crear_pedido_camarero_sin_restaurante_id_jwt_devuelve_400(client):
     """Bloqueante 2: camarero cuyo JWT no tiene restaurante_id recibe 400."""
-    token_sin_rid = crear_token({"sub": "u_sin_rid", "correo": "x@x.com", "rol": "camarero"})
+    # Insertar usuario activo sin restaurante_id (cuenta legacy)
+    insertar_usuario_test(_OID_CAM_SIN_RID, "camarero", restaurante_id=None)
+    token_sin_rid = crear_token({
+        "sub": str(_OID_CAM_SIN_RID),
+        "correo": "x@x.com",
+        "rol": "camarero",
+        # sin restaurante_id deliberadamente
+    })
     headers = {"Authorization": f"Bearer {token_sin_rid}"}
 
     with patch("routes.pedidos.coleccion_productos") as mock_productos:
@@ -1920,8 +1966,9 @@ def test_crear_pedido_persiste_creado_por(client):
         resp = client.post("/api/v1/pedidos", json=PEDIDO_VALIDO, headers=_auth_camarero())
 
     assert resp.status_code == 200
-    assert insertado.get("creado_por_sub") == "u2", (
-        f"Se esperaba creado_por_sub='u2' (sub del JWT de camarero) pero fue '{insertado.get('creado_por_sub')}'"
+    # El sub del camarero ahora es el OID fijo TEST_OID_CAMARERO
+    assert insertado.get("creado_por_sub") == str(TEST_OID_CAMARERO), (
+        f"Se esperaba creado_por_sub='{TEST_OID_CAMARERO}' (sub del JWT de camarero) pero fue '{insertado.get('creado_por_sub')}'"
     )
     assert insertado.get("creado_por_rol") == "camarero"
 
@@ -1950,12 +1997,292 @@ def test_patch_pedido_cobro_persiste_cobrado_por(client):
         mock_pedidos.update_one.side_effect = _captura_update
         resp = client.patch(
             f"/api/v1/pedidos/{pedido_id}",
-            json={"estadoPago": "pagado"},
+            json={"estadoPago": "pagado", "metodoPago": "efectivo"},
             headers=_auth_camarero(),
         )
 
     assert resp.status_code == 200
-    assert capturado.get("cobrado_por_sub") == "u2", (
-        f"Se esperaba cobrado_por_sub='u2' pero fue '{capturado.get('cobrado_por_sub')}'"
+    # El sub del camarero ahora es el OID fijo TEST_OID_CAMARERO
+    assert capturado.get("cobrado_por_sub") == str(TEST_OID_CAMARERO), (
+        f"Se esperaba cobrado_por_sub='{TEST_OID_CAMARERO}' pero fue '{capturado.get('cobrado_por_sub')}'"
     )
     assert capturado.get("cobrado_at") is not None, "cobrado_at no debe ser None tras cobro"
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Fix 3 — GET /pedidos: personal sin restaurante_id en JWT → 400
+# Fix 4 — GET /pedidos/resumen: personal sin restaurante_id en JWT → 400
+# ═══════════════════════════════════════════════════════════════════════════
+
+def _headers_camarero_sin_rid() -> dict:
+    """Token de camarero sin restaurante_id en el JWT (cuenta legacy)."""
+    insertar_usuario_test(_OID_CAM_SIN_RID, "camarero", restaurante_id=None)
+    token_sin_rid = crear_token({
+        "sub": str(_OID_CAM_SIN_RID),
+        "correo": "cam_sin_rid@test.com",
+        "rol": "camarero",
+        # sin restaurante_id deliberadamente
+    })
+    return {"Authorization": f"Bearer {token_sin_rid}"}
+
+
+def test_get_pedidos_camarero_sin_rid_jwt_devuelve_400(client):
+    """Fix 3: GET /pedidos con camarero sin restaurante_id en JWT → 400.
+    Antes devolvía pedidos de todas las sucursales (warn-y-pasa)."""
+    resp = client.get("/api/v1/pedidos", headers=_headers_camarero_sin_rid())
+    assert resp.status_code == 400
+    assert "sucursal" in resp.json()["detail"].lower()
+
+
+def test_get_pedidos_resumen_camarero_sin_rid_jwt_devuelve_400(client):
+    """Fix 4: GET /pedidos/resumen con personal sin restaurante_id en JWT → 400.
+    Antes devolvía totales globales de todas las sucursales."""
+    resp = client.get("/api/v1/pedidos/resumen", headers=_headers_camarero_sin_rid())
+    assert resp.status_code == 400
+    assert "sucursal" in resp.json()["detail"].lower()
+
+
+def test_get_pedidos_super_admin_sin_rid_jwt_pasa(client):
+    """Fix 3: super_admin sin restaurante_id en JWT sigue pudiendo ver todos los pedidos."""
+    with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
+        mock_pedidos.find.return_value = []
+        resp = client.get("/api/v1/pedidos", headers=_auth_super_admin())
+    assert resp.status_code == 200
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Fix 2 — Cancelación de pedido sin motivo
+# ═══════════════════════════════════════════════════════════════════════════
+
+def test_cancelar_pedido_sin_motivo_devuelve_422(client):
+    """Fix 2: camarero que intenta cancelar sin motivo → 422 ValidacionError."""
+    pedido_id = str(ObjectId())
+    doc = _make_pedido_doc(pedido_id, restaurante_id="r1")
+    doc["estado"] = "pendiente"
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
+        mock_pedidos.find_one.return_value = doc
+        resp = client.patch(
+            f"/api/v1/pedidos/{pedido_id}",
+            json={"estado": "cancelado"},
+            headers=_auth_camarero(),
+        )
+
+    assert resp.status_code == 422
+    assert "motivo" in resp.json()["detail"].lower()
+
+
+def test_cancelar_pedido_motivo_vacio_devuelve_422(client):
+    """Fix 2: motivo vacío (solo espacios) también se rechaza → 422."""
+    pedido_id = str(ObjectId())
+    doc = _make_pedido_doc(pedido_id, restaurante_id="r1")
+    doc["estado"] = "pendiente"
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
+        mock_pedidos.find_one.return_value = doc
+        resp = client.patch(
+            f"/api/v1/pedidos/{pedido_id}",
+            json={"estado": "cancelado", "motivo_cancelacion": "   "},
+            headers=_auth_camarero(),
+        )
+
+    assert resp.status_code == 422
+    assert "motivo" in resp.json()["detail"].lower()
+
+
+def test_cancelar_pedido_con_motivo_devuelve_200(client):
+    """Fix 2: cancelación con motivo válido persiste el campo en la BD → 200."""
+    pedido_id = str(ObjectId())
+    doc = _make_pedido_doc(pedido_id, restaurante_id="r1")
+    doc["estado"] = "pendiente"
+
+    mock_result = MagicMock()
+    mock_result.matched_count = 1
+    mock_result.modified_count = 1
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos, \
+         patch("routes.pedidos.ag") as mock_ag:
+        mock_pedidos.find_one.return_value = doc
+        mock_pedidos.update_one.return_value = mock_result
+        resp = client.patch(
+            f"/api/v1/pedidos/{pedido_id}",
+            json={"estado": "cancelado", "motivo_cancelacion": "Error del cliente"},
+            headers=_auth_camarero(),
+        )
+
+    assert resp.status_code == 200
+    # Verificar que se persiste el motivo en el update
+    set_arg = mock_pedidos.update_one.call_args[0][1]["$set"]
+    assert set_arg.get("motivo_cancelacion") == "Error del cliente"
+    assert set_arg.get("cancelado_por_sub") is not None
+    assert set_arg.get("cancelado_at") is not None
+    # Verificar auditoría
+    mock_ag.registrar.assert_called_once()
+    call_kwargs = mock_ag.registrar.call_args
+    assert call_kwargs[0][0] == mock_ag.PEDIDO_CANCELADO
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Fix 3 — Rate limiting smoke-test (introspección de rutas)
+# ═══════════════════════════════════════════════════════════════════════════
+
+def test_rate_limit_decorator_en_crear_pedido():
+    """Fix 3: verifica que POST /pedidos tiene el decorator de rate limit aplicado.
+
+    slowapi envuelve el handler con functools.wraps y deja la referencia original
+    en __wrapped__. Funciones sin @limiter.limit no tienen ese atributo.
+    Esta comparación es suficiente para detectar que el decorator está presente
+    sin necesidad de hacer 21 peticiones reales.
+    """
+    from routes.pedidos import crear_pedido
+
+    # slowapi usa functools.wraps al envolver la función, lo que establece __wrapped__.
+    # Las funciones sin @limiter.limit no tienen ese atributo (verificado empíricamente).
+    assert hasattr(crear_pedido, "__wrapped__"), (
+        "POST /pedidos (crear_pedido) no tiene rate limit: falta @limiter.limit"
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Fix 4 — PATCH /pedidos/{id}/items sin guardas de estado terminal
+# ═══════════════════════════════════════════════════════════════════════════
+
+def test_items_pedido_entregado_devuelve_409(client):
+    """Fix 4: camarero no puede modificar items de un pedido 'entregado' → 409."""
+    pedido_id = str(ObjectId())
+    doc = _make_pedido_doc(pedido_id, restaurante_id="r1")
+    doc["estado"] = "entregado"
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
+        mock_pedidos.find_one.return_value = doc
+        resp = client.patch(
+            f"/api/v1/pedidos/{pedido_id}/items",
+            json={"items": [ITEM_VALIDO], "total": 12.50},
+            headers=_auth_camarero(),
+        )
+
+    assert resp.status_code == 409
+    assert "entregado" in resp.json()["detail"].lower()
+
+
+def test_items_pedido_cancelado_devuelve_409(client):
+    """Fix 4: camarero no puede modificar items de un pedido 'cancelado' → 409."""
+    pedido_id = str(ObjectId())
+    doc = _make_pedido_doc(pedido_id, restaurante_id="r1")
+    doc["estado"] = "cancelado"
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
+        mock_pedidos.find_one.return_value = doc
+        resp = client.patch(
+            f"/api/v1/pedidos/{pedido_id}/items",
+            json={"items": [ITEM_VALIDO], "total": 12.50},
+            headers=_auth_camarero(),
+        )
+
+    assert resp.status_code == 409
+    assert "cancelado" in resp.json()["detail"].lower()
+
+
+def test_items_pedido_pendiente_devuelve_200(client):
+    """Fix 4: modificar items de un pedido 'pendiente' sigue funcionando → 200."""
+    pedido_id = str(ObjectId())
+    doc = _make_pedido_doc(pedido_id, restaurante_id="r1")
+    doc["estado"] = "pendiente"
+
+    mock_result = MagicMock()
+    mock_result.matched_count = 1
+    mock_result.modified_count = 1
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
+        mock_pedidos.find_one.return_value = doc
+        mock_pedidos.update_one.return_value = mock_result
+        resp = client.patch(
+            f"/api/v1/pedidos/{pedido_id}/items",
+            json={"items": [ITEM_VALIDO], "total": 12.50},
+            headers=_auth_camarero(),
+        )
+
+    assert resp.status_code == 200
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Defensa en profundidad — cobro manual via PATCH /pedidos/{id}
+# ═══════════════════════════════════════════════════════════════════════════
+
+def test_actualizar_pedido_camarero_pago_pasarela_devuelve_422(client):
+    """Camarero que marca pagado con metodoPago=paypal vía PATCH /{id} → 422."""
+    pedido_id = str(ObjectId())
+    doc = _make_pedido_doc(pedido_id, restaurante_id="r1")
+    doc["estado_pago"] = "pendiente"
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
+        mock_pedidos.find_one.return_value = doc
+        resp = client.patch(
+            f"/api/v1/pedidos/{pedido_id}",
+            json={"estadoPago": "pagado", "metodoPago": "paypal"},
+            headers=_auth_camarero(),
+        )
+
+    assert resp.status_code == 422
+    assert "pasarela" in resp.json()["detail"].lower()
+
+
+def test_actualizar_pedido_camarero_pago_sin_metodo_devuelve_422(client):
+    """Camarero que marca pagado sin metodoPago vía PATCH /{id} → 422."""
+    pedido_id = str(ObjectId())
+    doc = _make_pedido_doc(pedido_id, restaurante_id="r1")
+    doc["estado_pago"] = "pendiente"
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
+        mock_pedidos.find_one.return_value = doc
+        resp = client.patch(
+            f"/api/v1/pedidos/{pedido_id}",
+            json={"estadoPago": "pagado"},
+            headers=_auth_camarero(),
+        )
+
+    assert resp.status_code == 422
+
+
+def test_actualizar_pedido_camarero_pago_tarjeta_fisica_devuelve_200(client):
+    """Happy path: camarero cobra con tarjeta_fisica vía PATCH /{id} → 200."""
+    pedido_id = str(ObjectId())
+    doc = _make_pedido_doc(pedido_id, restaurante_id="r1")
+    doc["estado_pago"] = "pendiente"
+
+    mock_result = MagicMock()
+    mock_result.matched_count = 1
+    mock_result.modified_count = 1
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
+        mock_pedidos.find_one.return_value = doc
+        mock_pedidos.update_one.return_value = mock_result
+        resp = client.patch(
+            f"/api/v1/pedidos/{pedido_id}",
+            json={"estadoPago": "pagado", "metodoPago": "tarjeta_fisica"},
+            headers=_auth_camarero(),
+        )
+
+    assert resp.status_code == 200
+
+
+def test_actualizar_pedido_super_admin_pago_pasarela_devuelve_200(client):
+    """super_admin queda exento de la restricción (puede corregir cobros) → 200."""
+    pedido_id = str(ObjectId())
+    doc = _make_pedido_doc(pedido_id, restaurante_id="r1")
+    doc["estado_pago"] = "pendiente"
+
+    mock_result = MagicMock()
+    mock_result.matched_count = 1
+    mock_result.modified_count = 1
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
+        mock_pedidos.find_one.return_value = doc
+        mock_pedidos.update_one.return_value = mock_result
+        resp = client.patch(
+            f"/api/v1/pedidos/{pedido_id}",
+            json={"estadoPago": "pagado", "metodoPago": "paypal"},
+            headers=_auth_super_admin(),
+        )
+
+    assert resp.status_code == 200

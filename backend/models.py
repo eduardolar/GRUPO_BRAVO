@@ -14,7 +14,10 @@ class TipoEntrega(str, Enum):
 
 class MetodoPago(str, Enum):
     efectivo = "efectivo"
+    # tarjeta_fisica = TPV físico operado por el camarero (cobro en sala).
+    # tarjeta legacy (= TPV) se mantiene por compatibilidad con pedidos antiguos.
     tarjeta = "tarjeta"
+    tarjeta_fisica = "tarjeta_fisica"
     paypal = "paypal"
     google_pay = "google_pay"
     apple_pay = "apple_pay"
