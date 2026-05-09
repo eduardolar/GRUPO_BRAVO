@@ -2427,3 +2427,246 @@ def test_actualizar_pedido_metodopago_en_terminal_pagado_devuelve_409(client):
 
     assert resp.status_code == 409
     assert "metodopago" in resp.json()["detail"].lower()
+
+
+def test_quitar_item_ya_hecho_devuelve_409(client):
+    """No se pueden quitar items que el cocinero ya marcó como hecho.
+    Caso típico: cocinero terminó la Bruschetta (hecho=true), camarero
+    intenta editar el pedido y borra esa fila → 409."""
+    pedido_id = str(ObjectId())
+    doc = _make_pedido_doc(pedido_id, restaurante_id="r1")
+    doc["estado"] = "preparando"
+    doc["items"] = [
+        {"producto_id": "p_bruschetta", "cantidad": 2, "precio": 9.0, "hecho": True},
+        {"producto_id": "p_solomillo", "cantidad": 1, "precio": 18.0, "hecho": False},
+    ]
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
+        mock_pedidos.find_one.return_value = doc
+        # El camarero intenta dejar solo el solomillo (quitando la Bruschetta hecha)
+        resp = client.patch(
+            f"/api/v1/pedidos/{pedido_id}",
+            json={
+                "items": [
+                    {"producto_id": "p_solomillo", "cantidad": 1, "precio": 18.0},
+                ],
+            },
+            headers=_auth_camarero(),
+        )
+
+    assert resp.status_code == 409
+    assert "preparado" in resp.json()["detail"].lower()
+
+
+def test_reducir_cantidad_de_item_ya_hecho_devuelve_409(client):
+    """Reducir cantidad de un item con hecho=True también se bloquea: si la
+    cocina hizo 2 Bruschettas, el camarero no puede dejarlo en 1."""
+    pedido_id = str(ObjectId())
+    doc = _make_pedido_doc(pedido_id, restaurante_id="r1")
+    doc["estado"] = "preparando"
+    doc["items"] = [
+        {"producto_id": "p_bruschetta", "cantidad": 2, "precio": 9.0, "hecho": True},
+    ]
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
+        mock_pedidos.find_one.return_value = doc
+        resp = client.patch(
+            f"/api/v1/pedidos/{pedido_id}",
+            json={
+                "items": [
+                    {"producto_id": "p_bruschetta", "cantidad": 1, "precio": 9.0},
+                ],
+            },
+            headers=_auth_camarero(),
+        )
+
+    assert resp.status_code == 409
+
+
+def test_cancelar_pedido_de_mesa_libera_la_mesa(client):
+    """Al cancelar un pedido de tipo `local` con mesa_id, la mesa se libera
+    automáticamente — antes se quedaba ocupada para siempre."""
+    pedido_id = str(ObjectId())
+    mesa_id = str(ObjectId())
+    doc = _make_pedido_doc(pedido_id, restaurante_id="r1")
+    doc["estado"] = "pendiente"
+    doc["tipo_entrega"] = "local"
+    doc["mesa_id"] = mesa_id
+
+    mock_result = MagicMock()
+    mock_result.matched_count = 1
+    mock_result.modified_count = 1
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos, \
+         patch("database.coleccion_mesas") as mock_mesas, \
+         patch("routes.pedidos.ag"):
+        mock_pedidos.find_one.return_value = doc
+        mock_pedidos.update_one.return_value = mock_result
+        resp = client.patch(
+            f"/api/v1/pedidos/{pedido_id}",
+            json={
+                "estado": "cancelado",
+                "motivo_cancelacion": "Cliente cambió de opinión",
+            },
+            headers=_auth_camarero(),
+        )
+
+    assert resp.status_code == 200
+    # Verificar que la mesa fue actualizada a estado=libre.
+    # mock_mesas.update_one se llama con filtro {_id: ObjectId(mesa_id)}.
+    assert mock_mesas.update_one.called
+    args = mock_mesas.update_one.call_args
+    assert str(args[0][0]["_id"]) == mesa_id
+    assert args[0][1]["$set"]["estado"] == "libre"
+
+
+def test_cancelar_pedido_domicilio_no_toca_mesas(client):
+    """Pedidos de domicilio/recoger no tienen mesa: el endpoint no debe
+    intentar liberar nada."""
+    pedido_id = str(ObjectId())
+    doc = _make_pedido_doc(pedido_id, restaurante_id="r1")
+    doc["estado"] = "pendiente"
+    doc["tipo_entrega"] = "domicilio"
+    doc["mesa_id"] = None
+
+    mock_result = MagicMock()
+    mock_result.matched_count = 1
+    mock_result.modified_count = 1
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos, \
+         patch("database.coleccion_mesas") as mock_mesas, \
+         patch("routes.pedidos.ag"):
+        mock_pedidos.find_one.return_value = doc
+        mock_pedidos.update_one.return_value = mock_result
+        resp = client.patch(
+            f"/api/v1/pedidos/{pedido_id}",
+            json={
+                "estado": "cancelado",
+                "motivo_cancelacion": "Pedido duplicado",
+            },
+            headers=_auth_camarero(),
+        )
+
+    assert resp.status_code == 200
+    assert not mock_mesas.update_one.called
+
+
+def test_cobrar_con_descuento_persiste_total_final(client):
+    """Camarero cobra con descuento de 5€. total_final = total - descuento."""
+    pedido_id = str(ObjectId())
+    doc = _make_pedido_doc(pedido_id, restaurante_id="r1")
+    doc["estado_pago"] = "pendiente"
+    doc["total"] = 25.0
+
+    capturado: dict = {}
+    mock_result = MagicMock()
+    mock_result.matched_count = 1
+    mock_result.modified_count = 1
+
+    def _captura(filtro, update):
+        capturado.update(update.get("$set", {}))
+        return mock_result
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
+        mock_pedidos.find_one.return_value = doc
+        mock_pedidos.update_one.side_effect = _captura
+        resp = client.patch(
+            f"/api/v1/pedidos/{pedido_id}",
+            json={
+                "estadoPago": "pagado",
+                "metodoPago": "efectivo",
+                "descuento": 5.0,
+            },
+            headers=_auth_camarero(),
+        )
+
+    assert resp.status_code == 200
+    assert capturado["descuento"] == 5.0
+    assert capturado["total_final"] == 20.0
+
+
+def test_cobrar_con_propina_persiste_total_final(client):
+    """Camarero cobra con propina de 3€. total_final = total + propina."""
+    pedido_id = str(ObjectId())
+    doc = _make_pedido_doc(pedido_id, restaurante_id="r1")
+    doc["estado_pago"] = "pendiente"
+    doc["total"] = 25.0
+
+    capturado: dict = {}
+    mock_result = MagicMock()
+    mock_result.matched_count = 1
+    mock_result.modified_count = 1
+
+    def _captura(filtro, update):
+        capturado.update(update.get("$set", {}))
+        return mock_result
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
+        mock_pedidos.find_one.return_value = doc
+        mock_pedidos.update_one.side_effect = _captura
+        resp = client.patch(
+            f"/api/v1/pedidos/{pedido_id}",
+            json={
+                "estadoPago": "pagado",
+                "metodoPago": "efectivo",
+                "propina": 3.0,
+            },
+            headers=_auth_camarero(),
+        )
+
+    assert resp.status_code == 200
+    assert capturado["propina"] == 3.0
+    assert capturado["total_final"] == 28.0
+
+
+def test_descuento_mayor_que_total_devuelve_422(client):
+    """No se puede aplicar un descuento que supere el subtotal del pedido."""
+    pedido_id = str(ObjectId())
+    doc = _make_pedido_doc(pedido_id, restaurante_id="r1")
+    doc["estado_pago"] = "pendiente"
+    doc["total"] = 10.0
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
+        mock_pedidos.find_one.return_value = doc
+        resp = client.patch(
+            f"/api/v1/pedidos/{pedido_id}",
+            json={
+                "estadoPago": "pagado",
+                "metodoPago": "efectivo",
+                "descuento": 50.0,
+            },
+            headers=_auth_camarero(),
+        )
+
+    assert resp.status_code == 422
+    assert "descuento" in resp.json()["detail"].lower()
+
+
+def test_aumentar_cantidad_de_item_hecho_se_permite(client):
+    """Aumentar cantidad de un item ya hecho debe permitirse: el cocinero
+    hará el adicional. Lo que se prohíbe es REDUCIR/QUITAR."""
+    pedido_id = str(ObjectId())
+    doc = _make_pedido_doc(pedido_id, restaurante_id="r1")
+    doc["estado"] = "preparando"
+    doc["items"] = [
+        {"producto_id": "p_bruschetta", "cantidad": 1, "precio": 9.0, "hecho": True},
+    ]
+
+    mock_result = MagicMock()
+    mock_result.matched_count = 1
+    mock_result.modified_count = 1
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
+        mock_pedidos.find_one.return_value = doc
+        mock_pedidos.update_one.return_value = mock_result
+        resp = client.patch(
+            f"/api/v1/pedidos/{pedido_id}",
+            json={
+                "items": [
+                    {"producto_id": "p_bruschetta", "cantidad": 3, "precio": 9.0},
+                ],
+            },
+            headers=_auth_camarero(),
+        )
+
+    assert resp.status_code == 200

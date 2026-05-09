@@ -51,6 +51,8 @@ class _CrearPedidosState extends State<CrearComanda> {
 
   // Guard de doble-tap: true mientras hay un POST/PATCH en vuelo.
   bool _enviando = false;
+  // Pedido marcado como urgente para cocina (banner rojo en pantalla cocinero).
+  bool _prioritario = false;
   // Clave de idempotencia reutilizada en reintentos del mismo intento de envío.
   // Se renueva solo cuando el envío tiene éxito (carrito limpio) o cuando
   // el usuario navega fuera y vuelve (nuevo State).
@@ -409,6 +411,7 @@ class _CrearPedidosState extends State<CrearComanda> {
           estadoPago: "pendiente",
           restauranteId: auth.usuarioActual?.restauranteId,
           idempotencyKey: _idempotencyKey,
+          prioritario: _prioritario,
         );
         _pedidoId = (resultado['id'] ?? resultado['_id'])?.toString();
         final v = resultado['version'];
@@ -793,6 +796,43 @@ class _CrearPedidosState extends State<CrearComanda> {
                         ),
                 ),
 
+                // Toggle "URGENTE" antes de mandar a cocina. Si está activo,
+                // el pedido se crea con `prioritario=true` y el cocinero lo
+                // ve destacado con banner rojo en su pantalla.
+                if (_carrito.isNotEmpty)
+                  Container(
+                    width: double.infinity,
+                    color: Colors.black.withValues(alpha: 0.4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 6,
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.priority_high,
+                          size: 16,
+                          color: AppColors.error,
+                        ),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            'Marcar pedido como URGENTE para cocina',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                        Switch(
+                          value: _prioritario,
+                          onChanged: (v) =>
+                              setState(() => _prioritario = v),
+                          activeThumbColor: AppColors.error,
+                        ),
+                      ],
+                    ),
+                  ),
                 if (_carrito.isNotEmpty)
                   GestureDetector(
                     onTap: () => _mostrarConfirmacion(context),

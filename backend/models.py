@@ -93,6 +93,9 @@ class PedidoCrear(BaseModel):
     referenciaPago: Optional[str] = None
     estadoPago: Optional[EstadoPago] = EstadoPago.pendiente
     restauranteId: Optional[str] = None
+    # Prioridad para cocina: pedidos urgentes (cliente con prisa, alergia, etc.)
+    # se destacan en la pantalla del cocinero con un banner rojo.
+    prioritario: bool = False
 
     @field_validator("tipoEntrega", mode="before")
     @classmethod
@@ -145,7 +148,11 @@ class VerificarRecuperacion(BaseModel):
 
 
 class ReservaCrear(BaseModel):
-    usuarioId: str
+    # Opcional: cliente registrado lo manda con su id; camarero/admin
+    # creando "walk-in" para alguien sin cuenta no lo manda. El backend
+    # fuerza el sub del JWT cuando el actor es cliente (no se confía en
+    # lo que envíe).
+    usuarioId: Optional[str] = None
     nombreCompleto: str
     fecha: str
     hora: str

@@ -63,6 +63,8 @@ class Pedido {
   final List<ProductoPedido> productos;
   final String? notas;
   final String? restauranteId;
+  /// Pedido marcado como urgente: cocinero lo prioriza visualmente.
+  final bool prioritario;
 
   Pedido({
     required this.id,
@@ -79,6 +81,7 @@ class Pedido {
     required this.productos,
     this.notas,
     this.restauranteId,
+    this.prioritario = false,
   });
 
   factory Pedido.fromMap(Map<String, dynamic> mapa) {
@@ -103,6 +106,7 @@ class Pedido {
       productos: productosList,
       notas: mapa['notas'] as String?,
       restauranteId: mapa['restauranteId'] as String?,
+      prioritario: mapa['prioritario'] == true,
     );
   }
 

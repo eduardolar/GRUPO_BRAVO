@@ -3,7 +3,7 @@ from datetime import date, datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from bson import ObjectId
 from database import coleccion_reservas, coleccion_mesas, coleccion_restaurantes
 from models import ReservaCrear
@@ -27,6 +27,26 @@ class CambioEstadoBody(BaseModel):
 
 class AsignarMesaBody(BaseModel):
     mesaId: str
+
+
+class ReservaActualizar(BaseModel):
+    """Body validado para PUT /reservas/{id}.
+
+    Todos los campos son opcionales (parche parcial). El backend re-aplica
+    las mismas validaciones que en `crear_reserva` para los que cambian:
+    formato, rangos, horario del restaurante, disponibilidad de mesa.
+    """
+    fecha: Optional[str] = None
+    hora: Optional[str] = None
+    comensales: Optional[int] = Field(default=None, ge=1, le=20)
+    turno: Optional[str] = None
+    notas: Optional[str] = None
+    estado: Optional[str] = None
+
+
+class ActualizarComensalesBody(BaseModel):
+    """Body para PATCH /reservas/{id} — solo edita comensales."""
+    comensales: int = Field(ge=1, le=20)
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -360,8 +380,13 @@ def crear_reserva(
     mesa_id = str(mesa_asignada["_id"])
     numero_mesa = mesa_asignada.get("numero", 0)
 
+    # Para walk-ins (camarero/admin reservando para cliente sin cuenta) no
+    # tenemos usuarioId real. El schema validator de Mongo exige el campo
+    # presente y de tipo string, así que guardamos string vacío. La info
+    # del cliente real va en `nombre_completo` + `telefono_cliente` + `correo_cliente`,
+    # y la del actor en `creado_por_actor`.
     reserva_dict = {
-        "usuario_id": usuario_id_final,
+        "usuario_id": usuario_id_final or "",
         "nombre_completo": reserva.nombreCompleto,
         "fecha": reserva.fecha,
         "hora": reserva.hora,
@@ -386,7 +411,7 @@ def crear_reserva(
     resultado = coleccion_reservas.insert_one(reserva_dict)
     return {
         "id": str(resultado.inserted_id),
-        "usuarioId": usuario_id_final,
+        "usuarioId": usuario_id_final or "",
         "nombreCompleto": reserva.nombreCompleto,
         "fecha": reserva.fecha,
         "hora": reserva.hora,
@@ -505,10 +530,13 @@ def asignar_mesa_reserva(
 @router.patch("/{reserva_id}")
 def actualizar_comensales(
     reserva_id: str,
-    datos: dict,
+    datos: ActualizarComensalesBody,
     actor: dict = Depends(get_current_user),
 ):
-    """Permite actualizar comensales. Clientes solo pueden tocar sus reservas."""
+    """Cambia solo el número de comensales. Si la mesa actual no cabe en
+    el nuevo número, se reasigna automáticamente. Clientes solo sobre las
+    suyas; staff solo dentro de su sucursal.
+    """
     try:
         oid = ObjectId(reserva_id)
     except Exception:
@@ -521,21 +549,88 @@ def actualizar_comensales(
     rol = normalizar_rol(actor.get("rol", ""))
     if rol == "cliente" and reserva.get("usuario_id") != actor.get("sub"):
         raise HTTPException(status_code=403, detail="No puedes modificar reservas ajenas")
+    if rol not in ("cliente", "super_admin"):
+        rid = actor.get("restaurante_id")
+        if rid and reserva.get("restaurante_id") and reserva["restaurante_id"] != rid:
+            raise HTTPException(
+                status_code=403,
+                detail="No puedes gestionar reservas de otra sucursal",
+            )
 
-    campos = {k: v for k, v in datos.items() if k in ("comensales",) and v is not None}
-    if not campos:
-        raise HTTPException(status_code=400, detail="No hay campos válidos para actualizar")
-    coleccion_reservas.update_one({"_id": oid}, {"$set": campos})
+    # Bloqueo de estado terminal
+    estado_actual = reserva.get("estado", "Confirmada")
+    if estado_actual in _ESTADOS_TERMINALES_RESERVA:
+        raise HTTPException(
+            status_code=409,
+            detail=f"No se puede modificar una reserva en estado '{estado_actual}'.",
+        )
+
+    rid_reserva = reserva.get("restaurante_id")
+    fecha = reserva.get("fecha", "")
+    hora = reserva.get("hora", "")
+
+    # Reasignar mesa si la actual no cabe o está ocupada por otra reserva.
+    mesa_actual_id = reserva.get("mesa_id")
+    mesa_actual = None
+    if mesa_actual_id:
+        try:
+            mesa_actual = coleccion_mesas.find_one({"_id": ObjectId(mesa_actual_id)})
+        except Exception:
+            mesa_actual = None
+
+    ocupadas = _mesas_ocupadas_por_hora(fecha, hora, rid_reserva)
+    ocupadas.discard(str(mesa_actual_id or ""))
+
+    cabe = (
+        mesa_actual is not None
+        and mesa_actual.get("capacidad", 0) >= datos.comensales
+        and str(mesa_actual["_id"]) not in ocupadas
+    )
+
+    set_fields: dict = {"comensales": datos.comensales}
+    if not cabe:
+        filtro: dict = {"capacidad": {"$gte": datos.comensales}}
+        if rid_reserva:
+            filtro["restaurante_id"] = rid_reserva
+        nueva_mesa = None
+        for m in coleccion_mesas.find(filtro).sort("capacidad", 1):
+            if str(m["_id"]) not in ocupadas:
+                nueva_mesa = m
+                break
+        if not nueva_mesa:
+            raise HTTPException(
+                status_code=409,
+                detail=f"No hay mesas para {datos.comensales} comensales en ese horario",
+            )
+        set_fields["mesa_id"] = str(nueva_mesa["_id"])
+        set_fields["numero_mesa"] = nueva_mesa.get("numero", 0)
+
+    coleccion_reservas.update_one({"_id": oid}, {"$set": set_fields})
     return {"mensaje": "Reserva actualizada"}
+
+
+_ESTADOS_TERMINALES_RESERVA = {"Cancelada", "NoShow", "Llegado"}
+_TURNOS_VALIDOS = {"comida", "cena"}
 
 
 @router.put("/{reserva_id}")
 def actualizar_reserva_completa(
     reserva_id: str,
-    datos: dict,
+    datos: ReservaActualizar,
     actor: dict = Depends(get_current_user),
 ):
-    """Actualización completa. Clientes solo pueden tocar sus propias reservas."""
+    """Actualiza una reserva con validación completa.
+
+    Reglas:
+    - Clientes solo pueden tocar sus propias reservas.
+    - Staff (no super_admin) solo dentro de su sucursal.
+    - No se puede editar una reserva en estado terminal (Cancelada, NoShow,
+      Llegado) salvo que el cambio sea volver a 'Confirmada' (super_admin).
+    - No se puede editar una reserva cuyo slot ya pasó.
+    - Si cambian fecha, hora o comensales: re-validar horario del restaurante
+      y disponibilidad de mesa. Si la mesa actual no cabe en los nuevos
+      comensales o ya está ocupada, se reasigna automáticamente.
+    """
     try:
         oid = ObjectId(reserva_id)
     except Exception:
@@ -555,10 +650,180 @@ def actualizar_reserva_completa(
         if rid and reserva.get("restaurante_id") and reserva["restaurante_id"] != rid:
             raise HTTPException(status_code=403, detail="No puedes gestionar reservas de otra sucursal")
 
-    campos_permitidos = {"fecha", "hora", "comensales", "turno", "notas", "estado"}
-    campos = {k: v for k, v in datos.items() if k in campos_permitidos and v is not None}
+    # Bloqueo de estado terminal — salvo que el actor lo esté re-activando
+    estado_actual = reserva.get("estado", "Confirmada")
+    nuevo_estado = datos.estado
+    quiere_reactivar = (
+        estado_actual in _ESTADOS_TERMINALES_RESERVA
+        and nuevo_estado == "Confirmada"
+        and rol in {"admin", "super_admin"}
+    )
+    if estado_actual in _ESTADOS_TERMINALES_RESERVA and not quiere_reactivar:
+        raise HTTPException(
+            status_code=409,
+            detail=f"No se puede editar una reserva en estado '{estado_actual}'.",
+        )
+
+    # Determinar valores finales (los del body o los actuales)
+    fecha_final = datos.fecha if datos.fecha is not None else reserva.get("fecha", "")
+    hora_final = datos.hora if datos.hora is not None else reserva.get("hora", "")
+    comensales_final = (
+        datos.comensales if datos.comensales is not None else reserva.get("comensales", 0)
+    )
+    turno_final = datos.turno if datos.turno is not None else reserva.get("turno", "")
+
+    # Validar formato de fecha
+    try:
+        fecha_dt = date.fromisoformat(fecha_final)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail="Fecha inválida (formato YYYY-MM-DD)")
+
+    # Validar formato de hora
+    try:
+        h, m = hora_final.split(":")
+        if not (0 <= int(h) <= 23 and 0 <= int(m) <= 59):
+            raise ValueError
+    except (ValueError, TypeError, AttributeError):
+        raise HTTPException(status_code=400, detail="Hora inválida (formato HH:MM)")
+
+    # Validar turno
+    if turno_final and turno_final not in _TURNOS_VALIDOS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Turno inválido. Válidos: {', '.join(sorted(_TURNOS_VALIDOS))}",
+        )
+
+    # Validar estado
+    if nuevo_estado is not None and nuevo_estado not in _ESTADOS_VALIDOS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Estado inválido. Válidos: {', '.join(sorted(_ESTADOS_VALIDOS))}",
+        )
+
+    # No editar reservas con slot ya pasado (salvo que solo se cambie el estado).
+    cambio_de_slot = (
+        datos.fecha is not None or datos.hora is not None or datos.comensales is not None
+    )
+    if cambio_de_slot:
+        try:
+            slot_dt = datetime.combine(
+                fecha_dt,
+                datetime.strptime(hora_final, "%H:%M").time(),
+            )
+            if slot_dt < datetime.now():
+                raise HTTPException(
+                    status_code=400,
+                    detail="No se puede mover una reserva a una fecha/hora pasada",
+                )
+        except ValueError:
+            pass  # ya validado arriba
+
+    rid_reserva = reserva.get("restaurante_id")
+
+    # Si cambió fecha/hora/comensales: re-validar horario del restaurante y
+    # disponibilidad de mesa.
+    mesa_id_final = reserva.get("mesa_id")
+    numero_mesa_final = reserva.get("numero_mesa", 0)
+
+    if cambio_de_slot and rid_reserva:
+        # Validar horario del restaurante para el nuevo día
+        try:
+            rest = coleccion_restaurantes.find_one({"_id": ObjectId(rid_reserva)})
+        except Exception:
+            rest = None
+        if rest:
+            horarios_dia = rest.get("horarios_dia")
+            if horarios_dia:
+                _DIAS_ES = [
+                    "lunes", "martes", "miercoles", "jueves",
+                    "viernes", "sabado", "domingo",
+                ]
+                dia_key = _DIAS_ES[fecha_dt.weekday()]
+                entrada_dia = horarios_dia.get(dia_key, {})
+                abierto_raw = entrada_dia.get("abierto", True)
+                abierto = (
+                    abierto_raw.lower() not in ("false", "0", "no")
+                    if isinstance(abierto_raw, str)
+                    else bool(abierto_raw)
+                )
+                if not abierto:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"El restaurante está cerrado el {dia_key}",
+                    )
+                apertura = entrada_dia.get("apertura")
+                cierre = entrada_dia.get("cierre")
+                if apertura and cierre and not _hora_en_rango(hora_final, apertura, cierre):
+                    raise HTTPException(
+                        status_code=400,
+                        detail=(
+                            f"El restaurante no acepta reservas a las {hora_final}. "
+                            f"Horario del {dia_key}: {apertura} – {cierre}"
+                        ),
+                    )
+
+        # Re-validar disponibilidad de mesa: si la actual no cabe o está ocupada
+        # por otra reserva en el nuevo slot, se reasigna automáticamente.
+        ocupadas = _mesas_ocupadas_por_hora(fecha_final, hora_final, rid_reserva)
+        # La propia reserva no debe contar como conflicto consigo misma
+        ocupadas.discard(str(mesa_id_final or ""))
+
+        mesa_actual = None
+        if mesa_id_final:
+            try:
+                mesa_actual = coleccion_mesas.find_one({"_id": ObjectId(mesa_id_final)})
+            except Exception:
+                mesa_actual = None
+
+        cabe = (
+            mesa_actual is not None
+            and mesa_actual.get("capacidad", 0) >= comensales_final
+            and str(mesa_actual["_id"]) not in ocupadas
+        )
+        if not cabe:
+            # Buscar una mesa nueva
+            filtro_candidatas: dict = {"capacidad": {"$gte": comensales_final}}
+            if rid_reserva:
+                filtro_candidatas["restaurante_id"] = rid_reserva
+            candidatas = coleccion_mesas.find(filtro_candidatas).sort("capacidad", 1)
+            nueva_mesa = None
+            for m in candidatas:
+                if str(m["_id"]) not in ocupadas:
+                    nueva_mesa = m
+                    break
+            if not nueva_mesa:
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        f"No hay mesas disponibles para {comensales_final} comensales "
+                        f"el {fecha_final} a las {hora_final}"
+                    ),
+                )
+            mesa_id_final = str(nueva_mesa["_id"])
+            numero_mesa_final = nueva_mesa.get("numero", 0)
+
+    # Construir el $set solo con los campos que vinieron en el body
+    campos: dict = {}
+    if datos.fecha is not None:
+        campos["fecha"] = fecha_final
+    if datos.hora is not None:
+        campos["hora"] = hora_final
+    if datos.comensales is not None:
+        campos["comensales"] = comensales_final
+    if datos.turno is not None:
+        campos["turno"] = turno_final
+    if datos.notas is not None:
+        campos["notas"] = datos.notas
+    if datos.estado is not None:
+        campos["estado"] = datos.estado
+    # Si reasignamos mesa, persistirla
+    if cambio_de_slot:
+        campos["mesa_id"] = mesa_id_final
+        campos["numero_mesa"] = numero_mesa_final
+
     if not campos:
         raise HTTPException(status_code=400, detail="No hay campos válidos")
+
     coleccion_reservas.update_one({"_id": oid}, {"$set": campos})
     return {"mensaje": "Reserva actualizada"}
 

@@ -95,7 +95,11 @@ class _SacarCuentaState extends State<SacarCuenta> {
     }
   }
 
-  Future<void> _cobrarYLiberarMesa(String metodoPago) async {
+  Future<void> _cobrarYLiberarMesa(
+    String metodoPago, {
+    double descuento = 0,
+    double propina = 0,
+  }) async {
     // Guard de doble-tap: _procesando ya actúa como flag; comprobamos antes
     // de entrar para que sea explícito y simétrico con crear_comanda.
     if (_procesando) return;
@@ -120,6 +124,8 @@ class _SacarCuentaState extends State<SacarCuenta> {
         pedidoId: pedidoId,
         metodoPago: metodoPago,
         idempotencyKey: idempotencyKey,
+        descuento: descuento > 0 ? descuento : null,
+        propina: propina > 0 ? propina : null,
       );
     } catch (e) {
       if (!mounted) return;
@@ -130,25 +136,23 @@ class _SacarCuentaState extends State<SacarCuenta> {
     }
 
     try {
-      await ApiService.marcarMesaLibre(
-        mesa.id,
-        idempotencyKey: idempotencyKey,
-      );
+      // Tras cobrar, la mesa NO va directa a libre: pasa a "por_limpiar"
+      // para que el equipo de sala sepa que hay que recogerla. Cuando
+      // alguien la marca limpia (desde el selector de mesas), pasa a libre.
+      await ApiService.marcarMesaPorLimpiar(mesa.id);
     } catch (e) {
       if (!mounted) return;
       setState(() => _procesando = false);
       final detalle = e.toString().replaceFirst(RegExp(r'^Exception:\s*'), '');
-      // Cobro hecho pero mesa no liberada: damos info clara y dejamos que
-      // el camarero pueda intentarlo de nuevo (no hacemos auto-pop).
       _showSnack(
-        'Cobro OK pero la mesa no se liberó: $detalle',
+        'Cobro OK pero la mesa no se marcó por limpiar: $detalle',
         error: true,
       );
       return;
     }
 
     if (!mounted) return;
-    _showSnack('Mesa ${mesa.numero} cerrada y liberada');
+    _showSnack('Mesa ${mesa.numero} cobrada · pendiente de limpiar');
     setState(() {
       _mesasOcupadas.remove(mesa);
       _mesaSeleccionada = null;
@@ -511,13 +515,18 @@ class _PanelMesas extends StatelessWidget {
 
 // ─── Detalle de la cuenta ─────────────────────────────────────────────────────
 
-class _PanelCuenta extends StatelessWidget {
+class _PanelCuenta extends StatefulWidget {
   final Mesa mesa;
   final Map<String, dynamic>? pedido;
   final bool cargando;
   final bool procesando;
   final VoidCallback onVolver;
-  final void Function(String metodoPago) onCobrar;
+  final void Function(
+    String metodoPago, {
+    double descuento,
+    double propina,
+  })
+  onCobrar;
 
   const _PanelCuenta({
     required this.mesa,
@@ -528,17 +537,278 @@ class _PanelCuenta extends StatelessWidget {
     required this.onCobrar,
   });
 
+  @override
+  State<_PanelCuenta> createState() => _PanelCuentaState();
+}
+
+class _PanelCuentaState extends State<_PanelCuenta> {
+  // Ajustes de cobro: el camarero los puede tocar antes de elegir método.
+  double _descuento = 0; // €
+  double _propina = 0; // €
+  int _dividirEn = 1; // calculadora informativa: parte por persona
+
   List<Map<String, dynamic>> get _items {
-    // el backend devuelve la lista bajo 'productos'; 'items' es el contador numérico
-    final raw = pedido?['productos'] ?? pedido?['items'];
+    final raw = widget.pedido?['productos'] ?? widget.pedido?['items'];
     if (raw is List) return raw.cast<Map<String, dynamic>>();
     return [];
   }
 
-  double get _total {
-    final t = pedido?['total'];
+  double get _subtotal {
+    final t = widget.pedido?['total'];
     if (t == null) return 0.0;
     return (t as num).toDouble();
+  }
+
+  double get _totalCobrar {
+    final t = _subtotal - _descuento + _propina;
+    return t < 0 ? 0 : t;
+  }
+
+  double get _porPersona =>
+      _dividirEn <= 1 ? _totalCobrar : _totalCobrar / _dividirEn;
+
+  Future<void> _abrirDescuento() async {
+    final ctrlImporte = TextEditingController(
+      text: _descuento > 0 ? _descuento.toStringAsFixed(2) : '',
+    );
+    final resultado = await showDialog<double>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.panel,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        title: const Text(
+          'Aplicar descuento',
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Subtotal: ${_subtotal.toStringAsFixed(2).replaceAll('.', ',')} €',
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: ctrlImporte,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Descuento (€)',
+                suffixText: '€',
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              children: [
+                for (final pct in const [5, 10, 15, 20])
+                  ActionChip(
+                    label: Text('-$pct%'),
+                    onPressed: () {
+                      ctrlImporte.text =
+                          (_subtotal * pct / 100).toStringAsFixed(2);
+                    },
+                  ),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text(
+              'CANCELAR',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 0.0),
+            child: const Text(
+              'QUITAR',
+              style: TextStyle(color: AppColors.error),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final v = double.tryParse(
+                ctrlImporte.text.replaceAll(',', '.'),
+              );
+              if (v == null || v < 0) {
+                Navigator.pop(ctx);
+                return;
+              }
+              if (v > _subtotal) {
+                ScaffoldMessenger.of(ctx).showSnackBar(
+                  const SnackBar(
+                    content: Text('El descuento no puede superar el subtotal'),
+                    backgroundColor: AppColors.error,
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+                return;
+              }
+              Navigator.pop(ctx, v);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.button,
+              shape: const RoundedRectangleBorder(),
+            ),
+            child: const Text(
+              'APLICAR',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+    ctrlImporte.dispose();
+    if (resultado != null) {
+      setState(() => _descuento = resultado);
+    }
+  }
+
+  Future<void> _abrirPropina() async {
+    final ctrlImporte = TextEditingController(
+      text: _propina > 0 ? _propina.toStringAsFixed(2) : '',
+    );
+    final resultado = await showDialog<double>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.panel,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        title: const Text(
+          'Añadir propina',
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Subtotal: ${_subtotal.toStringAsFixed(2).replaceAll('.', ',')} €',
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: ctrlImporte,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Propina (€)',
+                suffixText: '€',
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              children: [
+                for (final pct in const [5, 10, 15])
+                  ActionChip(
+                    label: Text('+$pct%'),
+                    onPressed: () {
+                      ctrlImporte.text =
+                          (_subtotal * pct / 100).toStringAsFixed(2);
+                    },
+                  ),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text(
+              'CANCELAR',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 0.0),
+            child: const Text(
+              'QUITAR',
+              style: TextStyle(color: AppColors.error),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final v = double.tryParse(
+                ctrlImporte.text.replaceAll(',', '.'),
+              );
+              if (v == null || v < 0) {
+                Navigator.pop(ctx);
+                return;
+              }
+              Navigator.pop(ctx, v);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.button,
+              shape: const RoundedRectangleBorder(),
+            ),
+            child: const Text(
+              'APLICAR',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+    ctrlImporte.dispose();
+    if (resultado != null) {
+      setState(() => _propina = resultado);
+    }
+  }
+
+  // Aliases para que el resto del build (que aún usa los nombres) funcione.
+  Mesa get mesa => widget.mesa;
+  Map<String, dynamic>? get pedido => widget.pedido;
+  bool get cargando => widget.cargando;
+  bool get procesando => widget.procesando;
+  VoidCallback get onVolver => widget.onVolver;
+  void onCobrar(String metodo) => widget.onCobrar(
+    metodo,
+    descuento: _descuento,
+    propina: _propina,
+  );
+
+  Widget _filaDesglose(
+    String label,
+    double valor, {
+    bool destacado = false,
+    Color? color,
+  }) {
+    final signo = valor < 0 ? '-' : '';
+    final abs = valor.abs().toStringAsFixed(2).replaceAll('.', ',');
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: color ?? AppColors.textSecondary,
+              fontSize: destacado ? 13 : 12,
+              fontWeight: destacado ? FontWeight.w700 : FontWeight.w500,
+            ),
+          ),
+          Text(
+            '$signo$abs €',
+            style: TextStyle(
+              color: color ?? AppColors.background,
+              fontSize: destacado ? 14 : 12,
+              fontWeight: destacado ? FontWeight.w700 : FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -686,11 +956,36 @@ class _PanelCuenta extends StatelessWidget {
                             ),
                           ),
                           const Divider(color: AppColors.background, height: 1),
+                          // Desglose: subtotal + ajustes (descuento/propina) + total
                           Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 14,
+                            padding: const EdgeInsets.fromLTRB(20, 12, 20, 6),
+                            child: Column(
+                              children: [
+                                _filaDesglose(
+                                  'Subtotal',
+                                  _subtotal,
+                                  destacado: false,
+                                ),
+                                if (_descuento > 0)
+                                  _filaDesglose(
+                                    'Descuento',
+                                    -_descuento,
+                                    destacado: false,
+                                    color: AppColors.error,
+                                  ),
+                                if (_propina > 0)
+                                  _filaDesglose(
+                                    'Propina',
+                                    _propina,
+                                    destacado: false,
+                                    color: AppColors.disp,
+                                  ),
+                              ],
                             ),
+                          ),
+                          // Total destacado
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 6, 20, 14),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
@@ -710,7 +1005,7 @@ class _PanelCuenta extends StatelessWidget {
                                     vertical: 8,
                                   ),
                                   child: Text(
-                                    '${_total.toStringAsFixed(2).replaceAll('.', ',')} €',
+                                    '${_totalCobrar.toStringAsFixed(2).replaceAll('.', ',')} €',
                                     style: const TextStyle(
                                       color: AppColors.background,
                                       fontSize: 20,
@@ -721,6 +1016,37 @@ class _PanelCuenta extends StatelessWidget {
                               ],
                             ),
                           ),
+                          // Indicador "por persona" cuando se divide
+                          if (_dividirEn > 1)
+                            Padding(
+                              padding:
+                                  const EdgeInsets.fromLTRB(20, 0, 20, 14),
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.button.withValues(alpha: 0.12),
+                                  border: Border.all(
+                                    color: AppColors.button.withValues(alpha: 0.4),
+                                  ),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  'Dividido entre $_dividirEn → '
+                                  '${_porPersona.toStringAsFixed(2).replaceAll('.', ',')} € '
+                                  'por persona',
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    color: AppColors.button,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                     ),
@@ -728,10 +1054,46 @@ class _PanelCuenta extends StatelessWidget {
                 ),
         ),
 
+        // Ajustes de cobro: descuento, propina, dividir
+        if (!cargando && pedido != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _BotonAjuste(
+                    icon: Icons.percent,
+                    label: 'DESCUENTO',
+                    activo: _descuento > 0,
+                    onTap: procesando ? null : _abrirDescuento,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: _BotonAjuste(
+                    icon: Icons.savings_outlined,
+                    label: 'PROPINA',
+                    activo: _propina > 0,
+                    onTap: procesando ? null : _abrirPropina,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: _SelectorDividir(
+                    valor: _dividirEn,
+                    onCambio: procesando
+                        ? null
+                        : (n) => setState(() => _dividirEn = n),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
         // Botones de cobro
         if (!cargando && pedido != null)
           Container(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -821,6 +1183,140 @@ class _BotonMetodoPago extends StatelessWidget {
                   ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+
+// ─── Botón compacto de ajuste de cobro (Descuento / Propina) ────────────────
+class _BotonAjuste extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool activo;
+  final VoidCallback? onTap;
+
+  const _BotonAjuste({
+    required this.icon,
+    required this.label,
+    required this.activo,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = activo ? AppColors.button : AppColors.textSecondary;
+    return Material(
+      color: activo
+          ? AppColors.button.withValues(alpha: 0.15)
+          : AppColors.background,
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: activo ? AppColors.button : AppColors.line,
+              width: activo ? 1.5 : 0.8,
+            ),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 18, color: color),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Selector de "dividir entre N" — calculadora informativa ─────────────────
+class _SelectorDividir extends StatelessWidget {
+  final int valor;
+  final void Function(int)? onCambio;
+
+  const _SelectorDividir({required this.valor, required this.onCambio});
+
+  @override
+  Widget build(BuildContext context) {
+    final activo = valor > 1;
+    final color = activo ? AppColors.button : AppColors.textSecondary;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+      decoration: BoxDecoration(
+        color: activo
+            ? AppColors.button.withValues(alpha: 0.15)
+            : AppColors.background,
+        border: Border.all(
+          color: activo ? AppColors.button : AppColors.line,
+          width: activo ? 1.5 : 0.8,
+        ),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'DIVIDIR',
+            style: TextStyle(
+              color: color,
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              InkWell(
+                onTap: (onCambio == null || valor <= 1)
+                    ? null
+                    : () => onCambio!(valor - 1),
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: Icon(Icons.remove, size: 16, color: color),
+                ),
+              ),
+              SizedBox(
+                width: 22,
+                child: Text(
+                  '$valor',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              InkWell(
+                onTap: (onCambio == null || valor >= 12)
+                    ? null
+                    : () => onCambio!(valor + 1),
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: Icon(Icons.add, size: 16, color: color),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

@@ -3,6 +3,7 @@ import 'package:frontend/core/app_routes.dart';
 import 'package:frontend/screens/Cliente/totp_setup_screen.dart';
 import 'package:frontend/screens/cliente/login_screen.dart';
 import 'package:frontend/screens/home_screen_trabajador.dart';
+import 'package:frontend/screens/trabajador/mi_turno_screen.dart';
 import 'package:provider/provider.dart';
 import '../../core/colors_style.dart';
 import '../../providers/auth_provider.dart';
@@ -651,6 +652,17 @@ class _PerfilTrabajadorScreenState extends State<PerfilTrabajadorScreen> {
                                         fontSize: 13,
                                       ),
                                     ),
+                            ),
+                          ),
+                          const SizedBox(height: 36),
+                          _buildSeccionLabel('TURNO'),
+                          const SizedBox(height: 14),
+                          _buildAccion(
+                            icono: Icons.bar_chart_outlined,
+                            label: 'Mi turno',
+                            onTap: () => Navigator.push(
+                              context,
+                              AppRoute.slide(const MiTurnoScreen()),
                             ),
                           ),
                           const SizedBox(height: 36),

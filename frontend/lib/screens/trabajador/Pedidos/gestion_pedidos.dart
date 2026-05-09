@@ -3,14 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:frontend/core/app_routes.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/core/app_snackbar.dart';
+import 'package:frontend/models/mesa_model.dart';
 import 'package:frontend/models/pedido_model.dart';
 import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/screens/trabajador/Pedidos/pedido_domicilio.dart';
-import 'package:frontend/screens/trabajador/info_usuario.dart';
+import 'package:frontend/screens/trabajador/appbar_trabajador.dart';
 import 'package:frontend/screens/trabajador/servicio_trabajador/modificar_comanda.dart';
 import 'package:frontend/screens/trabajador/servicio_trabajador/sacar_cuenta.dart';
 import 'package:frontend/screens/trabajador/servicio_trabajador/seleccion_mesa.dart';
 import 'package:frontend/services/api_service.dart';
+import 'package:frontend/services/mesa_service.dart';
 import 'package:frontend/services/pedido_service.dart';
 import 'package:provider/provider.dart';
 
@@ -148,6 +150,234 @@ class _GestionPedidosState extends State<GestionPedidos>
     }
   }
 
+  /// Abre selector de mesas libres y mueve el pedido. Solo para pedidos de
+  /// mesa (tipo local). Operativa típica: el grupo se muda de Mesa 4 a 12.
+  Future<void> _moverMesa(Pedido pedido) async {
+    final restauranteId =
+        context.read<AuthProvider>().usuarioActual?.restauranteId;
+    final List<Mesa> mesas;
+    try {
+      mesas = await MesaService.obtenerMesas(restauranteId: restauranteId);
+    } catch (e) {
+      if (!mounted) return;
+      showAppError(
+        context,
+        'No se pudieron cargar las mesas: ${e.toString().replaceFirst('Exception: ', '')}',
+      );
+      return;
+    }
+    if (!mounted) return;
+    // Mostramos solo mesas libres y excluimos la actual del pedido.
+    final disponibles = mesas
+        .where((m) => m.disponible && m.id != pedido.mesaId)
+        .toList()
+      ..sort((a, b) => a.numero.compareTo(b.numero));
+
+    if (disponibles.isEmpty) {
+      showAppInfo(context, 'No hay mesas libres ahora mismo');
+      return;
+    }
+
+    final mesa = await showDialog<Mesa>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        backgroundColor: AppColors.panel,
+        title: Text(
+          'Mover de Mesa ${pedido.numeroMesa ?? '-'} a...',
+          style: const TextStyle(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        children: [
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 320),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (final m in disponibles)
+                    SimpleDialogOption(
+                      onPressed: () => Navigator.pop(ctx, m),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 32,
+                            height: 32,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: AppColors.button.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              '${m.numero}',
+                              style: const TextStyle(
+                                color: AppColors.button,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'Mesa ${m.numero} · ${m.ubicacion} · ${m.capacidad} pax',
+                              style: const TextStyle(
+                                color: AppColors.textPrimary,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text(
+              'CANCELAR',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (mesa == null || !mounted) return;
+
+    try {
+      await PedidoService.moverPedidoAOtraMesa(
+        pedidoId: pedido.id,
+        nuevaMesaId: mesa.id,
+      );
+      if (!mounted) return;
+      showAppSuccess(context, 'Pedido movido a Mesa ${mesa.numero}');
+      await _cargarPedidos();
+    } catch (e) {
+      if (!mounted) return;
+      showAppError(
+        context,
+        'Error al mover: ${e.toString().replaceFirst('Exception: ', '')}',
+      );
+    }
+  }
+
+  /// Transfiere el pedido a otro camarero (cambio de turno o ayuda mutua).
+  /// Carga la lista de camareros activos de la sucursal y deja al actor
+  /// elegir el destino. El backend valida permisos y aislamiento.
+  Future<void> _transferirPedido(Pedido pedido) async {
+    final List<Map<String, dynamic>> camareros;
+    try {
+      camareros = await PedidoService.listarCamarerosDisponibles();
+    } catch (e) {
+      if (!mounted) return;
+      showAppError(
+        context,
+        'No se pudo cargar la lista de camareros: ${e.toString().replaceFirst('Exception: ', '')}',
+      );
+      return;
+    }
+    if (!mounted) return;
+    if (camareros.isEmpty) {
+      showAppInfo(context, 'No hay otros camareros disponibles');
+      return;
+    }
+
+    final destino = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        backgroundColor: AppColors.panel,
+        title: const Text(
+          'Transferir pedido a...',
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        children: [
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 320),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (final c in camareros)
+                    SimpleDialogOption(
+                      onPressed: () => Navigator.pop(ctx, c),
+                      child: Row(
+                        children: [
+                          const CircleAvatar(
+                            backgroundColor: AppColors.button,
+                            radius: 16,
+                            child: Icon(
+                              Icons.person,
+                              size: 16,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  (c['nombre'] as String?) ?? 'Sin nombre',
+                                  style: const TextStyle(
+                                    color: AppColors.textPrimary,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                Text(
+                                  (c['correo'] as String?) ?? '',
+                                  style: const TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text(
+              'CANCELAR',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (destino == null || !mounted) return;
+
+    try {
+      await PedidoService.transferirPedido(
+        pedidoId: pedido.id,
+        nuevoResponsableSub: destino['id'] as String,
+      );
+      if (!mounted) return;
+      showAppSuccess(
+        context,
+        'Pedido transferido a ${destino['nombre']}',
+      );
+      await _cargarPedidos();
+    } catch (e) {
+      if (!mounted) return;
+      showAppError(
+        context,
+        'Error al transferir: ${e.toString().replaceFirst('Exception: ', '')}',
+      );
+    }
+  }
+
   Future<void> _iniciarCancelacion(Pedido pedido) async {
     final motivo = await showDialog<String>(
       context: context,
@@ -194,84 +424,115 @@ class _GestionPedidosState extends State<GestionPedidos>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.button,
-        elevation: 0,
-        centerTitle: true,
-        iconTheme: const IconThemeData(color: Colors.white),
-        title: const Text(
-          'GESTIÓN DE PEDIDOS',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.5,
-            fontSize: 15,
+      backgroundColor: Colors.black,
+      extendBodyBehindAppBar: true,
+      appBar: const TrabajadorAppBar(title: 'GESTIÓN DE PEDIDOS'),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/images/Bravo restaurante.jpg'),
+            fit: BoxFit.cover,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.white),
-            tooltip: 'Actualizar',
-            onPressed: _refrescar,
+        child: Container(
+          width: double.infinity,
+          height: double.infinity,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.black.withValues(alpha: 0.5),
+                Colors.black.withValues(alpha: 0.85),
+              ],
+            ),
           ),
-          // Icono de perfil (reusa TrabajadorAppBar logic inline para no duplicar
-          // la AppBar compleja con extendBodyBehindAppBar)
-          _PerfilIconButton(),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: Colors.white,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white60,
-          labelStyle: const TextStyle(
-            fontWeight: FontWeight.w700,
-            fontSize: 12,
-            letterSpacing: 0.8,
+          child: SafeArea(
+            child: FadeSlideIn(
+              child: Column(
+              children: [
+                // ── TabBar + refresh en el body (bajo el AppBar transparente) ──
+                Row(
+                  children: [
+                    Expanded(
+                      child: TabBar(
+                        controller: _tabController,
+                        indicatorColor: AppColors.button,
+                        labelColor: Colors.white,
+                        unselectedLabelColor: Colors.white54,
+                        indicatorWeight: 2.5,
+                        labelStyle: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                          letterSpacing: 0.8,
+                        ),
+                        unselectedLabelStyle: const TextStyle(
+                          fontWeight: FontWeight.w500,
+                          fontSize: 12,
+                        ),
+                        tabs: [
+                          _TabConBadge(label: 'ACTIVOS', count: _activos.length),
+                          _TabConBadge(label: 'LISTOS', count: _listos.length),
+                          _TabConBadge(label: 'COBRAR', count: _cobrar.length),
+                        ],
+                      ),
+                    ),
+                    Semantics(
+                      label: 'Actualizar pedidos',
+                      button: true,
+                      child: IconButton(
+                        icon: const Icon(Icons.refresh, color: Colors.white70),
+                        tooltip: 'Actualizar',
+                        onPressed: _refrescar,
+                      ),
+                    ),
+                  ],
+                ),
+                // ── Contenido de cada tab ──
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _TabActivos(
+                        pedidos: _activos,
+                        cargando: _cargando,
+                        error: _error,
+                        onRefresh: _refrescar,
+                        onModificar: (p) => Navigator.push(
+                          context,
+                          AppRoute.slide(ModificarComanda(mesaIdInicial: p.mesaId)),
+                        ),
+                        onCancelar: _iniciarCancelacion,
+                        onMover: _moverMesa,
+                        onTransferir: _transferirPedido,
+                      ),
+                      _TabListos(
+                        pedidos: _listos,
+                        cargando: _cargando,
+                        error: _error,
+                        onRefresh: _refrescar,
+                        onEntregar: _marcarEntregado,
+                      ),
+                      _TabCobrar(
+                        pedidos: _cobrar,
+                        cargando: _cargando,
+                        error: _error,
+                        onRefresh: _refrescar,
+                        onSacarCuenta: (p) => Navigator.push(
+                          context,
+                          AppRoute.slide(SacarCuenta(mesaIdInicial: p.mesaId)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            ),
           ),
-          unselectedLabelStyle: const TextStyle(
-            fontWeight: FontWeight.w500,
-            fontSize: 12,
-          ),
-          tabs: [
-            _TabConBadge(label: 'ACTIVOS', count: _activos.length),
-            _TabConBadge(label: 'LISTOS', count: _listos.length),
-            _TabConBadge(label: 'COBRAR', count: _cobrar.length),
-          ],
         ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _TabActivos(
-            pedidos: _activos,
-            cargando: _cargando,
-            error: _error,
-            onRefresh: _refrescar,
-            onModificar: (p) => Navigator.push(
-              context,
-              AppRoute.slide(ModificarComanda(mesaIdInicial: p.mesaId)),
-            ),
-            onCancelar: _iniciarCancelacion,
-          ),
-          _TabListos(
-            pedidos: _listos,
-            cargando: _cargando,
-            error: _error,
-            onRefresh: _refrescar,
-            onEntregar: _marcarEntregado,
-          ),
-          _TabCobrar(
-            pedidos: _cobrar,
-            cargando: _cargando,
-            error: _error,
-            onRefresh: _refrescar,
-            onSacarCuenta: (p) => Navigator.push(
-              context,
-              AppRoute.slide(SacarCuenta(mesaIdInicial: p.mesaId)),
-            ),
-          ),
-        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _mostrarBottomSheetCrear(context),
@@ -335,38 +596,6 @@ class _TabConBadge extends StatelessWidget {
             ),
           ],
         ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────
-// WIDGET AUXILIAR — Icono de perfil sin duplicar toda la AppBar
-// ─────────────────────────────────────────────────────────────
-class _PerfilIconButton extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final auth = context.watch<AuthProvider>();
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: IconButton(
-        icon: CircleAvatar(
-          backgroundColor: Colors.white24,
-          radius: 16,
-          child: Icon(
-            auth.estaAutenticado ? Icons.person : Icons.person_outline,
-            color: Colors.white,
-            size: 18,
-          ),
-        ),
-        onPressed: () {
-          if (auth.estaAutenticado) {
-            Navigator.push(
-              context,
-              AppRoute.slideUp(const PerfilTrabajadorScreen()),
-            );
-          }
-        },
       ),
     );
   }
@@ -546,6 +775,14 @@ class _PedidoTile extends StatelessWidget {
   final VoidCallback onAccion;
   final VoidCallback? onAccionSecundaria;
   final String? labelAccionSecundaria;
+  // Acción terciaria opcional (ej. MOVER mesa). Se renderiza como outlined
+  // pequeño, sin color destructivo, antes de la secundaria.
+  final VoidCallback? onAccionTerciaria;
+  final String? labelAccionTerciaria;
+  // Acción cuarta opcional (ej. TRANSFERIR pedido). Mismo estilo que la
+  // terciaria; útil para acciones de cambio de turno / ayuda mutua.
+  final VoidCallback? onAccionCuarta;
+  final String? labelAccionCuarta;
 
   const _PedidoTile({
     required this.pedido,
@@ -554,6 +791,10 @@ class _PedidoTile extends StatelessWidget {
     required this.onAccion,
     this.onAccionSecundaria,
     this.labelAccionSecundaria,
+    this.onAccionTerciaria,
+    this.labelAccionTerciaria,
+    this.onAccionCuarta,
+    this.labelAccionCuarta,
   });
 
   String get _etiquetaUbicacion {
@@ -621,6 +862,23 @@ class _PedidoTile extends StatelessWidget {
     }
   }
 
+  /// Tiempo transcurrido desde que se creó el pedido. Útil para anticipar
+  /// rotación de mesas y detectar pedidos que llevan demasiado tiempo en
+  /// cocina. Se actualiza con cada poll (30s) — no usamos timers internos.
+  String _tiempoEnMesa(String fecha) {
+    try {
+      final dt = DateTime.parse(fecha);
+      final diff = DateTime.now().difference(dt);
+      if (diff.inMinutes < 1) return 'recién';
+      if (diff.inMinutes < 60) return 'hace ${diff.inMinutes} min';
+      final h = diff.inHours;
+      final m = diff.inMinutes % 60;
+      return m == 0 ? 'hace ${h}h' : 'hace ${h}h ${m}min';
+    } catch (_) {
+      return '';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -680,12 +938,25 @@ class _PedidoTile extends StatelessWidget {
                     ),
                   ),
                 ),
-                Text(
-                  _hora(pedido.fecha),
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 11,
-                  ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      _hora(pedido.fecha),
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 11,
+                      ),
+                    ),
+                    Text(
+                      _tiempoEnMesa(pedido.fecha),
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 9,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -752,6 +1023,60 @@ class _PedidoTile extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
+                // Acción terciaria (mover mesa) — outlined neutral
+                if (onAccionTerciaria != null && labelAccionTerciaria != null)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: OutlinedButton(
+                      onPressed: onAccionTerciaria,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.textSecondary,
+                        side: const BorderSide(
+                          color: AppColors.textSecondary,
+                          width: 0.8,
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 7),
+                        minimumSize: const Size(0, 32),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: Text(
+                        labelAccionTerciaria!,
+                        style: const TextStyle(
+                            fontSize: 10, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ),
+                // Acción cuarta (transferir pedido) — outlined neutral
+                if (onAccionCuarta != null && labelAccionCuarta != null)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: OutlinedButton(
+                      onPressed: onAccionCuarta,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.textSecondary,
+                        side: const BorderSide(
+                          color: AppColors.textSecondary,
+                          width: 0.8,
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 7),
+                        minimumSize: const Size(0, 32),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: Text(
+                        labelAccionCuarta!,
+                        style: const TextStyle(
+                            fontSize: 10, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ),
                 // Acción secundaria (cancelar)
                 if (onAccionSecundaria != null && labelAccionSecundaria != null)
                   Padding(
@@ -916,6 +1241,8 @@ class _TabActivos extends StatelessWidget {
   final Future<void> Function() onRefresh;
   final void Function(Pedido) onModificar;
   final Future<void> Function(Pedido) onCancelar;
+  final Future<void> Function(Pedido) onMover;
+  final Future<void> Function(Pedido) onTransferir;
 
   const _TabActivos({
     required this.pedidos,
@@ -924,6 +1251,8 @@ class _TabActivos extends StatelessWidget {
     required this.onRefresh,
     required this.onModificar,
     required this.onCancelar,
+    required this.onMover,
+    required this.onTransferir,
   });
 
   @override
@@ -958,6 +1287,15 @@ class _TabActivos extends StatelessWidget {
                 esLocal ? onModificar(p) : onCancelar(p),
             labelAccionSecundaria: esLocal ? 'CANCELAR' : null,
             onAccionSecundaria: esLocal ? () => onCancelar(p) : null,
+            // MOVER MESA: solo para pedidos de mesa que aún no se han cobrado.
+            // En domicilio/recoger no aplica.
+            labelAccionTerciaria: esLocal ? 'MOVER' : null,
+            onAccionTerciaria: esLocal ? () => onMover(p) : null,
+            // TRANSFERIR el pedido a otro camarero (cambio de turno).
+            // Aplica también a pedidos no-mesa (domicilio/recoger pueden
+            // pasar a otro camarero), así que lo dejamos siempre disponible.
+            labelAccionCuarta: 'TRANSF.',
+            onAccionCuarta: () => onTransferir(p),
           );
         },
       ),
