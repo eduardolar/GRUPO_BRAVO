@@ -56,6 +56,7 @@ class Pedido {
   final int items;
   final String tipoEntrega;
   final String metodoPago;
+  final String estadoPago;
   final String? direccion;
   final String? mesaId;
   final int? numeroMesa;
@@ -71,6 +72,7 @@ class Pedido {
     required this.items,
     required this.tipoEntrega,
     required this.metodoPago,
+    this.estadoPago = 'pendiente',
     this.direccion,
     this.mesaId,
     this.numeroMesa,
@@ -93,6 +95,8 @@ class Pedido {
       items: mapa['items'] ?? 0,
       tipoEntrega: mapa['tipoEntrega'] ?? '',
       metodoPago: mapa['metodoPago'] ?? '',
+      // Acepta camelCase (formato actual del backend) y snake_case (legacy).
+      estadoPago: (mapa['estadoPago'] ?? mapa['estado_pago'] ?? 'pendiente') as String,
       direccion: mapa['direccion'],
       mesaId: mapa['mesaId'],
       numeroMesa: mapa['numeroMesa'],

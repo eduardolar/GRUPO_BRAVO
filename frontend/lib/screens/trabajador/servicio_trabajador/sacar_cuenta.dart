@@ -9,7 +9,12 @@ import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
 class SacarCuenta extends StatefulWidget {
-  const SacarCuenta({super.key});
+  /// Si se pasa, selecciona automáticamente esa mesa al cargar la pantalla
+  /// y carga su pedido. Útil para entrar desde un atajo (ej. acción "Sacar
+  /// cuenta" en una fila de Gestión de Pedidos).
+  final String? mesaIdInicial;
+
+  const SacarCuenta({super.key, this.mesaIdInicial});
 
   @override
   State<SacarCuenta> createState() => _SacarCuentaState();
@@ -18,6 +23,10 @@ class SacarCuenta extends StatefulWidget {
 class _SacarCuentaState extends State<SacarCuenta> {
   List<Mesa> _mesasOcupadas = [];
   bool _cargandoMesas = true;
+  // Solo aplica cuando se entra vía atajo (mesaIdInicial). Si tras cargar
+  // mesas no encontramos la preseleccionada, mostramos un error en lugar
+  // del spinner infinito que veíamos antes.
+  bool _atajoFallido = false;
 
   Mesa? _mesaSeleccionada;
   Map<String, dynamic>? _pedido;
@@ -39,9 +48,30 @@ class _SacarCuentaState extends State<SacarCuenta> {
         _mesasOcupadas = todas.where((m) => !m.disponible).toList();
         _cargandoMesas = false;
       });
+
+      // Atajo: si entramos con una mesa preseleccionada, cargamos su pedido
+      // directamente sin obligar al camarero a re-elegirla en la lista.
+      // Buscamos en TODAS las mesas (no solo ocupadas): en pedidos del tab
+      // "Cobrar" la mesa puede estar marcada libre si el flujo se ejecutó
+      // parcialmente antes; aún así queremos cobrar el pedido pendiente.
+      final preId = widget.mesaIdInicial;
+      if (preId != null && preId.isNotEmpty) {
+        final mesa = todas.where((m) => m.id == preId).firstOrNull;
+        if (mesa != null && mounted) {
+          _seleccionarMesa(mesa);
+        } else if (mounted) {
+          // Atajo no resoluble: la mesa del pedido seleccionado ya no existe
+          // en la lista (puede haberse borrado, o el pedido tiene mesa_id
+          // huérfano). Mostramos error claro en vez de spinner infinito.
+          setState(() => _atajoFallido = true);
+        }
+      }
     } catch (_) {
       if (!mounted) return;
-      setState(() => _cargandoMesas = false);
+      setState(() {
+        _cargandoMesas = false;
+        if (widget.mesaIdInicial != null) _atajoFallido = true;
+      });
     }
   }
 
@@ -81,30 +111,55 @@ class _SacarCuentaState extends State<SacarCuenta> {
     final idempotencyKey = const Uuid().v4();
 
     setState(() => _procesando = true);
+    // Separamos las dos operaciones para diagnosticar cuál falla. Si falla
+    // el cobro, no tocamos la mesa. Si falla la liberación de mesa tras un
+    // cobro exitoso, alertamos explícitamente para que el camarero la libere
+    // a mano (el dinero ya está cobrado, no se puede deshacer sin más).
     try {
       await ApiService.cerrarPedido(
         pedidoId: pedidoId,
         metodoPago: metodoPago,
         idempotencyKey: idempotencyKey,
       );
-      // Comparte la misma clave: si el flujo completo se reintenta
-      // (cobro + liberación) el backend deduplica ambas operaciones.
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _procesando = false);
+      final detalle = e.toString().replaceFirst(RegExp(r'^Exception:\s*'), '');
+      _showSnack('Error al cobrar: $detalle', error: true);
+      return;
+    }
+
+    try {
       await ApiService.marcarMesaLibre(
         mesa.id,
         idempotencyKey: idempotencyKey,
       );
-      if (!mounted) return;
-      _showSnack('Mesa ${mesa.numero} cerrada y liberada');
-      setState(() {
-        _mesasOcupadas.remove(mesa);
-        _mesaSeleccionada = null;
-        _pedido = null;
-        _procesando = false;
-      });
     } catch (e) {
       if (!mounted) return;
       setState(() => _procesando = false);
-      _showSnack('Error: $e', error: true);
+      final detalle = e.toString().replaceFirst(RegExp(r'^Exception:\s*'), '');
+      // Cobro hecho pero mesa no liberada: damos info clara y dejamos que
+      // el camarero pueda intentarlo de nuevo (no hacemos auto-pop).
+      _showSnack(
+        'Cobro OK pero la mesa no se liberó: $detalle',
+        error: true,
+      );
+      return;
+    }
+
+    if (!mounted) return;
+    _showSnack('Mesa ${mesa.numero} cerrada y liberada');
+    setState(() {
+      _mesasOcupadas.remove(mesa);
+      _mesaSeleccionada = null;
+      _pedido = null;
+      _procesando = false;
+    });
+    // Si entramos vía atajo (Cobrar desde Gestión de Pedidos), tras el
+    // cobro exitoso volvemos directamente: el camarero ya terminó la
+    // tarea y no tiene sentido que se quede en el selector de mesas.
+    if (widget.mesaIdInicial != null && mounted) {
+      Navigator.of(context).pop();
     }
   }
 
@@ -189,22 +244,106 @@ class _SacarCuentaState extends State<SacarCuenta> {
                 const SizedBox(height: 16),
 
                 // ── Cuerpo ──────────────────────────────────────
+                // Cuando se entra vía atajo (mesaIdInicial), nunca enseñamos
+                // la lista de mesas: o bien mostramos el panel de cuenta
+                // (mesa cargada) o un loader/empty state mientras llega.
+                // El selector de mesas solo aparece en el flujo clásico.
                 Expanded(
                   child: _mesaSeleccionada == null
-                      ? _PanelMesas(
-                          mesas: _mesasOcupadas,
-                          cargando: _cargandoMesas,
-                          onSeleccionar: _seleccionarMesa,
-                        )
+                      ? (widget.mesaIdInicial != null
+                          ? (_atajoFallido
+                              ? Center(
+                                  child: Padding(
+                                    padding:
+                                        const EdgeInsets.symmetric(horizontal: 32),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.error_outline,
+                                          size: 40,
+                                          color: AppColors.error,
+                                        ),
+                                        const SizedBox(height: 16),
+                                        const Text(
+                                          'NO SE ENCONTRÓ LA MESA',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            color: AppColors.background,
+                                            fontSize: 12,
+                                            letterSpacing: 2.5,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        const Text(
+                                          'La mesa del pedido ya no existe o se cerró.',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            color: Colors.white60,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 20),
+                                        ElevatedButton(
+                                          onPressed: () =>
+                                              Navigator.of(context).pop(),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: AppColors.button,
+                                            foregroundColor: Colors.white,
+                                            elevation: 0,
+                                            shape: const RoundedRectangleBorder(),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 24,
+                                              vertical: 12,
+                                            ),
+                                          ),
+                                          child: const Text(
+                                            'VOLVER',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w700,
+                                              letterSpacing: 1.5,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                )
+                              : const Center(
+                                  child: SizedBox(
+                                    width: 22,
+                                    height: 22,
+                                    child: CircularProgressIndicator(
+                                      color: AppColors.background,
+                                      strokeWidth: 1.5,
+                                    ),
+                                  ),
+                                ))
+                          : _PanelMesas(
+                              mesas: _mesasOcupadas,
+                              cargando: _cargandoMesas,
+                              onSeleccionar: _seleccionarMesa,
+                            ))
                       : _PanelCuenta(
                           mesa: _mesaSeleccionada!,
                           pedido: _pedido,
                           cargando: _cargandoPedido,
                           procesando: _procesando,
-                          onVolver: () => setState(() {
-                            _mesaSeleccionada = null;
-                            _pedido = null;
-                          }),
+                          onVolver: () {
+                            // Si entramos vía atajo, "Volver" sale de la
+                            // pantalla en lugar de mostrar la lista de
+                            // mesas (que el camarero no eligió, no aporta).
+                            if (widget.mesaIdInicial != null) {
+                              Navigator.of(context).pop();
+                              return;
+                            }
+                            setState(() {
+                              _mesaSeleccionada = null;
+                              _pedido = null;
+                            });
+                          },
                           onCobrar: _cobrarYLiberarMesa,
                         ),
                 ),
@@ -412,12 +551,17 @@ class _PanelCuenta extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
           child: Row(
             children: [
-              GestureDetector(
-                onTap: onVolver,
-                child: const Icon(
+              IconButton(
+                onPressed: onVolver,
+                icon: const Icon(
                   Icons.arrow_back_ios_new,
                   color: AppColors.background,
-                  size: 16,
+                ),
+                iconSize: 16,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(
+                  minWidth: 48,
+                  minHeight: 48,
                 ),
               ),
               const SizedBox(width: 12),

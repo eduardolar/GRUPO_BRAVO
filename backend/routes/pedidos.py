@@ -441,6 +441,13 @@ async def crear_pedido(
         precio_real = float(producto_db.get("precio", 0))
         item["precio"] = precio_real
         total_calculado += precio_real * item["cantidad"]
+        # Las bebidas no pasan por cocina: el camarero las sirve directamente.
+        # Las marcamos `hecho=True` al crear el pedido para que el tablero del
+        # cocinero no las muestre como pendientes y, si un pedido es solo de
+        # bebidas, vaya directo a 'listo' sin intervención de cocina.
+        categoria = str(producto_db.get("categoria", "")).strip().lower()
+        if categoria == "bebidas":
+            item["hecho"] = True
 
     # Para clientes, ignorar userId del payload y usar el sub del JWT.
     # Admin y personal de sala/cocina pueden crear pedidos en nombre de cualquier usuario.
@@ -465,6 +472,16 @@ async def crear_pedido(
                 n = len(items_raw) if isinstance(items_raw, list) else 0
                 return _pedido_a_respuesta(existing, n)
 
+    # Si TODOS los items vienen marcados `hecho` (caso típico: pedido solo
+    # de bebidas), el pedido va directo a `listo`: no hay nada que cocinar.
+    # El camarero lo verá listo para entregar sin pasar por la pantalla de
+    # cocinero.
+    estado_inicial = (
+        "listo"
+        if items_dict and all(it.get("hecho", False) for it in items_dict)
+        else "pendiente"
+    )
+
     pedido_dict = {
         "usuario_id": usuario_id_pedido,
         "items": items_dict,
@@ -473,7 +490,7 @@ async def crear_pedido(
         "total": total_calculado,
         "notas": pedido.notas,
         "fecha": datetime.now(timezone.utc).isoformat(),
-        "estado": "pendiente",
+        "estado": estado_inicial,
         "referencia_pago": pedido.referenciaPago,
         "estado_pago": pedido.estadoPago or "pendiente",
         # Auditoría de creación: sub/correo/rol del actor que abrió el pedido
@@ -965,14 +982,22 @@ def actualizar_pedido(
 
     # ── Protección de estado terminal ─────────────────────────────────────────
     # En pedidos terminales (entregado/cancelado) solo se permite cambiar
-    # estadoPago (ej: post-cobro pendiente → pagado). El resto se rechaza.
+    # estadoPago (ej: post-cobro pendiente → pagado) y, junto con él,
+    # metodoPago — porque el cobro manual desde sala registra ambos a la vez
+    # (estadoPago=pagado + metodoPago=efectivo|tarjeta_fisica).
+    # En cualquier otro caso, metodoPago en estado terminal es manipulación
+    # de un registro histórico y se rechaza.
     if es_terminal:
         campos_bloqueados = []
+        es_cobro = (
+            payload.estadoPago == "pagado"
+            and pedido.get("estado_pago") != "pagado"
+        )
         if payload.items is not None:
             campos_bloqueados.append("items")
         if payload.total is not None:
             campos_bloqueados.append("total")
-        if payload.metodoPago is not None:
+        if payload.metodoPago is not None and not es_cobro:
             campos_bloqueados.append("metodoPago")
         if payload.estado is not None and payload.estado != estado_actual:
             campos_bloqueados.append("estado")

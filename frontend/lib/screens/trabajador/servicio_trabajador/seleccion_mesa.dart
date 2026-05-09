@@ -243,12 +243,17 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
                   padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
                   child: Row(
                     children: [
-                      GestureDetector(
-                        onTap: () => Navigator.pop(context),
-                        child: const Icon(
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(
                           Icons.arrow_back_ios_new,
                           color: AppColors.background,
-                          size: 18,
+                        ),
+                        iconSize: 18,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(
+                          minWidth: 48,
+                          minHeight: 48,
                         ),
                       ),
                       const SizedBox(width: 14),

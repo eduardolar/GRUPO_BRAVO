@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:frontend/components/trabajador/bravo_splash.dart';
 import 'package:frontend/core/app_routes.dart';
 import 'package:frontend/core/colors_style.dart';
-import 'package:frontend/screens/trabajador/Pedidos/pedidos_listos_screen.dart';
+import 'package:frontend/screens/trabajador/Pedidos/gestion_pedidos.dart';
 import 'package:frontend/screens/trabajador/servicio_trabajador/modificar_comanda.dart';
 import 'package:frontend/screens/trabajador/servicio_trabajador/sacar_cuenta.dart';
 import 'package:frontend/screens/trabajador/servicio_trabajador/seleccion_mesa.dart';
@@ -187,7 +187,8 @@ class _ActionButtonsServicio extends StatelessWidget {
           isPrimary: true,
           onPressed: () => Navigator.push(
             context,
-            AppRoute.slide(const PedidosListosScreen()),
+            // Atajo a Gestión de Pedidos abierto directamente en el tab Listos
+            AppRoute.slide(const GestionPedidos(initialTab: 1)),
           ),
         ),
         _BotonAccion(

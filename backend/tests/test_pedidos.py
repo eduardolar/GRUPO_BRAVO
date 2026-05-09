@@ -146,6 +146,97 @@ def test_crear_pedido_ok(client):
     assert data["total"] == 25.0  # 12.50 (DB price) × 2 (cantidad)
 
 
+def test_pedido_solo_bebidas_va_directo_a_listo(client):
+    """Si todos los items son de categoría Bebidas, el pedido se crea con
+    estado='listo' y todos los items con hecho=True. No pasa por cocina."""
+    pedido_id = ObjectId()
+    mock_insert = MagicMock()
+    mock_insert.inserted_id = pedido_id
+
+    captured_doc: dict = {}
+    def _capturar_insert(doc, **_):
+        captured_doc.update(doc)
+        return mock_insert
+
+    with patch("routes.pedidos.cliente") as mock_cliente, \
+         patch("routes.pedidos.coleccion_pedidos") as mock_pedidos, \
+         patch("routes.pedidos.coleccion_productos") as mock_productos, \
+         patch("routes.pedidos.coleccion_ingredientes"), \
+         patch("routes.pedidos.coleccion_usuarios") as mock_usuarios, \
+         patch("routes.pedidos._enviar_factura", new_callable=AsyncMock):
+
+        mock_pedidos.insert_one.side_effect = _capturar_insert
+        mock_productos.find_one.return_value = {
+            "precio": 2.50, "ingredientes": [], "categoria": "Bebidas",
+        }
+        mock_usuarios.find_one.return_value = None
+        mock_session = MagicMock()
+        mock_cliente.start_session.return_value.__enter__.return_value = mock_session
+
+        resp = client.post("/api/v1/pedidos", json=PEDIDO_VALIDO, headers=_auth_cliente())
+
+    assert resp.status_code == 200
+    assert captured_doc["estado"] == "listo"
+    assert all(it.get("hecho") is True for it in captured_doc["items"])
+
+
+def test_pedido_mixto_bebida_marca_solo_bebida_hecha(client):
+    """Pedido con un item de bebidas y otro de otra categoría: la bebida sale
+    hecha=True, el otro plato hecho ausente/false. Estado del pedido=pendiente
+    porque queda algo por cocinar."""
+    pedido_id = ObjectId()
+    mock_insert = MagicMock()
+    mock_insert.inserted_id = pedido_id
+
+    captured_doc: dict = {}
+    def _capturar_insert(doc, **_):
+        captured_doc.update(doc)
+        return mock_insert
+
+    # Dos productos distintos: el primero bebida, el segundo plato.
+    productos_db = {
+        "p_bebida": {"precio": 2.0, "ingredientes": [], "categoria": "Bebidas"},
+        "p_plato": {"precio": 10.0, "ingredientes": [], "categoria": "Principales"},
+    }
+    def _find_one_producto(filtro, **_):
+        # filtro es {"_id": ObjectId(pid)} — devolvemos según el id ficticio.
+        oid = str(filtro.get("_id"))
+        if oid.endswith("1"):
+            return productos_db["p_bebida"]
+        return productos_db["p_plato"]
+
+    pedido_payload = {
+        **PEDIDO_VALIDO,
+        "items": [
+            {"producto_id": "507f1f77bcf86cd799439011", "cantidad": 1, "precio": 0},
+            {"producto_id": "507f1f77bcf86cd799439012", "cantidad": 1, "precio": 0},
+        ],
+    }
+
+    with patch("routes.pedidos.cliente") as mock_cliente, \
+         patch("routes.pedidos.coleccion_pedidos") as mock_pedidos, \
+         patch("routes.pedidos.coleccion_productos") as mock_productos, \
+         patch("routes.pedidos.coleccion_ingredientes"), \
+         patch("routes.pedidos.coleccion_usuarios") as mock_usuarios, \
+         patch("routes.pedidos._enviar_factura", new_callable=AsyncMock):
+
+        mock_pedidos.insert_one.side_effect = _capturar_insert
+        mock_productos.find_one.side_effect = _find_one_producto
+        mock_usuarios.find_one.return_value = None
+        mock_session = MagicMock()
+        mock_cliente.start_session.return_value.__enter__.return_value = mock_session
+
+        resp = client.post("/api/v1/pedidos", json=pedido_payload, headers=_auth_cliente())
+
+    assert resp.status_code == 200
+    assert captured_doc["estado"] == "pendiente"
+    items = captured_doc["items"]
+    bebida = next(it for it in items if it["producto_id"].endswith("1"))
+    plato = next(it for it in items if it["producto_id"].endswith("2"))
+    assert bebida.get("hecho") is True
+    assert not plato.get("hecho", False)
+
+
 def test_tipo_entrega_mesa_normaliza_a_local(client):
     pedido_id = ObjectId()
     mock_insert = MagicMock()
@@ -2286,3 +2377,53 @@ def test_actualizar_pedido_super_admin_pago_pasarela_devuelve_200(client):
         )
 
     assert resp.status_code == 200
+
+
+def test_actualizar_pedido_cobro_en_estado_terminal_entregado_devuelve_200(client):
+    """Caso real del flujo Listos→Cobrar: pedido ya entregado pero pendiente
+    de cobro. El camarero cierra cuenta enviando estadoPago=pagado +
+    metodoPago. Aunque entregado es terminal, este caso debe permitirse
+    porque es la transición legítima de cobro."""
+    pedido_id = str(ObjectId())
+    doc = _make_pedido_doc(pedido_id, restaurante_id="r1")
+    doc["estado"] = "entregado"
+    doc["estado_pago"] = "pendiente"
+
+    mock_result = MagicMock()
+    mock_result.matched_count = 1
+    mock_result.modified_count = 1
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
+        mock_pedidos.find_one.return_value = doc
+        mock_pedidos.update_one.return_value = mock_result
+        resp = client.patch(
+            f"/api/v1/pedidos/{pedido_id}",
+            json={
+                "estado": "entregado",
+                "estadoPago": "pagado",
+                "metodoPago": "efectivo",
+            },
+            headers=_auth_camarero(),
+        )
+
+    assert resp.status_code == 200
+
+
+def test_actualizar_pedido_metodopago_en_terminal_pagado_devuelve_409(client):
+    """Defensa: NO se puede cambiar metodoPago en un pedido ya pagado
+    (sería tampering del histórico contable)."""
+    pedido_id = str(ObjectId())
+    doc = _make_pedido_doc(pedido_id, restaurante_id="r1")
+    doc["estado"] = "entregado"
+    doc["estado_pago"] = "pagado"  # ya cobrado
+
+    with patch("routes.pedidos.coleccion_pedidos") as mock_pedidos:
+        mock_pedidos.find_one.return_value = doc
+        resp = client.patch(
+            f"/api/v1/pedidos/{pedido_id}",
+            json={"metodoPago": "tarjeta_fisica"},
+            headers=_auth_camarero(),
+        )
+
+    assert resp.status_code == 409
+    assert "metodopago" in resp.json()["detail"].lower()
