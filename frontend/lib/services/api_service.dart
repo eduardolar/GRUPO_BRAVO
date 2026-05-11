@@ -172,6 +172,7 @@ class ApiService {
     required String estadoPago,
     String? restauranteId,
     String? idempotencyKey,
+    bool prioritario = false,
   }) => PedidoService.crearPedido(
     userId: userId,
     items: items,
@@ -186,6 +187,7 @@ class ApiService {
     estadoPago: estadoPago,
     restauranteId: restauranteId,
     idempotencyKey: idempotencyKey,
+    prioritario: prioritario,
   );
 
   static Future<Map<String, dynamic>> agregarItemsPedido({
@@ -223,6 +225,14 @@ class ApiService {
   }) =>
       PedidoService.actualizarEstadoPedido(pedidoId: pedidoId, estado: estado);
 
+  static Future<void> cancelarPedido({
+    required String pedidoId,
+    required String motivoCancelacion,
+  }) => PedidoService.cancelarPedido(
+    pedidoId: pedidoId,
+    motivoCancelacion: motivoCancelacion,
+  );
+
   static Future<Map<String, dynamic>> marcarItemHecho({
     required String pedidoId,
     String? itemId,
@@ -243,16 +253,25 @@ class ApiService {
     required String pedidoId,
     required String metodoPago,
     String? idempotencyKey,
+    double? descuento,
+    double? propina,
   }) => PedidoService.cerrarPedido(
     pedidoId: pedidoId,
     metodoPago: metodoPago,
     idempotencyKey: idempotencyKey,
+    descuento: descuento,
+    propina: propina,
   );
 
   static Future<void> marcarMesaLibre(
     String mesaId, {
     String? idempotencyKey,
   }) => MesaService.marcarMesaLibre(mesaId, idempotencyKey: idempotencyKey);
+
+  /// Marca la mesa como pendiente de limpiar (estado intermedio entre
+  /// ocupada y libre). Tras cobrar, la mesa NO debe quedar libre directa.
+  static Future<void> marcarMesaPorLimpiar(String mesaId) =>
+      MesaService.marcarMesaPorLimpiar(mesaId);
 
   static Future<void> marcarMesaOcupada(
     String mesaId, {

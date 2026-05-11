@@ -18,7 +18,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from bson import ObjectId
 
-from security import crear_token
+from tests.tok_helpers import tok
 
 
 # ─── Stub de cloudinary para entornos sin la lib instalada ───────────────────
@@ -47,22 +47,11 @@ _instalar_stub_cloudinary()
 # ─── Helpers de tokens ───────────────────────────────────────────────────────
 
 def _tok_admin(rid: str = "R1") -> dict:
-    token = crear_token({
-        "sub": "admin_id",
-        "correo": "admin@r1.com",
-        "rol": "admin",
-        "restaurante_id": rid,
-    })
-    return {"Authorization": f"Bearer {token}"}
+    return tok("admin", restaurante_id=rid)
 
 
 def _tok_super() -> dict:
-    token = crear_token({
-        "sub": "super_id",
-        "correo": "super@bravo.com",
-        "rol": "super_admin",
-    })
-    return {"Authorization": f"Bearer {token}"}
+    return tok("super_admin")
 
 
 # ─── Helper: respuesta falsa de Cloudinary ───────────────────────────────────

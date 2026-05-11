@@ -5,6 +5,7 @@ super admin (cuyo rol en MongoDB era `superadministrador`, `superadmin` o
 incluso `Super Admin`) intentaba leer endpoints protegidos con
 `require_role(["super_admin"])`.
 """
+from bson import ObjectId
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.testclient import TestClient
 
@@ -14,6 +15,22 @@ from security import (
     crear_token,
     ROLES_CANONICOS,
 )
+
+
+# ID fijo en formato ObjectId válido que se inserta en mongomock para los tests
+# de require_role. Todos los tokens de esta clase comparten el mismo _id.
+_USER_OID = ObjectId()
+_USER_ID = str(_USER_OID)
+
+
+def _insertar_usuario_activo(rol: str) -> None:
+    """Inserta (o reemplaza) el usuario de test en mongomock con el rol dado."""
+    from database import coleccion_usuarios
+    coleccion_usuarios.replace_one(
+        {"_id": _USER_OID},
+        {"_id": _USER_OID, "correo": "x@x.com", "rol": normalizar_rol(rol), "activo": True},
+        upsert=True,
+    )
 
 
 class TestNormalizarRol:
@@ -48,7 +65,13 @@ class TestNormalizarRol:
 
 class TestRequireRoleConFastAPI:
     """Levanta una mini app FastAPI y comprueba que require_role acepta y
-    rechaza tokens reales."""
+    rechaza tokens reales.
+
+    Desde el Fix 3, get_current_user revalida activo y rol contra BD.
+    Por eso cada llamada con token válido necesita que el usuario exista
+    en mongomock con activo=True. Se usa _USER_OID como _id fijo y
+    _insertar_usuario_activo() para preparar el documento antes de cada GET.
+    """
 
     def setup_method(self):
         app = FastAPI()
@@ -57,7 +80,7 @@ class TestRequireRoleConFastAPI:
         def solo_admin(_: dict = Depends(require_role(["admin", "super_admin"]))):
             return {"ok": True}
 
-        # Convertimos los HTTPException 401/403 a respuestas JSON estándar.
+        # Convertimos las HTTPException 401/403 a respuestas JSON estándar.
         @app.exception_handler(HTTPException)
         async def http_handler(_, exc):  # type: ignore[no-untyped-def]
             from fastapi.responses import JSONResponse
@@ -68,7 +91,11 @@ class TestRequireRoleConFastAPI:
     def _get(self, rol_en_token: str | None):
         if rol_en_token is None:
             return self.client.get("/solo-admin")
-        token = crear_token({"sub": "u1", "correo": "x@x.com", "rol": rol_en_token})
+        # Insertar usuario activo en mongomock con el rol canónico que se espera en BD.
+        # Usamos el rol canónico para que el lookup de BD no dispare el warning
+        # de "rol en BD difiere del JWT" en casos de alias legacy.
+        _insertar_usuario_activo(rol_en_token)
+        token = crear_token({"sub": _USER_ID, "correo": "x@x.com", "rol": rol_en_token})
         return self.client.get(
             "/solo-admin",
             headers={"Authorization": f"Bearer {token}"},
@@ -82,6 +109,35 @@ class TestRequireRoleConFastAPI:
         r = self.client.get(
             "/solo-admin", headers={"Authorization": "Bearer no-es-un-jwt"}
         )
+        assert r.status_code == 401
+
+    def test_sub_no_objectid_devuelve_401(self):
+        """Un token con sub no-ObjectId (ej. "u1") debe devolver 401."""
+        token = crear_token({"sub": "no-es-un-oid", "correo": "x@x.com", "rol": "admin"})
+        r = self.client.get("/solo-admin", headers={"Authorization": f"Bearer {token}"})
+        assert r.status_code == 401
+
+    def test_usuario_suspendido_devuelve_401(self):
+        """Usuario con activo=False en BD → 401 aunque el token sea válido."""
+        from database import coleccion_usuarios
+        coleccion_usuarios.replace_one(
+            {"_id": _USER_OID},
+            {"_id": _USER_OID, "correo": "x@x.com", "rol": "admin", "activo": False},
+            upsert=True,
+        )
+        token = crear_token({"sub": _USER_ID, "correo": "x@x.com", "rol": "admin"})
+        r = self.client.get("/solo-admin", headers={"Authorization": f"Bearer {token}"})
+        assert r.status_code == 401
+        assert "suspendida" in r.json()["detail"].lower()
+
+    def test_usuario_inexistente_devuelve_401(self):
+        """Token válido cuyo sub no existe en BD → 401."""
+        from database import coleccion_usuarios
+        # Asegurar que no existe ningún usuario con ese OID
+        oid_fantasma = ObjectId()
+        coleccion_usuarios.delete_many({"_id": oid_fantasma})
+        token = crear_token({"sub": str(oid_fantasma), "correo": "x@x.com", "rol": "admin"})
+        r = self.client.get("/solo-admin", headers={"Authorization": f"Bearer {token}"})
         assert r.status_code == 401
 
     def test_admin_canonico_pasa(self):
@@ -115,7 +171,18 @@ class TestRequireRoleConFastAPI:
         assert self._get("cocinero").status_code == 403
 
     def test_rol_desconocido_no_pasa(self):
-        assert self._get("super_duper_admin").status_code == 403
+        # El rol "super_duper_admin" no existe en BD; insertamos con rol "cliente"
+        # para que el lookup pase pero el rol no autorice.
+        from database import coleccion_usuarios
+        coleccion_usuarios.replace_one(
+            {"_id": _USER_OID},
+            {"_id": _USER_OID, "correo": "x@x.com", "rol": "cliente", "activo": True},
+            upsert=True,
+        )
+        token = crear_token({"sub": _USER_ID, "correo": "x@x.com", "rol": "super_duper_admin"})
+        r = self.client.get("/solo-admin", headers={"Authorization": f"Bearer {token}"})
+        # El rol de BD (cliente) se impone sobre el del JWT → 403
+        assert r.status_code == 403
 
 
 class TestCrearTokenNormalizaRol:

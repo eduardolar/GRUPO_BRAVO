@@ -56,12 +56,15 @@ class Pedido {
   final int items;
   final String tipoEntrega;
   final String metodoPago;
+  final String estadoPago;
   final String? direccion;
   final String? mesaId;
   final int? numeroMesa;
   final List<ProductoPedido> productos;
   final String? notas;
   final String? restauranteId;
+  /// Pedido marcado como urgente: cocinero lo prioriza visualmente.
+  final bool prioritario;
 
   Pedido({
     required this.id,
@@ -71,12 +74,14 @@ class Pedido {
     required this.items,
     required this.tipoEntrega,
     required this.metodoPago,
+    this.estadoPago = 'pendiente',
     this.direccion,
     this.mesaId,
     this.numeroMesa,
     required this.productos,
     this.notas,
     this.restauranteId,
+    this.prioritario = false,
   });
 
   factory Pedido.fromMap(Map<String, dynamic> mapa) {
@@ -93,12 +98,15 @@ class Pedido {
       items: mapa['items'] ?? 0,
       tipoEntrega: mapa['tipoEntrega'] ?? '',
       metodoPago: mapa['metodoPago'] ?? '',
+      // Acepta camelCase (formato actual del backend) y snake_case (legacy).
+      estadoPago: (mapa['estadoPago'] ?? mapa['estado_pago'] ?? 'pendiente') as String,
       direccion: mapa['direccion'],
       mesaId: mapa['mesaId'],
       numeroMesa: mapa['numeroMesa'],
       productos: productosList,
       notas: mapa['notas'] as String?,
       restauranteId: mapa['restauranteId'] as String?,
+      prioritario: mapa['prioritario'] == true,
     );
   }
 

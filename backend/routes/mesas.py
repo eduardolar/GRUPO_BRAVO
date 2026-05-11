@@ -3,12 +3,14 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 from bson import ObjectId
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from pydantic import BaseModel
 
 from database import coleccion_mesas
 from models import MesaActualizar, ValidarQR
 from security import get_current_user, normalizar_rol, require_role
+from limiter import limiter
+import audit_general as ag
 
 logger = logging.getLogger("uvicorn")
 
@@ -31,12 +33,17 @@ router = APIRouter(prefix="/mesas", tags=["Mesas"])
 
 
 def _serializar(m: dict) -> dict:
+    estado = m.get("estado", "libre")
     return {
         "id": str(m["_id"]),
         "numero": m.get("numero", 0),
         "capacidad": m.get("capacidad", 0),
         "ubicacion": m.get("ubicacion", "interior"),
-        "disponible": m.get("estado", "libre") == "libre",
+        # `disponible` queda como bool retrocompatible: solo true si está
+        # libre (no en uso ni pendiente de limpiar). El estado completo va
+        # en el nuevo campo `estado`.
+        "disponible": estado == "libre",
+        "estado": estado,
         "codigoQr": m.get("codigoQr", m.get("codigo_qr", f"mesa_{m.get('numero', 0)}")),
         "restauranteId": m.get("restaurante_id"),
         "restaurante_id": m.get("restaurante_id"),
@@ -47,9 +54,32 @@ def _serializar(m: dict) -> dict:
 def obtener_mesas(
     restaurante_id: Optional[str] = Query(None),
     restauranteId: Optional[str] = Query(None),
-    _user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
 ):
-    rid = restaurante_id or restauranteId
+    """Devuelve la lista de mesas.
+
+    Aislamiento multi-tenant:
+    - super_admin puede usar el query-param restaurante_id para cruzar sucursales.
+    - El resto del personal (admin, camarero, cocinero, etc.) siempre ve solo las
+      mesas de SU sucursal del JWT; el query-param se ignora para evitar IDOR.
+    - Si el usuario de personal no tiene restaurante_id en el JWT → 400.
+    - Los clientes no deberían usar este endpoint (usan validar-qr), pero si
+      llegaran se aplica la misma lógica restrictiva.
+    """
+    rol = normalizar_rol(current_user.get("rol", "") or "")
+
+    if rol == "super_admin":
+        # super_admin puede cruzar sucursales usando el query param
+        rid = restaurante_id or restauranteId
+    else:
+        # Personal: ignoramos el query y forzamos el JWT
+        rid = current_user.get("restaurante_id")
+        if not rid:
+            raise HTTPException(
+                status_code=400,
+                detail="Tu cuenta no está asignada a una sucursal",
+            )
+
     filtro = {"restaurante_id": rid} if rid else {}
     return [_serializar(m) for m in coleccion_mesas.find(filtro)]
 
@@ -101,7 +131,9 @@ def crear_mesa(
 
 
 @router.patch("/{mesa_id}", summary="Cambiar estado libre/ocupada (admin/camarero)")
+@limiter.limit("60/minute")
 def actualizar_estado_mesa(
+    request: Request,
     mesa_id: str,
     datos: ActualizarEstadoMesa,
     usuario: dict = Depends(require_role(["admin", "super_admin", "camarero", "trabajador"])),
@@ -160,7 +192,51 @@ def actualizar_estado_mesa(
         set_fields["ultima_idempotency_at"] = datetime.now(timezone.utc).isoformat()
 
     coleccion_mesas.update_one({"_id": object_id}, {"$set": set_fields})
+
+    ag.registrar(
+        ag.MESA_ESTADO_CAMBIADO,
+        actor=usuario.get("correo"),
+        objetivo=str(object_id),
+        detalle=f"estado={nuevo_estado}",
+        extra={"restaurante_id": mesa.get("restaurante_id")},
+    )
     return {"ok": True, "estado": nuevo_estado}
+
+
+@router.post(
+    "/{mesa_id}/marcar-por-limpiar",
+    summary="Marcar una mesa como pendiente de limpieza tras cobrar",
+)
+def marcar_mesa_por_limpiar(
+    mesa_id: str,
+    usuario: dict = Depends(
+        require_role(["admin", "super_admin", "camarero", "trabajador"]),
+    ),
+):
+    """Estado intermedio entre 'ocupada' y 'libre' — el cliente se ha ido,
+    el camarero cobró, pero la mesa aún hay que limpiarla. Mientras, la
+    mesa NO se puede ocupar."""
+    try:
+        object_id = ObjectId(mesa_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="ID de mesa inválido")
+
+    mesa = coleccion_mesas.find_one({"_id": object_id})
+    if not mesa:
+        raise HTTPException(status_code=404, detail="Mesa no encontrada")
+    _exigir_misma_sucursal_mesa(mesa, usuario)
+
+    coleccion_mesas.update_one(
+        {"_id": object_id}, {"$set": {"estado": "por_limpiar"}},
+    )
+    ag.registrar(
+        ag.MESA_ESTADO_CAMBIADO,
+        actor=usuario.get("correo"),
+        objetivo=str(object_id),
+        detalle="estado=por_limpiar",
+        extra={"restaurante_id": mesa.get("restaurante_id")},
+    )
+    return {"ok": True, "estado": "por_limpiar"}
 
 
 def _exigir_misma_sucursal_mesa(mesa: dict, usuario: dict) -> None:

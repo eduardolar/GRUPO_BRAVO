@@ -8,45 +8,37 @@ from datetime import datetime, timezone, timedelta
 from unittest.mock import MagicMock, patch
 from bson import ObjectId
 
-from security import crear_token
+from bson import ObjectId as _ObjectId
+from tests.tok_helpers import tok as _tok_helper, TEST_OID_CAMARERO, TEST_OID_ADMIN
+
+# OID extra para camarero de R2 (distinto al de R1 = TEST_OID_CAMARERO)
+_OID_CAMARERO_R2 = _ObjectId("bbbbbbbbbbbbbbbbbbbbbbba")
 
 
 # ─── Helpers de autenticación ────────────────────────────────────────────────
 
-def _tok(rol: str, rid: str = "R1", sub: str = None) -> dict:
-    payload = {
-        "sub": sub or f"u_{rol}",
-        "correo": f"{rol}@test.com",
-        "rol": rol,
-    }
-    if rid:
-        payload["restaurante_id"] = rid
-    token = crear_token(payload)
-    return {"Authorization": f"Bearer {token}"}
-
-
 def _camarero_r1() -> dict:
-    return _tok("camarero", "R1")
+    return _tok_helper("camarero", restaurante_id="R1")
 
 
 def _camarero_r2() -> dict:
-    return _tok("camarero", "R2")
+    return _tok_helper("camarero", oid=_OID_CAMARERO_R2, restaurante_id="R2")
 
 
 def _admin_r1() -> dict:
-    return _tok("admin", "R1")
+    return _tok_helper("admin", restaurante_id="R1")
 
 
 def _super_admin() -> dict:
-    return _tok("super_admin", rid=None)
+    return _tok_helper("super_admin")
 
 
 def _cliente() -> dict:
-    return _tok("cliente", rid=None)
+    return _tok_helper("cliente")
 
 
 def _cocinero_r1() -> dict:
-    return _tok("cocinero", "R1")
+    return _tok_helper("cocinero", restaurante_id="R1")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -154,7 +146,8 @@ def test_c2_camarero_crea_aviso_persiste_restaurante_id(client):
     # Verificar que el documento insertado tiene restaurante_id de R1 y sub
     doc_insertado = mock_col.insert_one.call_args[0][0]
     assert doc_insertado["restaurante_id"] == "R1"
-    assert doc_insertado["creado_por_sub"] == "u_camarero"
+    # El sub del camarero ahora es el OID fijo TEST_OID_CAMARERO
+    assert doc_insertado["creado_por_sub"] == str(TEST_OID_CAMARERO)
     assert doc_insertado["estado"] == "pendiente"
     assert doc_insertado["ingrediente_nombre"] == "Sal"
 

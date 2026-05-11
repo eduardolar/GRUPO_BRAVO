@@ -28,6 +28,11 @@ CUPON_ELIMINADO     = "cupon.eliminado"
 CIERRE_REABIERTO        = "cierre_caja.reabierto"
 RESTAURANTE_SUSPENDIDO  = "restaurante.suspendido"
 RESTAURANTE_REACTIVADO  = "restaurante.reactivado"
+PEDIDO_CREADO           = "pedido.creado"
+PEDIDO_COBRADO_MANUAL   = "pedido.cobrado_manual"
+PEDIDO_CANCELADO        = "pedido.cancelado"
+MESA_ESTADO_CAMBIADO    = "mesa.estado_cambiado"
+INGREDIENTE_PUESTO_A_CERO = "ingrediente.puesto_a_cero"
 
 
 def registrar(

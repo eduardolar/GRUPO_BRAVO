@@ -13,53 +13,38 @@ Cubre:
 from unittest.mock import MagicMock, patch
 from bson import ObjectId
 
-from security import crear_token
+from bson import ObjectId
+from tests.tok_helpers import tok, insertar_usuario_test, TEST_OID_ADMIN, TEST_OID_SUPER
+
+# OID extra para el admin de R2 (distinto al de R1 que usa TEST_OID_ADMIN)
+_OID_ADMIN_R2   = ObjectId("aaaaaaaaaaaaaaaaaaaaaaab")
+_OID_ADMIN_LEGACY = ObjectId("aaaaaaaaaaaaaaaaaaaaaaac")
 
 
 # ─── Helpers de autenticación ────────────────────────────────────────────────
 
 def _auth_admin_r1() -> dict:
-    token = crear_token({
-        "sub": "u_admin_r1",
-        "correo": "admin_r1@test.com",
-        "rol": "admin",
-        "restaurante_id": "R1",
-    })
-    return {"Authorization": f"Bearer {token}"}
+    return tok("admin", restaurante_id="R1")
 
 
 def _auth_admin_r2() -> dict:
-    token = crear_token({
-        "sub": "u_admin_r2",
-        "correo": "admin_r2@test.com",
-        "rol": "admin",
-        "restaurante_id": "R2",
-    })
-    return {"Authorization": f"Bearer {token}"}
+    return tok("admin", oid=_OID_ADMIN_R2, restaurante_id="R2")
 
 
 def _auth_super_admin() -> dict:
-    token = crear_token({
-        "sub": "u_super",
-        "correo": "super@test.com",
-        "rol": "super_admin",
-    })
-    return {"Authorization": f"Bearer {token}"}
+    return tok("super_admin")
 
 
 def _auth_cliente() -> dict:
-    token = crear_token({
-        "sub": "u_cliente",
-        "correo": "cliente@test.com",
-        "rol": "cliente",
-    })
-    return {"Authorization": f"Bearer {token}"}
+    return tok("cliente")
 
 
 def _auth_admin_legacy_sin_rid() -> dict:
     """Admin cuyo JWT no lleva restaurante_id (cuenta legacy)."""
+    from security import crear_token
+    insertar_usuario_test(_OID_ADMIN_LEGACY, "admin", restaurante_id=None)
     token = crear_token({
-        "sub": "u_legacy",
+        "sub": str(_OID_ADMIN_LEGACY),
         "correo": "legacy@test.com",
         "rol": "admin",
         # sin restaurante_id deliberadamente
@@ -226,31 +211,20 @@ def test_por_categoria_filtra_por_sucursal_del_jwt(client):
     assert "Azucar" not in todos_nombres
 
 
-# ─── Test 7: admin legacy (sin restaurante_id en JWT) no restringe ────────────
+# ─── Test 7: admin legacy (sin restaurante_id en JWT) → 400 ─────────────────
 
-def test_admin_legacy_sin_rid_no_restringe(client):
-    """Cuando el JWT no lleva restaurante_id (cuenta legacy), el backend NO
-    aplica restricción por sucursal (devuelve lo que el filtro de query permita
-    o todo si query también es null). Queda log de advertencia."""
-    ing_r1 = _ing_r1("Harina")
-    ing_r2 = _ing_r2("Azucar")
-
-    cursor_mock = MagicMock()
-    cursor_mock.__iter__ = MagicMock(return_value=iter([ing_r1, ing_r2]))
-
-    with patch("routes.ingredientes.coleccion_ingredientes") as mock_col:
-        mock_col.find.return_value = cursor_mock
+def test_admin_legacy_sin_rid_devuelve_400(client):
+    """Cuando el JWT no lleva restaurante_id (cuenta legacy), el backend rechaza
+    con 400 para evitar exponer ingredientes de todas las sucursales.
+    Fix 5 — comportamiento estricto unificado con crear_pedido."""
+    with patch("routes.ingredientes.coleccion_ingredientes"):
         resp = client.get(
             "/api/v1/ingredientes",
             headers=_auth_admin_legacy_sin_rid(),
         )
 
-    assert resp.status_code == 200
-    # Sin restricción → find se llama con filtro vacío (sin restaurante_id)
-    mock_col.find.assert_called_once_with({})
-    nombres = [i["nombre"] for i in resp.json()]
-    assert "Harina" in nombres
-    assert "Azucar" in nombres
+    assert resp.status_code == 400
+    assert "sucursal" in resp.json()["detail"].lower()
 
 
 # ─── Test 8-12: duplicados y fusión ──────────────────────────────────────────

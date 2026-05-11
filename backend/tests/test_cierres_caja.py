@@ -18,29 +18,27 @@ from datetime import datetime, timezone, timedelta
 
 from bson import ObjectId
 
-from security import crear_token
+from bson import ObjectId
+from tests.tok_helpers import tok, insertar_usuario_test, TEST_OID_ADMIN
+
+# OID extra para el admin de R2 (distinto al de R1 que usa TEST_OID_ADMIN)
+_OID_ADMIN_R2 = ObjectId("bbbbbbbbbbbbbbbbbbbbbbbc")
 
 
 # ─── Helpers de tokens ────────────────────────────────────────────────────────
 
 def _tok_admin(rid: str = "R1") -> dict:
-    token = crear_token({
-        "sub": f"admin_{rid}",
-        "correo": f"admin@{rid}.com",
-        "rol": "admin",
-        "restaurante_id": rid,
-    })
-    return {"Authorization": f"Bearer {token}"}
+    if rid == "R2":
+        return tok("admin", oid=_OID_ADMIN_R2, restaurante_id=rid)
+    return tok("admin", restaurante_id=rid)
 
 
 def _tok_super() -> dict:
-    token = crear_token({"sub": "super_id", "correo": "super@bravo.com", "rol": "super_admin"})
-    return {"Authorization": f"Bearer {token}"}
+    return tok("super_admin")
 
 
 def _tok_camarero() -> dict:
-    token = crear_token({"sub": "cam_id", "correo": "cam@r1.com", "rol": "camarero", "restaurante_id": "R1"})
-    return {"Authorization": f"Bearer {token}"}
+    return tok("camarero", restaurante_id="R1")
 
 
 # ─── Helpers BD ───────────────────────────────────────────────────────────────

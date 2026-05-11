@@ -22,6 +22,7 @@ class PedidoService {
     required String estadoPago,
     String? restauranteId,
     String? idempotencyKey,
+    bool prioritario = false,
   }) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 600));
@@ -65,6 +66,7 @@ class PedidoService {
           'referenciaPago': referenciaPago,
           'estadoPago': estadoPago,
           'restauranteId': ?restauranteId,
+          if (prioritario) 'prioritario': true,
         }),
       ),
       retry: false,
@@ -165,6 +167,8 @@ class PedidoService {
     required String pedidoId,
     required String metodoPago,
     String? idempotencyKey,
+    double? descuento,
+    double? propina,
   }) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 300));
@@ -177,15 +181,19 @@ class PedidoService {
       extraHeaders['Idempotency-Key'] = idempotencyKey;
     }
 
+    final body = <String, dynamic>{
+      'estadoPago': 'pagado',
+      'estado': 'entregado',
+      'metodoPago': metodoPago,
+    };
+    if (descuento != null && descuento > 0) body['descuento'] = descuento;
+    if (propina != null && propina > 0) body['propina'] = propina;
+
     final response = await httpWithRetry(
       () => http.patch(
         Uri.parse('$baseUrl/pedidos/$pedidoId'),
         headers: AuthSession.headers(extra: extraHeaders),
-        body: jsonEncode({
-          'estadoPago': 'pagado',
-          'estado': 'entregado',
-          'metodoPago': metodoPago,
-        }),
+        body: jsonEncode(body),
       ),
       retry: false,
     );
@@ -239,6 +247,140 @@ class PedidoService {
         Uri.parse('$baseUrl/pedidos/$pedidoId/estado'),
         headers: AuthSession.headers(extra: {'Accept': 'application/json'}),
         body: jsonEncode({'estado': estado}),
+      ),
+      retry: false,
+    );
+
+    if (response.statusCode >= 400) {
+      throw toApiException(response.statusCode, decodeBody(response));
+    }
+  }
+
+  /// Devuelve los KPIs del turno del camarero autenticado: total cobrado,
+  /// pedidos cobrados, mesas atendidas, propinas, descuentos, cancelados.
+  /// Sin parámetros = "hoy desde medianoche". Útil para la pantalla "Mi turno".
+  static Future<Map<String, dynamic>> obtenerMiTurno({
+    DateTime? desde,
+    DateTime? hasta,
+  }) async {
+    if (!usarApiReal) {
+      await Future.delayed(const Duration(milliseconds: 200));
+      return {
+        'totalCobrado': 0.0,
+        'pedidosCobrados': 0,
+        'mesasAtendidas': 0,
+        'totalPropinas': 0.0,
+        'totalDescuentos': 0.0,
+        'pedidosCancelados': 0,
+      };
+    }
+    final params = <String, String>{};
+    if (desde != null) params['desde'] = desde.toUtc().toIso8601String();
+    if (hasta != null) params['hasta'] = hasta.toUtc().toIso8601String();
+
+    final uri = Uri.parse(
+      '$baseUrl/pedidos/mi-turno',
+    ).replace(queryParameters: params.isEmpty ? null : params);
+
+    final response = await httpWithRetry(
+      () => http.get(
+        uri,
+        headers: AuthSession.headers(extra: {'Accept': 'application/json'}),
+      ),
+    );
+    if (response.statusCode == 200) {
+      return Map<String, dynamic>.from(decodeBody(response));
+    }
+    throw toApiException(response.statusCode, decodeBody(response));
+  }
+
+  /// Transfiere la responsabilidad del pedido a otro camarero (cambio de
+  /// turno). Solo el responsable actual o admin pueden hacerlo.
+  static Future<void> transferirPedido({
+    required String pedidoId,
+    required String nuevoResponsableSub,
+  }) async {
+    if (!usarApiReal) {
+      await Future.delayed(const Duration(milliseconds: 200));
+      return;
+    }
+    final response = await httpWithRetry(
+      () => http.patch(
+        Uri.parse('$baseUrl/pedidos/$pedidoId/transferir'),
+        headers: AuthSession.headers(extra: {'Accept': 'application/json'}),
+        body: jsonEncode({'nuevoResponsableSub': nuevoResponsableSub}),
+      ),
+      retry: false,
+    );
+    if (response.statusCode >= 400) {
+      throw toApiException(response.statusCode, decodeBody(response));
+    }
+  }
+
+  /// Devuelve la lista mínima de camareros (id, nombre, correo) activos en
+  /// la sucursal del actor. Pensado para el selector de transferencia.
+  static Future<List<Map<String, dynamic>>> listarCamarerosDisponibles() async {
+    if (!usarApiReal) {
+      await Future.delayed(const Duration(milliseconds: 200));
+      return [];
+    }
+    final response = await httpWithRetry(
+      () => http.get(
+        Uri.parse('$baseUrl/pedidos/camareros-disponibles'),
+        headers: AuthSession.headers(extra: {'Accept': 'application/json'}),
+      ),
+    );
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.cast<Map<String, dynamic>>();
+    }
+    throw toApiException(response.statusCode, decodeBody(response));
+  }
+
+  /// Mueve un pedido a otra mesa. Libera la mesa origen y ocupa la destino.
+  /// El pedido debe estar en un estado activo (no entregado/cancelado).
+  static Future<void> moverPedidoAOtraMesa({
+    required String pedidoId,
+    required String nuevaMesaId,
+  }) async {
+    if (!usarApiReal) {
+      await Future.delayed(const Duration(milliseconds: 250));
+      return;
+    }
+    final response = await httpWithRetry(
+      () => http.patch(
+        Uri.parse('$baseUrl/pedidos/$pedidoId/mover-mesa'),
+        headers: AuthSession.headers(extra: {'Accept': 'application/json'}),
+        body: jsonEncode({'nuevaMesaId': nuevaMesaId}),
+      ),
+      retry: false,
+    );
+    if (response.statusCode >= 400) {
+      throw toApiException(response.statusCode, decodeBody(response));
+    }
+  }
+
+  /// Cancela un pedido enviando [motivoCancelacion] al backend.
+  ///
+  /// El backend exige que [motivoCancelacion] sea un string no vacío cuando
+  /// el campo `estado` lleva el valor `"cancelado"`. Si falta, devuelve 422.
+  static Future<void> cancelarPedido({
+    required String pedidoId,
+    required String motivoCancelacion,
+  }) async {
+    if (!usarApiReal) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      return;
+    }
+
+    final response = await httpWithRetry(
+      () => http.patch(
+        Uri.parse('$baseUrl/pedidos/$pedidoId'),
+        headers: AuthSession.headers(extra: {'Accept': 'application/json'}),
+        body: jsonEncode({
+          'estado': 'cancelado',
+          'motivo_cancelacion': motivoCancelacion.trim(),
+        }),
       ),
       retry: false,
     );

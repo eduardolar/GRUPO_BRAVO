@@ -4,6 +4,9 @@ class Mesa {
   final int capacidad;
   final String ubicacion; // 'interior', 'terraza', 'privado'
   final bool disponible;
+  /// Estado real de la mesa: 'libre', 'ocupada' o 'por_limpiar'.
+  /// `disponible` se mantiene como bool retrocompatible (true solo si libre).
+  final String estado;
   final String codigoQr;
   final String? restauranteId;
 
@@ -13,6 +16,7 @@ class Mesa {
     required this.capacidad,
     required this.ubicacion,
     this.disponible = true,
+    this.estado = 'libre',
     String? codigoQr,
     this.restauranteId,
   }) : codigoQr = codigoQr ?? 'mesa_$numero';
@@ -24,12 +28,12 @@ class Mesa {
       capacidad: mapa['capacidad'] ?? 2,
       ubicacion: mapa['ubicacion'] ?? 'interior',
       disponible: mapa['disponible'] ?? true,
+      estado: (mapa['estado'] as String?) ??
+          (mapa['disponible'] == false ? 'ocupada' : 'libre'),
       codigoQr: mapa['codigoQr'] ?? mapa['codigo_qr'],
       restauranteId: (mapa['restauranteId'] ?? mapa['restaurante_id'])?.toString(),
     );
   }
-
-  set estado(String estado) {}
 
   Map<String, dynamic> toMap() {
     return {
@@ -38,18 +42,25 @@ class Mesa {
       'capacidad': capacidad,
       'ubicacion': ubicacion,
       'disponible': disponible,
+      'estado': estado,
       'codigoQr': codigoQr,
       if (restauranteId != null) 'restauranteId': restauranteId,
     };
   }
 
-  Mesa copyWith({bool? disponible, String? codigoQr, String? restauranteId}) {
+  Mesa copyWith({
+    bool? disponible,
+    String? estado,
+    String? codigoQr,
+    String? restauranteId,
+  }) {
     return Mesa(
       id: id,
       numero: numero,
       capacidad: capacidad,
       ubicacion: ubicacion,
       disponible: disponible ?? this.disponible,
+      estado: estado ?? this.estado,
       codigoQr: codigoQr ?? this.codigoQr,
       restauranteId: restauranteId ?? this.restauranteId,
     );

@@ -897,11 +897,18 @@ class _PedidoCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.panel,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.line),
+        // Pedidos urgentes resaltados con borde rojo y sombra fuerte para
+        // que el cocinero los detecte de un vistazo entre el resto.
+        border: Border.all(
+          color: pedido.prioritario ? AppColors.error : AppColors.line,
+          width: pedido.prioritario ? 2 : 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.07),
-            blurRadius: 5,
+            color: pedido.prioritario
+                ? AppColors.error.withValues(alpha: 0.25)
+                : Colors.black.withValues(alpha: 0.07),
+            blurRadius: pedido.prioritario ? 8 : 5,
             offset: const Offset(0, 2),
           ),
         ],
@@ -911,6 +918,40 @@ class _PedidoCard extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (pedido.prioritario)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: const BoxDecoration(
+                    color: AppColors.error,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(11),
+                      topRight: Radius.circular(11),
+                    ),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(
+                        Icons.priority_high,
+                        color: Colors.white,
+                        size: 14,
+                      ),
+                      SizedBox(width: 6),
+                      Text(
+                        'URGENTE',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               _buildCabecera(),
               if (!compact) ...[
                 const Divider(height: 1, color: AppColors.line),

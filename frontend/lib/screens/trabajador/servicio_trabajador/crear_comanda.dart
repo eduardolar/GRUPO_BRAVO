@@ -38,6 +38,7 @@ class _CrearPedidosState extends State<CrearComanda> {
   List<String> _categorias = [];
   List<Producto> _productos = [];
   bool _cargando = true;
+  bool _errorCarga = false;
   final Map<Producto, int> _carrito = {};
   String? _pedidoId;
   // Versión del pedido para concurrencia optimista. Cada PATCH exige enviar
@@ -50,6 +51,8 @@ class _CrearPedidosState extends State<CrearComanda> {
 
   // Guard de doble-tap: true mientras hay un POST/PATCH en vuelo.
   bool _enviando = false;
+  // Pedido marcado como urgente para cocina (banner rojo en pantalla cocinero).
+  bool _prioritario = false;
   // Clave de idempotencia reutilizada en reintentos del mismo intento de envío.
   // Se renueva solo cuando el envío tiene éxito (carrito limpio) o cuando
   // el usuario navega fuera y vuelve (nuevo State).
@@ -72,6 +75,10 @@ class _CrearPedidosState extends State<CrearComanda> {
   }
 
   Future<void> _cargarDatos() async {
+    setState(() {
+      _cargando = true;
+      _errorCarga = false;
+    });
     try {
       // Pasamos el restauranteId del JWT para que la carta solo muestre los
       // productos de la sucursal del camarero. Sin esto, se mezclan platos
@@ -113,7 +120,10 @@ class _CrearPedidosState extends State<CrearComanda> {
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _cargando = false);
+      setState(() {
+        _cargando = false;
+        _errorCarga = true;
+      });
     }
   }
 
@@ -276,6 +286,70 @@ class _CrearPedidosState extends State<CrearComanda> {
     );
   }
 
+  /// Sale de la pantalla de toma de comanda. Lógica:
+  ///   - Si ya se envió algún pedido (`_pedidoId != null`), la mesa queda
+  ///     ocupada porque el cliente sigue ahí: solo popea.
+  ///   - Si nunca se envió y el carrito está vacío, libera la mesa: el
+  ///     camarero entró por error y sale sin dejar comanda.
+  ///   - Si hay items en carrito sin enviar, pide confirmación. Al salir,
+  ///     también libera la mesa (no hay pedido en marcha).
+  Future<void> _volverAtras() async {
+    if (_carrito.isEmpty) {
+      await _liberarMesaSiSinPedido();
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      return;
+    }
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        title: const Text(
+          'Hay platos sin enviar',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: const Text(
+          'Tienes platos en el carrito que aún no se han enviado a cocina. '
+          '¿Salir y descartarlos?',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text(
+              'Seguir aquí',
+              style: TextStyle(color: Colors.white70),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(
+              'Salir',
+              style: TextStyle(color: AppColors.error),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmar == true && mounted) {
+      await _liberarMesaSiSinPedido();
+      if (!mounted) return;
+      Navigator.of(context).pop();
+    }
+  }
+
+  /// Si el camarero nunca llegó a enviar un pedido, devuelve la mesa al
+  /// pool de libres. Si ya se envió, la mesa queda ocupada (el cliente
+  /// sigue allí pendiente de servirse / cobrar).
+  Future<void> _liberarMesaSiSinPedido() async {
+    if (_pedidoId != null) return;
+    try {
+      await ApiService.marcarMesaLibre(widget.mesaId);
+    } catch (e) {
+      debugPrint('No se pudo liberar mesa ${widget.mesaId} al salir: $e');
+    }
+  }
+
   void _enviarPedido(BuildContext context) async {
     // Guard de doble-tap: ignora pulsaciones mientras hay una petición en vuelo.
     if (_enviando) return;
@@ -337,6 +411,7 @@ class _CrearPedidosState extends State<CrearComanda> {
           estadoPago: "pendiente",
           restauranteId: auth.usuarioActual?.restauranteId,
           idempotencyKey: _idempotencyKey,
+          prioritario: _prioritario,
         );
         _pedidoId = (resultado['id'] ?? resultado['_id'])?.toString();
         final v = resultado['version'];
@@ -370,7 +445,14 @@ class _CrearPedidosState extends State<CrearComanda> {
         }
       }
       _totalAcumulado -= _totalPrecio;
-      _showSnack(messenger, "Error al enviar pedido", error: true);
+      // Mostramos el detalle del backend (409, 422, etc.) en el snack para
+      // que sea diagnosticable en lugar de un genérico que oculte la causa.
+      final detalle = e.toString().replaceFirst(RegExp(r'^Exception:\s*'), '');
+      _showSnack(
+        messenger,
+        detalle.isEmpty ? "Error al enviar pedido" : "Error: $detalle",
+        error: true,
+      );
     } finally {
       if (mounted) setState(() => _enviando = false);
     }
@@ -464,6 +546,89 @@ class _CrearPedidosState extends State<CrearComanda> {
       );
     }
 
+    if (_errorCarga) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: Stack(
+          children: [
+            Positioned.fill(
+              child: Image.asset(
+                'assets/images/Bravo restaurante.jpg',
+                fit: BoxFit.cover,
+              ),
+            ),
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.72),
+                ),
+              ),
+            ),
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.cloud_off_outlined,
+                      size: 48,
+                      color: Colors.white54,
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      'NO PUDIMOS CARGAR LA CARTA',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.playfairDisplay(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    const Text(
+                      'Comprueba tu conexión y vuelve a intentarlo.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white60,
+                        fontSize: 13,
+                        letterSpacing: 0.3,
+                        height: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+                    ElevatedButton.icon(
+                      onPressed: _cargarDatos,
+                      icon: const Icon(Icons.refresh, size: 16),
+                      label: const Text(
+                        'REINTENTAR',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.5,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.button,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: const RoundedRectangleBorder(),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 28,
+                          vertical: 14,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     final currentCategory = _categorias.isNotEmpty
         ? _categorias[_selectedCategory]
         : '';
@@ -500,10 +665,20 @@ class _CrearPedidosState extends State<CrearComanda> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 14, 16, 0),
+                  padding: const EdgeInsets.fromLTRB(8, 14, 16, 0),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      IconButton(
+                        onPressed: _volverAtras,
+                        icon: const Icon(
+                          Icons.arrow_back_ios_new,
+                          color: Colors.white,
+                        ),
+                        iconSize: 18,
+                        tooltip: 'Volver',
+                      ),
+                      const SizedBox(width: 4),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -521,9 +696,11 @@ class _CrearPedidosState extends State<CrearComanda> {
                               ),
                             ),
                             const SizedBox(height: 4),
-                            const Text(
-                              'Cocina de autor · Ingredientes frescos',
-                              style: TextStyle(
+                            Text(
+                              widget.numeroMesa != null
+                                  ? 'Mesa ${widget.numeroMesa}'
+                                  : 'Comanda en curso',
+                              style: const TextStyle(
                                 color: Colors.white60,
                                 fontSize: 11,
                                 letterSpacing: 0.4,
@@ -619,6 +796,43 @@ class _CrearPedidosState extends State<CrearComanda> {
                         ),
                 ),
 
+                // Toggle "URGENTE" antes de mandar a cocina. Si está activo,
+                // el pedido se crea con `prioritario=true` y el cocinero lo
+                // ve destacado con banner rojo en su pantalla.
+                if (_carrito.isNotEmpty)
+                  Container(
+                    width: double.infinity,
+                    color: Colors.black.withValues(alpha: 0.4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 6,
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.priority_high,
+                          size: 16,
+                          color: AppColors.error,
+                        ),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            'Marcar pedido como URGENTE para cocina',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                        Switch(
+                          value: _prioritario,
+                          onChanged: (v) =>
+                              setState(() => _prioritario = v),
+                          activeThumbColor: AppColors.error,
+                        ),
+                      ],
+                    ),
+                  ),
                 if (_carrito.isNotEmpty)
                   GestureDetector(
                     onTap: () => _mostrarConfirmacion(context),
