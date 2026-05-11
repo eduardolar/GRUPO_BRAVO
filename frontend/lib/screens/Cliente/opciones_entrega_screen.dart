@@ -66,6 +66,12 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
 
   final _controladorDireccion = TextEditingController();
   final _controladorNotas = TextEditingController();
+  final _controladorCupon = TextEditingController();
+
+  String? _cuponAplicado;
+  String? _errorCupon;
+  bool _validandoCupon = false;
+  double _descuentoCuponAplicado = 0.0;
 
   @override
   void initState() {
@@ -80,6 +86,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
   void dispose() {
     _controladorDireccion.dispose();
     _controladorNotas.dispose();
+    _controladorCupon.dispose();
     super.dispose();
   }
 
@@ -88,7 +95,110 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
   double _costeEnvio() =>
       _entregaSeleccionada == OpcionEntrega.domicilio ? _kCosteEnvio : 0.0;
 
-  double _calcularTotal(CartProvider cart) => cart.totalPrice + _costeEnvio();
+  double _calcularTotal(CartProvider cart) {
+    final bruto = cart.totalPrice + _costeEnvio();
+    final total = bruto - _descuentoCuponAplicado;
+    return total < 0 ? 0.0 : total;
+  }
+
+  Future<void> _aplicarCupon() async {
+    final codigo = _controladorCupon.text.trim().toUpperCase();
+
+    if (codigo.isEmpty) {
+      setState(() => _errorCupon = 'Introduce un cupón');
+      return;
+    }
+
+    setState(() {
+      _validandoCupon = true;
+      _errorCupon = null;
+    });
+
+    try {
+      final cart = context.read<CartProvider>();
+      final resp = _validarCuponLocal(
+        codigo: codigo,
+        subtotal: cart.totalPrice,
+        costeEnvio: _costeEnvio(),
+      );
+
+      final valido = resp['valido'] == true;
+      if (!valido) {
+        setState(() {
+          _validandoCupon = false;
+          _cuponAplicado = null;
+          _descuentoCuponAplicado = 0.0;
+          _errorCupon = (resp['mensaje'] ?? 'Cupón no válido').toString();
+        });
+        return;
+      }
+
+      final descuento = (resp['descuento'] as num?)?.toDouble() ?? 0.0;
+
+      setState(() {
+        _validandoCupon = false;
+        _cuponAplicado = codigo;
+        _descuentoCuponAplicado = descuento;
+        _errorCupon = null;
+        _controladorCupon.text = codigo;
+        _controladorCupon.selection = TextSelection.fromPosition(
+          TextPosition(offset: _controladorCupon.text.length),
+        );
+      });
+
+      _showSnack('Cupón aplicado: $codigo');
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _validandoCupon = false;
+        _cuponAplicado = null;
+        _descuentoCuponAplicado = 0.0;
+        _errorCupon = 'No se pudo validar el cupón';
+      });
+    }
+  }
+
+  void _quitarCupon() {
+    setState(() {
+      _cuponAplicado = null;
+      _errorCupon = null;
+      _descuentoCuponAplicado = 0.0;
+      _controladorCupon.clear();
+    });
+  }
+
+  Map<String, dynamic> _validarCuponLocal({
+    required String codigo,
+    required double subtotal,
+    required double costeEnvio,
+  }) {
+    switch (codigo) {
+      case 'DESC10':
+        return {
+          'valido': true,
+          'descuento': subtotal * 0.10,
+          'mensaje': 'Cupón válido',
+        };
+      case 'DESC20':
+        return {
+          'valido': true,
+          'descuento': subtotal * 0.20,
+          'mensaje': 'Cupón válido',
+        };
+      case 'ENVIOGRATIS':
+        return {
+          'valido': true,
+          'descuento': costeEnvio,
+          'mensaje': 'Cupón válido',
+        };
+      default:
+        return {
+          'valido': false,
+          'descuento': 0.0,
+          'mensaje': 'Cupón no válido o caducado',
+        };
+    }
+  }
 
   String _formatoEuro(double v) =>
       '${v.toStringAsFixed(2).replaceAll('.', ',')} €';
@@ -129,18 +239,18 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
   }
 
   String _tipoEntregaLabel(OpcionEntrega e) => switch (e) {
-        OpcionEntrega.domicilio => 'Entrega a domicilio',
-        OpcionEntrega.recoger => 'Recoger en restaurante',
-        OpcionEntrega.enMesa => 'Comer en el local',
-      };
+    OpcionEntrega.domicilio => 'Entrega a domicilio',
+    OpcionEntrega.recoger => 'Recoger en restaurante',
+    OpcionEntrega.enMesa => 'Comer en el local',
+  };
 
   String _tipoPagoLabel(MetodoPago m) => switch (m) {
-        MetodoPago.efectivo => 'Efectivo',
-        MetodoPago.tarjeta => 'Tarjeta',
-        MetodoPago.googlePay => 'Google Pay',
-        MetodoPago.paypal => 'PayPal',
-        MetodoPago.applePay => 'Apple Pay',
-      };
+    MetodoPago.efectivo => 'Efectivo',
+    MetodoPago.tarjeta => 'Tarjeta',
+    MetodoPago.googlePay => 'Google Pay',
+    MetodoPago.paypal => 'PayPal',
+    MetodoPago.applePay => 'Apple Pay',
+  };
 
   Future<bool> _confirmarSalida() async {
     final cart = context.read<CartProvider>();
@@ -215,15 +325,16 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
                     child: AnimatedSwitcher(
                       duration: _kAnimMed,
                       transitionBuilder: (child, animation) => SlideTransition(
-                        position: Tween<Offset>(
-                          begin: const Offset(0.06, 0),
-                          end: Offset.zero,
-                        ).animate(
-                          CurvedAnimation(
-                            parent: animation,
-                            curve: Curves.easeOut,
-                          ),
-                        ),
+                        position:
+                            Tween<Offset>(
+                              begin: const Offset(0.06, 0),
+                              end: Offset.zero,
+                            ).animate(
+                              CurvedAnimation(
+                                parent: animation,
+                                curve: Curves.easeOut,
+                              ),
+                            ),
                         child: FadeTransition(opacity: animation, child: child),
                       ),
                       child: KeyedSubtree(
@@ -237,8 +348,9 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
                     cargando: _estaCargando,
                     costeEnvio: _costeEnvio(),
                     onSiguiente: switch (_paso) {
-                      _Paso.confirmar => () =>
-                          setState(() => _paso = _Paso.entrega),
+                      _Paso.confirmar => () => setState(
+                        () => _paso = _Paso.entrega,
+                      ),
                       _Paso.entrega => _irAPago,
                       _Paso.pago => _confirmarPedido,
                     },
@@ -282,10 +394,11 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
             return ListView.separated(
               physics: const BouncingScrollPhysics(),
               padding: EdgeInsets.fromLTRB(pad, 16, pad, 24),
-              itemCount: cart.items.length + 1,
+              itemCount: cart.items.length + 2,
               separatorBuilder: (_, _) => const SizedBox(height: 10),
               itemBuilder: (context, i) {
                 if (i == 0) return _subtituloPaso('Revisa tu pedido');
+                if (i == cart.items.length + 1) return _seccionCupon(cart);
                 final item = cart.items.values.elementAt(i - 1);
                 return Dismissible(
                   key: ValueKey('cart-${item.key}'),
@@ -336,6 +449,102 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
   }
 
   // ── Paso: Entrega ──────────────────────────────────────────────────────────
+
+  Widget _seccionCupon(CartProvider cart) {
+    return FormPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Cupón de descuento',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _controladorCupon,
+                  textCapitalization: TextCapitalization.characters,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    hintText: 'Introduce tu cupón',
+                    hintStyle: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.45),
+                    ),
+                    errorText: _errorCupon,
+                    filled: true,
+                    fillColor: Colors.white.withValues(alpha: 0.05),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.10),
+                      ),
+                    ),
+                    focusedBorder: const OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(14)),
+                      borderSide: BorderSide(color: Colors.white),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              ElevatedButton(
+                onPressed: _validandoCupon ? null : _aplicarCupon,
+                child: _validandoCupon
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Aplicar'),
+              ),
+            ],
+          ),
+          if (_cuponAplicado != null) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Cupón aplicado: $_cuponAplicado',
+                    style: const TextStyle(
+                      color: Colors.greenAccent,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                TextButton(
+                  onPressed: _quitarCupon,
+                  child: const Text('Quitar'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Descuento: -${_formatoEuro(_descuentoCuponAplicado)}',
+              style: const TextStyle(color: Colors.greenAccent),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Total final: ${_formatoEuro(_calcularTotal(cart))}',
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 
   Widget _buildPasoEntrega() {
     return LayoutBuilder(
@@ -393,8 +602,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
                     titulo: 'Recoger en local',
                     subtitulo: 'Listo cuando llegues · ~20-30 min',
                     coste: 'Gratis',
-                    seleccionada:
-                        _entregaSeleccionada == OpcionEntrega.recoger,
+                    seleccionada: _entregaSeleccionada == OpcionEntrega.recoger,
                     onTap: () => setState(
                       () => _entregaSeleccionada = OpcionEntrega.recoger,
                     ),
@@ -417,8 +625,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
             DireccionOption(
               icono: Icons.home_outlined,
               titulo: 'Dirección registrada',
-              subtitulo:
-                  dir.isNotEmpty ? dir : 'No tienes dirección guardada',
+              subtitulo: dir.isNotEmpty ? dir : 'No tienes dirección guardada',
               seleccionada:
                   _direccionSeleccionada == OpcionDireccion.registrada,
               onTap: () => setState(
@@ -714,8 +921,8 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
 
       final direccionEntrega = _entregaSeleccionada == OpcionEntrega.domicilio
           ? (_direccionSeleccionada == OpcionDireccion.registrada
-              ? (auth.usuarioActual?.direccion ?? '')
-              : _controladorDireccion.text.trim())
+                ? (auth.usuarioActual?.direccion ?? '')
+                : _controladorDireccion.text.trim())
           : null;
 
       // 1. Crear sesión Stripe
@@ -784,10 +991,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       //    pago se confirma.
       if (kIsWeb) {
         context.read<CartProvider>().clearCart();
-        await launchUrl(
-          Uri.parse(checkoutUrl),
-          webOnlyWindowName: '_self',
-        );
+        await launchUrl(Uri.parse(checkoutUrl), webOnlyWindowName: '_self');
         return;
       }
 
@@ -916,8 +1120,8 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
 
     final direccionEntrega = _entregaSeleccionada == OpcionEntrega.domicilio
         ? (_direccionSeleccionada == OpcionDireccion.registrada
-            ? (auth.usuarioActual?.direccion ?? '')
-            : _controladorDireccion.text.trim())
+              ? (auth.usuarioActual?.direccion ?? '')
+              : _controladorDireccion.text.trim())
         : null;
 
     // La clave de idempotencia se reusa si el usuario reintenta por error de
@@ -970,7 +1174,8 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
             : null,
         notas: _controladorNotas.text.trim(),
         referenciaPago: referenciaPago,
-        estadoPago: estadoPago ??
+        estadoPago:
+            estadoPago ??
             (_pagoSeleccionado == MetodoPago.efectivo ? 'pendiente' : 'pagado'),
         restauranteId: cart.restauranteId,
         idempotencyKey: idempKey,
@@ -1060,7 +1265,8 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       }
 
       await _crearPedidoFinal(
-        referenciaPago: paymentIntentId ??
+        referenciaPago:
+            paymentIntentId ??
             applePayInit['id']?.toString() ??
             'applepay_success',
         estadoPago: 'pagado',
@@ -1237,4 +1443,3 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
     );
   }
 }
-

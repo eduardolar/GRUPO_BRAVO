@@ -57,4 +57,6 @@ class AppColors {
 
   // Estado "pendiente" en cocina: marrón-ámbar cálido que indica espera
   static const Color surfacePending = Color(0xFFB45309);
+
+  static Null get primary => null;
 }
