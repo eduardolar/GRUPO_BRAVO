@@ -132,7 +132,7 @@ async def registro_cliente(request: Request, usuario: UsuarioRegistro):
             "telefono": usuario.telefono,
             "direccion": usuario.direccion,
             "rol": "cliente",  # forzado
-            "restaurante_id": usuario.restauranteId,
+            "restaurante_id": usuario.restaurante_id,
             "password_hash": hashed_password.decode("utf-8"),
             "is_verified": False,
             "verification_code": codigo_otp_hash,
