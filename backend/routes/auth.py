@@ -127,6 +127,7 @@ async def iniciar_sesion(request: Request, credenciales: UsuarioLogin):
                     "email_2fa_enabled": False,
                     "access_token": token,
                     "token_type": "bearer",
+                    "puntos": usuario_db.get("puntos", 0),
                 }
 
             # CAMINO B: Trabajador, admin, cocinero — sin 2FA
@@ -190,6 +191,7 @@ async def verificar_login_2fa(request: Request, datos: VerificarLogin2FA):
         "email_2fa_enabled": usuario_db.get("email_2fa_enabled", False),
         "access_token": token,
         "token_type": "bearer",
+        "puntos": usuario_db.get("puntos", 0),
     }
 
 
@@ -334,6 +336,7 @@ def verificar_2fa(request: Request, datos: Verificar2FA):
         "totp_enabled": True,
         "access_token": token,
         "token_type": "bearer",
+        "puntos": usuario_db.get("puntos", 0),
     }
 
 
@@ -378,6 +381,7 @@ def verificar_2fa_recovery(request: Request, datos: VerificarRecuperacion):
         "codigosRestantes": codigos_restantes,
         "access_token": token,
         "token_type": "bearer",
+        "puntos": usuario_db.get("puntos", 0),
     }
 
 
