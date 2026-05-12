@@ -20,6 +20,7 @@ NOTA: Los endpoints de 2FA TOTP (setup, activar, desactivar, recuperación) se
 mantienen en auth.py bajo /api/v1/usuarios/{user_id}/2fa/... porque los usan
 TODOS los roles, no solo clientes.
 """
+from models import UsuarioResponse
 import logging
 from datetime import datetime, timezone
 
@@ -303,8 +304,8 @@ async def restablecer_password(request: Request, datos: RestablecerPassword):
 # ENDPOINTS AUTENTICADOS — solo rol "cliente"
 # ═══════════════════════════════════════════════════════════════════════════════
 
-@router.get("/me", summary="Perfil propio del cliente")
-def ver_perfil_propio(current_user: dict = Depends(_require_cliente)):
+@router.get("/me", response_model=UsuarioResponse) 
+async def obtener_perfil_propio(current_user: dict = Depends(_require_cliente)):
     user_id = current_user.get("sub")
     try:
         oid = ObjectId(user_id)
@@ -315,19 +316,11 @@ def ver_perfil_propio(current_user: dict = Depends(_require_cliente)):
     if not usuario:
         raise NotFoundError("Usuario no encontrado")
 
-    return {
-        "id": str(usuario["_id"]),
-        "nombre": usuario.get("nombre", ""),
-        "correo": usuario.get("correo", ""),
-        "telefono": usuario.get("telefono", ""),
-        "direccion": usuario.get("direccion", ""),
-        "latitud": usuario.get("latitud"),
-        "longitud": usuario.get("longitud"),
-        "rol": usuario.get("rol", "cliente"),
-        "totp_enabled": usuario.get("totp_enabled", False),
-        "email_2fa_enabled": usuario.get("email_2fa_enabled", False),
-    }
-
+    # Importante: MongoDB usa "_id" y nuestro modelo espera "id". 
+    # FastAPI con UsuarioResponse se encarga de mapearlo si lo pasamos así:
+    usuario["id"] = str(usuario["_id"]) 
+    
+    return usuario # <--- Ahora devolvemos el objeto entero
 
 @router.put("/me", summary="Editar perfil propio del cliente (subset seguro)")
 def actualizar_perfil_propio(

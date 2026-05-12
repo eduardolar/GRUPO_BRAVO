@@ -75,7 +75,8 @@ class UsuarioRegistro(BaseModel):
     rol: str = "cliente"
     restauranteId: Optional[str] = None
     consentimiento_rgpd: bool = False
-
+    puntos: int = 0 # Puntos de fidelidad acumulados por el cliente. 
+    
     @field_validator("password")
     @classmethod
     def validar_password_registro(cls, value: str) -> str:
@@ -121,6 +122,7 @@ class PedidoCrear(BaseModel):
     # Prioridad para cocina: pedidos urgentes (cliente con prisa, alergia, etc.)
     # se destacan en la pantalla del cocinero con un banner rojo.
     prioritario: bool = False
+    puntosUsados: int = 0
 
     @field_validator("tipoEntrega", mode="before")
     @classmethod
@@ -301,3 +303,18 @@ class RestauranteActualizar(BaseModel):
 
     # Métodos de pago habilitados en la sucursal
     metodos_pago: Optional[List[str]] = None
+
+    # ── Modelo de Respuesta del Usuario (Lo que el servidor envía al móvil) ──
+
+class UsuarioResponse(BaseModel):
+    id: str
+    nombre: str
+    correo: EmailStr
+    telefono: str
+    direccion: str
+    rol: str
+    puntos: int = 0  
+    activo: bool = True
+    restaurante_id: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)

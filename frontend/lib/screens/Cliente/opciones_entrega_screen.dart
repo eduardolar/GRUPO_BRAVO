@@ -16,6 +16,7 @@ import '../../services/api_service.dart';
 import 'direccion_screen.dart';
 import 'opciones_entrega/components/components.dart';
 import 'pedido_confirmado_screen.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 export '../../models/opciones_pedido.dart';
 
@@ -47,6 +48,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
   MetodoPago _pagoSeleccionado = MetodoPago.efectivo;
   OpcionDireccion _direccionSeleccionada = OpcionDireccion.registrada;
   bool _estaCargando = false;
+  bool _usarPuntos = false; // Controla si el switch de puntos está activo
 
   bool _googlePayAutorizado = false;
   bool _googlePayProcesando = false;
@@ -101,7 +103,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
     return total < 0 ? 0.0 : total;
   }
 
-  Future _aplicarCupon() async {
+  Future<void> _aplicarCupon() async {
     final codigo = _controladorCupon.text.trim().toUpperCase();
 
     if (codigo.isEmpty) {
@@ -252,10 +254,10 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
     MetodoPago.applePay => 'Apple Pay',
   };
 
-  Future _confirmarSalida() async {
+  Future<bool> _confirmarSalida() async {
     final cart = context.read<CartProvider>();
     if (cart.itemCount == 0) return true;
-    final salir = await showDialog(
+    final salir = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.panel,
@@ -281,6 +283,8 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
     );
     return salir ?? false;
   }
+
+  // ── Build ──────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -324,7 +328,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
                       duration: _kAnimMed,
                       transitionBuilder: (child, animation) => SlideTransition(
                         position:
-                            Tween(
+                            Tween<Offset>(
                               begin: const Offset(0.06, 0),
                               end: Offset.zero,
                             ).animate(
@@ -373,6 +377,8 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       _Paso.pago => _buildPasoPago(),
     };
   }
+
+  // ── Paso: Confirmar ────────────────────────────────────────────────────────
 
   Widget _buildPasoConfirmar() {
     return LayoutBuilder(
@@ -443,6 +449,8 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       },
     );
   }
+
+  // ── Paso: Entrega ──────────────────────────────────────────────────────────
 
   Widget _seccionCupon(CartProvider cart) {
     return FormPanel(
@@ -650,10 +658,18 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
     );
   }
 
+  // ── Paso: Pago ─────────────────────────────────────────────────────────────
+
+  // ── Paso: Pago ─────────────────────────────────────────────────────────────
+
   Widget _buildPasoPago() {
     return LayoutBuilder(
       builder: (context, constraints) {
         final pad = hPad(constraints);
+        // Obtenemos al usuario para leer sus puntos
+        final usuario = context.watch<AuthProvider>().usuarioActual;
+        final puntos = usuario?.puntos ?? 0;
+
         return SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
           padding: EdgeInsets.symmetric(horizontal: pad, vertical: 24),
@@ -662,6 +678,58 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
             children: [
               _subtituloPaso('Elige cómo quieres pagar'),
               const SizedBox(height: 18),
+
+              // ── SECCIÓN CLUB BRAVO (Fase 4) ──
+              if (puntos > 0)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 20),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.amber.withValues(alpha: 0.5)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.stars, color: Colors.amber),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Usar mis Bravo Coins',
+                                style: GoogleFonts.manrope(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                'Tienes $puntos puntos (${(puntos / 10).toStringAsFixed(2)}€ de dto.)',
+                                style: GoogleFonts.manrope(
+                                  color: Colors.white70,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Switch(
+                          value: _usarPuntos,
+                          activeColor: Colors.amber,
+                          onChanged: (val) {
+                            setState(() {
+                              _usarPuntos = val;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              // ─────────────────────────────────
+
               PagoCard(
                 icono: Icons.payments_outlined,
                 titulo: 'Efectivo',
@@ -770,6 +838,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       },
     );
   }
+  // ── Navegación entre pasos ─────────────────────────────────────────────────
 
   void _irAPago() {
     if (_entregaSeleccionada == OpcionEntrega.domicilio) {
@@ -783,13 +852,14 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
         return;
       }
     }
+    // Nueva pantalla de pago = nuevo intento = nueva clave de idempotencia.
     setState(() {
       _paso = _Paso.pago;
       _idempotencyKey = _uuid.v4();
     });
   }
 
-  Future _confirmarPedido() async {
+  Future<void> _confirmarPedido() async {
     if (_estaCargando) return;
     switch (_pagoSeleccionado) {
       case MetodoPago.efectivo:
@@ -809,12 +879,14 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
     }
   }
 
-  Future _procesarEfectivoYCrearPedido() async {
+  // ── Procesadores de pago ───────────────────────────────────────────────────
+
+  Future<void> _procesarEfectivoYCrearPedido() async {
     setState(() => _estaCargando = true);
     await _crearPedidoFinal(referenciaPago: null, estadoPago: 'pendiente');
   }
 
-  Future _procesarTarjetaYCrearPedido() async {
+  Future<void> _procesarTarjetaYCrearPedido() async {
     if (kIsWeb) {
       await _procesarStripeCheckoutWeb();
       return;
@@ -865,7 +937,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
     }
   }
 
-  Future _procesarStripeCheckoutWeb() async {
+  Future<void> _procesarStripeCheckoutWeb() async {
     setState(() => _estaCargando = true);
     String? pedidoId;
     String? sessionId;
@@ -912,6 +984,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
                 : _controladorDireccion.text.trim())
           : null;
 
+      // 1. Crear sesión Stripe
       final totalStr = total.toStringAsFixed(2);
       final session = await ApiService.crearCheckoutSession(
         total: total,
@@ -930,6 +1003,8 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
         throw Exception('No se pudo iniciar la sesión de pago');
       }
 
+      // 2. Crear el pedido (estado pendiente_stripe) — el carrito se mantiene
+      //    intacto hasta que confirmemos el pago.
       if (_entregaSeleccionada != OpcionEntrega.enMesa) {
         cart.desasignarMesa();
       }
@@ -960,6 +1035,19 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       if (!mounted) return;
       setState(() => _estaCargando = false);
 
+      // 3. Abrir Stripe Checkout.
+      //
+      //    En **web**: redirect en la misma pestaña (`_self`). Es el
+      //    comportamiento natural de Stripe Checkout: tras pagar redirige
+      //    a `success_url`, que es la home con `?stripe_session=...`. La
+      //    propia home (inicio_screen._verificarStripeRedirect) detecta
+      //    el retorno y abre `PedidoConfirmadoScreen`. Por tanto el código
+      //    que viene después NO se ejecuta en web — vaciamos el carrito
+      //    aquí porque la página se va.
+      //
+      //    En **móvil/desktop**: navegador externo + diálogo de
+      //    verificación al volver. Aquí el carrito se vacía solo si el
+      //    pago se confirma.
       if (kIsWeb) {
         context.read<CartProvider>().clearCart();
         await launchUrl(Uri.parse(checkoutUrl), webOnlyWindowName: '_self');
@@ -973,7 +1061,8 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
 
       if (!mounted) return;
 
-      final confirmado = await showDialog(
+      // 4. Diálogo de verificación (solo móvil/desktop).
+      final confirmado = await showDialog<bool>(
         context: context,
         barrierDismissible: false,
         builder: (_) => StripeCheckoutDialog(sessionId: sessionId!),
@@ -988,6 +1077,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       }
       if (!mounted) return;
 
+      // Limpiar el carrito sólo cuando el pago está confirmado
       context.read<CartProvider>().clearCart();
 
       Navigator.pushAndRemoveUntil(
@@ -1010,7 +1100,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
     }
   }
 
-  Future _procesarGooglePayYCrearPedido() async {
+  Future<void> _procesarGooglePayYCrearPedido() async {
     if (!_googlePayAutorizado || _googlePayClientSecret == null) {
       _showSnack('Primero autoriza Google Pay', error: true);
       return;
@@ -1043,7 +1133,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
     }
   }
 
-  Future _procesarPaypalYCrearPedido() async {
+  Future<void> _procesarPaypalYCrearPedido() async {
     if (!_paypalAutorizado || _paypalOrderId == null) {
       _showSnack('Primero completa el pago en PayPal', error: true);
       return;
@@ -1074,7 +1164,12 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
     }
   }
 
-  Future _crearPedidoFinal({String? referenciaPago, String? estadoPago}) async {
+  // ── Creación final del pedido (todos los métodos convergen aquí) ───────────
+
+  Future<void> _crearPedidoFinal({
+    String? referenciaPago,
+    String? estadoPago,
+  }) async {
     final auth = context.read<AuthProvider>();
     final cart = context.read<CartProvider>();
 
@@ -1089,6 +1184,9 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
         : null;
 
     final idempKey = _obtenerOGenerarIdempotencyKey();
+
+    // ── NUEVO: Calcular los puntos que vamos a usar ──
+    final puntosAUsar = _usarPuntos ? (auth.usuarioActual?.puntos ?? 0) : 0;
 
     try {
       final items = cart.items.values
@@ -1140,12 +1238,19 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
             (_pagoSeleccionado == MetodoPago.efectivo ? 'pendiente' : 'pagado'),
         restauranteId: cart.restauranteId,
         idempotencyKey: idempKey,
+        puntosUsados: puntosAUsar, // <--- AÑADIMOS LOS PUNTOS AQUÍ
       );
 
       final pedidoId =
           resultado['id']?.toString() ?? resultado['pedido_id']?.toString();
 
       cart.clearCart();
+
+      // ── NUEVO: Refrescar el perfil para que los puntos bajen en la app ──
+      // Usamos el método que tengas en tu AuthProvider para recargar al usuario.
+      // Suele llamarse checkAuthStatus() o cargarPerfil()
+// ── NUEVO: Restamos los puntos en la app al instante ──
+      auth.descontarPuntosLocales(puntosAUsar);
 
       if (!mounted) return;
       setState(() => _estaCargando = false);
@@ -1165,14 +1270,19 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _estaCargando = false);
+      // No regeneramos la clave: el usuario puede reintentar con la misma.
       _showSnack('Error al crear pedido: $e', error: true);
     }
   }
 
-  Future _autorizarApplePayFrontend() async {
+  // ── Autorizaciones de wallet ───────────────────────────────────────────────
+
+  Future<void> _autorizarApplePayFrontend() async {
     if (_estaCargando) return;
     setState(() => _estaCargando = true);
     try {
+      // Sin llamadas backend en autorización: la autenticación real ocurre al
+      // pulsar CONFIRMAR PEDIDO en _procesarApplePayYCrearPedido.
       if (!mounted) return;
       setState(() {
         _applePayAutorizado = true;
@@ -1187,7 +1297,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
     }
   }
 
-  Future _procesarApplePayYCrearPedido() async {
+  Future<void> _procesarApplePayYCrearPedido() async {
     setState(() => _estaCargando = true);
     try {
       final cart = context.read<CartProvider>();
@@ -1234,7 +1344,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
     }
   }
 
-  Future _autorizarGooglePayFrontend() async {
+  Future<void> _autorizarGooglePayFrontend() async {
     if (_estaCargando || _googlePayProcesando) return;
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
       _showSnack('Google Pay solo está disponible en Android.', error: true);
@@ -1312,7 +1422,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
     }
   }
 
-  Future _autorizarPaypalFrontend() async {
+  Future<void> _autorizarPaypalFrontend() async {
     if (_estaCargando) return;
     setState(() => _estaCargando = true);
     try {
@@ -1339,7 +1449,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
         approvalUrl = orden['approval_url'].toString();
       } else if (orden['links'] is List) {
         for (final link in orden['links'] as List) {
-          if (link is Map) {
+          if (link is Map<String, dynamic>) {
             final rel = link['rel']?.toString().toLowerCase();
             if (rel == 'approve' || rel == 'approval_url') {
               approvalUrl = link['href']?.toString();
@@ -1385,6 +1495,8 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       _showSnack('Error al iniciar PayPal: $e', error: true);
     }
   }
+
+  // ── Layout helpers ─────────────────────────────────────────────────────────
 
   Widget _subtituloPaso(String texto) {
     return Text(

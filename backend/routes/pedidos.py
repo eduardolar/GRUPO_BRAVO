@@ -431,7 +431,7 @@ async def crear_pedido(
 
     # Asignar un item_id estable a cada item (UUID v4) si no lo trae ya.
     # Esto permite identificar items por id y evitar bugs de índice posicional
-    # cuando dos camareros editan un pedido concurrentemente (importante 4).
+    # cuando dos camareros editan un pedido concurrentemente.
     for item in items_dict:
         if not item.get("item_id"):
             item["item_id"] = str(uuid.uuid4())
@@ -457,6 +457,28 @@ async def crear_pedido(
         if categoria == "bebidas":
             item["hecho"] = True
 
+    # ── NUEVO: CANJE DE BRAVO COINS ───────────────────────
+    if pedido.puntosUsados > 0:
+        # 1. Comprobar que el usuario tiene esos puntos realmente en la BD
+        uid_obj = ObjectId(current_user["sub"]) if normalizar_rol(current_user.get("rol", "")) == "cliente" else (ObjectId(pedido.userId) if ObjectId.is_valid(pedido.userId) else pedido.userId)
+        usuario_db = coleccion_usuarios.find_one({"_id": uid_obj})
+        
+        if not usuario_db or usuario_db.get("puntos", 0) < pedido.puntosUsados:
+            raise ValidacionError("No tienes suficientes Bravo Coins para este descuento.")
+        
+        # 2. Calcular el descuento (10 puntos = 1€)
+        descuento_coins = pedido.puntosUsados / 10.0
+        
+        # 3. Aplicar descuento sin que el total baje de 0
+        total_calculado = max(0.0, total_calculado - descuento_coins)
+        
+        # 4. Restar los puntos de la base de datos
+        coleccion_usuarios.update_one(
+            {"_id": uid_obj},
+            {"$inc": {"puntos": -pedido.puntosUsados}}  # El menos (-) los resta
+        )
+        logger.info(f"Se han canjeado {pedido.puntosUsados} puntos por un descuento de {descuento_coins}€")
+    # ────────────────────────────────────────────────────────────────
     # Para clientes, ignorar userId del payload y usar el sub del JWT.
     # Admin y personal de sala/cocina pueden crear pedidos en nombre de cualquier usuario.
     rol_actor = normalizar_rol(current_user.get("rol", ""))
@@ -466,9 +488,6 @@ async def crear_pedido(
         usuario_id_pedido = pedido.userId
 
     # ── Idempotencia server-side ──────────────────────────────────────────────
-    # Si el cliente manda Idempotency-Key, buscamos un pedido previo con la
-    # misma (usuario_id, idempotency_key). Si existe, devolvemos ese pedido
-    # sin crear uno nuevo (respuesta 200 idempotente).
     if idempotency_key:
         ik = idempotency_key.strip()
         if ik:
@@ -522,8 +541,6 @@ async def crear_pedido(
     if pedido.numeroMesa is not None:
         pedido_dict["numero_mesa"] = pedido.numeroMesa
 
-    # Bloqueante 2 — forzar restaurante_id desde JWT para camarero/admin;
-    # el super_admin puede gestionar cualquier sucursal (acepta el del body).
     if rol_actor in {"camarero", "admin"}:
         rid_jwt = current_user.get("restaurante_id")
         if not rid_jwt:
@@ -535,7 +552,6 @@ async def crear_pedido(
     elif rol_actor == "super_admin":
         rid_pedido = pedido.restauranteId
     else:
-        # cliente u otro rol
         rid_pedido = pedido.restauranteId
 
     if rid_pedido:
@@ -550,8 +566,6 @@ async def crear_pedido(
     except AppError:
         raise
     except DuplicateKeyError:
-        # Race condition: otro request con la misma idempotency_key llegó antes.
-        # Recuperamos el pedido existente y lo devolvemos.
         existing = coleccion_pedidos.find_one(
             {"usuario_id": usuario_id_pedido, "idempotency_key": idempotency_key.strip()}
         )
@@ -559,9 +573,8 @@ async def crear_pedido(
             items_raw = existing.get("items", [])
             n = len(items_raw) if isinstance(items_raw, list) else 0
             return _pedido_a_respuesta(existing, n)
-        raise  # error DuplicateKey en otro campo — propagar
+        raise
     except OperationFailure as e:
-        # MongoDB standalone no soporta transacciones: fallback a operaciones atómicas por documento
         if "Transaction numbers are only allowed" in str(e) or e.code == 20:
             logger.warning("MongoDB standalone detectado: usando actualizaciones atómicas sin transacción")
             try:
@@ -578,37 +591,41 @@ async def crear_pedido(
                 raise
         else:
             logger.error(f"Error de base de datos creando pedido: {e}")
-            raise  # deja que el handler global lo capture como 500
+            raise
     except Exception:
-        raise  # deja que el handler global lo capture como 500
+        raise
 
     pedido_id = str(resultado.inserted_id)
 
-    # Auditoría: queda traza persistida del pedido creado, quién lo creó y para qué mesa.
-    ag.registrar(
-        ag.PEDIDO_CREADO,
-        actor=current_user.get("correo"),
-        objetivo=pedido_id,
-        detalle=f"items={len(pedido.items)} total={total_calculado} mesa={pedido_dict.get('numero_mesa')}",
-        extra={
-            "restaurante_id": rid_pedido,
-            "creado_por_rol": normalizar_rol(current_user.get("rol", "")),
-            "tipo_entrega": pedido_dict.get("tipo_entrega"),
-        },
-    )
+    # ── NUEVO: SISTEMA DE FIDELIZACIÓN ──
+    # Si el pedido tiene un usuario asociado, le sumamos los puntos (1€ = 1 Coin)
+    if usuario_id_pedido:
+        try:
+            puntos_a_sumar = int(total_calculado)
+            if puntos_a_sumar > 0:
+                # Convertimos ID a ObjectId si es necesario
+                uid_obj = ObjectId(usuario_id_pedido) if ObjectId.is_valid(usuario_id_pedido) else usuario_id_pedido
+                coleccion_usuarios.update_one(
+                    {"_id": uid_obj},
+                    {"$inc": {"puntos": puntos_a_sumar}}
+                )
+                logger.info(f"Usuario {usuario_id_pedido} ha ganado {puntos_a_sumar} Bravo Coins.")
+        except Exception as e:
+            logger.error(f"Error al sumar puntos de fidelidad: {e}")
+    # ─────────────────────────────────────────────────────────────────
 
-    # Enviar factura al correo del usuario (sin bloquear la respuesta si falla)
-    usuario = coleccion_usuarios.find_one({"_id": ObjectId(pedido.userId)}) if ObjectId.is_valid(pedido.userId) else None
-    if not usuario:
-        usuario = coleccion_usuarios.find_one({"_id": pedido.userId})
+    # Enviar factura al correo del usuario
+    usuario_doc = coleccion_usuarios.find_one({"_id": ObjectId(usuario_id_pedido)}) if ObjectId.is_valid(usuario_id_pedido) else None
+    if not usuario_doc:
+        usuario_doc = coleccion_usuarios.find_one({"_id": usuario_id_pedido})
 
-    if usuario:
-        correo = usuario.get("correo", "")
-        if correo and "@" in correo and "." in correo.split("@")[-1]:
+    if usuario_doc:
+        correo = usuario_doc.get("correo", "")
+        if correo and "@" in correo:
             try:
                 await _enviar_factura(
                     email_destino=correo,
-                    nombre_usuario=usuario.get("nombre", "Cliente"),
+                    nombre_usuario=usuario_doc.get("nombre", "Cliente"),
                     pedido_id=pedido_id,
                     pedido=pedido_dict,
                 )
