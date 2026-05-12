@@ -484,7 +484,7 @@ class _CargandoCarta extends StatelessWidget {
             'CARGANDO CARTA',
             style: TextStyle(
               color: Colors.white60,
-              fontSize: 10,
+              fontSize: 12,
               letterSpacing: 3.0,
               fontWeight: FontWeight.w600,
             ),
@@ -829,7 +829,7 @@ class _ReorderBanner extends StatelessWidget {
                   'PEDIDO ANTERIOR',
                   style: TextStyle(
                     color: AppColors.button,
-                    fontSize: 9,
+                    fontSize: 11,
                     letterSpacing: 2.0,
                     fontWeight: FontWeight.w700,
                   ),
@@ -857,7 +857,7 @@ class _ReorderBanner extends StatelessWidget {
                   'REPETIR',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 10,
+                    fontSize: 11,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 1.0,
                   ),

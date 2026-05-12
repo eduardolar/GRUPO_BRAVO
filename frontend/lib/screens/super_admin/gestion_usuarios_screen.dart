@@ -299,6 +299,7 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           IconButton(
+            tooltip: 'Volver',
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
             icon: const Icon(
@@ -436,6 +437,7 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
                 ),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
+                        tooltip: 'Limpiar búsqueda',
                         icon: const Icon(
                           Icons.close,
                           color: Colors.black54,
@@ -553,7 +555,7 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
           style: GoogleFonts.manrope(),
         ),
         backgroundColor: ok
-            ? (nuevoEstado ? AppColors.button : Colors.orange)
+            ? (nuevoEstado ? AppColors.button : AppColors.warningLight)
             : AppColors.error,
       ),
     );
@@ -767,7 +769,7 @@ class _UsuarioTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.07),
         border: Border.all(
-          color: activo ? Colors.white12 : Colors.orange.withValues(alpha: 0.3),
+          color: activo ? Colors.white12 : AppColors.warningLight.withValues(alpha: 0.3),
         ),
       ),
       child: Row(
@@ -777,7 +779,7 @@ class _UsuarioTile extends StatelessWidget {
             height: 72,
             color: activo
                 ? AppColors.button.withValues(alpha: 0.8)
-                : Colors.orange.withValues(alpha: 0.5),
+                : AppColors.warningLight.withValues(alpha: 0.5),
             alignment: Alignment.center,
             child: Text(
               initials,
@@ -818,18 +820,20 @@ class _UsuarioTile extends StatelessWidget {
             icon: Icon(
               activo ? Icons.pause_circle_outline : Icons.play_circle_outline,
               color: activo
-                  ? Colors.orange.withValues(alpha: 0.8)
-                  : Colors.greenAccent.withValues(alpha: 0.8),
+                  ? AppColors.warningLight.withValues(alpha: 0.8)
+                  : AppColors.successVibrant.withValues(alpha: 0.8),
               size: 22,
             ),
             tooltip: activo ? 'Suspender' : 'Activar',
             onPressed: onToggleActivo,
           ),
           IconButton(
+            tooltip: 'Editar usuario',
             icon: Icon(Icons.edit_outlined, color: Colors.white38, size: 20),
             onPressed: onEdit,
           ),
           IconButton(
+            tooltip: 'Eliminar usuario',
             icon: Icon(
               Icons.delete_outline,
               color: AppColors.error.withValues(alpha: 0.8),
@@ -855,12 +859,12 @@ class _BadgeEstadoCuenta extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
         color: activo
-            ? Colors.greenAccent.withValues(alpha: 0.12)
-            : Colors.orange.withValues(alpha: 0.12),
+            ? AppColors.successVibrant.withValues(alpha: 0.12)
+            : AppColors.warningLight.withValues(alpha: 0.12),
         border: Border.all(
           color: activo
-              ? Colors.greenAccent.withValues(alpha: 0.4)
-              : Colors.orange.withValues(alpha: 0.4),
+              ? AppColors.successVibrant.withValues(alpha: 0.4)
+              : AppColors.warningLight.withValues(alpha: 0.4),
         ),
       ),
       child: Row(
@@ -871,16 +875,16 @@ class _BadgeEstadoCuenta extends StatelessWidget {
             height: 5,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: activo ? Colors.greenAccent : Colors.orange,
+              color: activo ? AppColors.successVibrant : AppColors.warningLight,
             ),
           ),
           const SizedBox(width: 4),
           Text(
             activo ? 'ACTIVO' : 'SUSPENDIDO',
             style: GoogleFonts.manrope(
-              fontSize: 9,
+              fontSize: 11,
               fontWeight: FontWeight.w700,
-              color: activo ? Colors.greenAccent : Colors.orange,
+              color: activo ? AppColors.successVibrant : AppColors.warningLight,
               letterSpacing: 1,
             ),
           ),
@@ -914,7 +918,7 @@ class _CampoEdicion extends StatelessWidget {
         Text(
           label.toUpperCase(),
           style: GoogleFonts.manrope(
-            fontSize: 10,
+            fontSize: 12,
             fontWeight: FontWeight.w800,
             color: isDarkText ? Colors.black54 : AppColors.textSecondary,
             letterSpacing: 1.5,

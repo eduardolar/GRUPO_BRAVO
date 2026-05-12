@@ -281,7 +281,7 @@ class _AdminLocalEditarScreenState extends State<AdminLocalEditarScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('Subida no disponible. Configura Cloudinary.'),
-            backgroundColor: Colors.amber.shade700,
+            backgroundColor: AppColors.warningText,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -339,7 +339,7 @@ class _AdminLocalEditarScreenState extends State<AdminLocalEditarScreen> {
           colorScheme: ColorScheme.dark(
             primary: AppColors.button,
             onPrimary: Colors.white,
-            surface: const Color(0xFF1A1A1A),
+            surface: AppColors.bottomSheetBg,
             onSurface: Colors.white,
           ),
         ),

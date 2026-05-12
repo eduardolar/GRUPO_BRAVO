@@ -350,6 +350,7 @@ class _StockBodyState extends State<_StockBody> {
           ),
           suffixIcon: _searchCtrl.text.isNotEmpty
               ? IconButton(
+                  tooltip: 'Limpiar búsqueda',
                   icon: Icon(
                     Icons.close,
                     color: Colors.white.withValues(alpha: 0.6),
@@ -437,7 +438,7 @@ class _IngredienteRow extends StatelessWidget {
 
   Color get _colorChip {
     if (_agotado) return AppColors.error;
-    if (_bajoMinimo) return Colors.orange;
+    if (_bajoMinimo) return AppColors.warningLight;
     return AppColors.button;
   }
 
@@ -445,6 +446,18 @@ class _IngredienteRow extends StatelessWidget {
     if (_agotado) return 'AGOTADO';
     if (_bajoMinimo) return 'BAJO';
     return 'OK';
+  }
+
+  IconData get _iconChip {
+    if (_agotado) return Icons.block;
+    if (_bajoMinimo) return Icons.warning_amber_outlined;
+    return Icons.check_circle_outline;
+  }
+
+  String get _semanticsChip {
+    if (_agotado) return 'Agotado';
+    if (_bajoMinimo) return 'Stock bajo';
+    return 'Stock correcto';
   }
 
   @override
@@ -476,27 +489,43 @@ class _IngredienteRow extends StatelessWidget {
                     ),
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _colorChip.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                      color: _colorChip.withValues(alpha: 0.5),
+                Semantics(
+                  label: _semanticsChip,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
                     ),
-                  ),
-                  child: Text(
-                    _labelChip,
-                    style: TextStyle(
-                      color: _colorChip == AppColors.button
-                          ? Colors.white
-                          : _colorChip,
-                      fontSize: 9,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1,
+                    decoration: BoxDecoration(
+                      color: _colorChip.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: _colorChip.withValues(alpha: 0.5),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          _iconChip,
+                          color: _colorChip == AppColors.button
+                              ? Colors.white
+                              : _colorChip,
+                          size: 10,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          _labelChip,
+                          style: TextStyle(
+                            color: _colorChip == AppColors.button
+                                ? Colors.white
+                                : _colorChip,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),

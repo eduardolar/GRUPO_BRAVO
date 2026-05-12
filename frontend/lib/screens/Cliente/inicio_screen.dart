@@ -299,7 +299,7 @@ class _SplashState extends State<_Splash> with SingleTickerProviderStateMixin {
                     'EST. 2024  ·  RESTAURANTE',
                     style: TextStyle(
                       color: AppColors.textSecondary,
-                      fontSize: 10,
+                      fontSize: 12,
                       fontWeight: FontWeight.w600,
                       letterSpacing: _subtitleSpacing.value,
                     ),
@@ -499,7 +499,7 @@ class _BadgeAnio extends StatelessWidget {
         'EST. 2024',
         style: TextStyle(
           color: AppColors.line,
-          fontSize: 10,
+          fontSize: 12,
           letterSpacing: 4,
           fontWeight: FontWeight.w600,
         ),

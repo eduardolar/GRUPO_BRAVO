@@ -51,7 +51,7 @@ class ReservaAppBar extends StatelessWidget {
                 'RESTAURANTE BRAVO',
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.55),
-                  fontSize: 10,
+                  fontSize: 12,
                   letterSpacing: 4,
                   fontWeight: FontWeight.w600,
                 ),

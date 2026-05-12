@@ -22,7 +22,7 @@ class TarjetaOpcionPago extends StatelessWidget {
     // Lógica visual para diferenciar marcas
     Color colorIcono = AppColors.button; // Color por defecto
     if (seleccionada) {
-      if (titulo.contains('PayPal')) colorIcono = Colors.blue.shade800;
+      if (titulo.contains('PayPal')) colorIcono = AppColors.paypal;
       if (titulo.contains('Google')) colorIcono = AppColors.disp;
     }
 

@@ -21,8 +21,8 @@ const double _kSheetTopRadius = 24;
 const double _kDialogRadius = 16;
 const double _kOverlayAlpha = 0.82;
 
-// Azul fijo para el estado de email-2FA (no está en AppColors).
-const Color _kBlue2FA = Color(0xFF3B82F6);
+// Azul fijo para el estado de email-2FA.
+const Color _kBlue2FA = AppColors.info;
 
 class PerfilScreen extends StatefulWidget {
   const PerfilScreen({super.key});
@@ -850,6 +850,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
       child: Row(
         children: [
           IconButton(
+            tooltip: 'Volver',
             icon: const Icon(
               Icons.arrow_back_ios_new,
               color: Colors.white,
@@ -1012,6 +1013,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
           size: 20,
         ),
         suffixIcon: IconButton(
+          tooltip: oculto ? 'Mostrar contraseña' : 'Ocultar contraseña',
           icon: Icon(
             oculto ? Icons.visibility_off_outlined : Icons.visibility_outlined,
             color: Colors.white38,

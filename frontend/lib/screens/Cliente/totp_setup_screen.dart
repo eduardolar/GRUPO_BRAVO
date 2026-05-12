@@ -15,7 +15,7 @@ class _RecoveryCodesDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final todosJuntos = codigos.join('\n');
     return AlertDialog(
-      backgroundColor: const Color(0xFF1A1A1A),
+      backgroundColor: AppColors.bottomSheetBg,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       title: const Row(
         children: [
@@ -268,6 +268,7 @@ class _TotpSetupScreenState extends State<TotpSetupScreen> {
       child: Row(
         children: [
           IconButton(
+            tooltip: 'Volver',
             icon: const Icon(
               Icons.arrow_back_ios_new,
               color: Colors.white,

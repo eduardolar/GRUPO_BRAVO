@@ -854,8 +854,8 @@ class _SeccionKpisState extends State<_SeccionKpis> {
       return Colors.transparent;
     }
     final ratio = ocupadas / total;
-    if (ratio > 0.75) return Colors.red.withValues(alpha: 0.55);
-    if (ratio > 0.5) return Colors.amber.withValues(alpha: 0.45);
+    if (ratio > 0.75) return AppColors.error.withValues(alpha: 0.55);
+    if (ratio > 0.5) return AppColors.warning.withValues(alpha: 0.45);
     return Colors.transparent;
   }
 
@@ -881,7 +881,7 @@ class _SeccionKpisState extends State<_SeccionKpis> {
         const Text(
           'PULSO DE TU SUCURSAL HOY',
           style: TextStyle(
-            fontSize: 10,
+            fontSize: 12,
             fontWeight: FontWeight.w800,
             color: Colors.white70,
             letterSpacing: 2,
@@ -912,7 +912,7 @@ class _SeccionKpisState extends State<_SeccionKpis> {
         value: _euros(widget.ventasHoy),
         sub: 'facturado hoy',
         accentColor: (widget.ventasHoy ?? 0) > 0
-            ? const Color(0xFF2E7D32)
+            ? AppColors.success
             : AppColors.button,
         onTapAdvance: _avanzarSiguiente,
         onLongPressPause: _pausarRotacion,
@@ -933,7 +933,7 @@ class _SeccionKpisState extends State<_SeccionKpis> {
         value: _num(widget.pedidosAbiertos),
         sub: 'pendiente/preparando/listo',
         accentColor: (widget.pedidosAbiertos ?? 0) > 0
-            ? Colors.amber.shade700
+            ? AppColors.warningText
             : null,
         onTapAdvance: _avanzarSiguiente,
         onLongPressPause: _pausarRotacion,
@@ -971,7 +971,7 @@ class _SeccionKpisState extends State<_SeccionKpis> {
         value: widget.reservasHoy?.toString() ?? '—',
         sub: 'para hoy',
         accentColor: (widget.reservasHoy ?? 0) > 0
-            ? Colors.blue.shade400
+            ? AppColors.info
             : Colors.white38,
         // Navegación directa sustituida por icono discreto; tap avanza carrusel.
         shortcutTap: widget.onReservasTap,
@@ -1064,25 +1064,29 @@ class _SeccionKpisState extends State<_SeccionKpis> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         for (int i = 0; i < total; i++)
-          GestureDetector(
-            onTap: () {
-              _userInteracted = true;
-              _pageCtrl.animateToPage(
-                i,
-                duration: _kAutoRotateAnim,
-                curve: Curves.easeInOut,
-              );
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 220),
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              width: i == _paginaActual ? 18 : 8,
-              height: 8,
-              decoration: BoxDecoration(
-                color: i == _paginaActual
-                    ? AppColors.button
-                    : Colors.white.withValues(alpha: 0.25),
-                borderRadius: BorderRadius.circular(4),
+          Semantics(
+            label: 'Ir a diapositiva ${i + 1} de $total',
+            button: true,
+            child: GestureDetector(
+              onTap: () {
+                _userInteracted = true;
+                _pageCtrl.animateToPage(
+                  i,
+                  duration: _kAutoRotateAnim,
+                  curve: Curves.easeInOut,
+                );
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                width: i == _paginaActual ? 18 : 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: i == _paginaActual
+                      ? AppColors.button
+                      : Colors.white.withValues(alpha: 0.25),
+                  borderRadius: BorderRadius.circular(4),
+                ),
               ),
             ),
           ),
@@ -1167,7 +1171,7 @@ class _AdminKpiCard extends StatelessWidget {
                             child: Text(
                               label,
                               style: const TextStyle(
-                                fontSize: 9,
+                                fontSize: 11,
                                 fontWeight: FontWeight.w800,
                                 color: Colors.white60,
                                 letterSpacing: 1.4,
@@ -1197,7 +1201,7 @@ class _AdminKpiCard extends StatelessWidget {
                       Text(
                         sub,
                         style: const TextStyle(
-                          fontSize: 10,
+                          fontSize: 12,
                           color: Colors.white54,
                           height: 1.2,
                         ),

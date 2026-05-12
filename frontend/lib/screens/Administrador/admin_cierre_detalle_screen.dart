@@ -296,14 +296,14 @@ class _AdminCierreDetalleScreenState extends State<AdminCierreDetalleScreen> {
                   icono: Icons.credit_card_outlined,
                   label: 'Tarjeta',
                   valor: '${_fmtEuros.format(ventasTarjeta)} €',
-                  color: Colors.blue.shade400,
+                  color: AppColors.info,
                 ),
                 const SizedBox(height: 8),
                 _buildFilaTotal(
                   icono: Icons.payment_outlined,
                   label: 'Otros',
                   valor: '${_fmtEuros.format(ventasOtros)} €',
-                  color: Colors.purple.shade300,
+                  color: AppColors.primaryAccent,
                 ),
                 const Divider(color: Colors.white12, height: 20),
                 _buildFilaTotal(
@@ -351,7 +351,7 @@ class _AdminCierreDetalleScreenState extends State<AdminCierreDetalleScreen> {
                     label: 'Cerrado por',
                     valor: doc['cerrado_por'] as String? ?? '—',
                     fecha: _parseFecha(doc['cerrado_at']),
-                    iconColor: Colors.blue.shade400,
+                    iconColor: AppColors.info,
                   ),
                 ],
               ],
@@ -390,10 +390,10 @@ class _AdminCierreDetalleScreenState extends State<AdminCierreDetalleScreen> {
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.orange,
+                    foregroundColor: AppColors.warningLight,
                     minimumSize: const Size(double.infinity, 52),
                     side: BorderSide(
-                      color: Colors.orange.withValues(alpha: 0.6),
+                      color: AppColors.warningLight.withValues(alpha: 0.6),
                     ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
@@ -417,7 +417,7 @@ class _AdminCierreDetalleScreenState extends State<AdminCierreDetalleScreen> {
         Text(
           titulo,
           style: const TextStyle(
-            fontSize: 10,
+            fontSize: 12,
             fontWeight: FontWeight.w800,
             color: Colors.white70,
             letterSpacing: 1.8,
@@ -477,7 +477,7 @@ class _AdminCierreDetalleScreenState extends State<AdminCierreDetalleScreen> {
       textoDescuadre = '0,00 €';
       subtexto = 'Cuadre perfecto';
     } else if (desc > 0) {
-      colorDescuadre = Colors.amber;
+      colorDescuadre = AppColors.warning;
       textoDescuadre = '+${_fmtEuros.format(desc)} €';
       subtexto = 'Hay un sobrante en caja';
     } else {
@@ -608,16 +608,16 @@ class _AdminCierreDetalleScreenState extends State<AdminCierreDetalleScreen> {
             height: 28,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: Colors.orange.withValues(alpha: 0.2),
+              color: AppColors.warningBg,
               shape: BoxShape.circle,
               border: Border.all(
-                color: Colors.orange.withValues(alpha: 0.5),
+                color: AppColors.warning.withValues(alpha: 0.5),
               ),
             ),
             child: Text(
               '$numero',
               style: const TextStyle(
-                color: Colors.orange,
+                color: AppColors.warningText,
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
               ),
@@ -723,7 +723,7 @@ class _SheetReabrirDetalleState extends State<_SheetReabrirDetalle> {
 
     return Container(
       decoration: const BoxDecoration(
-        color: Color(0xFF111111),
+        color: AppColors.backgroundDark,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: SafeArea(
@@ -751,12 +751,12 @@ class _SheetReabrirDetalleState extends State<_SheetReabrirDetalle> {
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: Colors.orange.withValues(alpha: 0.15),
+                        color: AppColors.warningBg,
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
                         Icons.lock_open_outlined,
-                        color: Colors.orange,
+                        color: AppColors.warningLight,
                         size: 22,
                       ),
                     ),
@@ -779,10 +779,10 @@ class _SheetReabrirDetalleState extends State<_SheetReabrirDetalle> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.amber.withValues(alpha: 0.15),
+                    color: AppColors.warningBg,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                      color: Colors.amber.withValues(alpha: 0.4),
+                      color: AppColors.warning.withValues(alpha: 0.4),
                     ),
                   ),
                   child: const Row(
@@ -790,7 +790,7 @@ class _SheetReabrirDetalleState extends State<_SheetReabrirDetalle> {
                     children: [
                       Icon(
                         Icons.warning_amber_rounded,
-                        color: Colors.amber,
+                        color: AppColors.warning,
                         size: 20,
                       ),
                       SizedBox(width: 8),
@@ -798,7 +798,7 @@ class _SheetReabrirDetalleState extends State<_SheetReabrirDetalle> {
                         child: Text(
                           'Reabrir un cierre debe ser excepcional. '
                           'Quedará registrado en el log de auditoría.',
-                          style: TextStyle(color: Colors.amber, fontSize: 13),
+                          style: TextStyle(color: AppColors.warningText, fontSize: 13),
                         ),
                       ),
                     ],
@@ -824,7 +824,7 @@ class _SheetReabrirDetalleState extends State<_SheetReabrirDetalle> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Colors.orange),
+                      borderSide: const BorderSide(color: AppColors.warningLight),
                     ),
                     errorBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -867,7 +867,7 @@ class _SheetReabrirDetalleState extends State<_SheetReabrirDetalle> {
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange.shade700,
+                      backgroundColor: AppColors.warningText,
                       foregroundColor: Colors.white,
                       minimumSize: const Size(double.infinity, 52),
                       shape: RoundedRectangleBorder(
@@ -927,7 +927,7 @@ class _ChipEstado extends StatelessWidget {
       color = AppColors.disp;
       label = 'ABIERTO';
     } else if (estado == 'cerrado') {
-      color = Colors.blue.shade400;
+      color = AppColors.info;
       label = 'CERRADO';
     } else {
       color = Colors.white38;

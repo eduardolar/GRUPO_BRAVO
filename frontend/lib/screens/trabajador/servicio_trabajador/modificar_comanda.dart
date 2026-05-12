@@ -156,6 +156,7 @@ class _ModificarComandaState extends State<ModificarComanda> {
                   child: Row(
                     children: [
                       IconButton(
+                        tooltip: 'Volver',
                         icon: const Icon(Icons.arrow_back_ios_new,
                             color: AppColors.background, size: 18),
                         onPressed: () => Navigator.pop(context),
@@ -466,7 +467,7 @@ class _DetalleComandaSheetState extends State<_DetalleComandaSheet> {
       builder: (_, scrollController) {
         return Container(
           decoration: const BoxDecoration(
-            color: Color(0xFF111111),
+            color: AppColors.backgroundDark,
             border: Border(
               top: BorderSide(color: Colors.white12, width: 1),
             ),
@@ -525,7 +526,7 @@ class _DetalleComandaSheetState extends State<_DetalleComandaSheet> {
                             '${mesa.ubicacion.toUpperCase()} · ${mesa.capacidad} PAX',
                             style: const TextStyle(
                               color: Colors.white38,
-                              fontSize: 10,
+                              fontSize: 12,
                               letterSpacing: 0.5,
                             ),
                           ),

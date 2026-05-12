@@ -17,9 +17,9 @@ import '../../services/http_client.dart';
 import '../../services/producto_service.dart';
 
 // ─── Colores locales ─────────────────────────────────────────────────────────
-const _kGreen = Color(0xFF34C759);
-const _kOrange = Color(0xFFFF9500);
-const _kRed = Color(0xFFFF3B30);
+const _kGreen = AppColors.successVibrant;
+const _kOrange = AppColors.warningLight;
+const _kRed = AppColors.error;
 const _kAccent = AppColors.button;
 
 // ─── Constantes de validación / negocio ──────────────────────────────────────
@@ -1348,7 +1348,7 @@ class _ChipSucursal extends StatelessWidget {
                     'SUSP.',
                     style: TextStyle(
                       color: _kRed,
-                      fontSize: 8,
+                      fontSize: 11,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 0.5,
                     ),
@@ -1430,7 +1430,7 @@ class _FilaProducto extends StatelessWidget {
                           errorTxt,
                           style: const TextStyle(
                             color: _kRed,
-                            fontSize: 10,
+                            fontSize: 12,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -1688,7 +1688,7 @@ class _ImagenProductoSheetState extends State<_ImagenProductoSheet> {
 
   void _snack(String msg, {bool esError = false, bool esAdvertencia = false}) {
     final color = esAdvertencia
-        ? Colors.amber.shade700
+        ? AppColors.warningText
         : esError
         ? _kRed
         : _kGreen;
@@ -1711,7 +1711,7 @@ class _ImagenProductoSheetState extends State<_ImagenProductoSheet> {
 
     return Container(
       decoration: const BoxDecoration(
-        color: Color(0xFF1A1A1A),
+        color: AppColors.bottomSheetBg,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       padding: EdgeInsets.fromLTRB(
@@ -1753,7 +1753,7 @@ class _ImagenProductoSheetState extends State<_ImagenProductoSheet> {
             'IMAGEN DEL PRODUCTO',
             style: TextStyle(
               color: Colors.white54,
-              fontSize: 10,
+              fontSize: 12,
               fontWeight: FontWeight.w800,
               letterSpacing: 2,
             ),
@@ -1948,7 +1948,7 @@ class _LineaPrecioOriginal extends StatelessWidget {
         const SizedBox(width: 4),
         Text(
           '(${subeBaja ? '+' : ''}${pct.toStringAsFixed(1)}%)',
-          style: TextStyle(color: subeBaja ? _kGreen : _kOrange, fontSize: 10),
+          style: TextStyle(color: subeBaja ? _kGreen : _kOrange, fontSize: 12),
         ),
       ],
     );

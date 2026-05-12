@@ -26,7 +26,7 @@ class TarjetaReserva extends StatelessWidget {
       case 'confirmada':
         return AppColors.disp;
       case 'pendiente':
-        return Colors.orange;
+        return AppColors.warningLight;
       case 'cancelada':
         return AppColors.error;
       default:
@@ -89,7 +89,7 @@ class TarjetaReserva extends StatelessWidget {
                       ru.kDiasAbrev[reserva.fecha.weekday - 1],
                       style: const TextStyle(
                         color: AppColors.textSecondary,
-                        fontSize: 10,
+                        fontSize: 12,
                       ),
                     ),
                   ],
@@ -109,7 +109,7 @@ class TarjetaReserva extends StatelessWidget {
                             icono: esCena
                                 ? Icons.nightlight_outlined
                                 : Icons.wb_sunny_outlined,
-                            color: esCena ? Colors.indigo : Colors.orange,
+                            color: esCena ? AppColors.info : AppColors.warningLight,
                           ),
                           const SizedBox(width: 6),
                           BadgeSmall(
@@ -119,23 +119,27 @@ class TarjetaReserva extends StatelessWidget {
                           ),
                           const Spacer(),
                           if (puedeEditar)
-                            GestureDetector(
-                              onTap: onEditarComensales,
-                              child: Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color:
-                                      AppColors.button.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: AppColors.button
-                                        .withValues(alpha: 0.3),
+                            Semantics(
+                              label: 'Editar número de comensales',
+                              button: true,
+                              child: GestureDetector(
+                                onTap: onEditarComensales,
+                                child: Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color:
+                                        AppColors.button.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: AppColors.button
+                                          .withValues(alpha: 0.3),
+                                    ),
                                   ),
-                                ),
-                                child: const Icon(
-                                  Icons.group_outlined,
-                                  color: AppColors.button,
-                                  size: 16,
+                                  child: const Icon(
+                                    Icons.group_outlined,
+                                    color: AppColors.button,
+                                    size: 16,
+                                  ),
                                 ),
                               ),
                             ),

@@ -184,7 +184,7 @@ class _HomeScreenSuperAdminState extends State<HomeScreenSuperAdmin> {
               'SUSPENDER',
               style: GoogleFonts.manrope(
                 fontWeight: FontWeight.w700,
-                color: Colors.orange,
+                color: AppColors.warningLight,
               ),
             ),
           ),
@@ -795,7 +795,7 @@ class _SeccionKpisGlobalesState extends State<_SeccionKpisGlobales> {
         const Text(
           'PULSO GLOBAL HOY',
           style: TextStyle(
-            fontSize: 10,
+            fontSize: 12,
             fontWeight: FontWeight.w800,
             color: Colors.white70,
             letterSpacing: 2,
@@ -821,7 +821,7 @@ class _SeccionKpisGlobalesState extends State<_SeccionKpisGlobales> {
         (sucAbiertas != null && sucTotal > 0) ? sucAbiertas / sucTotal : 0.0;
     final colorSuc = ratioSuc >= 0.75
         ? AppColors.disp
-        : (ratioSuc >= 0.5 ? Colors.amber : AppColors.error);
+        : (ratioSuc >= 0.5 ? AppColors.warning : AppColors.error);
 
     final stockBajo = t?['stock_bajo_total'] as num? ?? 0;
     final cierresPend = t?['cierres_pendientes'] as num? ?? 0;
@@ -840,7 +840,7 @@ class _SeccionKpisGlobalesState extends State<_SeccionKpisGlobales> {
         value: _euros(ingresos),
         sub: 'facturado hoy',
         accentColor: (ingresos ?? 0) > 0
-            ? const Color(0xFF2E7D32)
+            ? AppColors.success
             : AppColors.button,
         onTapAdvance: _avanzarSiguiente,
         onLongPressPause: _pausarRotacion,
@@ -872,7 +872,7 @@ class _SeccionKpisGlobalesState extends State<_SeccionKpisGlobales> {
         label: 'EN COCINA AHORA',
         value: _num(t?['pedidos_en_cocina']),
         sub: 'preparando/pendiente',
-        accentColor: enCocina > 0 ? Colors.amber.shade700 : null,
+        accentColor: enCocina > 0 ? AppColors.warningText : null,
         onTapAdvance: _avanzarSiguiente,
         onLongPressPause: _pausarRotacion,
         onLongPressResume: _retomarRotacion,
@@ -883,7 +883,7 @@ class _SeccionKpisGlobalesState extends State<_SeccionKpisGlobales> {
         label: 'RESERVAS HOY',
         value: _num(t?['reservas_hoy']),
         sub: 'para hoy',
-        accentColor: reservas > 0 ? Colors.blue.shade400 : Colors.white38,
+        accentColor: reservas > 0 ? AppColors.info : Colors.white38,
         shortcutTap: widget.onReservasTap,
         onTapAdvance: _avanzarSiguiente,
         onLongPressPause: _pausarRotacion,
@@ -906,7 +906,7 @@ class _SeccionKpisGlobalesState extends State<_SeccionKpisGlobales> {
         label: 'CIERRES PENDIENTES',
         value: _num(t?['cierres_pendientes']),
         sub: 'sin cerrar',
-        accentColor: cierresPend > 0 ? Colors.amber.shade700 : Colors.white38,
+        accentColor: cierresPend > 0 ? AppColors.warningText : Colors.white38,
         shortcutTap: widget.onCierresTap,
         onTapAdvance: _avanzarSiguiente,
         onLongPressPause: _pausarRotacion,
@@ -999,25 +999,29 @@ class _SeccionKpisGlobalesState extends State<_SeccionKpisGlobales> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         for (int i = 0; i < total; i++)
-          GestureDetector(
-            onTap: () {
-              _userInteracted = true;
-              _pageCtrl.animateToPage(
-                i,
-                duration: _kAnim,
-                curve: Curves.easeInOut,
-              );
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 220),
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              width: i == _paginaActual ? 18 : 8,
-              height: 8,
-              decoration: BoxDecoration(
-                color: i == _paginaActual
-                    ? AppColors.button
-                    : Colors.white.withValues(alpha: 0.25),
-                borderRadius: BorderRadius.circular(4),
+          Semantics(
+            label: 'Ir a diapositiva ${i + 1} de $total',
+            button: true,
+            child: GestureDetector(
+              onTap: () {
+                _userInteracted = true;
+                _pageCtrl.animateToPage(
+                  i,
+                  duration: _kAnim,
+                  curve: Curves.easeInOut,
+                );
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                width: i == _paginaActual ? 18 : 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: i == _paginaActual
+                      ? AppColors.button
+                      : Colors.white.withValues(alpha: 0.25),
+                  borderRadius: BorderRadius.circular(4),
+                ),
               ),
             ),
           ),
@@ -1092,7 +1096,7 @@ class _SuperKpiCard extends StatelessWidget {
                             child: Text(
                               label,
                               style: const TextStyle(
-                                fontSize: 9,
+                                fontSize: 11,
                                 fontWeight: FontWeight.w800,
                                 color: Colors.white60,
                                 letterSpacing: 1.4,
@@ -1116,7 +1120,7 @@ class _SuperKpiCard extends StatelessWidget {
                       Text(
                         sub,
                         style: const TextStyle(
-                          fontSize: 10,
+                          fontSize: 12,
                           color: Colors.white54,
                         ),
                         maxLines: 1,
@@ -1202,7 +1206,7 @@ class _SucursalGlassCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: suspendida
-                    ? Colors.orange.withValues(alpha: 0.4)
+                    ? AppColors.warningLight.withValues(alpha: 0.4)
                     : Colors.white.withValues(alpha: 0.15),
                 width: 1.5,
               ),
@@ -1339,7 +1343,7 @@ class _SucursalGlassCard extends StatelessWidget {
                             Text(
                               'GESTIONAR →',
                               style: TextStyle(
-                                fontSize: 10,
+                                fontSize: 12,
                                 fontWeight: FontWeight.w800,
                                 color:
                                     AppColors.button.withValues(alpha: 0.95),
@@ -1373,7 +1377,7 @@ class _SucursalGlassCard extends StatelessWidget {
                               : _AccionPill(
                                   label: 'SUSPENDER',
                                   icono: Icons.pause_rounded,
-                                  color: Colors.orange,
+                                  color: AppColors.warningLight,
                                   onTap: onSuspender,
                                   semantics: 'Suspender sucursal',
                                 ),
@@ -1391,7 +1395,7 @@ class _SucursalGlassCard extends StatelessWidget {
   }
 
   Widget _badgeEstado(bool abierto) {
-    final color = abierto ? const Color(0xFF66BB6A) : AppColors.error;
+    final color = abierto ? AppColors.successLight : AppColors.error;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
@@ -1402,7 +1406,7 @@ class _SucursalGlassCard extends StatelessWidget {
       child: Text(
         abierto ? 'ABIERTO' : 'CERRADO',
         style: TextStyle(
-          fontSize: 8,
+          fontSize: 11,
           fontWeight: FontWeight.w800,
           color: color,
           letterSpacing: 1,
@@ -1415,16 +1419,16 @@ class _SucursalGlassCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: Colors.orange.withValues(alpha: 0.18),
+        color: AppColors.warningBg,
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: Colors.orange.withValues(alpha: 0.5)),
+        border: Border.all(color: AppColors.warning.withValues(alpha: 0.5)),
       ),
       child: const Text(
         'SUSPENDIDA',
         style: TextStyle(
-          fontSize: 8,
+          fontSize: 11,
           fontWeight: FontWeight.w800,
-          color: Colors.orange,
+          color: AppColors.warningText,
           letterSpacing: 1,
         ),
       ),

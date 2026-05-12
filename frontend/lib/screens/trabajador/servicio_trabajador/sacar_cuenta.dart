@@ -224,6 +224,7 @@ class _SacarCuentaState extends State<SacarCuenta> {
                   child: Row(
                     children: [
                       IconButton(
+                        tooltip: 'Volver',
                         icon: const Icon(
                           Icons.arrow_back_ios_new,
                           color: AppColors.background,
@@ -822,6 +823,7 @@ class _PanelCuentaState extends State<_PanelCuenta> {
           child: Row(
             children: [
               IconButton(
+                tooltip: 'Volver',
                 onPressed: onVolver,
                 icon: const Icon(
                   Icons.arrow_back_ios_new,
@@ -861,7 +863,7 @@ class _PanelCuentaState extends State<_PanelCuenta> {
                   'OCUPADA',
                   style: TextStyle(
                     color: AppColors.mesaSeleccionada,
-                    fontSize: 10,
+                    fontSize: 11,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 1.5,
                   ),
@@ -1101,7 +1103,7 @@ class _PanelCuentaState extends State<_PanelCuenta> {
                   'MÉTODO DE PAGO',
                   style: TextStyle(
                     color: AppColors.background,
-                    fontSize: 10,
+                    fontSize: 12,
                     letterSpacing: 2.5,
                     fontWeight: FontWeight.w500,
                   ),
@@ -1232,7 +1234,7 @@ class _BotonAjuste extends StatelessWidget {
                 label,
                 style: TextStyle(
                   color: color,
-                  fontSize: 9,
+                  fontSize: 11,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 1,
                 ),
@@ -1275,7 +1277,7 @@ class _SelectorDividir extends StatelessWidget {
             'DIVIDIR',
             style: TextStyle(
               color: color,
-              fontSize: 9,
+              fontSize: 11,
               fontWeight: FontWeight.w700,
               letterSpacing: 1,
             ),

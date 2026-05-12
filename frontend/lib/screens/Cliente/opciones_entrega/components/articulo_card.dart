@@ -95,7 +95,7 @@ class ArticuloCard extends StatelessWidget {
                       'Sin: ${item.ingredientesExcluidos.join(', ')}',
                       style: const TextStyle(
                         color: AppColors.excludedIngredient,
-                        fontSize: 10,
+                        fontSize: 12,
                         fontStyle: FontStyle.italic,
                       ),
                       maxLines: 1,

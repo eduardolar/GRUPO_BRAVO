@@ -9,7 +9,7 @@ import 'package:provider/provider.dart';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const _kSheetBg = Color(0xFF1A1A1A);
+const _kSheetBg = AppColors.bottomSheetBg;
 // Negro translúcido (alpha ~55%): sobre la imagen Bravo de fondo el blanco
 // translúcido se confundía con el papel claro y dejaba el texto invisible.
 const _kFieldFill = Color(0x8C000000);
@@ -421,6 +421,7 @@ class _AdminStockScreenState extends State<AdminStockScreen> {
                 ),
                 suffixIcon: _busqueda.isNotEmpty
                     ? IconButton(
+                        tooltip: 'Limpiar búsqueda',
                         icon: const Icon(
                           Icons.clear,
                           color: Colors.black54,
@@ -833,7 +834,7 @@ class _IngredienteCard extends StatelessWidget {
     final Color barColor = isBajo
         ? AppColors.error
         : isJusto
-        ? Colors.amber.shade400
+        ? AppColors.warningLight
         : AppColors.disp;
 
     final String? badge = isBajo
@@ -918,7 +919,7 @@ class _IngredienteCard extends StatelessWidget {
                             color:
                                 (isBajo
                                         ? AppColors.error
-                                        : Colors.amber.shade700)
+                                        : AppColors.warningText)
                                     .withValues(alpha: 0.9),
                             borderRadius: BorderRadius.circular(8),
                           ),
@@ -926,7 +927,7 @@ class _IngredienteCard extends StatelessWidget {
                             badge,
                             style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 10,
+                              fontSize: 11,
                               fontWeight: FontWeight.w800,
                               letterSpacing: 0.5,
                             ),
@@ -1334,6 +1335,7 @@ class _EditorIngredienteSheetState extends State<_EditorIngredienteSheet> {
                         ),
                       ),
                       IconButton(
+                        tooltip: 'Cerrar',
                         icon: const Icon(Icons.close, color: Colors.white60),
                         onPressed: () => Navigator.pop(context),
                       ),
@@ -1445,7 +1447,7 @@ class _EditorIngredienteSheetState extends State<_EditorIngredienteSheet> {
                             'Stock mínimo de alerta',
                             suffix: const Icon(
                               Icons.warning_amber_outlined,
-                              color: Colors.amber,
+                              color: AppColors.warning,
                               size: 18,
                             ),
                           ),
@@ -1552,17 +1554,23 @@ class _StepBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onPressed,
-      child: Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: AppColors.button.withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.button.withValues(alpha: 0.4)),
+    final semanticLabel =
+        icon == Icons.add ? 'Aumentar cantidad' : 'Reducir cantidad';
+    return Semantics(
+      label: semanticLabel,
+      button: true,
+      child: GestureDetector(
+        onTap: onPressed,
+        child: Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: AppColors.button.withValues(alpha: 0.2),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.button.withValues(alpha: 0.4)),
+          ),
+          child: Icon(icon, color: AppColors.button, size: 18),
         ),
-        child: Icon(icon, color: AppColors.button, size: 18),
       ),
     );
   }

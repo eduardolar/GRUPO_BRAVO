@@ -863,7 +863,7 @@ class _PasswordStrengthBarState extends State<_PasswordStrengthBar> {
   Color get _color {
     if (_score <= 1) return AppColors.error;
     if (_score == 2) return AppColors.noDisp;
-    if (_score == 3) return const Color(0xFFD97706);
+    if (_score == 3) return AppColors.warning;
     return AppColors.disp;
   }
 

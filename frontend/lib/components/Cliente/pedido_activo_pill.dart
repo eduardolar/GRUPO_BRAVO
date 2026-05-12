@@ -217,7 +217,7 @@ class _PillContentState extends State<_PillContent>
                             'Pedido $_referenciaCorta · $_labelEntrega',
                             style: TextStyle(
                               color: Colors.white.withValues(alpha: 0.55),
-                              fontSize: 10,
+                              fontSize: 12,
                               letterSpacing: 0.2,
                             ),
                             maxLines: 1,

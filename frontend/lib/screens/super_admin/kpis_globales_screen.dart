@@ -501,7 +501,7 @@ class _KpisGlobalesScreenState extends State<KpisGlobalesScreen> {
               Text(
                 'SUCURSALES DESTACADAS',
                 style: GoogleFonts.manrope(
-                  fontSize: 10,
+                  fontSize: 12,
                   fontWeight: FontWeight.w800,
                   color: Colors.white70,
                   letterSpacing: 2,
@@ -794,25 +794,29 @@ class _CarruselWidgetState extends State<_CarruselWidget> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         for (int i = 0; i < total; i++)
-          GestureDetector(
-            onTap: () {
-              _userInteracted = true;
-              _pageCtrl.animateToPage(
-                i,
-                duration: _kAutoRotateAnim,
-                curve: Curves.easeInOut,
-              );
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 220),
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              width: i == _paginaActual ? 18 : 8,
-              height: 8,
-              decoration: BoxDecoration(
-                color: i == _paginaActual
-                    ? AppColors.button
-                    : Colors.white.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(4),
+          Semantics(
+            label: 'Ir a diapositiva ${i + 1} de $total',
+            button: true,
+            child: GestureDetector(
+              onTap: () {
+                _userInteracted = true;
+                _pageCtrl.animateToPage(
+                  i,
+                  duration: _kAutoRotateAnim,
+                  curve: Curves.easeInOut,
+                );
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                width: i == _paginaActual ? 18 : 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: i == _paginaActual
+                      ? AppColors.button
+                      : Colors.white.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(4),
+                ),
               ),
             ),
           ),
@@ -888,21 +892,21 @@ class _SuperAdminKpiCard extends StatelessWidget {
                       ),
                       decoration: BoxDecoration(
                         color: abierto
-                            ? Colors.greenAccent.withValues(alpha: 0.15)
-                            : Colors.redAccent.withValues(alpha: 0.15),
+                            ? AppColors.successVibrant.withValues(alpha: 0.15)
+                            : AppColors.error.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(3),
                         border: Border.all(
                           color: abierto
-                              ? Colors.greenAccent.withValues(alpha: 0.5)
-                              : Colors.redAccent.withValues(alpha: 0.5),
+                              ? AppColors.successVibrant.withValues(alpha: 0.5)
+                              : AppColors.error.withValues(alpha: 0.5),
                         ),
                       ),
                       child: Text(
                         abierto ? 'AB' : 'CE',
                         style: GoogleFonts.manrope(
-                          fontSize: 8,
+                          fontSize: 11,
                           fontWeight: FontWeight.w800,
-                          color: abierto ? Colors.greenAccent : Colors.redAccent,
+                          color: abierto ? AppColors.successVibrant : AppColors.error,
                         ),
                       ),
                     ),
@@ -924,7 +928,7 @@ class _SuperAdminKpiCard extends StatelessWidget {
                 Text(
                   '$pedidos ped · ${ticket.toStringAsFixed(2)} €/ud',
                   style: GoogleFonts.manrope(
-                    fontSize: 10,
+                    fontSize: 12,
                     color: Colors.white54,
                   ),
                   maxLines: 1,
@@ -978,7 +982,7 @@ class _MiniKpi extends StatelessWidget {
               Text(
                 label,
                 style: GoogleFonts.manrope(
-                  fontSize: 8,
+                  fontSize: 11,
                   fontWeight: FontWeight.w800,
                   color: Colors.white.withValues(alpha: 0.7),
                   letterSpacing: 1.2,
@@ -1100,22 +1104,22 @@ class _SucursalCard extends StatelessWidget {
                         ),
                         decoration: BoxDecoration(
                           color: abierto
-                              ? Colors.greenAccent.withValues(alpha: 0.15)
-                              : Colors.redAccent.withValues(alpha: 0.15),
+                              ? AppColors.successVibrant.withValues(alpha: 0.15)
+                              : AppColors.error.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(4),
                           border: Border.all(
                             color: abierto
-                                ? Colors.greenAccent.withValues(alpha: 0.5)
-                                : Colors.redAccent.withValues(alpha: 0.5),
+                                ? AppColors.successVibrant.withValues(alpha: 0.5)
+                                : AppColors.error.withValues(alpha: 0.5),
                           ),
                         ),
                         child: Text(
                           abierto ? 'ABIERTO' : 'CERRADO',
                           style: GoogleFonts.manrope(
-                            fontSize: 9,
+                            fontSize: 11,
                             fontWeight: FontWeight.w800,
                             color:
-                                abierto ? Colors.greenAccent : Colors.redAccent,
+                                abierto ? AppColors.successVibrant : AppColors.error,
                             letterSpacing: 0.8,
                           ),
                         ),
@@ -1224,7 +1228,7 @@ class _MetricaItem extends StatelessWidget {
             Text(
               label,
               style: GoogleFonts.manrope(
-                fontSize: 9,
+                fontSize: 11,
                 fontWeight: FontWeight.w700,
                 color: c,
                 letterSpacing: 1,

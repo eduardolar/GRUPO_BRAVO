@@ -9,7 +9,7 @@ import '../../services/mesa_service.dart';
 import '../../services/reserva_service.dart';
 
 // ─── Constantes de estilo ─────────────────────────────────────────────────────
-const _kSheetBg = Color(0xFF1A1A1A);
+const _kSheetBg = AppColors.bottomSheetBg;
 // Negro translúcido (alpha ~55%): sobre la imagen Bravo de fondo el blanco
 // translúcido se confundía con el papel claro y dejaba el texto invisible.
 const _kFieldFill = Color(0x8C000000);
@@ -96,7 +96,7 @@ class _AdminReservasScreenState extends State<AdminReservasScreen> {
         data: ThemeData.dark().copyWith(
           colorScheme: const ColorScheme.dark(
             primary: AppColors.button,
-            surface: Color(0xFF1A1A1A),
+            surface: AppColors.bottomSheetBg,
           ),
         ),
         child: child!,
@@ -594,7 +594,7 @@ class _AdminReservasScreenState extends State<AdminReservasScreen> {
                       style: TextStyle(
                         color: numeroMesa != null
                             ? Colors.white60
-                            : Colors.orange,
+                            : AppColors.warningLight,
                         fontSize: 13,
                       ),
                     ),
@@ -635,7 +635,7 @@ class _AdminReservasScreenState extends State<AdminReservasScreen> {
                       _botonAccion(
                         label: 'Asignar mesa',
                         icono: Icons.table_restaurant,
-                        color: Colors.amber.shade700,
+                        color: AppColors.warningText,
                         onTap: () => _abrirAsignarMesa(r),
                       ),
                   ],
@@ -655,13 +655,13 @@ class _AdminReservasScreenState extends State<AdminReservasScreen> {
           _botonAccion(
             label: 'Confirmar',
             icono: Icons.check,
-            color: Colors.green,
+            color: AppColors.success,
             onTap: () => _cambiarEstado(id, 'Confirmada'),
           ),
           _botonAccion(
             label: 'Rechazar',
             icono: Icons.close,
-            color: Colors.grey,
+            color: AppColors.lineStrong,
             onTap: () => _cambiarEstado(id, 'Cancelada'),
           ),
         ];
@@ -670,13 +670,13 @@ class _AdminReservasScreenState extends State<AdminReservasScreen> {
           _botonAccion(
             label: 'Llegado',
             icono: Icons.how_to_reg,
-            color: Colors.blue,
+            color: AppColors.info,
             onTap: () => _cambiarEstado(id, 'Llegado'),
           ),
           _botonAccion(
             label: 'No Show',
             icono: Icons.person_off,
-            color: Colors.grey.shade600,
+            color: AppColors.textTertiary,
             onTap: () => _cambiarEstado(id, 'NoShow'),
           ),
         ];
@@ -724,20 +724,20 @@ class _AdminReservasScreenState extends State<AdminReservasScreen> {
     final Color color;
     switch (estado) {
       case 'Confirmada':
-        color = Colors.green;
+        color = AppColors.success;
         break;
       case 'Cancelada':
         color = AppColors.error;
         break;
       case 'Llegado':
-        color = Colors.blue;
+        color = AppColors.info;
         break;
       case 'NoShow':
-        color = Colors.grey;
+        color = AppColors.lineStrong;
         break;
       case 'Pendiente':
       default:
-        color = Colors.amber;
+        color = AppColors.warning;
         break;
     }
 
