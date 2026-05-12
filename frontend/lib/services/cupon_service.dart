@@ -12,7 +12,6 @@ class CuponService {
     final uri = Uri.parse(
       '$baseUrl/cupones${soloActivos ? '?solo_activos=true' : ''}',
     );
-    // GET necesita Authorization Bearer porque el endpoint exige sesión.
     final res = await httpWithRetry(() => http.get(uri, headers: _headers));
     if (res.statusCode == 200) {
       return (jsonDecode(res.body) as List)
@@ -36,11 +35,12 @@ class CuponService {
       'tipo': tipo,
       'valor': valor,
       'descripcion': descripcion,
-      'usos_maximos': ?usosMaximos,
+      if (usosMaximos != null) 'usos_maximos': usosMaximos,
       if (fechaInicio != null && fechaInicio.isNotEmpty)
         'fecha_inicio': fechaInicio,
       if (fechaFin != null && fechaFin.isNotEmpty) 'fecha_fin': fechaFin,
     };
+
     final res = await httpWithRetry(
       () => http.post(
         Uri.parse('$baseUrl/cupones'),
@@ -65,13 +65,14 @@ class CuponService {
     String? fechaFin,
   }) async {
     final body = <String, dynamic>{
-      'descripcion': ?descripcion,
-      'valor': ?valor,
-      'tipo': ?tipo,
-      'usos_maximos': ?usosMaximos,
-      'fecha_inicio': ?fechaInicio,
-      'fecha_fin': ?fechaFin,
+      if (descripcion != null) 'descripcion': descripcion,
+      if (valor != null) 'valor': valor,
+      if (tipo != null) 'tipo': tipo,
+      if (usosMaximos != null) 'usos_maximos': usosMaximos,
+      if (fechaInicio != null) 'fecha_inicio': fechaInicio,
+      if (fechaFin != null) 'fecha_fin': fechaFin,
     };
+
     final res = await httpWithRetry(
       () => http.put(
         Uri.parse('$baseUrl/cupones/$id'),
@@ -107,38 +108,29 @@ class CuponService {
     }
   }
 
-  // NUEVA FUNCIÓN PARA ENVÍO MASIVO
+  // ─── NUEVA FUNCIÓN OPTIMIZADA PARA ENVÍO MASIVO ─────────────────────────────
   static Future<void> enviarNotificacionMasiva({
     required String cuponId,
     required String tipoFiltro, // 'todos' o 'restaurante'
     String? restauranteId,
   }) async {
-    // 1. Definimos la URL del backend para esta acción
-    final url = Uri.parse('$baseUrl/cupones/enviar-masivo');
+    final body = <String, dynamic>{
+      'cuponId': cuponId,
+      'filtro': tipoFiltro,
+      if (restauranteId != null) 'restauranteId': restauranteId,
+    };
 
-    try {
-      // 2. Hacemos la petición POST
-      final response = await http.post(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          // 'Authorization': 'Bearer ...' // Si el backend pide token, añádirlo aquí
-        },
-        body: json.encode({
-          'cuponId': cuponId,
-          'filtro': tipoFiltro,
-          'restauranteId': restauranteId,
-        }),
-      );
+    final res = await httpWithRetry(
+      () => http.post(
+        Uri.parse('$baseUrl/cupones/enviar-masivo'),
+        headers: _headers,
+        body: jsonEncode(body),
+      ),
+      retry: false,
+    );
 
-      // 3. Verificamos si el servidor aceptó la orden
-      if (response.statusCode != 200 && response.statusCode != 201) {
-        final errorData = json.decode(response.body);
-        throw errorData['message'] ?? 'Error al procesar el envío masivo';
-      }
-    } catch (e) {
-      // Si hay un error de red o el servidor responde mal, lo lanzamos
-      throw 'No se pudo conectar con el servidor: $e';
+    if (res.statusCode != 200) {
+      throw toApiException(res.statusCode, decodeBody(res));
     }
   }
 }

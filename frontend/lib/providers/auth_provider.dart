@@ -103,6 +103,7 @@ class AuthProvider with ChangeNotifier {
     required String contrasena,
     required String telefono,
     required String direccion,
+    String? restauranteId,
     required bool consentimientoRgpd,
   }) async {
     try {
@@ -112,6 +113,7 @@ class AuthProvider with ChangeNotifier {
         contrasena: contrasena,
         telefono: telefono,
         direccion: direccion,
+        restauranteId: restauranteId,
         consentimientoRgpd: consentimientoRgpd,
       );
       _usuarioActual = Usuario(

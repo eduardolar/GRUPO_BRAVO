@@ -82,6 +82,7 @@ class AuthService {
     required String contrasena,
     required String telefono,
     required String direccion,
+    String? restauranteId,
     required bool consentimientoRgpd,
   }) async {
     if (!usarApiReal) {
@@ -109,6 +110,7 @@ class AuthService {
           'password': contrasena,
           'telefono': telefono,
           'direccion': direccion,
+          'restaurante_id': restauranteId,
           'rol': 'cliente',
           'consentimiento_rgpd': consentimientoRgpd,
         }),

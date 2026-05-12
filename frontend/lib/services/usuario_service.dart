@@ -123,9 +123,9 @@ class UsuarioService {
   }) async {
     try {
       final body = <String, dynamic>{
-        'nombre': ?nombre,
-        'correo': ?correo,
-        'activo': ?activo,
+        if (nombre != null) 'nombre': nombre,
+        if (correo != null) 'correo': correo,
+        if (activo != null) 'activo': activo,
       };
       final response = await http.put(
         Uri.parse('$baseUrl/usuarios/$id'),
