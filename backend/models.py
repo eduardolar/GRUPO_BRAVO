@@ -1,7 +1,7 @@
 import re
 from enum import Enum
 from typing import Annotated, Any, Dict, List, Optional
-
+from pydantic import BaseModel, EmailStr
 from email_validator import EmailNotValidError, validate_email
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validator
 
