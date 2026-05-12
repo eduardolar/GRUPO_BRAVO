@@ -312,4 +312,18 @@ class AuthProvider with ChangeNotifier {
       rethrow;
     }
   }
+  // --- ACTUALIZAR PUNTOS TRAS COMPRA ---
+  void descontarPuntosLocales(int puntosUsados) {
+    if (_usuarioActual != null && puntosUsados > 0) {
+      final puntosActuales = _usuarioActual!.puntos;
+      final nuevosPuntos = puntosActuales - puntosUsados;
+      
+      _usuarioActual = _usuarioActual!.copyWith(
+        puntos: nuevosPuntos < 0 ? 0 : nuevosPuntos,
+      );
+      
+      notifyListeners();
+      _guardarSesion(); // Guardamos el nuevo saldo en la memoria del móvil
+    }
+  }
 }

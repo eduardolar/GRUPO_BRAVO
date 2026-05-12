@@ -23,6 +23,7 @@ class PedidoService {
     String? restauranteId,
     String? idempotencyKey,
     bool prioritario = false,
+    int puntosUsados = 0,
   }) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 600));
@@ -67,6 +68,7 @@ class PedidoService {
           'estadoPago': estadoPago,
           'restauranteId': ?restauranteId,
           if (prioritario) 'prioritario': true,
+          'puntosUsados': puntosUsados,
         }),
       ),
       retry: false,
@@ -230,6 +232,7 @@ class PedidoService {
             'notas': 'Pedido enviado por QR',
             'estadoPago': 'pendiente',
             'restauranteId': ?restauranteId,
+            'puntosUsados': 0,
           }),
         ),
         retry: false,

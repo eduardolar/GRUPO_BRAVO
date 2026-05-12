@@ -166,6 +166,7 @@ class ApiService {
     required String estadoPago,
     String? restauranteId,
     String? idempotencyKey,
+    int puntosUsados = 0,
     bool prioritario = false,
   }) => PedidoService.crearPedido(
     userId: userId,
@@ -181,6 +182,7 @@ class ApiService {
     estadoPago: estadoPago,
     restauranteId: restauranteId,
     idempotencyKey: idempotencyKey,
+    puntosUsados: puntosUsados,
     prioritario: prioritario,
   );
 

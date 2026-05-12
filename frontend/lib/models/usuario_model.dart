@@ -22,10 +22,11 @@ class Usuario {
   final bool activo;
   // Fecha en que el usuario fue suspendido (null si está activo o nunca fue suspendido)
   final String? suspendidoAt;
+  final int puntos; // Para programa de fidelidad.
 
   String get rolRaw => rol.name;
 
-  Usuario copyWith({
+Usuario copyWith({
     String? id,
     String? nombre,
     String? email,
@@ -36,11 +37,11 @@ class Usuario {
     double? longitud,
     RolUsuario? rol,
     String? restauranteId,
-    String? rolRaw,
     bool? totpEnabled,
     bool? emailDosFactoresEnabled,
     bool? activo,
     String? suspendidoAt,
+    int? puntos, // 1. Añadimos puntos como parámetro opcional
   }) {
     return Usuario(
       id: id ?? this.id,
@@ -58,6 +59,7 @@ class Usuario {
           emailDosFactoresEnabled ?? this.emailDosFactoresEnabled,
       activo: activo ?? this.activo,
       suspendidoAt: suspendidoAt ?? this.suspendidoAt,
+      puntos: puntos ?? this.puntos, // 2. Si puntos es nulo, mantenemos los que ya tenía
     );
   }
 
@@ -76,6 +78,7 @@ class Usuario {
     this.emailDosFactoresEnabled = false,
     this.activo = true,
     this.suspendidoAt,
+    this.puntos = 0, 
   });
 
   factory Usuario.fromJson(Map<String, dynamic> json) {
@@ -99,6 +102,7 @@ class Usuario {
       emailDosFactoresEnabled: json['email_2fa_enabled'] == true,
       activo: json['activo'] != false,
       suspendidoAt: json['suspendido_at'] as String?,
+      puntos: json['puntos'] ?? 0,
     );
   }
 
@@ -137,6 +141,7 @@ class Usuario {
       'activo': activo,
       if (restauranteId != null) 'restaurante_id': restauranteId,
       if (suspendidoAt != null) 'suspendido_at': suspendidoAt,
+      'puntos': puntos,
     };
   }
 }

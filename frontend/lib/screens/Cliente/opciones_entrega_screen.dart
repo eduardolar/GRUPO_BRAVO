@@ -16,6 +16,7 @@ import '../../services/api_service.dart';
 import 'direccion_screen.dart';
 import 'opciones_entrega/components/components.dart';
 import 'pedido_confirmado_screen.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 export '../../models/opciones_pedido.dart';
 
@@ -47,6 +48,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
   MetodoPago _pagoSeleccionado = MetodoPago.efectivo;
   OpcionDireccion _direccionSeleccionada = OpcionDireccion.registrada;
   bool _estaCargando = false;
+  bool _usarPuntos = false; // Controla si el switch de puntos está activo
 
   bool _googlePayAutorizado = false;
   bool _googlePayProcesando = false;
@@ -658,10 +660,16 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
 
   // ── Paso: Pago ─────────────────────────────────────────────────────────────
 
+  // ── Paso: Pago ─────────────────────────────────────────────────────────────
+
   Widget _buildPasoPago() {
     return LayoutBuilder(
       builder: (context, constraints) {
         final pad = hPad(constraints);
+        // Obtenemos al usuario para leer sus puntos
+        final usuario = context.watch<AuthProvider>().usuarioActual;
+        final puntos = usuario?.puntos ?? 0;
+
         return SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
           padding: EdgeInsets.symmetric(horizontal: pad, vertical: 24),
@@ -670,6 +678,58 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
             children: [
               _subtituloPaso('Elige cómo quieres pagar'),
               const SizedBox(height: 18),
+
+              // ── SECCIÓN CLUB BRAVO (Fase 4) ──
+              if (puntos > 0)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 20),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.amber.withValues(alpha: 0.5)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.stars, color: Colors.amber),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Usar mis Bravo Coins',
+                                style: GoogleFonts.manrope(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                'Tienes $puntos puntos (${(puntos / 10).toStringAsFixed(2)}€ de dto.)',
+                                style: GoogleFonts.manrope(
+                                  color: Colors.white70,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Switch(
+                          value: _usarPuntos,
+                          activeColor: Colors.amber,
+                          onChanged: (val) {
+                            setState(() {
+                              _usarPuntos = val;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              // ─────────────────────────────────
+
               PagoCard(
                 icono: Icons.payments_outlined,
                 titulo: 'Efectivo',
@@ -778,7 +838,6 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       },
     );
   }
-
   // ── Navegación entre pasos ─────────────────────────────────────────────────
 
   void _irAPago() {
@@ -1124,10 +1183,10 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
               : _controladorDireccion.text.trim())
         : null;
 
-    // La clave de idempotencia se reusa si el usuario reintenta por error de
-    // red (misma clave = mismo intento). Se habría regenerado si el usuario
-    // cambió de método de pago antes de llegar aquí.
     final idempKey = _obtenerOGenerarIdempotencyKey();
+
+    // ── NUEVO: Calcular los puntos que vamos a usar ──
+    final puntosAUsar = _usarPuntos ? (auth.usuarioActual?.puntos ?? 0) : 0;
 
     try {
       final items = cart.items.values
@@ -1179,12 +1238,19 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
             (_pagoSeleccionado == MetodoPago.efectivo ? 'pendiente' : 'pagado'),
         restauranteId: cart.restauranteId,
         idempotencyKey: idempKey,
+        puntosUsados: puntosAUsar, // <--- AÑADIMOS LOS PUNTOS AQUÍ
       );
 
       final pedidoId =
           resultado['id']?.toString() ?? resultado['pedido_id']?.toString();
 
       cart.clearCart();
+
+      // ── NUEVO: Refrescar el perfil para que los puntos bajen en la app ──
+      // Usamos el método que tengas en tu AuthProvider para recargar al usuario.
+      // Suele llamarse checkAuthStatus() o cargarPerfil()
+// ── NUEVO: Restamos los puntos en la app al instante ──
+      auth.descontarPuntosLocales(puntosAUsar);
 
       if (!mounted) return;
       setState(() => _estaCargando = false);

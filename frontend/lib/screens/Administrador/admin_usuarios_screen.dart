@@ -96,7 +96,7 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen>
                     nuevoRolRaw == 'admin')
                 ? RolUsuario.administrador
                 : RolUsuario.trabajador;
-            _usuarios[i] = usuario.copyWith(rolRaw: nuevoRolRaw, rol: nuevoRol);
+            _usuarios[i] = usuario.copyWith(rol: nuevoRol);
           }
         });
         _showSnack(
