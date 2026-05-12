@@ -77,12 +77,12 @@ class CuponService {
     String? fechaFin,
   }) async {
     final body = <String, dynamic>{
-      if (descripcion != null) 'descripcion': descripcion,
-      if (valor != null) 'valor': valor,
-      if (tipo != null) 'tipo': tipo,
-      if (usosMaximos != null) 'usos_maximos': usosMaximos,
-      if (fechaInicio != null) 'fecha_inicio': fechaInicio,
-      if (fechaFin != null) 'fecha_fin': fechaFin,
+      'descripcion': ?descripcion,
+      'valor': ?valor,
+      'tipo': ?tipo,
+      'usos_maximos': ?usosMaximos,
+      'fecha_inicio': ?fechaInicio,
+      'fecha_fin': ?fechaFin,
     };
 
     final res = await httpWithRetry(
@@ -98,7 +98,7 @@ class CuponService {
     throw toApiException(res.statusCode, decodeBody(res));
   }
 
-  static Future toggleActivo(String id, bool activo) async {
+  static Future<void> toggleActivo(String id, bool activo) async {
     final res = await httpWithRetry(
       () => http.patch(
         Uri.parse('$baseUrl/cupones/$id/activo?activo=$activo'),
@@ -112,7 +112,7 @@ class CuponService {
     }
   }
 
-  static Future eliminar(String id) async {
+  static Future<void> eliminar(String id) async {
     final res = await httpWithRetry(
       () => http.delete(Uri.parse('$baseUrl/cupones/$id'), headers: _headers),
       retry: false,
@@ -133,7 +133,7 @@ class CuponService {
       'codigo': codigo.trim().toUpperCase(),
       'subtotal': subtotal,
       'coste_envio': costeEnvio,
-      if (restauranteId != null) 'restaurante_id': restauranteId,
+      'restaurante_id': ?restauranteId,
     };
 
     final res = await httpWithRetry(
@@ -158,7 +158,7 @@ class CuponService {
     final uri = Uri.parse('$baseUrl/cupones/$cuponId/usar');
 
     final body = <String, dynamic>{
-      if (restauranteId != null) 'restaurante_id': restauranteId,
+      'restaurante_id': ?restauranteId,
     };
 
     final res = await httpWithRetry(
@@ -175,7 +175,7 @@ class CuponService {
     }
   }
 
-  static Future enviarNotificacionMasiva({
+  static Future<void> enviarNotificacionMasiva({
     required String cuponId,
     required String tipoFiltro,
     String? restauranteId,
