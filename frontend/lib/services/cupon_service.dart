@@ -1,12 +1,13 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+
 import '../models/cupon_model.dart';
 import 'api_config.dart';
 import 'http_client.dart';
 import 'auth_session.dart';
 
 /// Valor centinela para distinguir "parámetro no pasado" de "null explícito"
-/// en [CuponService.crear]. Un const Object único no puede igualar nada más.
+/// en [CuponService.crear].
 const Object _noProvidedSentinel = Object();
 
 class CuponService {
@@ -16,7 +17,7 @@ class CuponService {
     final uri = Uri.parse(
       '$baseUrl/cupones${soloActivos ? '?solo_activos=true' : ''}',
     );
-    // GET necesita Authorization Bearer porque el endpoint exige sesión.
+
     final res = await httpWithRetry(() => http.get(uri, headers: _headers));
     if (res.statusCode == 200) {
       return (jsonDecode(res.body) as List)
@@ -34,9 +35,6 @@ class CuponService {
     int? usosMaximos,
     String? fechaInicio,
     String? fechaFin,
-    /// null = cupón global (solo super_admin); valor = cupón de sucursal.
-    /// Se serializa como JSON null cuando es global para que el backend lo distinga
-    /// de "campo omitido".
     Object? restauranteId = _noProvidedSentinel,
   }) async {
     final body = <String, dynamic>{
@@ -44,17 +42,16 @@ class CuponService {
       'tipo': tipo,
       'valor': valor,
       'descripcion': descripcion,
-      'usos_maximos': ?usosMaximos,
+      'usos_maximos': usosMaximos,
       if (fechaInicio != null && fechaInicio.isNotEmpty)
         'fecha_inicio': fechaInicio,
       if (fechaFin != null && fechaFin.isNotEmpty) 'fecha_fin': fechaFin,
     };
-    // Solo incluimos restaurante_id en el body cuando se pasó explícitamente
-    // (incluye null = global). Si el llamador no pasó el parámetro, no lo
-    // incluimos para no romper la lógica de admin normal.
+
     if (restauranteId != _noProvidedSentinel) {
       body['restaurante_id'] = restauranteId;
     }
+
     final res = await httpWithRetry(
       () => http.post(
         Uri.parse('$baseUrl/cupones'),
@@ -63,6 +60,7 @@ class CuponService {
       ),
       retry: false,
     );
+
     if (res.statusCode == 200 || res.statusCode == 201) {
       return Cupon.fromJson(jsonDecode(res.body));
     }
@@ -79,13 +77,14 @@ class CuponService {
     String? fechaFin,
   }) async {
     final body = <String, dynamic>{
-      'descripcion': ?descripcion,
-      'valor': ?valor,
-      'tipo': ?tipo,
-      'usos_maximos': ?usosMaximos,
-      'fecha_inicio': ?fechaInicio,
-      'fecha_fin': ?fechaFin,
+      if (descripcion != null) 'descripcion': descripcion,
+      if (valor != null) 'valor': valor,
+      if (tipo != null) 'tipo': tipo,
+      if (usosMaximos != null) 'usos_maximos': usosMaximos,
+      if (fechaInicio != null) 'fecha_inicio': fechaInicio,
+      if (fechaFin != null) 'fecha_fin': fechaFin,
     };
+
     final res = await httpWithRetry(
       () => http.put(
         Uri.parse('$baseUrl/cupones/$id'),
@@ -94,11 +93,12 @@ class CuponService {
       ),
       retry: false,
     );
+
     if (res.statusCode == 200) return Cupon.fromJson(jsonDecode(res.body));
     throw toApiException(res.statusCode, decodeBody(res));
   }
 
-  static Future<void> toggleActivo(String id, bool activo) async {
+  static Future toggleActivo(String id, bool activo) async {
     final res = await httpWithRetry(
       () => http.patch(
         Uri.parse('$baseUrl/cupones/$id/activo?activo=$activo'),
@@ -106,38 +106,86 @@ class CuponService {
       ),
       retry: false,
     );
+
     if (res.statusCode != 200) {
       throw toApiException(res.statusCode, decodeBody(res));
     }
   }
 
-  static Future<void> eliminar(String id) async {
+  static Future eliminar(String id) async {
     final res = await httpWithRetry(
       () => http.delete(Uri.parse('$baseUrl/cupones/$id'), headers: _headers),
       retry: false,
     );
+
     if (res.statusCode != 200 && res.statusCode != 204) {
       throw toApiException(res.statusCode, decodeBody(res));
     }
   }
 
-  // NUEVA FUNCIÓN PARA ENVÍO MASIVO
-  static Future<void> enviarNotificacionMasiva({
-    required String cuponId,
-    required String tipoFiltro, // 'todos' o 'restaurante'
+  static Future<Map<String, dynamic>> validar({
+    required String codigo,
+    required double subtotal,
+    double costeEnvio = 0.0,
     String? restauranteId,
   }) async {
-    // 1. Definimos la URL del backend para esta acción
+    final body = <String, dynamic>{
+      'codigo': codigo.trim().toUpperCase(),
+      'subtotal': subtotal,
+      'coste_envio': costeEnvio,
+      if (restauranteId != null) 'restaurante_id': restauranteId,
+    };
+
+    final res = await httpWithRetry(
+      () => http.post(
+        Uri.parse('$baseUrl/cupones/validar'),
+        headers: _headers,
+        body: jsonEncode(body),
+      ),
+      retry: false,
+    );
+
+    if (res.statusCode == 200) {
+      return Map<String, dynamic>.from(jsonDecode(res.body));
+    }
+    throw toApiException(res.statusCode, decodeBody(res));
+  }
+
+  static Future<void> registrarUso(
+    String cuponId, {
+    String? restauranteId,
+  }) async {
+    final uri = Uri.parse('$baseUrl/cupones/$cuponId/usar');
+
+    final body = <String, dynamic>{
+      if (restauranteId != null) 'restaurante_id': restauranteId,
+    };
+
+    final res = await httpWithRetry(
+      () => http.post(
+        uri,
+        headers: {..._headers, 'Content-Type': 'application/json'},
+        body: jsonEncode(body),
+      ),
+      retry: false,
+    );
+
+    if (res.statusCode != 200) {
+      throw toApiException(res.statusCode, decodeBody(res));
+    }
+  }
+
+  static Future enviarNotificacionMasiva({
+    required String cuponId,
+    required String tipoFiltro,
+    String? restauranteId,
+  }) async {
     final url = Uri.parse('$baseUrl/cupones/enviar-masivo');
 
     try {
-      // 2. Hacemos la petición POST
       final response = await http.post(
         url,
-        headers: {
-          'Content-Type': 'application/json',
-          // 'Authorization': 'Bearer ...' // Si el backend pide token, añádirlo aquí
-        },
+        headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'cuponId': cuponId,
           'filtro': tipoFiltro,
@@ -145,13 +193,11 @@ class CuponService {
         }),
       );
 
-      // 3. Verificamos si el servidor aceptó la orden
       if (response.statusCode != 200 && response.statusCode != 201) {
         final errorData = json.decode(response.body);
         throw errorData['message'] ?? 'Error al procesar el envío masivo';
       }
     } catch (e) {
-      // Si hay un error de red o el servidor responde mal, lo lanzamos
       throw 'No se pudo conectar con el servidor: $e';
     }
   }

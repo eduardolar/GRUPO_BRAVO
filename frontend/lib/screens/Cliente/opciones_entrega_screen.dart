@@ -101,7 +101,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
     return total < 0 ? 0.0 : total;
   }
 
-  Future<void> _aplicarCupon() async {
+  Future _aplicarCupon() async {
     final codigo = _controladorCupon.text.trim().toUpperCase();
 
     if (codigo.isEmpty) {
@@ -252,10 +252,10 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
     MetodoPago.applePay => 'Apple Pay',
   };
 
-  Future<bool> _confirmarSalida() async {
+  Future _confirmarSalida() async {
     final cart = context.read<CartProvider>();
     if (cart.itemCount == 0) return true;
-    final salir = await showDialog<bool>(
+    final salir = await showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.panel,
@@ -281,8 +281,6 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
     );
     return salir ?? false;
   }
-
-  // ── Build ──────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -326,7 +324,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
                       duration: _kAnimMed,
                       transitionBuilder: (child, animation) => SlideTransition(
                         position:
-                            Tween<Offset>(
+                            Tween(
                               begin: const Offset(0.06, 0),
                               end: Offset.zero,
                             ).animate(
@@ -375,8 +373,6 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       _Paso.pago => _buildPasoPago(),
     };
   }
-
-  // ── Paso: Confirmar ────────────────────────────────────────────────────────
 
   Widget _buildPasoConfirmar() {
     return LayoutBuilder(
@@ -447,8 +443,6 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       },
     );
   }
-
-  // ── Paso: Entrega ──────────────────────────────────────────────────────────
 
   Widget _seccionCupon(CartProvider cart) {
     return FormPanel(
@@ -656,8 +650,6 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
     );
   }
 
-  // ── Paso: Pago ─────────────────────────────────────────────────────────────
-
   Widget _buildPasoPago() {
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -779,8 +771,6 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
     );
   }
 
-  // ── Navegación entre pasos ─────────────────────────────────────────────────
-
   void _irAPago() {
     if (_entregaSeleccionada == OpcionEntrega.domicilio) {
       final auth = context.read<AuthProvider>();
@@ -793,14 +783,13 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
         return;
       }
     }
-    // Nueva pantalla de pago = nuevo intento = nueva clave de idempotencia.
     setState(() {
       _paso = _Paso.pago;
       _idempotencyKey = _uuid.v4();
     });
   }
 
-  Future<void> _confirmarPedido() async {
+  Future _confirmarPedido() async {
     if (_estaCargando) return;
     switch (_pagoSeleccionado) {
       case MetodoPago.efectivo:
@@ -820,14 +809,12 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
     }
   }
 
-  // ── Procesadores de pago ───────────────────────────────────────────────────
-
-  Future<void> _procesarEfectivoYCrearPedido() async {
+  Future _procesarEfectivoYCrearPedido() async {
     setState(() => _estaCargando = true);
     await _crearPedidoFinal(referenciaPago: null, estadoPago: 'pendiente');
   }
 
-  Future<void> _procesarTarjetaYCrearPedido() async {
+  Future _procesarTarjetaYCrearPedido() async {
     if (kIsWeb) {
       await _procesarStripeCheckoutWeb();
       return;
@@ -878,7 +865,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
     }
   }
 
-  Future<void> _procesarStripeCheckoutWeb() async {
+  Future _procesarStripeCheckoutWeb() async {
     setState(() => _estaCargando = true);
     String? pedidoId;
     String? sessionId;
@@ -925,7 +912,6 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
                 : _controladorDireccion.text.trim())
           : null;
 
-      // 1. Crear sesión Stripe
       final totalStr = total.toStringAsFixed(2);
       final session = await ApiService.crearCheckoutSession(
         total: total,
@@ -944,8 +930,6 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
         throw Exception('No se pudo iniciar la sesión de pago');
       }
 
-      // 2. Crear el pedido (estado pendiente_stripe) — el carrito se mantiene
-      //    intacto hasta que confirmemos el pago.
       if (_entregaSeleccionada != OpcionEntrega.enMesa) {
         cart.desasignarMesa();
       }
@@ -976,19 +960,6 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       if (!mounted) return;
       setState(() => _estaCargando = false);
 
-      // 3. Abrir Stripe Checkout.
-      //
-      //    En **web**: redirect en la misma pestaña (`_self`). Es el
-      //    comportamiento natural de Stripe Checkout: tras pagar redirige
-      //    a `success_url`, que es la home con `?stripe_session=...`. La
-      //    propia home (inicio_screen._verificarStripeRedirect) detecta
-      //    el retorno y abre `PedidoConfirmadoScreen`. Por tanto el código
-      //    que viene después NO se ejecuta en web — vaciamos el carrito
-      //    aquí porque la página se va.
-      //
-      //    En **móvil/desktop**: navegador externo + diálogo de
-      //    verificación al volver. Aquí el carrito se vacía solo si el
-      //    pago se confirma.
       if (kIsWeb) {
         context.read<CartProvider>().clearCart();
         await launchUrl(Uri.parse(checkoutUrl), webOnlyWindowName: '_self');
@@ -1002,8 +973,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
 
       if (!mounted) return;
 
-      // 4. Diálogo de verificación (solo móvil/desktop).
-      final confirmado = await showDialog<bool>(
+      final confirmado = await showDialog(
         context: context,
         barrierDismissible: false,
         builder: (_) => StripeCheckoutDialog(sessionId: sessionId!),
@@ -1018,7 +988,6 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       }
       if (!mounted) return;
 
-      // Limpiar el carrito sólo cuando el pago está confirmado
       context.read<CartProvider>().clearCart();
 
       Navigator.pushAndRemoveUntil(
@@ -1041,7 +1010,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
     }
   }
 
-  Future<void> _procesarGooglePayYCrearPedido() async {
+  Future _procesarGooglePayYCrearPedido() async {
     if (!_googlePayAutorizado || _googlePayClientSecret == null) {
       _showSnack('Primero autoriza Google Pay', error: true);
       return;
@@ -1074,7 +1043,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
     }
   }
 
-  Future<void> _procesarPaypalYCrearPedido() async {
+  Future _procesarPaypalYCrearPedido() async {
     if (!_paypalAutorizado || _paypalOrderId == null) {
       _showSnack('Primero completa el pago en PayPal', error: true);
       return;
@@ -1105,12 +1074,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
     }
   }
 
-  // ── Creación final del pedido (todos los métodos convergen aquí) ───────────
-
-  Future<void> _crearPedidoFinal({
-    String? referenciaPago,
-    String? estadoPago,
-  }) async {
+  Future _crearPedidoFinal({String? referenciaPago, String? estadoPago}) async {
     final auth = context.read<AuthProvider>();
     final cart = context.read<CartProvider>();
 
@@ -1124,9 +1088,6 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
               : _controladorDireccion.text.trim())
         : null;
 
-    // La clave de idempotencia se reusa si el usuario reintenta por error de
-    // red (misma clave = mismo intento). Se habría regenerado si el usuario
-    // cambió de método de pago antes de llegar aquí.
     final idempKey = _obtenerOGenerarIdempotencyKey();
 
     try {
@@ -1204,19 +1165,14 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _estaCargando = false);
-      // No regeneramos la clave: el usuario puede reintentar con la misma.
       _showSnack('Error al crear pedido: $e', error: true);
     }
   }
 
-  // ── Autorizaciones de wallet ───────────────────────────────────────────────
-
-  Future<void> _autorizarApplePayFrontend() async {
+  Future _autorizarApplePayFrontend() async {
     if (_estaCargando) return;
     setState(() => _estaCargando = true);
     try {
-      // Sin llamadas backend en autorización: la autenticación real ocurre al
-      // pulsar CONFIRMAR PEDIDO en _procesarApplePayYCrearPedido.
       if (!mounted) return;
       setState(() {
         _applePayAutorizado = true;
@@ -1231,7 +1187,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
     }
   }
 
-  Future<void> _procesarApplePayYCrearPedido() async {
+  Future _procesarApplePayYCrearPedido() async {
     setState(() => _estaCargando = true);
     try {
       final cart = context.read<CartProvider>();
@@ -1278,7 +1234,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
     }
   }
 
-  Future<void> _autorizarGooglePayFrontend() async {
+  Future _autorizarGooglePayFrontend() async {
     if (_estaCargando || _googlePayProcesando) return;
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
       _showSnack('Google Pay solo está disponible en Android.', error: true);
@@ -1356,7 +1312,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
     }
   }
 
-  Future<void> _autorizarPaypalFrontend() async {
+  Future _autorizarPaypalFrontend() async {
     if (_estaCargando) return;
     setState(() => _estaCargando = true);
     try {
@@ -1383,7 +1339,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
         approvalUrl = orden['approval_url'].toString();
       } else if (orden['links'] is List) {
         for (final link in orden['links'] as List) {
-          if (link is Map<String, dynamic>) {
+          if (link is Map) {
             final rel = link['rel']?.toString().toLowerCase();
             if (rel == 'approve' || rel == 'approval_url') {
               approvalUrl = link['href']?.toString();
@@ -1429,8 +1385,6 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       _showSnack('Error al iniciar PayPal: $e', error: true);
     }
   }
-
-  // ── Layout helpers ─────────────────────────────────────────────────────────
 
   Widget _subtituloPaso(String texto) {
     return Text(
