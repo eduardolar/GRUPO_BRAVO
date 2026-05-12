@@ -160,20 +160,22 @@ class UsuarioService {
     String? correo,
     bool? activo,
   }) async {
-    final body = <String, dynamic>{
-      'nombre': ?nombre,
-      'correo': ?correo,
-      'activo': ?activo,
-    };
-    final response = await http.put(
-      Uri.parse('$baseUrl/usuarios/$id'),
-      headers: _headersConActor(),
-      body: jsonEncode(body),
-    );
-    if (response.statusCode == 200) return true;
-    // Propagamos el error con el detail del backend para que el caller pueda
-    // mostrarlo (antes el catch silencioso ocultaba el motivo real).
-    throw toApiException(response.statusCode, decodeBody(response));
+    try {
+      final body = <String, dynamic>{
+        'nombre': ?nombre,
+        'correo': ?correo,
+        'activo': ?activo,
+      };
+      final response = await http.put(
+        Uri.parse('$baseUrl/usuarios/$id'),
+        headers: _headersConActor(),
+        body: jsonEncode(body),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('Error al editar usuario: $e');
+      return false;
+    }
   }
 
   // 8. Persistencia de Dirección y Coordenadas (perfil propio del cliente)

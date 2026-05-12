@@ -4,6 +4,8 @@ from datetime import date
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
+from typing import Optional
 from pydantic import BaseModel, field_validator
 from bson import ObjectId
 from bson.errors import InvalidId
@@ -14,6 +16,14 @@ from security import require_role, get_current_user, normalizar_rol
 import audit_general as ag
 
 logger = logging.getLogger("uvicorn")
+from database import coleccion_cupones, coleccion_usuarios
+from security import require_role, get_current_user
+import re
+import os
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
 
 router = APIRouter(prefix="/cupones", tags=["Cupones"])
 
@@ -147,6 +157,10 @@ def _cupon_vigente(cupon: dict) -> Optional[str]:
 
     return None
 
+class EnvioMasivoRequest(BaseModel):
+    cuponId: str
+    filtro: str  # "todos" o "restaurante"
+    restauranteId: Optional[str] = None
 
 # ─── Endpoints ─────────────────────────────────────────────────────────────────
 

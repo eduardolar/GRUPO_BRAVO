@@ -73,6 +73,195 @@ class VerificarLogin2FA(BaseModel):
 
 
 # --- ENDPOINT: LOGIN ---
+# --- 2. FUNCIÓN PARA ENVIAR EL EMAIL ---
+from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
+from pydantic import EmailStr
+import logging
+
+# Configuración de logging para rastrear errores
+logger = logging.getLogger("uvicorn")
+
+async def enviar_correo_verificacion(email_destino: str, codigo: str):
+    html = f"""
+    <div style="font-family: Arial, sans-serif; background-color: #FBF9F6; padding: 40px 20px; text-align: center;">
+        <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; padding: 30px; border: 1px solid #E0DBD3; border-radius: 10px;">
+            <h2 style="color: #800020; margin-top: 0;">Restaurante Bravo</h2>
+            <hr style="border: 0; border-top: 1px solid #E0DBD3; margin: 20px 0;">
+            <p style="color: #2D2D2D; font-size: 16px; line-height: 1.5;">
+                ¡Bienvenido! Para activar tu cuenta y empezar tu experiencia gastronómica, usa el siguiente código de seguridad:
+            </p>
+            <div style="background-color: #800020; color: #ffffff; padding: 15px 25px; font-size: 32px; font-weight: bold; letter-spacing: 8px; margin: 25px 0; display: inline-block; border-radius: 5px;">
+                {codigo}
+            </div>
+            <p style="color: #6B6B6B; font-size: 12px; margin-top: 25px; border-top: 1px solid #EEE; padding-top: 15px;">
+                Este código es privado. Si no intentaste registrarte en <strong>Bravo</strong>, puedes ignorar este correo con seguridad.
+            </p>
+            {_FOOTER_RGPD}
+        </div>
+    </div>
+    """
+
+    mensaje = MessageSchema(
+        subject="Código de Verificación - Restaurante Bravo",
+        recipients=[email_destino],
+        body=html,
+        subtype=MessageType.html
+    )
+
+    fm = FastMail(conf) # Asegúrate de que 'conf' esté importado/disponible
+    
+    try:
+        await fm.send_message(mensaje)
+    except Exception as e:
+        # Esto evita que la API devuelva un error 500 si el correo falla
+        logger.error(f"Error enviando correo a {email_destino}: {str(e)}")
+        return False
+    
+    return True
+
+# --- 3. ENDPOINT: REGISTRO ---
+@router.post("/registro")
+@limiter.limit("3/minute")
+async def registrar_usuario(request: Request, usuario: UsuarioRegistro):
+    try:
+        correo_normalizado = normalizar_correo(usuario.correo)
+
+        # RGPD: consentimiento explícito obligatorio
+        if not usuario.consentimiento_rgpd:
+            raise ValidacionError("Debes aceptar la Política de Privacidad para registrarte")
+
+        # Validar si el correo ya existe
+        if coleccion_usuarios.find_one({"correo": correo_normalizado}):
+            raise ConflictError("El correo ya está registrado")
+
+        # Regla Senior: Validar restaurante_id para empleados
+        if usuario.rol != "cliente" and not usuario.restauranteId:
+            raise ValidacionError("Los empleados deben estar vinculados a un restauranteId")
+
+        # Generar OTP de 6 dígitos
+        codigo_otp = ''.join(random.choices(string.digits, k=6))
+
+        # Hashear contraseña
+        password_bytes = usuario.password.encode('utf-8')
+        hashed_password = bcrypt.hashpw(password_bytes, bcrypt.gensalt())
+
+        # Extraer IP del cliente para prueba de consentimiento
+        ip_cliente = (
+            request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+            or request.client.host
+            if request.client else "desconocida"
+        )
+
+        # Preparar documento para MongoDB (DB usa snake_case internamente)
+        usuario_dict = {
+            "nombre": usuario.nombre,
+            "correo": correo_normalizado,
+            "telefono": usuario.telefono,
+            "direccion": usuario.direccion,
+            "rol": usuario.rol,
+            "restaurante_id": usuario.restaurante_id,
+            "password_hash": hashed_password.decode('utf-8'),
+            "activo": True,
+            "is_verified": False,
+            "verification_code": codigo_otp,
+            "verification_code_expiry": _expiry_iso(),
+            "consentimiento_rgpd": True,
+            "consentimiento_fecha": datetime.now(timezone.utc).isoformat(),
+            "consentimiento_ip": ip_cliente,
+            "consentimiento_version": "1.0",
+        }
+
+        # Guardar en base de datos
+        coleccion_usuarios.insert_one(usuario_dict)
+
+        # Enviar correo real a la bandeja del usuario
+        await enviar_correo_verificacion(usuario.correo, codigo_otp)
+
+        return {"mensaje": "Registro exitoso. Revisa tu bandeja de entrada.", "correo": usuario.correo}
+
+    except AppError:
+        raise
+    except Exception:
+        logger.error("Error inesperado en /registro", exc_info=True)
+        raise
+
+# --- 4. ENDPOINT: VERIFICAR CÓDIGO ---
+@router.post("/verificar-codigo")
+@limiter.limit("10/minute")
+async def verificar_codigo(request: Request, datos: VerificacionCodigo):
+    correo_normalizado = normalizar_correo(datos.correo)
+    usuario_db = coleccion_usuarios.find_one({"correo": correo_normalizado})
+    if not usuario_db:
+        raise NotFoundError("Usuario no encontrado")
+
+    codigo_recibido = str(datos.codigo).strip()
+
+    # Clientes usan verification_code; empleados creados por admin usan reset_code
+    codigo_verificacion = str(usuario_db.get("verification_code") or "").strip()
+    codigo_reset = str(usuario_db.get("reset_code") or "").strip()
+
+    coincide_verificacion = (
+        codigo_recibido == codigo_verificacion
+        and codigo_verificacion != ""
+        and not _codigo_expirado(usuario_db.get("verification_code_expiry"))
+    )
+    coincide_reset = (
+        codigo_recibido == codigo_reset
+        and codigo_reset != ""
+        and not _codigo_expirado(usuario_db.get("reset_code_expiry"))
+    )
+
+    if not coincide_verificacion and not coincide_reset:
+        raise AutenticacionError("Código incorrecto o expirado")
+
+    campos = {"is_verified": True}
+    if coincide_verificacion:
+        campos["verification_code"] = None
+    if coincide_reset:
+        campos["reset_code"] = None
+
+    resultado = coleccion_usuarios.update_one(
+        {"correo": correo_normalizado},
+        {"$set": campos}
+    )
+
+    if resultado.modified_count > 0:
+        return {"mensaje": "¡Cuenta verificada con éxito! Ya puedes hacer login."}
+    return {"mensaje": "La cuenta ya estaba verificada."}
+# --- NUEVA FUNCIÓN PARA EL CORREO 2FA ---
+async def enviar_correo_2fa(email_destino: str, codigo: str):
+    html = f"""
+    <div style="font-family: Arial, sans-serif; background-color: #FBF9F6; padding: 40px 20px; text-align: center;">
+        <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; padding: 30px; border: 1px solid #E0DBD3; border-radius: 10px;">
+            <h2 style="color: #800020; margin-top: 0;">Restaurante Bravo - Seguridad</h2>
+            <hr style="border: 0; border-top: 1px solid #E0DBD3; margin: 20px 0;">
+            <p style="color: #2D2D2D; font-size: 16px; line-height: 1.5;">
+                Hemos detectado un intento de inicio de sesión. Usa este código para confirmar que eres tú:
+            </p>
+            <div style="background-color: #800020; color: #ffffff; padding: 15px 25px; font-size: 32px; font-weight: bold; letter-spacing: 8px; margin: 25px 0; display: inline-block; border-radius: 5px;">
+                {codigo}
+            </div>
+            <p style="color: #6B6B6B; font-size: 12px; margin-top: 25px; border-top: 1px solid #EEE; padding-top: 15px;">
+                Si no estás intentando iniciar sesión, por favor cambia tu contraseña inmediatamente.
+            </p>
+            {_FOOTER_RGPD}
+        </div>
+    </div>
+    """
+    mensaje = MessageSchema(
+        subject="Código de Acceso - Restaurante Bravo",
+        recipients=[email_destino],
+        body=html,
+        subtype=MessageType.html
+    )
+    try:
+        fm = FastMail(conf)
+        await fm.send_message(mensaje)
+    except Exception as e:
+        logger.error(f"Error enviando 2FA a {email_destino}: {str(e)}")
+
+
+# --- 5. ENDPOINT: LOGIN (SOLO CLIENTES TENDRAN 2FA) ---
 @router.post("/login")
 @limiter.limit("5/minute")
 async def iniciar_sesion(request: Request, credenciales: UsuarioLogin):

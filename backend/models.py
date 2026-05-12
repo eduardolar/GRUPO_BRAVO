@@ -73,7 +73,7 @@ class UsuarioRegistro(BaseModel):
     telefono: str
     direccion: str
     rol: str = "cliente"
-    restauranteId: Optional[str] = None
+    restaurante_id: Optional[str] = None 
     consentimiento_rgpd: bool = False
     puntos: int = 0 # Puntos de fidelidad acumulados por el cliente. 
     

@@ -102,9 +102,8 @@ class AuthProvider with ChangeNotifier {
     required String email,
     required String contrasena,
     required String telefono,
-    // La dirección se recoge en OpcionesEntregaScreen la primera vez que el
-    // usuario pide a domicilio, por lo que es opcional al registrarse.
-    String direccion = '',
+    required String direccion,
+    String? restauranteId,
     required bool consentimientoRgpd,
   }) async {
     try {
@@ -114,6 +113,7 @@ class AuthProvider with ChangeNotifier {
         contrasena: contrasena,
         telefono: telefono,
         direccion: direccion,
+        restauranteId: restauranteId,
         consentimientoRgpd: consentimientoRgpd,
       );
       _usuarioActual = Usuario(

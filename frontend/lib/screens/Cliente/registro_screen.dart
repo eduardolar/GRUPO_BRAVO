@@ -8,8 +8,10 @@ import '../../components/Cliente/primary_button.dart';
 import '../../core/app_snackbar.dart';
 import '../../core/colors_style.dart';
 import '../../models/destino_login.dart';
+import '../../models/restaurante_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/http_client.dart';
+import '../../services/restaurante_service.dart';
 import 'login_screen.dart';
 import 'verificacion_screen.dart';
 
@@ -103,11 +105,34 @@ class _RegistroScreenState extends State<RegistroScreen> {
   bool _aceptaPrivacidad = false;
   bool _privacidadError = false;
 
+  // Listado de restaurantes y selección actual. El cliente elige su local más
+  // cercano en el paso 3 para que el backend pueda asociar pedidos, cupones
+  // y notificaciones al restaurante correcto.
+  List<Restaurante> _restaurantes = [];
+  String? _restauranteSeleccionado;
+  bool _restauranteError = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarRestaurantes();
+  }
+
   @override
   void dispose() {
     _ctrl.dispose();
     _pageController.dispose();
     super.dispose();
+  }
+
+  Future<void> _cargarRestaurantes() async {
+    try {
+      final lista = await RestauranteService().obtenerTodos();
+      if (!mounted) return;
+      setState(() => _restaurantes = lista);
+    } catch (e) {
+      debugPrint('Error al cargar restaurantes: $e');
+    }
   }
 
   // ── Validadores ────────────────────────────────────────────────────────────
@@ -165,8 +190,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
         lower.contains('reserved name')) {
       return 'El correo no es válido o usa un dominio no permitido.';
     }
-    if (lower.contains('contraseña debe tener') ||
-        lower.contains('password')) {
+    if (lower.contains('contraseña debe tener') || lower.contains('password')) {
       // El backend ya entrega un texto explicativo; quitamos el prefijo
       // "password: Value error, " si está presente.
       final limpio = raw
@@ -211,6 +235,10 @@ class _RegistroScreenState extends State<RegistroScreen> {
   // ── Registro final ─────────────────────────────────────────────────────────
 
   Future<void> _crearCuenta() async {
+    if (_restauranteSeleccionado == null) {
+      setState(() => _restauranteError = true);
+      return;
+    }
     if (!_aceptaPrivacidad) {
       setState(() => _privacidadError = true);
       return;
@@ -225,14 +253,15 @@ class _RegistroScreenState extends State<RegistroScreen> {
         contrasena: _ctrl.passwordCtrl.text,
         telefono: _ctrl.telefonoCtrl.text.trim(),
         // Dirección eliminada del registro — se pedirá en OpcionesEntregaScreen.
+        direccion: '',
+        restauranteId: _restauranteSeleccionado,
         consentimientoRgpd: true,
       );
       if (!mounted) return;
       navigator.push(
         MaterialPageRoute(
-          builder: (_) => VerificacionScreen(
-            email: _ctrl.emailCtrl.text.trim(),
-          ),
+          builder: (_) =>
+              VerificacionScreen(email: _ctrl.emailCtrl.text.trim()),
         ),
       );
     } catch (e) {
@@ -289,7 +318,10 @@ class _RegistroScreenState extends State<RegistroScreen> {
           'El servidor tardó demasiado. Inténtalo en un momento.',
         );
       } else {
-        showAppError(context, 'No pudimos crear tu cuenta. Inténtalo de nuevo.');
+        showAppError(
+          context,
+          'No pudimos crear tu cuenta. Inténtalo de nuevo.',
+        );
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -353,6 +385,13 @@ class _RegistroScreenState extends State<RegistroScreen> {
                       _aceptaPrivacidad = v ?? false;
                       if (_aceptaPrivacidad) _privacidadError = false;
                     }),
+                    restaurantes: _restaurantes,
+                    restauranteSeleccionado: _restauranteSeleccionado,
+                    restauranteError: _restauranteError,
+                    onRestauranteChange: (val) => setState(() {
+                      _restauranteSeleccionado = val;
+                      _restauranteError = false;
+                    }),
                     onCrearCuenta: _crearCuenta,
                     onVolver: _volver,
                   ),
@@ -381,13 +420,7 @@ class _IndicadorPasos extends StatelessWidget {
       label: 'Paso ${pasoActual + 1} de 3',
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          _circulo(0),
-          _linea(0),
-          _circulo(1),
-          _linea(1),
-          _circulo(2),
-        ],
+        children: [_circulo(0), _linea(0), _circulo(1), _linea(1), _circulo(2)],
       ),
     );
   }
@@ -591,6 +624,10 @@ class _Paso3 extends StatelessWidget {
   final bool privacidadError;
   final bool isLoading;
   final ValueChanged<bool?> onPrivacidadChange;
+  final List<Restaurante> restaurantes;
+  final String? restauranteSeleccionado;
+  final bool restauranteError;
+  final ValueChanged<String?> onRestauranteChange;
   final VoidCallback onCrearCuenta;
   final VoidCallback onVolver;
 
@@ -600,6 +637,10 @@ class _Paso3 extends StatelessWidget {
     required this.privacidadError,
     required this.isLoading,
     required this.onPrivacidadChange,
+    required this.restaurantes,
+    required this.restauranteSeleccionado,
+    required this.restauranteError,
+    required this.onRestauranteChange,
     required this.onCrearCuenta,
     required this.onVolver,
   });
@@ -620,6 +661,12 @@ class _Paso3 extends StatelessWidget {
           telefono: ctrl.telefonoCtrl.text,
         ),
         const SizedBox(height: 20),
+        _SelectorRestaurante(
+          restaurantes: restaurantes,
+          seleccionado: restauranteSeleccionado,
+          hayError: restauranteError,
+          onChanged: onRestauranteChange,
+        ),
         _ConsentimientoRgpd(
           aceptado: aceptaPrivacidad,
           hayError: privacidadError,
@@ -634,6 +681,64 @@ class _Paso3 extends StatelessWidget {
         const SizedBox(height: 12),
         _BotonVolver(onPressed: onVolver),
       ],
+    );
+  }
+}
+
+// ── Selector de restaurante ──────────────────────────────────────────────────
+
+/// Dropdown para que el cliente elija su restaurante más cercano en el paso 3.
+/// El backend asocia el usuario al `restaurante_id` para pedidos y cupones.
+class _SelectorRestaurante extends StatelessWidget {
+  const _SelectorRestaurante({
+    required this.restaurantes,
+    required this.seleccionado,
+    required this.onChanged,
+    required this.hayError,
+  });
+
+  final List<Restaurante> restaurantes;
+  final String? seleccionado;
+  final ValueChanged<String?> onChanged;
+  final bool hayError;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        decoration: BoxDecoration(
+          color: AppColors.panel,
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(
+            color: hayError ? AppColors.error : AppColors.line,
+            width: hayError ? 2 : 1,
+          ),
+        ),
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<String>(
+            value: seleccionado,
+            isExpanded: true,
+            dropdownColor: AppColors.panel,
+            hint: const Text(
+              'Tu restaurante más cercano',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
+            ),
+            icon: const Icon(Icons.arrow_drop_down, color: AppColors.button),
+            items: restaurantes.map((res) {
+              return DropdownMenuItem<String>(
+                value: res.id,
+                child: Text(
+                  res.nombre,
+                  style: const TextStyle(color: AppColors.textPrimary),
+                ),
+              );
+            }).toList(),
+            onChanged: onChanged,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -680,10 +785,7 @@ class _TarjetaResumen extends StatelessWidget {
         Expanded(
           child: Text(
             valor,
-            style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 14,
-            ),
+            style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
           ),
         ),
       ],
@@ -759,8 +861,7 @@ class _ConsentimientoRgpd extends StatelessWidget {
                       ),
                     ),
                     const TextSpan(
-                      text:
-                          ' y el tratamiento de mis datos conforme al RGPD.',
+                      text: ' y el tratamiento de mis datos conforme al RGPD.',
                     ),
                   ],
                 ),
@@ -987,10 +1088,7 @@ class _BotonVolver extends StatelessWidget {
         onPressed: onPressed,
         child: const Text(
           '← Volver',
-          style: TextStyle(
-            color: Colors.white70,
-            fontWeight: FontWeight.w600,
-          ),
+          style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600),
         ),
       ),
     );
