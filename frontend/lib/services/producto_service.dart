@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import '../models/producto_model.dart';
 import '../data/mock_data.dart';
 import 'api_config.dart';
@@ -313,6 +315,83 @@ class ProductoService {
     final response = await httpWithRetry(
       () => http.delete(
         Uri.parse('$baseUrl/productos/$id'),
+        headers: AuthSession.headers(),
+      ),
+      retry: false,
+    );
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      throw toApiException(response.statusCode, decodeBody(response));
+    }
+  }
+
+  // ─── IMAGEN DE PRODUCTO (Cloudinary vía backend) ─────────────────────────
+
+  /// Sube una imagen al backend, que la almacena en Cloudinary.
+  /// Devuelve el mapa con `imagen` (URL pública) e `imagen_public_id`.
+  /// Lanza [ApiException] en errores 400/413/503.
+  static Future<Map<String, dynamic>> subirImagenProducto({
+    required String productoId,
+    required Uint8List bytes,
+    required String nombreArchivo,
+    required String contentType,
+  }) async {
+    // En modo mock simulamos la respuesta para no depender del backend.
+    if (!usarApiReal) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      const urlFake = 'https://via.placeholder.com/400x300?text=Mock';
+      final idx = MockData.productos.indexWhere((p) => p.id == productoId);
+      if (idx != -1) {
+        final p = MockData.productos[idx];
+        MockData.productos[idx] = Producto.fromMap({
+          ...p.toMap(),
+          'imagenUrl': urlFake,
+        });
+      }
+      return {'imagen': urlFake, 'imagen_public_id': 'mock_id'};
+    }
+
+    final uri = Uri.parse('$baseUrl/productos/$productoId/imagen');
+    final request = http.MultipartRequest('POST', uri)
+      // Auth sin Content-Type JSON: multipart gestiona su propio boundary.
+      ..headers.addAll(AuthSession.headers(json: false))
+      ..files.add(
+        http.MultipartFile.fromBytes(
+          'file',
+          bytes,
+          filename: nombreArchivo,
+          contentType: MediaType.parse(contentType),
+        ),
+      );
+
+    final streamedResponse = await request.send().timeout(
+      const Duration(seconds: 60),
+    );
+    final response = await http.Response.fromStream(streamedResponse);
+
+    if (response.statusCode == 200) {
+      return decodeBody(response);
+    }
+    throw toApiException(response.statusCode, decodeBody(response));
+  }
+
+  /// Elimina la imagen del producto en Cloudinary y pone el campo a null.
+  static Future<void> eliminarImagenProducto(String productoId) async {
+    if (!usarApiReal) {
+      await Future.delayed(const Duration(milliseconds: 150));
+      final idx = MockData.productos.indexWhere((p) => p.id == productoId);
+      if (idx != -1) {
+        final p = MockData.productos[idx];
+        MockData.productos[idx] = Producto.fromMap({
+          ...p.toMap(),
+          'imagenUrl': null,
+        });
+      }
+      return;
+    }
+
+    final response = await httpWithRetry(
+      () => http.delete(
+        Uri.parse('$baseUrl/productos/$productoId/imagen'),
         headers: AuthSession.headers(),
       ),
       retry: false,

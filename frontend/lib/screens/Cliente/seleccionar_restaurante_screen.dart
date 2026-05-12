@@ -93,7 +93,7 @@ class _SeleccionarRestauranteScreenState
               'BIENVENIDO',
               style: TextStyle(
                 color: Colors.white54,
-                fontSize: 9,
+                fontSize: 11,
                 letterSpacing: 3.5,
                 fontWeight: FontWeight.w600,
               ),
@@ -210,12 +210,22 @@ class _RestauranteCard extends StatelessWidget {
 
   const _RestauranteCard({required this.restaurante, required this.onTap});
 
+  /// Devuelve "HH:MM–HH:MM" del día actual si está configurado y abierto, o null.
+  String? _horarioHoy() {
+    final hd = restaurante.horariosDia;
+    if (hd == null) return null;
+    const claves = [
+      'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo',
+    ];
+    final h = hd[claves[DateTime.now().weekday - 1]];
+    if (h == null || !h.abierto) return null;
+    return '${h.apertura}–${h.cierre}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final abierto = restaurante.estaAbierto();
-    final tieneHorario =
-        restaurante.horarioApertura != null &&
-        restaurante.horarioCierre != null;
+    final horarioHoy = _horarioHoy();
 
     return Material(
       color: Colors.transparent,
@@ -290,7 +300,7 @@ class _RestauranteCard extends StatelessWidget {
                         ],
                       ),
                     ],
-                    if (tieneHorario) ...[
+                    if (horarioHoy != null) ...[
                       const SizedBox(height: 6),
                       Row(
                         children: [
@@ -303,7 +313,7 @@ class _RestauranteCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            '${restaurante.horarioApertura} – ${restaurante.horarioCierre}',
+                            'Hoy: $horarioHoy',
                             style: TextStyle(
                               fontSize: 11,
                               color: abierto
@@ -326,7 +336,7 @@ class _RestauranteCard extends StatelessWidget {
                             child: Text(
                               abierto ? 'Abierto' : 'Cerrado',
                               style: TextStyle(
-                                fontSize: 10,
+                                fontSize: 11,
                                 fontWeight: FontWeight.w700,
                                 letterSpacing: 0.3,
                                 color: abierto

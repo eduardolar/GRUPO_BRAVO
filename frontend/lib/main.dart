@@ -8,6 +8,7 @@ import 'core/app_theme.dart';
 import 'models/usuario_model.dart';
 import 'providers/auth_provider.dart';
 import 'providers/cart_provider.dart';
+import 'providers/pedido_activo_provider.dart';
 import 'providers/pedido_provider.dart';
 import 'providers/restaurante_provider.dart';
 import 'providers/usuario_provider.dart';
@@ -93,6 +94,16 @@ class _MainAppState extends State<MainApp> {
         ChangeNotifierProvider(create: (_) => PedidoProvider()),
         ChangeNotifierProvider(create: (_) => RestauranteProvider()),
         ChangeNotifierProvider(create: (_) => UsuarioProvider()),
+        // PedidoActivoProvider depende de AuthProvider para saber cuándo
+        // iniciar/detener el polling. ChangeNotifierProxyProvider lo
+        // reconstruye cada vez que AuthProvider notifica, lo que garantiza
+        // que iniciar() / detener() se llamen en el momento correcto.
+        ChangeNotifierProxyProvider<AuthProvider, PedidoActivoProvider>(
+          create: (ctx) =>
+              PedidoActivoProvider(ctx.read<AuthProvider>()),
+          update: (_, auth, previous) =>
+              previous ?? PedidoActivoProvider(auth),
+        ),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,

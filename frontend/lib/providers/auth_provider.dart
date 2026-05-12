@@ -159,7 +159,6 @@ class AuthProvider with ChangeNotifier {
   }) async {
     if (_usuarioActual == null) throw Exception('No hay usuario autenticado');
     final success = await AuthService.actualizarPerfil(
-      userId: _usuarioActual!.id,
       nombre: nombre,
       email: email,
       telefono: telefono,
@@ -182,7 +181,6 @@ class AuthProvider with ChangeNotifier {
   }) async {
     if (_usuarioActual == null) throw Exception('No hay usuario autenticado');
     await AuthService.cambiarContrasena(
-      userId: _usuarioActual!.id,
       passwordActual: passwordActual,
       nuevaPassword: nuevaPassword,
     );
@@ -190,9 +188,7 @@ class AuthProvider with ChangeNotifier {
 
   Future<void> eliminarCuenta() async {
     if (_usuarioActual == null) throw Exception('No hay usuario autenticado');
-    final success = await AuthService.eliminarCuenta(
-      userId: _usuarioActual!.id,
-    );
+    final success = await AuthService.eliminarCuenta();
     if (!success) throw Exception('Error al eliminar la cuenta');
     _usuarioActual = null;
     await AuthSession.limpiar();
@@ -314,6 +310,20 @@ class AuthProvider with ChangeNotifier {
       await AuthService.reenviarLogin2FA(correo: correo);
     } catch (e) {
       rethrow;
+    }
+  }
+  // --- ACTUALIZAR PUNTOS TRAS COMPRA ---
+  void descontarPuntosLocales(int puntosUsados) {
+    if (_usuarioActual != null && puntosUsados > 0) {
+      final puntosActuales = _usuarioActual!.puntos;
+      final nuevosPuntos = puntosActuales - puntosUsados;
+      
+      _usuarioActual = _usuarioActual!.copyWith(
+        puntos: nuevosPuntos < 0 ? 0 : nuevosPuntos,
+      );
+      
+      notifyListeners();
+      _guardarSesion(); // Guardamos el nuevo saldo en la memoria del móvil
     }
   }
 }

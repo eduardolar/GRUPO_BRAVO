@@ -146,13 +146,13 @@ class _PedidosActivosScreenState extends State<PedidosActivosScreen> {
   Color _colorEstado(String estado) {
     switch (estado.toLowerCase()) {
       case 'pendiente':
-        return Colors.orange;
+        return AppColors.warningLight;
       case 'preparando':
-        return Colors.blue;
+        return AppColors.info;
       case 'listo':
-        return Colors.greenAccent;
+        return AppColors.successVibrant;
       case 'entregado':
-        return Colors.green;
+        return AppColors.success;
       case 'cancelado':
         return AppColors.error;
       default:
@@ -251,7 +251,7 @@ class _PedidosActivosScreenState extends State<PedidosActivosScreen> {
                               ? 'Actualizando...'
                               : 'Actualizado ${_formatHoraActualizacion()} · refresca cada 30 s',
                           style: GoogleFonts.manrope(
-                            fontSize: 10,
+                            fontSize: 12,
                             color: Colors.white.withValues(alpha: 0.5),
                           ),
                         ),
@@ -365,15 +365,15 @@ class _PedidosActivosScreenState extends State<PedidosActivosScreen> {
                               const Icon(
                                 Icons.warning_amber_rounded,
                                 size: 13,
-                                color: Colors.orangeAccent,
+                                color: AppColors.warningLight,
                               ),
                               const SizedBox(width: 5),
                               Flexible(
                                 child: Text(
                                   'Mostrando los 1000 pedidos más recientes — algo puede ir mal si se llega a este tope',
                                   style: GoogleFonts.manrope(
-                                    fontSize: 10,
-                                    color: Colors.orangeAccent,
+                                    fontSize: 12,
+                                    color: AppColors.warningLight,
                                   ),
                                 ),
                               ),
@@ -506,7 +506,7 @@ class _PedidosActivosScreenState extends State<PedidosActivosScreen> {
                       child: Text(
                         '$count',
                         style: GoogleFonts.manrope(
-                          fontSize: 10,
+                          fontSize: 11,
                           fontWeight: FontWeight.w700,
                           color: selected ? Colors.white : Colors.white70,
                         ),
@@ -596,7 +596,7 @@ class _PedidoTile extends StatelessWidget {
                             Text(
                               pedido.estado.toUpperCase(),
                               style: GoogleFonts.manrope(
-                                fontSize: 10,
+                                fontSize: 11,
                                 fontWeight: FontWeight.w700,
                                 color: colorEstado,
                                 letterSpacing: 0.8,
@@ -683,7 +683,7 @@ class _PedidoTile extends StatelessWidget {
                         Icon(
                           Icons.notes_outlined,
                           size: 13,
-                          color: Colors.orange.withValues(alpha: 0.7),
+                          color: AppColors.warningLight.withValues(alpha: 0.7),
                         ),
                         const SizedBox(width: 4),
                         Expanded(
@@ -691,7 +691,7 @@ class _PedidoTile extends StatelessWidget {
                             pedido.notas!,
                             style: GoogleFonts.manrope(
                               fontSize: 11,
-                              color: Colors.orange.withValues(alpha: 0.7),
+                              color: AppColors.warningLight.withValues(alpha: 0.7),
                               fontStyle: FontStyle.italic,
                             ),
                             overflow: TextOverflow.ellipsis,

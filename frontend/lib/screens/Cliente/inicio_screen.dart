@@ -5,11 +5,14 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:frontend/components/bravo_app_bar.dart';
 import 'package:frontend/core/app_routes.dart';
+import 'package:frontend/core/app_snackbar.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/core/url_helper.dart';
 import 'package:frontend/models/destino_login.dart';
 import 'package:frontend/providers/auth_provider.dart';
+import 'package:frontend/components/Cliente/pedido_activo_pill.dart';
 import 'package:frontend/providers/cart_provider.dart';
+import 'package:frontend/providers/pedido_activo_provider.dart';
 import 'package:frontend/screens/cliente/carta_screen.dart';
 import 'package:frontend/screens/cliente/login_screen.dart';
 import 'package:frontend/screens/cliente/pedido_confirmado_screen.dart';
@@ -94,13 +97,18 @@ class _InicioScreenState extends State<InicioScreen> {
     final sessionId = _stripeSessionId!;
     _stripeSessionId = null;
     final navigator = Navigator.of(context);
-    final messenger = ScaffoldMessenger.of(context);
     try {
       final pagado = await ApiService.verificarCheckoutSession(
         sessionId: sessionId,
       );
       if (!mounted || !pagado) return;
-      await ApiService.actualizarEstadoPago(referenciaPago: sessionId);
+      // El backend resuelve el ObjectId real del pedido a partir de la
+      // referencia_pago (session_id de Stripe) y nos lo devuelve. Lo usamos
+      // como pedidoId para que la pantalla de confirmación pueda hacer
+      // polling de estado y mostrar el código real `#XXXXXX`.
+      final pedidoIdReal = await ApiService.actualizarEstadoPago(
+        referenciaPago: sessionId,
+      );
       if (!mounted) return;
       navigator.push(
         AppRoute.reveal(
@@ -108,23 +116,16 @@ class _InicioScreenState extends State<InicioScreen> {
             tipoEntrega: _stripeEntrega,
             tipoPago: 'Tarjeta',
             total: _stripeTotal,
-            pedidoId: sessionId,
+            pedidoId: pedidoIdReal,
           ),
         ),
       );
     } catch (e) {
-      debugPrint('Error verificando Stripe: $e');
       if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(
-          content: const Text(
-            'No pudimos verificar el pago. Inténtalo de nuevo.',
-          ),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-          shape: const RoundedRectangleBorder(borderRadius: _kRadius),
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-        ),
+      handleApiError(
+        context,
+        e,
+        prefix: 'No pudimos verificar el pago',
       );
     }
   }
@@ -304,7 +305,7 @@ class _SplashState extends State<_Splash> with SingleTickerProviderStateMixin {
                     'EST. 2024  ·  RESTAURANTE',
                     style: TextStyle(
                       color: AppColors.textSecondary,
-                      fontSize: 10,
+                      fontSize: 12,
                       fontWeight: FontWeight.w600,
                       letterSpacing: _subtitleSpacing.value,
                     ),
@@ -380,15 +381,31 @@ class _ContenidoInicio extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cart = context.watch<CartProvider>();
+    final pillVisible = context.watch<PedidoActivoProvider>().pillVisible;
     final tituloRestaurante =
         cart.restauranteNombre?.toUpperCase() ?? 'RESTAURANTE BRAVO';
     return Scaffold(
       backgroundColor: AppColors.background,
       extendBodyBehindAppBar: true,
       appBar: BravoAppBar(title: tituloRestaurante, isRoot: true),
-      body: const SingleChildScrollView(
-        physics: BouncingScrollPhysics(),
-        child: Column(children: [_HeroSection(), _FooterQuote()]),
+      body: Stack(
+        children: [
+          SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Column(
+              children: [
+                const _HeroSection(),
+                _FooterQuote(extraBottomPadding: pillVisible ? 76.0 : 0.0),
+              ],
+            ),
+          ),
+          const Positioned(
+            bottom: 16,
+            left: 16,
+            right: 16,
+            child: PedidoActivoPill(),
+          ),
+        ],
       ),
     );
   }
@@ -488,7 +505,7 @@ class _BadgeAnio extends StatelessWidget {
         'EST. 2024',
         style: TextStyle(
           color: AppColors.line,
-          fontSize: 10,
+          fontSize: 12,
           letterSpacing: 4,
           fontWeight: FontWeight.w600,
         ),
@@ -582,7 +599,6 @@ class _BotonesPrincipales extends StatelessWidget {
   Future<void> _escanearQr(BuildContext context) async {
     final cart = context.read<CartProvider>();
     final navigator = Navigator.of(context);
-    final messenger = ScaffoldMessenger.of(context);
 
     final codigoQr = await navigator.push<String>(
       AppRoute.slideUp(const QRScanner()),
@@ -604,17 +620,8 @@ class _BotonesPrincipales extends StatelessWidget {
             : AppRoute.slideUp(const LoginScreen(destino: DestinoLogin.menu)),
       );
     } catch (e) {
-      messenger
-        ..clearSnackBars()
-        ..showSnackBar(
-          SnackBar(
-            content: Text('Error al validar el QR: $e'),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-            shape: const RoundedRectangleBorder(borderRadius: _kRadius),
-            margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-          ),
-        );
+      if (!context.mounted) return;
+      handleApiError(context, e, prefix: 'Error al validar el QR');
     }
   }
 }
@@ -703,7 +710,8 @@ class _BotonAccion extends StatelessWidget {
 // ── FOOTER ───────────────────────────────────────────────────────────────
 
 class _FooterQuote extends StatelessWidget {
-  const _FooterQuote();
+  const _FooterQuote({this.extraBottomPadding = 0.0});
+  final double extraBottomPadding;
 
   @override
   Widget build(BuildContext context) {
@@ -712,7 +720,7 @@ class _FooterQuote extends StatelessWidget {
       child: Center(
         child: Container(
           constraints: const BoxConstraints(maxWidth: 600),
-          margin: const EdgeInsets.fromLTRB(24, 20, 24, 60),
+          margin: EdgeInsets.fromLTRB(24, 20, 24, 60 + extraBottomPadding),
           padding: const EdgeInsets.all(30),
           decoration: BoxDecoration(
             color: AppColors.panel,

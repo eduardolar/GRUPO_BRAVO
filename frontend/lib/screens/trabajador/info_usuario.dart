@@ -1,27 +1,25 @@
 import 'package:flutter/material.dart';
-import 'package:frontend/screens/Cliente/direccion_screen.dart';
-import 'package:frontend/screens/Cliente/historial_pedidos_screen.dart';
+import 'package:frontend/core/app_routes.dart';
 import 'package:frontend/screens/Cliente/totp_setup_screen.dart';
-import 'package:frontend/screens/Cliente/login_screen.dart';
+import 'package:frontend/screens/cliente/login_screen.dart';
 import 'package:frontend/screens/home_screen_trabajador.dart';
+import 'package:frontend/screens/trabajador/mi_turno_screen.dart';
 import 'package:provider/provider.dart';
 import '../../core/colors_style.dart';
-import '../../models/usuario_model.dart';
 import '../../providers/auth_provider.dart';
 
-class PerfilScreen extends StatefulWidget {
-  const PerfilScreen({super.key});
+class PerfilTrabajadorScreen extends StatefulWidget {
+  const PerfilTrabajadorScreen({super.key});
 
   @override
-  State<PerfilScreen> createState() => _PerfilScreenState();
+  State<PerfilTrabajadorScreen> createState() => _PerfilTrabajadorScreenState();
 }
 
-class _PerfilScreenState extends State<PerfilScreen> {
+class _PerfilTrabajadorScreenState extends State<PerfilTrabajadorScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nombreController;
   late TextEditingController _emailController;
   late TextEditingController _telefonoController;
-  late TextEditingController _direccionController;
   bool _hayCambios = false;
   bool _isLoading = false;
 
@@ -33,23 +31,14 @@ class _PerfilScreenState extends State<PerfilScreen> {
     _nombreController = TextEditingController(text: usuario?.nombre ?? '');
     _emailController = TextEditingController(text: usuario?.email ?? '');
     _telefonoController = TextEditingController(text: usuario?.telefono ?? '');
-    _direccionController = TextEditingController(
-      text: usuario?.direccion ?? '',
-    );
-    _direccionController = TextEditingController(
-      text: usuario?.direccion ?? '',
-    );
 
     _telefonoController.addListener(_detectarCambios);
-    _direccionController.addListener(_detectarCambios);
   }
 
   void _detectarCambios() {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final usuario = auth.usuarioActual;
-    final cambio =
-        _telefonoController.text != (usuario?.telefono ?? '') ||
-        _direccionController.text != (usuario?.direccion ?? '');
+    final cambio = _telefonoController.text != (usuario?.telefono ?? '');
     if (cambio != _hayCambios) {
       setState(() => _hayCambios = cambio);
     }
@@ -58,11 +47,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
   @override
   void dispose() {
     _telefonoController.removeListener(_detectarCambios);
-    _direccionController.removeListener(_detectarCambios);
     _nombreController.dispose();
     _emailController.dispose();
     _telefonoController.dispose();
-    _direccionController.dispose();
     super.dispose();
   }
 
@@ -75,13 +62,13 @@ class _PerfilScreenState extends State<PerfilScreen> {
         nombre: _nombreController.text.trim(),
         email: _emailController.text.trim(),
         telefono: _telefonoController.text.trim(),
-        direccion: _direccionController.text.trim(),
+        direccion: ''
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Datos actualizados correctamente'),
-          backgroundColor: Colors.green,
+          backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -100,17 +87,6 @@ class _PerfilScreenState extends State<PerfilScreen> {
     }
   }
 
-  Future<void> _abrirSelectorDireccion() async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const DireccionScreen()),
-    );
-    if (!mounted) return;
-    final auth = Provider.of<AuthProvider>(context, listen: false);
-    _direccionController.text = auth.usuarioActual?.direccion ?? '';
-    _detectarCambios();
-  }
-
   void _mostrarDialogoEliminarCuenta() {
     showDialog(
       context: context,
@@ -119,16 +95,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(
           children: [
-            Icon(
-              Icons.warning_amber_rounded,
-              color: Colors.redAccent,
-              size: 26,
-            ),
-            Icon(
-              Icons.warning_amber_rounded,
-              color: Colors.redAccent,
-              size: 26,
-            ),
+            Icon(Icons.warning_amber_rounded, color: AppColors.error, size: 26),
             SizedBox(width: 10),
             Text(
               'Eliminar cuenta',
@@ -172,7 +139,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                     await _eliminarCuenta();
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.redAccent,
+                    backgroundColor: AppColors.error,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 13),
                     shape: const RoundedRectangleBorder(
@@ -203,7 +170,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
       await auth.eliminarCuenta();
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        AppRoute.reveal(const LoginScreen()),
         (route) => false,
       );
     } catch (e) {
@@ -221,7 +188,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
   Future<void> _mostrarActivar2FA() async {
     final activado = await Navigator.push<bool>(
       context,
-      MaterialPageRoute(builder: (_) => const TotpSetupScreen()),
+      AppRoute.slideUp(const TotpSetupScreen()),
     );
     if (activado == true && mounted) setState(() {});
   }
@@ -237,12 +204,10 @@ class _PerfilScreenState extends State<PerfilScreen> {
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSheet) => Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(ctx).viewInsets.bottom,
-          ),
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
           child: Container(
             decoration: const BoxDecoration(
-              color: AppColors.gold,
+              color: AppColors.bottomSheetBg,
               borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
             ),
             padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
@@ -290,9 +255,6 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       if (v == null || v.trim().length != 6) {
                         return 'Introduce el código de 6 dígitos';
                       }
-                      if (v == null || v.trim().length != 6) {
-                        return 'Introduce el código de 6 dígitos';
-                      }
                       return null;
                     },
                   ),
@@ -302,7 +264,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                     height: 52,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.redAccent,
+                        backgroundColor: AppColors.error,
                         foregroundColor: Colors.white,
                         disabledBackgroundColor: Colors.white12,
                         shape: const RoundedRectangleBorder(
@@ -320,34 +282,25 @@ class _PerfilScreenState extends State<PerfilScreen> {
                                   context,
                                   listen: false,
                                 );
-                                await auth.desactivar2fa(
-                                  codigoCtrl.text.trim(),
-                                );
+                                await auth.desactivar2fa(codigoCtrl.text.trim());
                                 if (ctx.mounted) Navigator.pop(ctx);
                                 if (mounted) {
                                   setState(() {});
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
-                                      content: Text(
-                                        '2FA desactivado correctamente',
-                                      ),
-                                      backgroundColor: Colors.green,
+                                      content: Text('2FA desactivado correctamente'),
+                                      backgroundColor: AppColors.success,
                                       behavior: SnackBarBehavior.floating,
                                     ),
                                   );
                                 }
                               } catch (e) {
-                                if (ctx.mounted) {
-                                  setSheet(() => cargando = false);
-                                }
+                                if (ctx.mounted) setSheet(() => cargando = false);
                                 if (mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(
-                                        e.toString().replaceAll(
-                                          'Exception: ',
-                                          '',
-                                        ),
+                                        e.toString().replaceAll('Exception: ', ''),
                                       ),
                                       backgroundColor: AppColors.error,
                                       behavior: SnackBarBehavior.floating,
@@ -400,12 +353,10 @@ class _PerfilScreenState extends State<PerfilScreen> {
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSheet) => Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(ctx).viewInsets.bottom,
-          ),
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
           child: Container(
             decoration: const BoxDecoration(
-              color: AppColors.gold,
+              color: AppColors.bottomSheetBg,
               borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
             ),
             padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
@@ -415,7 +366,6 @@ class _PerfilScreenState extends State<PerfilScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Handle
                   Center(
                     child: Container(
                       width: 40,
@@ -453,25 +403,10 @@ class _PerfilScreenState extends State<PerfilScreen> {
                     oculto: !verNueva,
                     onToggle: () => setSheet(() => verNueva = !verNueva),
                     validator: (v) {
-                      if (v == null || v.isEmpty) {
-                        return 'Introduce la nueva contraseña';
-                      }
-                      if (v == null || v.isEmpty) {
-                        return 'Introduce la nueva contraseña';
-                      }
+                      if (v == null || v.isEmpty) return 'Introduce la nueva contraseña';
                       if (v.length < 8) return 'Mínimo 8 caracteres';
-                      if (!RegExp(r'[A-Z]').hasMatch(v)) {
-                        return 'Falta una mayúscula';
-                      }
-                      if (!RegExp(r'[0-9]').hasMatch(v)) {
-                        return 'Falta un número';
-                      }
-                      if (!RegExp(r'[A-Z]').hasMatch(v)) {
-                        return 'Falta una mayúscula';
-                      }
-                      if (!RegExp(r'[0-9]').hasMatch(v)) {
-                        return 'Falta un número';
-                      }
+                      if (!RegExp(r'[A-Z]').hasMatch(v)) return 'Falta una mayúscula';
+                      if (!RegExp(r'[0-9]').hasMatch(v)) return 'Falta un número';
                       return null;
                     },
                   ),
@@ -480,11 +415,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
                     ctrl: confirmarCtrl,
                     label: 'Confirmar nueva contraseña',
                     oculto: !verConfirmar,
-                    onToggle: () =>
-                        setSheet(() => verConfirmar = !verConfirmar),
-                    validator: (v) => v != nuevaCtrl.text
-                        ? 'Las contraseñas no coinciden'
-                        : null,
+                    onToggle: () => setSheet(() => verConfirmar = !verConfirmar),
+                    validator: (v) =>
+                        v != nuevaCtrl.text ? 'Las contraseñas no coinciden' : null,
                   ),
                   const SizedBox(height: 24),
                   SizedBox(
@@ -518,26 +451,19 @@ class _PerfilScreenState extends State<PerfilScreen> {
                                 if (mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
-                                      content: Text(
-                                        'Contraseña actualizada correctamente',
-                                      ),
-                                      backgroundColor: Colors.green,
+                                      content: Text('Contraseña actualizada correctamente'),
+                                      backgroundColor: AppColors.success,
                                       behavior: SnackBarBehavior.floating,
                                     ),
                                   );
                                 }
                               } catch (e) {
-                                if (ctx.mounted) {
-                                  setSheet(() => cargando = false);
-                                }
+                                if (ctx.mounted) setSheet(() => cargando = false);
                                 if (mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(
-                                        e.toString().replaceAll(
-                                          'Exception: ',
-                                          '',
-                                        ),
+                                        e.toString().replaceAll('Exception: ', ''),
                                       ),
                                       backgroundColor: AppColors.error,
                                       behavior: SnackBarBehavior.floating,
@@ -592,12 +518,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
           color: Colors.white.withValues(alpha: 0.5),
           fontSize: 14,
         ),
-        prefixIcon: const Icon(
-          Icons.lock_outline,
-          color: AppColors.button,
-          size: 20,
-        ),
+        prefixIcon: const Icon(Icons.lock_outline, color: AppColors.button, size: 20),
         suffixIcon: IconButton(
+          tooltip: oculto ? 'Mostrar contraseña' : 'Ocultar contraseña',
           icon: Icon(
             oculto ? Icons.visibility_off_outlined : Icons.visibility_outlined,
             color: Colors.white38,
@@ -624,20 +547,14 @@ class _PerfilScreenState extends State<PerfilScreen> {
           borderSide: const BorderSide(color: AppColors.error, width: 2),
         ),
         errorStyle: const TextStyle(color: AppColors.error),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
-        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final usuario = Provider.of<AuthProvider>(
-      context,
-      listen: false,
-    ).usuarioActual;
+    final usuario = Provider.of<AuthProvider>(context, listen: false).usuarioActual;
     final iniciales = (usuario?.nombre ?? 'U')
         .trim()
         .split(' ')
@@ -650,7 +567,6 @@ class _PerfilScreenState extends State<PerfilScreen> {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // Fondo
           Positioned.fill(
             child: Image.asset(
               'assets/images/Bravo restaurante.jpg',
@@ -660,7 +576,6 @@ class _PerfilScreenState extends State<PerfilScreen> {
           Positioned.fill(
             child: Container(color: Colors.black.withValues(alpha: 0.82)),
           ),
-
           SafeArea(
             child: Column(
               children: [
@@ -699,51 +614,21 @@ class _PerfilScreenState extends State<PerfilScreen> {
                               if (v == null || v.trim().isEmpty) {
                                 return 'El teléfono es obligatorio';
                               }
-                              if (!RegExp(
-                                r'^\+?\d{6,15}$',
-                              ).hasMatch(v.trim())) {
+                              if (!RegExp(r'^\+?\d{6,15}$').hasMatch(v.trim())) {
                                 return 'Teléfono no válido';
                               }
                               return null;
                             },
                           ),
-                          const SizedBox(height: 12),
-                          GestureDetector(
-                            onTap: _abrirSelectorDireccion,
-                            child: AbsorbPointer(
-                              child: _buildCampo(
-                                'Dirección',
-                                _direccionController,
-                                Icons.map_outlined,
-                                readOnly: true,
-                                suffixIcon: const Icon(
-                                  Icons.chevron_right,
-                                  color: AppColors.button,
-                                  size: 20,
-                                ),
-                                validator: (v) {
-                                  if (v == null || v.trim().isEmpty) {
-                                    return 'La dirección es obligatoria';
-                                  }
-                                  return null;
-                                },
-                              ),
-                            ),
-                          ),
                           const SizedBox(height: 24),
-
-                          // Botón guardar
                           SizedBox(
                             width: double.infinity,
                             height: 52,
                             child: ElevatedButton(
-                              onPressed: (_hayCambios && !_isLoading)
-                                  ? _guardarCambios
-                                  : null,
+                              onPressed: (_hayCambios && !_isLoading) ? _guardarCambios : null,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.button,
-                                disabledBackgroundColor: Colors.white
-                                    .withValues(alpha: 0.08),
+                                disabledBackgroundColor: Colors.white.withValues(alpha: 0.08),
                                 foregroundColor: Colors.white,
                                 disabledForegroundColor: Colors.white38,
                                 shape: const RoundedRectangleBorder(
@@ -761,9 +646,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                                       ),
                                     )
                                   : Text(
-                                      _hayCambios
-                                          ? 'GUARDAR CAMBIOS'
-                                          : 'SIN CAMBIOS',
+                                      _hayCambios ? 'GUARDAR CAMBIOS' : 'SIN CAMBIOS',
                                       style: const TextStyle(
                                         fontWeight: FontWeight.bold,
                                         letterSpacing: 2,
@@ -772,11 +655,20 @@ class _PerfilScreenState extends State<PerfilScreen> {
                                     ),
                             ),
                           ),
-
+                          const SizedBox(height: 36),
+                          _buildSeccionLabel('TURNO'),
+                          const SizedBox(height: 14),
+                          _buildAccion(
+                            icono: Icons.bar_chart_outlined,
+                            label: 'Mi turno',
+                            onTap: () => Navigator.push(
+                              context,
+                              AppRoute.slide(const MiTurnoScreen()),
+                            ),
+                          ),
                           const SizedBox(height: 36),
                           _buildSeccionLabel('CUENTA'),
                           const SizedBox(height: 14),
-
                           _buildAccion(
                             icono: Icons.lock_outline,
                             label: 'Cambiar contraseña',
@@ -785,39 +677,20 @@ class _PerfilScreenState extends State<PerfilScreen> {
                           const SizedBox(height: 10),
                           Consumer<AuthProvider>(
                             builder: (_, auth, _) {
-                              final totp2fa =
-                                  auth.usuarioActual?.totpEnabled ?? false;
+                              final totp2fa = auth.usuarioActual?.totpEnabled ?? false;
                               return _buildAccion2fa(habilitado: totp2fa);
                             },
                           ),
                           const SizedBox(height: 10),
-                          if (usuario?.rol == RolUsuario.cliente) ...[
-                            _buildAccion(
-                              icono: Icons.receipt_long_outlined,
-                              label: 'Historial de pedidos',
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      const HistorialPedidosScreen(),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                          ],
                           _buildAccion(
                             icono: Icons.logout,
                             label: 'Cerrar sesión',
                             onTap: () async {
-                              await Provider.of<AuthProvider>(
-                                context,
-                                listen: false,
-                              ).cerrarSesion();
+                              await Provider.of<AuthProvider>(context, listen: false)
+                                  .cerrarSesion();
                               if (!context.mounted) return;
                               Navigator.of(context).pushAndRemoveUntil(
-                                MaterialPageRoute(
-                                  builder: (_) => const HomeTrabajador(),
-                                ),
+                                AppRoute.reveal(const HomeTrabajador()),
                                 (route) => false,
                               );
                             },
@@ -826,7 +699,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                           _buildAccion(
                             icono: Icons.delete_outline,
                             label: 'Eliminar cuenta',
-                            color: Colors.redAccent,
+                            color: AppColors.error,
                             onTap: _mostrarDialogoEliminarCuenta,
                           ),
                           const SizedBox(height: 40),
@@ -849,11 +722,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(
-              Icons.arrow_back_ios_new,
-              color: Colors.white,
-              size: 20,
-            ),
+            tooltip: 'Volver',
+            icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
             onPressed: () => Navigator.pop(context),
           ),
           const Expanded(
@@ -868,7 +738,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
               ),
             ),
           ),
-          const SizedBox(width: 48), // balance del back button
+          const SizedBox(width: 48),
         ],
       ),
     );
@@ -1021,10 +891,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
           borderSide: const BorderSide(color: AppColors.error, width: 2),
         ),
         errorStyle: const TextStyle(color: AppColors.error),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
-        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
     );
   }
@@ -1042,10 +909,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
         child: Row(
           children: [
             Icon(
-              habilitado
-                  ? Icons.verified_user_outlined
-                  : Icons.security_outlined,
-              color: habilitado ? Colors.greenAccent : Colors.white70,
+              habilitado ? Icons.verified_user_outlined : Icons.security_outlined,
+              color: habilitado ? AppColors.successVibrant : Colors.white70,
               size: 20,
             ),
             const SizedBox(width: 14),
@@ -1068,7 +933,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                         : 'No activada — toca para activar',
                     style: TextStyle(
                       color: habilitado
-                          ? Colors.greenAccent.withValues(alpha: 0.8)
+                          ? AppColors.successVibrant.withValues(alpha: 0.8)
                           : Colors.white38,
                       fontSize: 11,
                     ),
@@ -1076,7 +941,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                 ],
               ),
             ),
-            Icon(Icons.chevron_right, color: Colors.white24, size: 20),
+            const Icon(Icons.chevron_right, color: Colors.white24, size: 20),
           ],
         ),
       ),
@@ -1094,23 +959,18 @@ class _PerfilScreenState extends State<PerfilScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
         decoration: BoxDecoration(
-          color: color == Colors.redAccent
-              ? Colors.redAccent.withValues(alpha: 0.08)
+          color: color == AppColors.error
+              ? AppColors.error.withValues(alpha: 0.08)
               : Colors.white.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: color == Colors.redAccent
-                ? Colors.redAccent.withValues(alpha: 0.3)
+            color: color == AppColors.error
+                ? AppColors.error.withValues(alpha: 0.3)
                 : Colors.white12,
           ),
         ),
         child: Row(
           children: [
-            Icon(
-              icono,
-              color: color == Colors.white ? Colors.white70 : color,
-              size: 20,
-            ),
             Icon(
               icono,
               color: color == Colors.white ? Colors.white70 : color,

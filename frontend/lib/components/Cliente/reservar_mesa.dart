@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/screens/cliente/login_screen.dart';
 import 'package:frontend/models/destino_login.dart';
 
@@ -26,8 +27,8 @@ class _ReservarMesaState extends State<ReservarMesa> {
         width: double.infinity,
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: const Color(0xFF800020),
-          border: Border.all(color: const Color(0xFFA6405A)),
+          color: AppColors.primary,
+          border: Border.all(color: AppColors.primaryAccent),
           borderRadius: BorderRadius.circular(14),
         ),
         child: Row(
@@ -38,7 +39,7 @@ class _ReservarMesaState extends State<ReservarMesa> {
               width: 3,
               height: 56,
               decoration: BoxDecoration(
-                color: const Color(0xFF1A1A1A),
+                color: AppColors.bottomSheetBg,
                 borderRadius: BorderRadius.circular(3),
               ),
             ),
@@ -48,9 +49,9 @@ class _ReservarMesaState extends State<ReservarMesa> {
               width: 56,
               height: 56,
               decoration: BoxDecoration(
-                color: const Color(0xFF660019),
+                color: AppColors.primaryHover,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFA6405A)),
+                border: Border.all(color: AppColors.primaryAccent),
               ),
               child: const Icon(
                 Icons.table_bar_rounded,
@@ -78,7 +79,7 @@ class _ReservarMesaState extends State<ReservarMesa> {
                   Text(
                     "Reserva ya tu mesa",
                     style: TextStyle(
-                      color: Color(0xFFEFEBE9),
+                      color: AppColors.textCream,
                       fontSize: 12,
                       fontWeight: FontWeight.w300,
                       letterSpacing: 0.3,

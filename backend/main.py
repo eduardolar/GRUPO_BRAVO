@@ -17,8 +17,8 @@ import log_redactor
 # antes de escribir en los logs (cumple PCI-DSS y RGPD).
 log_redactor.install("uvicorn", "uvicorn.error", "uvicorn.access", "fastapi")
 
-from routes import auth, usuarios, categorias, productos, pedidos, mesas, reservas, ingredientes, cupones
-from routes import restaurantes
+from routes import auth, usuarios, clientes, categorias, productos, pedidos, mesas, reservas, ingredientes, cupones, cierres_caja, avisos_falta
+from routes import restaurantes, uploads, super_admin
 import pagos
 from tickets import router as tickets_router
 
@@ -43,7 +43,7 @@ app.add_middleware(
     allow_origins=_allowed_origins,
     allow_credentials=_allow_credentials,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "X-Actor"],
+    allow_headers=["Authorization", "Content-Type", "Idempotency-Key"],
 )
 
 @app.exception_handler(AppError)
@@ -75,6 +75,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 v1 = APIRouter(prefix="/api/v1")
 v1.include_router(auth.router)
 v1.include_router(usuarios.router)
+v1.include_router(clientes.router)
 v1.include_router(restaurantes.router)
 v1.include_router(categorias.router)
 v1.include_router(productos.router)
@@ -85,6 +86,10 @@ v1.include_router(ingredientes.router)
 v1.include_router(pagos.router)
 v1.include_router(tickets_router)
 v1.include_router(cupones.router)
+v1.include_router(cierres_caja.router)
+v1.include_router(uploads.router)
+v1.include_router(super_admin.router)
+v1.include_router(avisos_falta.router)
 app.include_router(v1)
 
 @app.get("/", summary="Healthcheck básico", tags=["health"])

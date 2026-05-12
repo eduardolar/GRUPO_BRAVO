@@ -29,6 +29,7 @@ from database import (
     coleccion_cupones,
     coleccion_auditoria,
     coleccion_auditoria_pagos,
+    coleccion_avisos_falta,
 )
 
 
@@ -39,12 +40,26 @@ def crear_indices() -> None:
     coleccion_usuarios.create_index([("restaurante_id", ASCENDING)], name="ix_restaurante")
 
     # PEDIDOS — consultas habituales: por usuario, por restaurante + estado + fecha
-    coleccion_pedidos.create_index([("user_id", ASCENDING), ("fecha", DESCENDING)], name="ix_user_fecha")
+    # Idempotencia: borrar el índice obsoleto (user_id) si existe antes de crear el correcto.
+    try:
+        coleccion_pedidos.drop_index("ix_user_fecha")
+    except Exception:
+        pass  # No existía o ya tiene el nombre nuevo; ignorar.
+    coleccion_pedidos.create_index([("usuario_id", ASCENDING), ("fecha", DESCENDING)], name="ix_usuario_fecha")
     coleccion_pedidos.create_index(
         [("restaurante_id", ASCENDING), ("estado", ASCENDING), ("fecha", DESCENDING)],
         name="ix_restaurante_estado_fecha",
     )
     coleccion_pedidos.create_index([("estado_pago", ASCENDING)], name="ix_estado_pago")
+    # Idempotencia: índice único parcial en (usuario_id, idempotency_key).
+    # partialFilterExpression excluye documentos sin la clave (docs legacy)
+    # para no romper la unicidad en pedidos sin idempotency_key.
+    coleccion_pedidos.create_index(
+        [("usuario_id", ASCENDING), ("idempotency_key", ASCENDING)],
+        unique=True,
+        partialFilterExpression={"idempotency_key": {"$type": "string"}},
+        name="ux_usuario_idempotency_key",
+    )
     coleccion_pedidos.create_index(
         [("stripe_payment_intent_id", ASCENDING)],
         name="ix_stripe_intent",
@@ -88,6 +103,12 @@ def crear_indices() -> None:
     coleccion_auditoria_pagos.create_index(
         [("proveedor", ASCENDING), ("estado", ASCENDING)],
         name="ix_auditoria_pagos_proveedor_estado",
+    )
+
+    # AVISOS DE FALTA — por restaurante + estado + fecha desc
+    coleccion_avisos_falta.create_index(
+        [("restaurante_id", ASCENDING), ("estado", ASCENDING), ("creado_at", DESCENDING)],
+        name="ix_avisos_falta_restaurante_estado_fecha",
     )
 
     print("Índices creados/verificados correctamente.")

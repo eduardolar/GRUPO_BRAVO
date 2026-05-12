@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../components/Cliente/empty_state.dart';
+import '../../components/Cliente/pedido_activo_pill.dart';
 import '../../components/Cliente/producto_card.dart';
 import '../../components/Cliente/producto_detalle_sheet.dart';
 import '../../core/app_routes.dart';
@@ -58,30 +59,46 @@ class _CartaScreenState extends State<CartaScreen> {
       _errorCarga = false;
     });
     try {
+      // Filtrar por la sucursal seleccionada en el carrito; si no hay,
+      // caemos al catálogo global (compatibilidad con flujos antiguos).
+      final restauranteId = context.read<CartProvider>().restauranteId;
       final results = await Future.wait([
         ApiService.obtenerCategorias(),
-        ApiService.obtenerProductos(),
+        ApiService.obtenerProductos(restauranteId: restauranteId),
       ]);
       if (!mounted) return;
 
       final rawCategorias = results[0] as List<String>;
       final rawProductos = results[1] as List<Producto>;
 
-      final categoriasUnicas = rawCategorias.toSet().toList();
-
-      // ¡NUEVA MAGIA! Filtramos por el NOMBRE del plato en minúsculas
+      // Dedupe por nombre del plato, respetando mayúsculas/espacios
       final Map<String, Producto> productosUnicos = {};
       for (var p in rawProductos) {
-        // Ponemos el nombre en minúsculas y sin espacios a los lados 
-        // para asegurarnos de que detecte los duplicados exactos
         final llaveNombre = p.nombre.toLowerCase().trim();
-        productosUnicos[llaveNombre] = p; 
+        productosUnicos[llaveNombre] = p;
+      }
+      final productosList = productosUnicos.values.toList();
+
+      // Si hay sucursal elegida, ocultamos categorías sin platos en este
+      // restaurante (las categorías son globales en backend pero los productos
+      // sí están asignados a sucursal). Si no hay sucursal, mostramos todas.
+      // TODO: mover el filtrado a backend (`GET /categorias?restauranteId=X`)
+      // derivando de los productos de la sucursal, para evitar enviar la
+      // lista global completa al cliente y ahorrar el cómputo en frontend.
+      final categoriasGlobales = rawCategorias.toSet().toList();
+      final List<String> categoriasUnicas;
+      if (restauranteId != null && restauranteId.isNotEmpty) {
+        final usadas = productosList.map((p) => p.categoria).toSet();
+        categoriasUnicas = categoriasGlobales
+            .where(usadas.contains)
+            .toList(growable: false);
+      } else {
+        categoriasUnicas = categoriasGlobales;
       }
 
       setState(() {
         _categorias = categoriasUnicas;
-        // Recuperamos la lista ya limpia de duplicados
-        _productos = productosUnicos.values.toList();
+        _productos = productosList;
         _selectedCategory = 0;
         _cargando = false;
       });
@@ -137,11 +154,7 @@ class _CartaScreenState extends State<CartaScreen> {
     if (!producto.estaDisponible) return;
 
     if (_restaurante != null && !_restaurante!.estaAbierto()) {
-      _showSnack(
-        'COCINA CERRADA · REABRE A LAS '
-        '${(_restaurante!.horarioApertura ?? '—').toUpperCase()}',
-        error: true,
-      );
+      _showSnack('COCINA CERRADA', error: true);
       return;
     }
 
@@ -175,6 +188,11 @@ class _CartaScreenState extends State<CartaScreen> {
       return;
     }
     _lastReorderTap = now;
+
+    if (_restaurante != null && !_restaurante!.estaAbierto()) {
+      _showSnack('COCINA CERRADA', error: true);
+      return;
+    }
 
     final cart = context.read<CartProvider>();
     int agregados = 0;
@@ -234,7 +252,7 @@ class _CartaScreenState extends State<CartaScreen> {
             child: const Text(
               'Cambiar',
               style: TextStyle(
-                color: AppColors.gold,
+                color: AppColors.bottomSheetBg,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -258,6 +276,10 @@ class _CartaScreenState extends State<CartaScreen> {
   }
 
   void _irACheckout() {
+    if (_restaurante != null && !_restaurante!.estaAbierto()) {
+      _showSnack('COCINA CERRADA', error: true);
+      return;
+    }
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const PantallaOpcionesEntrega()),
@@ -316,6 +338,10 @@ class _CartaScreenState extends State<CartaScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Si el FAB del carrito está visible (hay productos), elevar la pill
+    // para que no quede tapada por el botón flotante.
+    final hayCarrito = context.watch<CartProvider>().totalQuantity > 0;
+    final pillBottom = hayCarrito ? 96.0 : 16.0;
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
@@ -328,10 +354,25 @@ class _CartaScreenState extends State<CartaScreen> {
                 ? _ErrorCarta(onRetry: _cargarDatos)
                 : _buildContenido(),
           ),
+          // Pill persistente de seguimiento del último pedido activo.
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: pillBottom,
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 480),
+                child: const PedidoActivoPill(),
+              ),
+            ),
+          ),
         ],
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: _CartFAB(onTap: _irACheckout),
+      floatingActionButton: _CartFAB(
+        onTap: _irACheckout,
+        enabled: _restaurante == null || _restaurante!.estaAbierto(),
+      ),
     );
   }
 
@@ -443,7 +484,7 @@ class _CargandoCarta extends StatelessWidget {
             'CARGANDO CARTA',
             style: TextStyle(
               color: Colors.white60,
-              fontSize: 10,
+              fontSize: 12,
               letterSpacing: 3.0,
               fontWeight: FontWeight.w600,
             ),
@@ -695,7 +736,7 @@ class _ChipRestaurante extends StatelessWidget {
                     style: const TextStyle(color: Colors.white38, fontSize: 11),
                   ),
                   const SizedBox(width: 4),
-                  const Icon(Icons.sync, color: AppColors.gold, size: 12),
+                  const Icon(Icons.sync, color: AppColors.bottomSheetBg, size: 12),
                 ],
               ),
             ),
@@ -710,9 +751,25 @@ class _CerradoBanner extends StatelessWidget {
   final Restaurante restaurante;
   const _CerradoBanner({required this.restaurante});
 
+  /// Devuelve la hora de apertura del día de hoy según horariosDia, o null.
+  String? _aperturaHoy() {
+    final hd = restaurante.horariosDia;
+    if (hd == null) return null;
+    const claves = [
+      'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo',
+    ];
+    final idx = DateTime.now().weekday - 1;
+    final h = hd[claves[idx]];
+    if (h != null && h.abierto) return h.apertura;
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final reapertura = restaurante.horarioApertura ?? '—';
+    final reapertura = _aperturaHoy();
+    final texto = reapertura != null
+        ? 'COCINA CERRADA · Reabre a las $reapertura'
+        : 'COCINA CERRADA HOY';
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 0, 20, 6),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -726,7 +783,7 @@ class _CerradoBanner extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'COCINA CERRADA · Reabre a las $reapertura',
+              texto,
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 12,
@@ -772,7 +829,7 @@ class _ReorderBanner extends StatelessWidget {
                   'PEDIDO ANTERIOR',
                   style: TextStyle(
                     color: AppColors.button,
-                    fontSize: 9,
+                    fontSize: 11,
                     letterSpacing: 2.0,
                     fontWeight: FontWeight.w700,
                   ),
@@ -800,7 +857,7 @@ class _ReorderBanner extends StatelessWidget {
                   'REPETIR',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 10,
+                    fontSize: 11,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 1.0,
                   ),
@@ -958,7 +1015,8 @@ class _Chip extends StatelessWidget {
 
 class _CartFAB extends StatelessWidget {
   final VoidCallback onTap;
-  const _CartFAB({required this.onTap});
+  final bool enabled;
+  const _CartFAB({required this.onTap, this.enabled = true});
 
   @override
   Widget build(BuildContext context) {
@@ -967,14 +1025,16 @@ class _CartFAB extends StatelessWidget {
         if (cart.totalQuantity == 0) return const SizedBox.shrink();
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Material(
-            color: AppColors.button,
-            borderRadius: _kRadius,
-            elevation: 4,
-            shadowColor: Colors.black54,
-            child: InkWell(
-              onTap: onTap,
+          child: Opacity(
+            opacity: enabled ? 1.0 : 0.5,
+            child: Material(
+              color: AppColors.button,
               borderRadius: _kRadius,
+              elevation: enabled ? 4 : 0,
+              shadowColor: Colors.black54,
+              child: InkWell(
+                onTap: onTap,
+                borderRadius: _kRadius,
               child: Padding(
                 padding: const EdgeInsets.symmetric(
                   vertical: 16,
@@ -1030,6 +1090,7 @@ class _CartFAB extends StatelessWidget {
                 ),
               ),
             ),
+          ),
           ),
         );
       },

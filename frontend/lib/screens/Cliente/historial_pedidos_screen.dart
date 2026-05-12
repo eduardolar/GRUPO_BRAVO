@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../components/Cliente/empty_state.dart';
+import '../../components/Cliente/pedido_activo_pill.dart';
 import '../../components/Cliente/skeleton.dart';
 import '../../core/app_snackbar.dart';
 import '../../core/colors_style.dart';
@@ -96,7 +97,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
       case 'pendiente':
         return AppColors.noDisp;
       case 'preparando':
-        return const Color(0xFFD97706);
+        return AppColors.warning;
       case 'listo':
         return AppColors.button;
       case 'entregado':
@@ -284,6 +285,18 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
               ),
             ),
           ),
+          // Pill persistente de seguimiento del último pedido activo.
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: 16,
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 480),
+                child: const PedidoActivoPill(),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -437,7 +450,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
                         '$count',
                         style: GoogleFonts.manrope(
                           color: Colors.white70,
-                          fontSize: 10,
+                          fontSize: 11,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -863,7 +876,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
                 color: completado || actual
                     ? Colors.white
                     : Colors.white54,
-                fontSize: 10,
+                fontSize: 12,
                 fontWeight: actual ? FontWeight.w700 : FontWeight.w500,
               ),
             ),
@@ -1020,7 +1033,7 @@ class _BadgeEstado extends StatelessWidget {
         label.toUpperCase(),
         style: GoogleFonts.manrope(
           color: color,
-          fontSize: 9,
+          fontSize: 11,
           fontWeight: FontWeight.w800,
           letterSpacing: 0.5,
         ),
@@ -1076,7 +1089,7 @@ class _SectionLabel extends StatelessWidget {
       label,
       style: GoogleFonts.manrope(
         color: Colors.white54,
-        fontSize: 10,
+        fontSize: 12,
         fontWeight: FontWeight.w800,
         letterSpacing: 1.5,
       ),

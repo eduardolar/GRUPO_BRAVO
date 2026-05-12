@@ -4,16 +4,16 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import '../models/usuario_model.dart';
-import 'actor_context.dart';
 import 'api_config.dart';
 import 'auth_session.dart';
+import 'http_client.dart';
 
 class UsuarioService {
-  /// Cabeceras para peticiones que registran auditoría:
-  /// añade `X-Actor` con el correo del usuario actualmente logueado y el
-  /// `Authorization: Bearer ...` cuando hay sesión activa.
-  static Map<String, String> _headersConActor() =>
-      AuthSession.headers(extra: ActorContext.instance.headers);
+  /// Cabeceras para peticiones autenticadas. El backend identifica al actor
+  /// por el JWT (`Authorization: Bearer ...`); ya no aceptamos `X-Actor`
+  /// (eliminado por seguridad), por lo que tampoco lo enviamos desde aquí
+  /// (CORS lo bloquearía y rompería el preflight).
+  static Map<String, String> _headersConActor() => AuthSession.headers();
 
   static Map<String, String> get _headersJson => AuthSession.headers();
 
@@ -87,7 +87,33 @@ class UsuarioService {
     return response.statusCode == 200;
   }
 
-  // 6. Crear un usuario (panel admin)
+  // 6. Crear un empleado (panel admin)
+  // No se envía password: el backend genera una y manda correo de activación.
+  // No se envía restaurante_id: el backend lo fuerza por el token del admin.
+  Future<Map<String, dynamic>> crearEmpleado({
+    required String nombre,
+    required String correo,
+    required String rol,
+    String? telefono,
+  }) async {
+    final body = <String, dynamic>{
+      'nombre': nombre,
+      'correo': correo,
+      'rol': rol,
+      if (telefono != null && telefono.isNotEmpty) 'telefono': telefono,
+    };
+    final response = await http.post(
+      Uri.parse('$baseUrl/usuarios/'),
+      headers: _headersConActor(),
+      body: jsonEncode(body),
+    );
+    return {
+      'statusCode': response.statusCode,
+      'body': jsonDecode(response.body),
+    };
+  }
+
+  // 6b. Crear un usuario (panel admin — legacy, mantiene firma anterior)
   Future<bool> crearUsuario({
     required String nombre,
     required String correo,
@@ -111,6 +137,19 @@ class UsuarioService {
     } catch (e) {
       debugPrint('Error al crear usuario: $e');
       return false;
+    }
+  }
+
+  // 9. Reactivar un usuario suspendido
+  Future<void> reactivarUsuario(String id) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/usuarios/$id/reactivar'),
+      headers: _headersConActor(),
+    );
+    if (response.statusCode != 200) {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      final detail = body['detail']?.toString() ?? 'Error al reactivar usuario';
+      throw Exception(detail);
     }
   }
 
@@ -139,30 +178,24 @@ class UsuarioService {
     }
   }
 
-  // 8. Persistencia de Dirección y Coordenadas
+  // 8. Persistencia de Dirección y Coordenadas (perfil propio del cliente)
+  // Propaga el error del backend (ApiException) para que el caller pueda
+  // mostrar el detail real al usuario en lugar de un fallo silencioso.
   Future<bool> actualizarDireccion({
-    required String userId,
     required String direccion,
     required double latitud,
     required double longitud,
   }) async {
-    try {
-      final response = await http.put(
-        Uri.parse('$baseUrl/usuarios/$userId'),
-        headers: _headersConActor(),
-        body: jsonEncode({
-          'direccion': direccion,
-          'latitud': latitud,
-          'longitud': longitud,
-        }),
-      );
-
-      if (response.statusCode == 200) return true;
-      debugPrint('Error del servidor: ${response.body}');
-      return false;
-    } catch (e) {
-      debugPrint('Error al conectar con el backend: $e');
-      return false;
-    }
+    final response = await http.put(
+      Uri.parse('$baseUrl/clientes/me'),
+      headers: _headersConActor(),
+      body: jsonEncode({
+        'direccion': direccion,
+        'latitud': latitud,
+        'longitud': longitud,
+      }),
+    );
+    if (response.statusCode == 200) return true;
+    throw toApiException(response.statusCode, decodeBody(response));
   }
 }

@@ -17,6 +17,7 @@ class IngredienteService {
     'Almidones y Cereales',
     'Huevos',
     'Frutas',
+    'Bebidas',
     'Otros',
   ];
 
@@ -247,6 +248,25 @@ class IngredienteService {
       return Map<String, dynamic>.from(decodeBody(response));
     }
     throw toApiException(response.statusCode, decodeBody(response));
+  }
+
+  /// Pone el stock del ingrediente a 0 (marca como agotado).
+  /// Endpoint: POST /ingredientes/{id}/poner-a-cero
+  static Future<void> ponerStockACero(String ingredienteId) async {
+    if (!usarApiReal) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      return;
+    }
+    final response = await httpWithRetry(
+      () => http.post(
+        Uri.parse('$baseUrl/ingredientes/$ingredienteId/poner-a-cero'),
+        headers: AuthSession.headers(),
+      ),
+      retry: false,
+    );
+    if (response.statusCode >= 400) {
+      throw toApiException(response.statusCode, decodeBody(response));
+    }
   }
 
   static Future<List<Ingrediente>> obtenerIngredientesStockBajo({

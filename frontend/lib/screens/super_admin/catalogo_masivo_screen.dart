@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:frontend/components/bravo_app_bar.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/app_snackbar.dart';
@@ -12,12 +13,13 @@ import '../../core/colors_style.dart';
 import '../../models/producto_model.dart';
 import '../../models/restaurante_model.dart';
 import '../../providers/restaurante_provider.dart';
+import '../../services/http_client.dart';
 import '../../services/producto_service.dart';
 
 // ─── Colores locales ─────────────────────────────────────────────────────────
-const _kGreen = Color(0xFF34C759);
-const _kOrange = Color(0xFFFF9500);
-const _kRed = Color(0xFFFF3B30);
+const _kGreen = AppColors.successVibrant;
+const _kOrange = AppColors.warningLight;
+const _kRed = AppColors.error;
 const _kAccent = AppColors.button;
 
 // ─── Constantes de validación / negocio ──────────────────────────────────────
@@ -37,12 +39,15 @@ class _ItemEdicion {
   final Producto original;
   final TextEditingController precioCtrl;
   final ValueNotifier<bool> disponibleN;
+  /// URL de imagen mutable — se actualiza tras subir/eliminar sin recargar todo.
+  final ValueNotifier<String?> imagenUrlN;
 
   _ItemEdicion(this.original)
     : precioCtrl = TextEditingController(
         text: original.precio.toStringAsFixed(2),
       ),
-      disponibleN = ValueNotifier(original.estaDisponible);
+      disponibleN = ValueNotifier(original.estaDisponible),
+      imagenUrlN = ValueNotifier(original.imagenUrl);
 
   bool get disponible => disponibleN.value;
 
@@ -86,6 +91,7 @@ class _ItemEdicion {
   void dispose() {
     precioCtrl.dispose();
     disponibleN.dispose();
+    imagenUrlN.dispose();
   }
 }
 
@@ -158,6 +164,8 @@ class _CatalogoMasivoScreenState extends State<CatalogoMasivoScreen> {
     for (final it in _items) {
       it.precioCtrl.removeListener(_onItemSucioCambia);
       it.disponibleN.removeListener(_onItemSucioCambia);
+      // imagenUrlN no necesita listener en _versionSucio porque la imagen
+      // se actualiza de forma independiente al flujo de guardado masivo.
       it.dispose();
     }
   }
@@ -954,20 +962,23 @@ class _CatalogoMasivoScreenState extends State<CatalogoMasivoScreen> {
             controller: _buscadorCtrl,
             onChanged: _onBusquedaChanged,
             textInputAction: TextInputAction.search,
-            style: const TextStyle(color: Colors.white),
+            // Fondo blanco sólido + texto/iconos negros: la imagen Bravo de
+            // fondo es muy clara y cualquier overlay translúcido daba poco
+            // contraste. Patrón de input "claro" tipo Google.
+            style: const TextStyle(color: Colors.black87),
             decoration: InputDecoration(
               hintText: 'Buscar producto…',
-              hintStyle: const TextStyle(color: Colors.white70),
+              hintStyle: const TextStyle(color: Colors.black54),
               prefixIcon: const Icon(
                 Icons.search_rounded,
-                color: Colors.white70,
+                color: Colors.black54,
               ),
               suffixIcon: _busqueda.isNotEmpty
                   ? IconButton(
                       tooltip: 'Limpiar búsqueda',
                       icon: const Icon(
                         Icons.clear_rounded,
-                        color: Colors.white70,
+                        color: Colors.black54,
                       ),
                       onPressed: () {
                         _buscadorCtrl.clear();
@@ -976,18 +987,18 @@ class _CatalogoMasivoScreenState extends State<CatalogoMasivoScreen> {
                     )
                   : null,
               filled: true,
-              fillColor: Colors.white.withValues(alpha: 0.08),
+              fillColor: Colors.white,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: 12,
               ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.white24),
+                borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.15)),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.white24),
+                borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.15)),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -1337,7 +1348,7 @@ class _ChipSucursal extends StatelessWidget {
                     'SUSP.',
                     style: TextStyle(
                       color: _kRed,
-                      fontSize: 8,
+                      fontSize: 11,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 0.5,
                     ),
@@ -1386,7 +1397,8 @@ class _FilaProducto extends StatelessWidget {
               children: [
                 _IndicadorSucio(sucio: sucio, error: errorTxt != null),
                 const SizedBox(width: 8),
-                _Imagen(url: item.original.imagenUrl),
+                // Imagen con botón de cámara superpuesto.
+                _ImagenConBoton(item: item),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -1418,7 +1430,7 @@ class _FilaProducto extends StatelessWidget {
                           errorTxt,
                           style: const TextStyle(
                             color: _kRed,
-                            fontSize: 10,
+                            fontSize: 12,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -1454,6 +1466,420 @@ class _FilaProducto extends StatelessWidget {
   }
 }
 
+// ─── Thumbnail con botón de cámara superpuesto ───────────────────────────────
+
+/// Widget que combina el thumbnail del producto con un botón pequeño de cámara
+/// que abre el mini-sheet de subida de imagen.
+class _ImagenConBoton extends StatelessWidget {
+  final _ItemEdicion item;
+  const _ImagenConBoton({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<String?>(
+      valueListenable: item.imagenUrlN,
+      builder: (_, url, _) {
+        return SizedBox(
+          width: 44,
+          height: 44,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: _imagenWidget(url),
+              ),
+              // Botón de cámara en la esquina inferior-derecha
+              Positioned(
+                right: -4,
+                bottom: -4,
+                child: Semantics(
+                  label: 'Cambiar imagen de ${item.original.nombre}',
+                  button: true,
+                  child: GestureDetector(
+                    onTap: () => _abrirSheet(context),
+                    child: Container(
+                      width: 20,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        color: _kAccent,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.black,
+                          width: 1.5,
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.add_photo_alternate_outlined,
+                        color: Colors.white,
+                        size: 11,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _imagenWidget(String? url) {
+    Widget placeholder() => Container(
+      width: 44,
+      height: 44,
+      color: Colors.white.withValues(alpha: 0.08),
+      child: const Icon(Icons.fastfood_rounded, color: Colors.white60, size: 22),
+    );
+
+    if (url == null || url.isEmpty) return placeholder();
+    return CachedNetworkImage(
+      imageUrl: url,
+      width: 44,
+      height: 44,
+      fit: BoxFit.cover,
+      errorWidget: (_, _, _) => placeholder(),
+      placeholder: (_, _) => placeholder(),
+    );
+  }
+
+  void _abrirSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.7),
+      builder: (_) => _ImagenProductoSheet(item: item),
+    );
+  }
+}
+
+// ─── Mini-sheet de imagen ─────────────────────────────────────────────────────
+
+// Copiado de admin_editar_plato.dart para mantener independencia entre roles.
+const int _kMaxImagenBytes = 5 * 1024 * 1024; // 5 MB
+const List<String> _kMimesPermitidos = ['image/jpeg', 'image/png', 'image/webp'];
+
+class _ImagenProductoSheet extends StatefulWidget {
+  final _ItemEdicion item;
+  const _ImagenProductoSheet({required this.item});
+
+  @override
+  State<_ImagenProductoSheet> createState() => _ImagenProductoSheetState();
+}
+
+class _ImagenProductoSheetState extends State<_ImagenProductoSheet> {
+  // Bytes de la imagen seleccionada en esta sesión (aún no subida).
+  Uint8List? _bytesNuevos;
+  String? _nombreNuevo;
+  String? _mimeNuevo;
+  bool _subiendo = false;
+
+  // ── Seleccionar imagen ────────────────────────────────────────────────────
+
+  Future<void> _elegirImagen() async {
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+        maxWidth: 1600,
+      );
+      if (picked == null) return;
+
+      final bytes = await picked.readAsBytes();
+
+      // Validación MIME
+      final mime = picked.mimeType ?? _inferirMime(picked.name);
+      if (!_kMimesPermitidos.contains(mime)) {
+        if (mounted) _snack('Solo se admiten JPG, PNG o WebP', esError: true);
+        return;
+      }
+
+      // Validación tamaño
+      if (bytes.length > _kMaxImagenBytes) {
+        if (mounted) _snack('La imagen supera los 5 MB', esError: true);
+        return;
+      }
+
+      setState(() {
+        _bytesNuevos = bytes;
+        _nombreNuevo = picked.name;
+        _mimeNuevo = mime;
+      });
+    } on MissingPluginException {
+      // El plugin image_picker no está registrado en esta plataforma/modo.
+      if (mounted) {
+        _snack('Selector de imágenes no disponible en esta plataforma',
+            esError: true);
+      }
+    } catch (e) {
+      if (mounted) _snack('Error al seleccionar la imagen', esError: true);
+    }
+  }
+
+  String _inferirMime(String nombre) {
+    final ext = nombre.split('.').last.toLowerCase();
+    return switch (ext) {
+      'jpg' || 'jpeg' => 'image/jpeg',
+      'png' => 'image/png',
+      'webp' => 'image/webp',
+      _ => 'application/octet-stream',
+    };
+  }
+
+  // ── Guardar (subir al backend) ────────────────────────────────────────────
+
+  Future<void> _guardar() async {
+    final bytes = _bytesNuevos;
+    if (bytes == null) return;
+    setState(() => _subiendo = true);
+    try {
+      final resultado = await ProductoService.subirImagenProducto(
+        productoId: widget.item.original.id,
+        bytes: bytes,
+        nombreArchivo: _nombreNuevo ?? 'imagen.jpg',
+        contentType: _mimeNuevo ?? 'image/jpeg',
+      );
+      // Actualizamos el notifier de la fila sin recargar toda la lista.
+      widget.item.imagenUrlN.value =
+          resultado['imagen'] as String? ?? resultado['imagenUrl'] as String?;
+      if (mounted) {
+        _snack('Imagen actualizada');
+        Navigator.pop(context);
+      }
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      if (e.statusCode == 503) {
+        _snack('Subida no disponible. Configura Cloudinary.', esError: true,
+            esAdvertencia: true);
+      } else {
+        _snack(e.message, esError: true);
+      }
+    } catch (_) {
+      if (mounted) _snack('Error al subir la imagen', esError: true);
+    } finally {
+      if (mounted) setState(() => _subiendo = false);
+    }
+  }
+
+  // ── Eliminar imagen ───────────────────────────────────────────────────────
+
+  Future<void> _eliminar() async {
+    setState(() => _subiendo = true);
+    try {
+      await ProductoService.eliminarImagenProducto(widget.item.original.id);
+      widget.item.imagenUrlN.value = null;
+      if (mounted) {
+        _snack('Imagen eliminada');
+        Navigator.pop(context);
+      }
+    } on ApiException catch (e) {
+      if (mounted) _snack(e.message, esError: true);
+    } catch (_) {
+      if (mounted) _snack('Error al eliminar la imagen', esError: true);
+    } finally {
+      if (mounted) setState(() => _subiendo = false);
+    }
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+
+  void _snack(String msg, {bool esError = false, bool esAdvertencia = false}) {
+    final color = esAdvertencia
+        ? AppColors.warningText
+        : esError
+        ? _kRed
+        : _kGreen;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg, style: const TextStyle(color: Colors.white)),
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  // ── BUILD ─────────────────────────────────────────────────────────────────
+
+  @override
+  Widget build(BuildContext context) {
+    final urlActual = widget.item.imagenUrlN.value;
+    final tieneImagen = (urlActual != null && urlActual.isNotEmpty);
+    final tieneNueva = _bytesNuevos != null;
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.bottomSheetBg,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      padding: EdgeInsets.fromLTRB(
+        24,
+        20,
+        24,
+        MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Handle
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Título
+          Text(
+            widget.item.original.nombre,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'IMAGEN DEL PRODUCTO',
+            style: TextStyle(
+              color: Colors.white54,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 2,
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Preview
+          Center(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: tieneNueva
+                  ? Image.memory(
+                      _bytesNuevos!,
+                      width: 160,
+                      height: 120,
+                      fit: BoxFit.cover,
+                    )
+                  : tieneImagen
+                  ? CachedNetworkImage(
+                      imageUrl: urlActual,
+                      width: 160,
+                      height: 120,
+                      fit: BoxFit.cover,
+                      errorWidget: (_, _, _) => _placeholderPreview(),
+                    )
+                  : _placeholderPreview(),
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Botón cambiar imagen
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _subiendo ? null : _elegirImagen,
+              icon: const Icon(
+                Icons.add_photo_alternate_outlined,
+                color: _kAccent,
+              ),
+              label: Text(
+                tieneImagen || tieneNueva ? 'CAMBIAR IMAGEN' : 'ELEGIR IMAGEN',
+                style: const TextStyle(color: _kAccent, letterSpacing: 1),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: _kAccent),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+          ),
+
+          // Botón eliminar — solo si hay imagen guardada en el servidor
+          if (tieneImagen && !tieneNueva) ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton.icon(
+                onPressed: _subiendo ? null : _eliminar,
+                icon: const Icon(Icons.delete_outline, color: _kRed),
+                label: const Text(
+                  'ELIMINAR IMAGEN',
+                  style: TextStyle(color: _kRed, letterSpacing: 1),
+                ),
+              ),
+            ),
+          ],
+
+          // Botón guardar — solo cuando hay imagen nueva pendiente
+          if (tieneNueva) ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _subiendo ? null : _guardar,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _kAccent,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: _subiendo
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Text(
+                        'GUARDAR IMAGEN',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.5,
+                        ),
+                      ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _placeholderPreview() {
+    return Container(
+      width: 160,
+      height: 120,
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white12),
+      ),
+      child: const Icon(
+        Icons.add_photo_alternate_outlined,
+        color: Colors.white38,
+        size: 40,
+      ),
+    );
+  }
+}
+
 class _IndicadorSucio extends StatelessWidget {
   final bool sucio;
   final bool error;
@@ -1477,38 +1903,6 @@ class _IndicadorSucio extends StatelessWidget {
   }
 }
 
-class _Imagen extends StatelessWidget {
-  final String? url;
-  const _Imagen({required this.url});
-
-  @override
-  Widget build(BuildContext context) {
-    Widget placeholder() => Container(
-      width: 44,
-      height: 44,
-      color: Colors.white.withValues(alpha: 0.08),
-      child: const Icon(
-        Icons.fastfood_rounded,
-        color: Colors.white60,
-        size: 22,
-      ),
-    );
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: url == null || url!.isEmpty
-          ? placeholder()
-          : CachedNetworkImage(
-              imageUrl: url!,
-              width: 44,
-              height: 44,
-              fit: BoxFit.cover,
-              errorWidget: (_, _, _) => placeholder(),
-              placeholder: (_, _) => placeholder(),
-            ),
-    );
-  }
-}
 
 class _LineaPrecioOriginal extends StatelessWidget {
   final double original;
@@ -1554,7 +1948,7 @@ class _LineaPrecioOriginal extends StatelessWidget {
         const SizedBox(width: 4),
         Text(
           '(${subeBaja ? '+' : ''}${pct.toStringAsFixed(1)}%)',
-          style: TextStyle(color: subeBaja ? _kGreen : _kOrange, fontSize: 10),
+          style: TextStyle(color: subeBaja ? _kGreen : _kOrange, fontSize: 12),
         ),
       ],
     );

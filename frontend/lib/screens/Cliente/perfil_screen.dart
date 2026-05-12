@@ -4,6 +4,7 @@ import 'package:flutter/services.dart'
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
+import '../../components/Cliente/pedido_activo_pill.dart';
 import '../../core/app_snackbar.dart';
 import '../../core/colors_style.dart';
 import '../../models/usuario_model.dart';
@@ -20,8 +21,8 @@ const double _kSheetTopRadius = 24;
 const double _kDialogRadius = 16;
 const double _kOverlayAlpha = 0.82;
 
-// Azul fijo para el estado de email-2FA (no está en AppColors).
-const Color _kBlue2FA = Color(0xFF3B82F6);
+// Azul fijo para el estado de email-2FA.
+const Color _kBlue2FA = AppColors.info;
 
 class PerfilScreen extends StatefulWidget {
   const PerfilScreen({super.key});
@@ -637,7 +638,14 @@ class _PerfilScreenState extends State<PerfilScreen> {
                           children: [
                             const SizedBox(height: 28),
                             _buildAvatar(iniciales),
-                            const SizedBox(height: 32),
+                            const SizedBox(height: 24), // Separación ajustada
+                            
+                            // ── ¡AQUÍ ESTÁ LA MAGIA! ──
+                            if (usuario != null) ...[
+                              _TarjetaClubBravo(puntos: usuario.puntos),
+                              const SizedBox(height: 32),
+                            ],
+                            
                             _buildSeccionDatosPersonales(),
                             const SizedBox(height: 24),
                             _buildBotonGuardar(),
@@ -651,6 +659,18 @@ class _PerfilScreenState extends State<PerfilScreen> {
                   ),
                 ),
               ],
+            ),
+          ),
+          // Pill persistente de seguimiento del último pedido activo.
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: 16,
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 480),
+                child: const PedidoActivoPill(),
+              ),
             ),
           ),
         ],
@@ -837,6 +857,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
       child: Row(
         children: [
           IconButton(
+            tooltip: 'Volver',
             icon: const Icon(
               Icons.arrow_back_ios_new,
               color: Colors.white,
@@ -999,6 +1020,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
           size: 20,
         ),
         suffixIcon: IconButton(
+          tooltip: oculto ? 'Mostrar contraseña' : 'Ocultar contraseña',
           icon: Icon(
             oculto ? Icons.visibility_off_outlined : Icons.visibility_outlined,
             color: Colors.white38,
@@ -1218,7 +1240,7 @@ class _BottomSheetContainer extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
-        color: AppColors.gold,
+        color: AppColors.bottomSheetBg,
         borderRadius: BorderRadius.vertical(
           top: Radius.circular(_kSheetTopRadius),
         ),
@@ -1311,6 +1333,114 @@ class _SheetButton extends StatelessWidget {
                   fontSize: 13,
                 ),
               ),
+      ),
+    );
+  }
+}
+
+// ── TARJETA CLUB BRAVO (SISTEMA DE PUNTOS) ─────────────────────────
+class _TarjetaClubBravo extends StatelessWidget {
+  final int puntos;
+
+  const _TarjetaClubBravo({required this.puntos});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.amber.shade300.withValues(alpha: 0.15),
+            Colors.amber.shade800.withValues(alpha: 0.05),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Colors.amber.withValues(alpha: 0.3),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.amber.withValues(alpha: 0.05),
+            blurRadius: 20,
+            spreadRadius: 5,
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // Icono brillante
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.amber.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: Colors.amber.withValues(alpha: 0.5),
+              ),
+            ),
+            child: const Icon(
+              Icons.stars_rounded,
+              color: Colors.amber,
+              size: 32,
+            ),
+          ),
+          const SizedBox(width: 16),
+          
+          // Textos
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'CLUB BRAVO',
+                  style: GoogleFonts.playfairDisplay(
+                    color: Colors.amber,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 2,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Gana puntos con cada pedido',
+                  style: GoogleFonts.manrope(
+                    color: Colors.white60,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Contador de puntos
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '$puntos',
+                style: GoogleFonts.manrope(
+                  color: Colors.white,
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              Text(
+                'COINS',
+                style: GoogleFonts.manrope(
+                  color: Colors.amber,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.5,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

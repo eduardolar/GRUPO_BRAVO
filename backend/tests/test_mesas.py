@@ -1,25 +1,31 @@
-"""Tests para PUT /api/v1/mesas/{mesa_id} — editar datos de una mesa."""
+"""Tests para GET /api/v1/mesas (Fix 2), PUT /api/v1/mesas/{mesa_id} — editar
+datos de una mesa, y PATCH /api/v1/mesas/{mesa_id} — cambiar estado libre/ocupada."""
 from unittest.mock import MagicMock, patch
 from bson import ObjectId
 
-from security import crear_token
+from tests.tok_helpers import tok
 
 
 # ─── Helpers de autenticación ────────────────────────────────────────────────
 
 def _auth_admin(rid: str = "R1") -> dict:
-    token = crear_token({"sub": "u_admin", "correo": "admin@test.com", "rol": "admin", "restaurante_id": rid})
-    return {"Authorization": f"Bearer {token}"}
+    return tok("admin", restaurante_id=rid)
 
 
 def _auth_super_admin() -> dict:
-    token = crear_token({"sub": "u_super", "correo": "super@test.com", "rol": "super_admin"})
-    return {"Authorization": f"Bearer {token}"}
+    return tok("super_admin")
 
 
 def _auth_cliente() -> dict:
-    token = crear_token({"sub": "u_cliente", "correo": "cliente@test.com", "rol": "cliente"})
-    return {"Authorization": f"Bearer {token}"}
+    return tok("cliente")
+
+
+def _auth_camarero(rid: str = "R1") -> dict:
+    return tok("camarero", restaurante_id=rid)
+
+
+def _auth_cocinero(rid: str = "R1") -> dict:
+    return tok("cocinero", restaurante_id=rid)
 
 
 # ─── Datos de prueba ─────────────────────────────────────────────────────────
@@ -275,3 +281,199 @@ def test_editar_mesa_body_vacio_devuelve_400(client):
 
     assert resp.status_code == 400
     assert "Sin campos" in resp.json()["detail"]
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Tests PATCH /api/v1/mesas/{mesa_id} — cambiar estado libre/ocupada
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ─── Test 12: camarero de R1 cambia mesa de R1 → 200 ─────────────────────────
+
+def test_patch_estado_camarero_misma_sucursal_devuelve_200(client):
+    """Camarero de R1 puede cambiar el estado de una mesa de R1."""
+    mesa = _mesa_r1()
+    mesa_id = str(mesa["_id"])
+
+    with patch("routes.mesas.coleccion_mesas") as mock_col:
+        mock_col.find_one.return_value = mesa
+        mock_col.update_one.return_value = MagicMock()
+
+        resp = client.patch(
+            f"/api/v1/mesas/{mesa_id}",
+            json={"disponible": True},
+            headers=_auth_camarero(rid="R1"),
+        )
+
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["ok"] is True
+    assert resp.json()["estado"] == "libre"
+
+
+# ─── Test 13: camarero de R1 intenta cambiar mesa de R2 → 403 ────────────────
+
+def test_patch_estado_camarero_otra_sucursal_devuelve_403(client):
+    """Camarero de R1 no puede cambiar el estado de una mesa de R2."""
+    mesa_r2 = _mesa_r2()
+    mesa_id = str(mesa_r2["_id"])
+
+    with patch("routes.mesas.coleccion_mesas") as mock_col:
+        mock_col.find_one.return_value = mesa_r2
+
+        resp = client.patch(
+            f"/api/v1/mesas/{mesa_id}",
+            json={"disponible": False},
+            headers=_auth_camarero(rid="R1"),
+        )
+
+    assert resp.status_code == 403, resp.text
+    assert "sucursal" in resp.json()["detail"].lower()
+
+
+# ─── Test 14: cocinero → 403 ─────────────────────────────────────────────────
+
+def test_patch_estado_cocinero_devuelve_403(client):
+    """El rol cocinero no tiene acceso a PATCH /mesas/{id}."""
+    mesa_id = str(ObjectId())
+
+    resp = client.patch(
+        f"/api/v1/mesas/{mesa_id}",
+        json={"disponible": True},
+        headers=_auth_cocinero(),
+    )
+
+    assert resp.status_code == 403
+
+
+# ─── Test 15: cliente → 403 ──────────────────────────────────────────────────
+
+def test_patch_estado_cliente_devuelve_403(client):
+    """El rol cliente no tiene acceso a PATCH /mesas/{id}."""
+    mesa_id = str(ObjectId())
+
+    resp = client.patch(
+        f"/api/v1/mesas/{mesa_id}",
+        json={"disponible": True},
+        headers=_auth_cliente(),
+    )
+
+    assert resp.status_code == 403
+
+
+# ─── Test 16: sin token → 401 ────────────────────────────────────────────────
+
+def test_patch_estado_sin_token_devuelve_401(client):
+    """Sin cabecera Authorization → 401."""
+    mesa_id = str(ObjectId())
+
+    resp = client.patch(
+        f"/api/v1/mesas/{mesa_id}",
+        json={"disponible": True},
+    )
+
+    assert resp.status_code == 401
+
+
+# ─── Test 17: admin de su propia sucursal → 200 ──────────────────────────────
+
+def test_patch_estado_admin_misma_sucursal_devuelve_200(client):
+    """Admin de R1 puede cambiar estado de mesa de R1 (acceso previo no regresionado)."""
+    mesa = _mesa_r1()
+    mesa_id = str(mesa["_id"])
+
+    with patch("routes.mesas.coleccion_mesas") as mock_col:
+        mock_col.find_one.return_value = mesa
+        mock_col.update_one.return_value = MagicMock()
+
+        resp = client.patch(
+            f"/api/v1/mesas/{mesa_id}",
+            json={"disponible": False},
+            headers=_auth_admin(rid="R1"),
+        )
+
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["estado"] == "ocupada"
+
+
+# ─── Test 18: super_admin puede cambiar mesa de cualquier sucursal → 200 ──────
+
+def test_patch_estado_super_admin_cualquier_sucursal_devuelve_200(client):
+    """super_admin puede cambiar el estado de cualquier mesa sin restricción de sucursal."""
+    mesa_r2 = _mesa_r2()
+    mesa_id = str(mesa_r2["_id"])
+
+    with patch("routes.mesas.coleccion_mesas") as mock_col:
+        mock_col.find_one.return_value = mesa_r2
+        mock_col.update_one.return_value = MagicMock()
+
+        resp = client.patch(
+            f"/api/v1/mesas/{mesa_id}",
+            json={"disponible": True},
+            headers=_auth_super_admin(),
+        )
+
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["estado"] == "libre"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Tests GET /api/v1/mesas — Fix 2: aislamiento multi-tenant
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def test_get_mesas_sin_token_devuelve_401(client):
+    """GET /mesas sin token → 401."""
+    resp = client.get("/api/v1/mesas")
+    assert resp.status_code == 401
+
+
+def test_get_mesas_camarero_usa_rid_del_jwt_ignora_query(client):
+    """Camarero de R1 con ?restaurante_id=R2 en query debe ver solo las mesas de R1."""
+    mesa_r1 = _mesa_r1()
+
+    cursor_mock = MagicMock()
+    cursor_mock.__iter__ = MagicMock(return_value=iter([mesa_r1]))
+
+    with patch("routes.mesas.coleccion_mesas") as mock_col:
+        mock_col.find.return_value = cursor_mock
+        resp = client.get(
+            "/api/v1/mesas?restaurante_id=R2",
+            headers=_auth_camarero(rid="R1"),
+        )
+
+    assert resp.status_code == 200, resp.text
+    # El filtro debe haberse aplicado con R1 (JWT), no R2 (query)
+    mock_col.find.assert_called_once_with({"restaurante_id": "R1"})
+
+
+def test_get_mesas_super_admin_usa_query(client):
+    """super_admin puede usar el query param para ver mesas de cualquier sucursal."""
+    mesa_r2 = _mesa_r2()
+
+    cursor_mock = MagicMock()
+    cursor_mock.__iter__ = MagicMock(return_value=iter([mesa_r2]))
+
+    with patch("routes.mesas.coleccion_mesas") as mock_col:
+        mock_col.find.return_value = cursor_mock
+        resp = client.get(
+            "/api/v1/mesas?restaurante_id=R2",
+            headers=_auth_super_admin(),
+        )
+
+    assert resp.status_code == 200, resp.text
+    mock_col.find.assert_called_once_with({"restaurante_id": "R2"})
+
+
+def test_get_mesas_personal_sin_rid_jwt_devuelve_400(client):
+    """Camarero/admin cuyo JWT no tiene restaurante_id recibe 400 (no filtro vacío)."""
+    from security import crear_token
+    from tests.tok_helpers import insertar_usuario_test
+    from bson import ObjectId as OID
+
+    legacy_oid = OID("bbbbbbbbbbbbbbbbbbbbbbba")
+    insertar_usuario_test(legacy_oid, "camarero", restaurante_id=None)
+    token = crear_token({"sub": str(legacy_oid), "correo": "cam_legacy@test.com", "rol": "camarero"})
+    headers = {"Authorization": f"Bearer {token}"}
+
+    resp = client.get("/api/v1/mesas", headers=headers)
+
+    assert resp.status_code == 400
+    assert "sucursal" in resp.json()["detail"].lower()
