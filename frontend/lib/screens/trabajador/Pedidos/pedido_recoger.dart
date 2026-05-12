@@ -6,16 +6,16 @@ import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/services/api_service.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import 'confirmar_pedido_domicilio.dart';
+import 'confirmar_pedido_recoger.dart';
 
-class PedidoDomicilio extends StatefulWidget {
-  const PedidoDomicilio({super.key});
+class PedidoRecoger extends StatefulWidget {
+  const PedidoRecoger({super.key});
 
   @override
-  State<PedidoDomicilio> createState() => _PedidoDomicilioState();
+  State<PedidoRecoger> createState() => _PedidoRecogerState();
 }
 
-class _PedidoDomicilioState extends State<PedidoDomicilio> {
+class _PedidoRecogerState extends State<PedidoRecoger> {
   int _selectedCategory = 0;
   List<String> _categorias = [];
   List<Producto> _productos = [];
@@ -56,7 +56,8 @@ class _PedidoDomicilioState extends State<PedidoDomicilio> {
     }
   }
 
-  void _agregar(Producto p) => setState(() => _carrito[p] = (_carrito[p] ?? 0) + 1);
+  void _agregar(Producto p) =>
+      setState(() => _carrito[p] = (_carrito[p] ?? 0) + 1);
 
   void _quitar(Producto p) => setState(() {
         final qty = (_carrito[p] ?? 0) - 1;
@@ -84,7 +85,7 @@ class _PedidoDomicilioState extends State<PedidoDomicilio> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => ConfirmarPedidoDomicilio(
+        builder: (_) => ConfirmarPedidoRecoger(
           items: items,
           total: _totalPrecio,
         ),
@@ -166,7 +167,8 @@ class _PedidoDomicilioState extends State<PedidoDomicilio> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.cloud_off_outlined, size: 48, color: Colors.white54),
+                    const Icon(Icons.cloud_off_outlined,
+                        size: 48, color: Colors.white54),
                     const SizedBox(height: 20),
                     Text(
                       'NO PUDIMOS CARGAR LA CARTA',
@@ -270,13 +272,14 @@ class _PedidoDomicilioState extends State<PedidoDomicilio> {
                                 fontWeight: FontWeight.w700,
                                 letterSpacing: 1.5,
                                 shadows: const [
-                                  Shadow(color: Colors.black54, blurRadius: 8),
+                                  Shadow(
+                                      color: Colors.black54, blurRadius: 8),
                                 ],
                               ),
                             ),
                             const SizedBox(height: 4),
                             const Text(
-                              'Pedido a domicilio',
+                              'Pedido para recoger',
                               style: TextStyle(
                                 color: Colors.white60,
                                 fontSize: 11,
@@ -292,7 +295,7 @@ class _PedidoDomicilioState extends State<PedidoDomicilio> {
 
                 const SizedBox(height: 18),
 
-                _DomicilioCategoryBar(
+                _RecogerCategoryBar(
                   categorias: _categorias,
                   selectedIndex: _selectedCategory,
                   onSelected: (i) => setState(() => _selectedCategory = i),
@@ -322,7 +325,8 @@ class _PedidoDomicilioState extends State<PedidoDomicilio> {
                                     : 1;
                             return GridView.builder(
                               physics: const BouncingScrollPhysics(),
-                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
+                              padding:
+                                  const EdgeInsets.fromLTRB(16, 4, 16, 32),
                               gridDelegate:
                                   SliverGridDelegateWithFixedCrossAxisCount(
                                 crossAxisCount: columns,
@@ -356,7 +360,7 @@ class _PedidoDomicilioState extends State<PedidoDomicilio> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           const Icon(
-                            Icons.delivery_dining,
+                            Icons.storefront,
                             color: Colors.white,
                             size: 17,
                           ),
@@ -393,22 +397,22 @@ class _PedidoDomicilioState extends State<PedidoDomicilio> {
 }
 
 // ─── Barra de categorías ──────────────────────────────────────────────────────
-class _DomicilioCategoryBar extends StatefulWidget {
+class _RecogerCategoryBar extends StatefulWidget {
   final List<String> categorias;
   final int selectedIndex;
   final ValueChanged<int> onSelected;
 
-  const _DomicilioCategoryBar({
+  const _RecogerCategoryBar({
     required this.categorias,
     required this.selectedIndex,
     required this.onSelected,
   });
 
   @override
-  State<_DomicilioCategoryBar> createState() => _DomicilioCategoryBarState();
+  State<_RecogerCategoryBar> createState() => _RecogerCategoryBarState();
 }
 
-class _DomicilioCategoryBarState extends State<_DomicilioCategoryBar> {
+class _RecogerCategoryBarState extends State<_RecogerCategoryBar> {
   final ScrollController _scroll = ScrollController();
 
   @override
@@ -434,7 +438,8 @@ class _DomicilioCategoryBarState extends State<_DomicilioCategoryBar> {
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               margin: const EdgeInsets.only(right: 10),
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
               decoration: BoxDecoration(
                 color: selected
                     ? AppColors.button

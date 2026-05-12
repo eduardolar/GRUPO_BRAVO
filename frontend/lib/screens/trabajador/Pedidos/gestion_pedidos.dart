@@ -7,6 +7,7 @@ import 'package:frontend/models/mesa_model.dart';
 import 'package:frontend/models/pedido_model.dart';
 import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/screens/trabajador/Pedidos/pedido_domicilio.dart';
+import 'package:frontend/screens/trabajador/Pedidos/pedido_recoger.dart';
 import 'package:frontend/screens/trabajador/appbar_trabajador.dart';
 import 'package:frontend/screens/trabajador/servicio_trabajador/modificar_comanda.dart';
 import 'package:frontend/screens/trabajador/servicio_trabajador/sacar_cuenta.dart';
@@ -652,15 +653,15 @@ class _CrearPedidoBottomSheet extends StatelessWidget {
 
           // Opción local
           _OpcionTipoPedido(
-            icono: Icons.table_restaurant_outlined,
-            titulo: 'Local (mesa)',
-            subtitulo: 'Pedido para una mesa del restaurante',
+            icono: Icons.local_mall,
+            titulo: 'Recoger',
+            subtitulo: 'Pedido para recoger en el restaurante',
             color: AppColors.button,
             onTap: () {
               Navigator.pop(context);
               Navigator.push(
                 context,
-                AppRoute.slide(const SeleccionMesa()),
+                AppRoute.slide(const PedidoRecoger()),
               );
             },
           ),
