@@ -8,10 +8,10 @@ import '../../components/Cliente/primary_button.dart';
 import '../../core/app_snackbar.dart';
 import '../../core/colors_style.dart';
 import '../../models/destino_login.dart';
+import '../../models/restaurante_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/http_client.dart';
-import '../../services/restaurante_service.dart'; // Asegúrate que esta ruta es correcta
-import 'direccion_screen.dart';
+import '../../services/restaurante_service.dart';
 import 'login_screen.dart';
 import 'verificacion_screen.dart';
 
@@ -82,10 +82,11 @@ class _RegistroController extends ChangeNotifier {
 ///
 /// Tras registro exitoso navega a [VerificacionScreen] para que el cliente
 /// valide su correo mediante el código OTP enviado por el backend.
-const BorderRadius _kFieldRadius = BorderRadius.all(Radius.circular(15));
-
 class RegistroScreen extends StatefulWidget {
+  /// Destino post-verificación de email para conservar la intención original
+  /// del cliente (ver carta vs. reservar mesa).
   final DestinoLogin destino;
+
   const RegistroScreen({super.key, this.destino = DestinoLogin.menu});
 
   @override
@@ -104,22 +105,17 @@ class _RegistroScreenState extends State<RegistroScreen> {
   bool _aceptaPrivacidad = false;
   bool _privacidadError = false;
 
-  // Variables para Restaurantes
-  List<dynamic> _restaurantes = [];
+  // Listado de restaurantes y selección actual. El cliente elige su local más
+  // cercano en el paso 3 para que el backend pueda asociar pedidos, cupones
+  // y notificaciones al restaurante correcto.
+  List<Restaurante> _restaurantes = [];
   String? _restauranteSeleccionado;
   bool _restauranteError = false;
-
-  final _nombreCtrl = TextEditingController();
-  final _emailCtrl = TextEditingController();
-  final _passwordCtrl = TextEditingController();
-  final _confirmCtrl = TextEditingController();
-  final _telefonoCtrl = TextEditingController();
-  final _direccionCtrl = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _cargarRestaurantes(); // Cargamos los restaurantes al iniciar la pantalla
+    _cargarRestaurantes();
   }
 
   @override
@@ -129,7 +125,6 @@ class _RegistroScreenState extends State<RegistroScreen> {
     super.dispose();
   }
 
-  // Función para cargar restaurantes (AQUÍ ES DONDE DEBE IR)
   Future<void> _cargarRestaurantes() async {
     try {
       final lista = await RestauranteService().obtenerTodos();
@@ -147,7 +142,6 @@ class _RegistroScreenState extends State<RegistroScreen> {
     return null;
   }
 
-  // ── Validadores ─────────────────────────────────────────────────────────
   String? _validarEmail(String? v) {
     if (v == null || v.trim().isEmpty) return 'Introduce tu correo';
     // Acepta subdominios (p.ej. eln0001@alu.medac.es, foo@bar.co.uk).
@@ -196,8 +190,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
         lower.contains('reserved name')) {
       return 'El correo no es válido o usa un dominio no permitido.';
     }
-    if (lower.contains('contraseña debe tener') ||
-        lower.contains('password')) {
+    if (lower.contains('contraseña debe tener') || lower.contains('password')) {
       // El backend ya entrega un texto explicativo; quitamos el prefijo
       // "password: Value error, " si está presente.
       final limpio = raw
@@ -242,40 +235,17 @@ class _RegistroScreenState extends State<RegistroScreen> {
   // ── Registro final ─────────────────────────────────────────────────────────
 
   Future<void> _crearCuenta() async {
-  String? _validarTelefono(String? v) {
-    if (v == null || v.trim().isEmpty) return 'Campo requerido';
-    final digits = v.trim().replaceAll(RegExp(r'\D'), '');
-    if (digits.length < 9) return 'Número de teléfono incompleto';
-    return null;
-  }
-
-  // ── Acciones ────────────────────────────────────────────────────────────
-  Future<void> _abrirSelectorDireccion() async {
-    final resultado = await Navigator.push<Map<String, dynamic>>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const DireccionScreen(soloSeleccionar: true),
-      ),
-    );
-    if (!mounted || resultado == null) return;
-    setState(() => _direccionCtrl.text = resultado['direccion'] as String);
-  }
-
-  Future<void> _registrarse() async {
-    if (!_formKey.currentState!.validate()) return;
-
     if (_restauranteSeleccionado == null) {
       setState(() => _restauranteError = true);
       return;
     }
-
     if (!_aceptaPrivacidad) {
       setState(() => _privacidadError = true);
       return;
     }
-
     setState(() => _isLoading = true);
     final auth = context.read<AuthProvider>();
+    final navigator = Navigator.of(context);
     try {
       await auth.registrarse(
         nombre: _ctrl.nombreCtrl.text.trim(),
@@ -283,22 +253,15 @@ class _RegistroScreenState extends State<RegistroScreen> {
         contrasena: _ctrl.passwordCtrl.text,
         telefono: _ctrl.telefonoCtrl.text.trim(),
         // Dirección eliminada del registro — se pedirá en OpcionesEntregaScreen.
-        nombre: _nombreCtrl.text.trim(),
-        email: _emailCtrl.text.trim(),
-        contrasena: _passwordCtrl.text,
-        telefono: _telefonoCtrl.text.trim(),
-        direccion: _direccionCtrl.text.trim(),
-        restauranteId:
-            _restauranteSeleccionado, // Asegúrate que AuthProvider acepte esto
+        direccion: '',
+        restauranteId: _restauranteSeleccionado,
         consentimientoRgpd: true,
       );
       if (!mounted) return;
-      Navigator.push(
-        context,
+      navigator.push(
         MaterialPageRoute(
-          builder: (_) => VerificacionScreen(
-            email: _ctrl.emailCtrl.text.trim(),
-          ),
+          builder: (_) =>
+              VerificacionScreen(email: _ctrl.emailCtrl.text.trim()),
         ),
       );
     } catch (e) {
@@ -355,7 +318,10 @@ class _RegistroScreenState extends State<RegistroScreen> {
           'El servidor tardó demasiado. Inténtalo en un momento.',
         );
       } else {
-        showAppError(context, 'No pudimos crear tu cuenta. Inténtalo de nuevo.');
+        showAppError(
+          context,
+          'No pudimos crear tu cuenta. Inténtalo de nuevo.',
+        );
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -419,6 +385,13 @@ class _RegistroScreenState extends State<RegistroScreen> {
                       _aceptaPrivacidad = v ?? false;
                       if (_aceptaPrivacidad) _privacidadError = false;
                     }),
+                    restaurantes: _restaurantes,
+                    restauranteSeleccionado: _restauranteSeleccionado,
+                    restauranteError: _restauranteError,
+                    onRestauranteChange: (val) => setState(() {
+                      _restauranteSeleccionado = val;
+                      _restauranteError = false;
+                    }),
                     onCrearCuenta: _crearCuenta,
                     onVolver: _volver,
                   ),
@@ -447,13 +420,7 @@ class _IndicadorPasos extends StatelessWidget {
       label: 'Paso ${pasoActual + 1} de 3',
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          _circulo(0),
-          _linea(0),
-          _circulo(1),
-          _linea(1),
-          _circulo(2),
-        ],
+        children: [_circulo(0), _linea(0), _circulo(1), _linea(1), _circulo(2)],
       ),
     );
   }
@@ -657,6 +624,10 @@ class _Paso3 extends StatelessWidget {
   final bool privacidadError;
   final bool isLoading;
   final ValueChanged<bool?> onPrivacidadChange;
+  final List<Restaurante> restaurantes;
+  final String? restauranteSeleccionado;
+  final bool restauranteError;
+  final ValueChanged<String?> onRestauranteChange;
   final VoidCallback onCrearCuenta;
   final VoidCallback onVolver;
 
@@ -666,6 +637,10 @@ class _Paso3 extends StatelessWidget {
     required this.privacidadError,
     required this.isLoading,
     required this.onPrivacidadChange,
+    required this.restaurantes,
+    required this.restauranteSeleccionado,
+    required this.restauranteError,
+    required this.onRestauranteChange,
     required this.onCrearCuenta,
     required this.onVolver,
   });
@@ -684,74 +659,18 @@ class _Paso3 extends StatelessWidget {
           nombre: ctrl.nombreCtrl.text,
           email: ctrl.emailCtrl.text,
           telefono: ctrl.telefonoCtrl.text,
-
-  Widget _buildInputs() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        EntradaTexto(
-          etiqueta: 'Nombre completo',
-          icono: Icons.person_outline,
-          autofillHints: const [AutofillHints.name],
-          controlador: _nombreCtrl,
-          validador: (v) =>
-              (v == null || v.trim().isEmpty) ? 'Campo requerido' : null,
-        ),
-        EntradaTexto(
-          etiqueta: 'Correo electrónico',
-          icono: Icons.email_outlined,
-          tipoTeclado: TextInputType.emailAddress,
-          autofillHints: const [AutofillHints.email],
-          controlador: _emailCtrl,
-          validador: _validarEmail,
-        ),
-        EntradaTexto(
-          etiqueta: 'Contraseña',
-          icono: Icons.lock_outline,
-          autofillHints: const [AutofillHints.password],
-          esContrasena: true,
-          mostrarTexto: _ocultarPass,
-          alPresionarIcono: () => setState(() => _ocultarPass = !_ocultarPass),
-          controlador: _passwordCtrl,
-          validador: _validarContrasena,
-        ),
-        _PasswordStrengthBar(password: _passwordCtrl),
-        const SizedBox(height: 16),
-        EntradaTexto(
-          etiqueta: 'Confirmar contraseña',
-          icono: Icons.lock_outline,
-          esContrasena: true,
-          mostrarTexto: _ocultarConfirm,
-          alPresionarIcono: () =>
-              setState(() => _ocultarConfirm = !_ocultarConfirm),
-          autofillHints: const [AutofillHints.newPassword],
-          controlador: _confirmCtrl,
-          validador: _validarConfirmar,
-        ),
-        EntradaTexto(
-          etiqueta: 'Teléfono',
-          icono: Icons.phone_android_outlined,
-          controlador: _telefonoCtrl,
-          validador: _validarTelefono,
         ),
         const SizedBox(height: 20),
+        _SelectorRestaurante(
+          restaurantes: restaurantes,
+          seleccionado: restauranteSeleccionado,
+          hayError: restauranteError,
+          onChanged: onRestauranteChange,
+        ),
         _ConsentimientoRgpd(
           aceptado: aceptaPrivacidad,
           hayError: privacidadError,
           onChange: onPrivacidadChange,
-        // SELECTOR DE RESTAURANTE
-        _SelectorRestaurante(
-          restaurantes: _restaurantes,
-          seleccionado: _restauranteSeleccionado,
-          hayError: _restauranteError,
-          onChanged: (val) => setState(() {
-            _restauranteSeleccionado = val;
-            _restauranteError = false;
-          }),
-        ),
-        _DireccionField(
-          controller: _direccionCtrl,
-          onTap: _abrirSelectorDireccion,
         ),
         const SizedBox(height: 16),
         PrimaryButton(
@@ -762,6 +681,64 @@ class _Paso3 extends StatelessWidget {
         const SizedBox(height: 12),
         _BotonVolver(onPressed: onVolver),
       ],
+    );
+  }
+}
+
+// ── Selector de restaurante ──────────────────────────────────────────────────
+
+/// Dropdown para que el cliente elija su restaurante más cercano en el paso 3.
+/// El backend asocia el usuario al `restaurante_id` para pedidos y cupones.
+class _SelectorRestaurante extends StatelessWidget {
+  const _SelectorRestaurante({
+    required this.restaurantes,
+    required this.seleccionado,
+    required this.onChanged,
+    required this.hayError,
+  });
+
+  final List<Restaurante> restaurantes;
+  final String? seleccionado;
+  final ValueChanged<String?> onChanged;
+  final bool hayError;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        decoration: BoxDecoration(
+          color: AppColors.panel,
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(
+            color: hayError ? AppColors.error : AppColors.line,
+            width: hayError ? 2 : 1,
+          ),
+        ),
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<String>(
+            value: seleccionado,
+            isExpanded: true,
+            dropdownColor: AppColors.panel,
+            hint: const Text(
+              'Tu restaurante más cercano',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
+            ),
+            icon: const Icon(Icons.arrow_drop_down, color: AppColors.button),
+            items: restaurantes.map((res) {
+              return DropdownMenuItem<String>(
+                value: res.id,
+                child: Text(
+                  res.nombre,
+                  style: const TextStyle(color: AppColors.textPrimary),
+                ),
+              );
+            }).toList(),
+            onChanged: onChanged,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -808,10 +785,7 @@ class _TarjetaResumen extends StatelessWidget {
         Expanded(
           child: Text(
             valor,
-            style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 14,
-            ),
+            style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
           ),
         ),
       ],
@@ -887,8 +861,7 @@ class _ConsentimientoRgpd extends StatelessWidget {
                       ),
                     ),
                     const TextSpan(
-                      text:
-                          ' y el tratamiento de mis datos conforme al RGPD.',
+                      text: ' y el tratamiento de mis datos conforme al RGPD.',
                     ),
                   ],
                 ),
@@ -1003,89 +976,14 @@ class _PoliticaPrivacidadSheet extends StatelessWidget {
           ),
         );
       },
-          Text(
-            '¿Ya tienes cuenta?',
-            style: TextStyle(color: Colors.white.withOpacity(0.6)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (_) => LoginScreen(destino: widget.destino),
-              ),
-            ),
-            child: const Text(
-              'Inicia sesión',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                decoration: TextDecoration.underline,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
 
 // ── Barra de fortaleza de contraseña ─────────────────────────────────────────
-// ── Widgets auxiliares (FUERA DE LAS OTRAS CLASES) ────────────────────────
 
 /// Barra visual de 4 segmentos que escucha el [TextEditingController] de la
 /// contraseña y actualiza el color y etiqueta según la puntuación calculada.
-class _SelectorRestaurante extends StatelessWidget {
-  const _SelectorRestaurante({
-    required this.restaurantes,
-    required this.seleccionado,
-    required this.onChanged,
-    required this.hayError,
-  });
-
-  final List<dynamic> restaurantes;
-  final String? seleccionado;
-  final ValueChanged<String?> onChanged;
-  final bool hayError;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      decoration: BoxDecoration(
-        color: AppColors.panel,
-        borderRadius: _kFieldRadius,
-        border: Border.all(
-          color: hayError ? AppColors.error : AppColors.line,
-          width: hayError ? 2 : 1,
-        ),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: seleccionado,
-          isExpanded: true,
-          dropdownColor: AppColors.panel,
-          hint: const Text(
-            "Tu restaurante más cercano",
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
-          ),
-          icon: const Icon(Icons.arrow_drop_down, color: AppColors.gold),
-          items: restaurantes.map((res) {
-            return DropdownMenuItem<String>(
-              value: res.id.toString(),
-              child: Text(
-                res.nombre,
-                style: const TextStyle(color: AppColors.textPrimary),
-              ),
-            );
-          }).toList(),
-          onChanged: onChanged,
-        ),
-      ),
-    );
-  }
-}
-
 class _PasswordStrengthBar extends StatefulWidget {
   const _PasswordStrengthBar({required this.password});
   final TextEditingController password;
@@ -1190,10 +1088,7 @@ class _BotonVolver extends StatelessWidget {
         onPressed: onPressed,
         child: const Text(
           '← Volver',
-          style: TextStyle(
-            color: Colors.white70,
-            fontWeight: FontWeight.w600,
-          ),
+          style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600),
         ),
       ),
     );
@@ -1204,15 +1099,6 @@ class _BotonVolver extends StatelessWidget {
 
 class _FooterLogin extends StatelessWidget {
   final VoidCallback onLogin;
-    // ... resto de tu lógica de la barra (la he omitido para abreviar)
-    return Container(); // Reemplaza por tu código de la barra
-  }
-}
-
-class _DireccionField extends StatelessWidget {
-  const _DireccionField({required this.controller, required this.onTap});
-  final TextEditingController controller;
-  final VoidCallback onTap;
 
   const _FooterLogin({required this.onLogin});
 
@@ -1238,46 +1124,9 @@ class _DireccionField extends StatelessWidget {
                 decorationColor: Colors.white,
               ),
             ),
-    return GestureDetector(
-      onTap: onTap,
-      child: AbsorbPointer(
-        child: TextFormField(
-          controller: controller,
-          readOnly: true,
-          style: const TextStyle(color: AppColors.textPrimary),
-          decoration: InputDecoration(
-            labelText: 'Dirección de entrega',
-            prefixIcon: const Icon(Icons.map_outlined, color: AppColors.gold),
-            filled: true,
-            fillColor: AppColors.panel,
-            border: OutlineInputBorder(borderRadius: _kFieldRadius),
           ),
         ],
       ),
-    );
-  }
-}
-
-class _ConsentimientoRgpd extends StatelessWidget {
-  const _ConsentimientoRgpd({
-    required this.aceptado,
-    required this.hayError,
-    required this.onChange,
-  });
-  final bool aceptado;
-  final bool hayError;
-  final ValueChanged<bool?> onChange;
-
-  @override
-  Widget build(BuildContext context) {
-    return CheckboxListTile(
-      value: aceptado,
-      onChanged: onChange,
-      title: const Text(
-        "Acepto la política de privacidad",
-        style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-      ),
-      controlAffinity: ListTileControlAffinity.leading,
     );
   }
 }

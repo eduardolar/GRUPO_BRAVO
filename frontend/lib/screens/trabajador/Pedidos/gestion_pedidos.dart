@@ -11,7 +11,6 @@ import 'package:frontend/screens/trabajador/Pedidos/pedido_recoger.dart';
 import 'package:frontend/screens/trabajador/appbar_trabajador.dart';
 import 'package:frontend/screens/trabajador/servicio_trabajador/modificar_comanda.dart';
 import 'package:frontend/screens/trabajador/servicio_trabajador/sacar_cuenta.dart';
-import 'package:frontend/screens/trabajador/servicio_trabajador/seleccion_mesa.dart';
 import 'package:frontend/services/api_service.dart';
 import 'package:frontend/services/mesa_service.dart';
 import 'package:frontend/services/pedido_service.dart';
@@ -64,8 +63,10 @@ class _GestionPedidosState extends State<GestionPedidos>
   }
 
   Future<void> _cargarPedidos() async {
-    final restauranteId =
-        context.read<AuthProvider>().usuarioActual?.restauranteId;
+    final restauranteId = context
+        .read<AuthProvider>()
+        .usuarioActual
+        ?.restauranteId;
     try {
       final todos = await ApiService.obtenerTodosLosPedidos(
         restauranteId: restauranteId,
@@ -108,10 +109,12 @@ class _GestionPedidosState extends State<GestionPedidos>
   // y no necesitan cobro manual del camarero. Una vez pagado, el pedido sale
   // de este tab (es histórico, ya no requiere acción).
   List<Pedido> get _cobrar => _pedidos
-      .where((p) =>
-          p.estado == 'entregado' &&
-          p.tipoEntrega == 'local' &&
-          p.estadoPago != 'pagado')
+      .where(
+        (p) =>
+            p.estado == 'entregado' &&
+            p.tipoEntrega == 'local' &&
+            p.estadoPago != 'pagado',
+      )
       .toList();
 
   // ── Acciones ──────────────────────────────────────────────
@@ -147,15 +150,20 @@ class _GestionPedidosState extends State<GestionPedidos>
       await _cargarPedidos();
     } catch (e) {
       if (!mounted) return;
-      showAppError(context, 'Error al entregar: ${e.toString().replaceFirst('Exception: ', '')}');
+      showAppError(
+        context,
+        'Error al entregar: ${e.toString().replaceFirst('Exception: ', '')}',
+      );
     }
   }
 
   /// Abre selector de mesas libres y mueve el pedido. Solo para pedidos de
   /// mesa (tipo local). Operativa típica: el grupo se muda de Mesa 4 a 12.
   Future<void> _moverMesa(Pedido pedido) async {
-    final restauranteId =
-        context.read<AuthProvider>().usuarioActual?.restauranteId;
+    final restauranteId = context
+        .read<AuthProvider>()
+        .usuarioActual
+        ?.restauranteId;
     final List<Mesa> mesas;
     try {
       mesas = await MesaService.obtenerMesas(restauranteId: restauranteId);
@@ -169,10 +177,9 @@ class _GestionPedidosState extends State<GestionPedidos>
     }
     if (!mounted) return;
     // Mostramos solo mesas libres y excluimos la actual del pedido.
-    final disponibles = mesas
-        .where((m) => m.disponible && m.id != pedido.mesaId)
-        .toList()
-      ..sort((a, b) => a.numero.compareTo(b.numero));
+    final disponibles =
+        mesas.where((m) => m.disponible && m.id != pedido.mesaId).toList()
+          ..sort((a, b) => a.numero.compareTo(b.numero));
 
     if (disponibles.isEmpty) {
       showAppInfo(context, 'No hay mesas libres ahora mismo');
@@ -365,10 +372,7 @@ class _GestionPedidosState extends State<GestionPedidos>
         nuevoResponsableSub: destino['id'] as String,
       );
       if (!mounted) return;
-      showAppSuccess(
-        context,
-        'Pedido transferido a ${destino['nombre']}',
-      );
+      showAppSuccess(context, 'Pedido transferido a ${destino['nombre']}');
       await _cargarPedidos();
     } catch (e) {
       if (!mounted) return;
@@ -416,7 +420,10 @@ class _GestionPedidosState extends State<GestionPedidos>
       await _cargarPedidos();
     } catch (e) {
       if (!mounted) return;
-      showAppError(context, 'Error al cancelar: ${e.toString().replaceFirst('Exception: ', '')}');
+      showAppError(
+        context,
+        'Error al cancelar: ${e.toString().replaceFirst('Exception: ', '')}',
+      );
     }
   }
 
@@ -453,84 +460,100 @@ class _GestionPedidosState extends State<GestionPedidos>
           child: SafeArea(
             child: FadeSlideIn(
               child: Column(
-              children: [
-                // ── TabBar + refresh en el body (bajo el AppBar transparente) ──
-                Row(
-                  children: [
-                    Expanded(
-                      child: TabBar(
-                        controller: _tabController,
-                        indicatorColor: AppColors.button,
-                        labelColor: Colors.white,
-                        unselectedLabelColor: Colors.white54,
-                        indicatorWeight: 2.5,
-                        labelStyle: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
-                          letterSpacing: 0.8,
-                        ),
-                        unselectedLabelStyle: const TextStyle(
-                          fontWeight: FontWeight.w500,
-                          fontSize: 12,
-                        ),
-                        tabs: [
-                          _TabConBadge(label: 'ACTIVOS', count: _activos.length),
-                          _TabConBadge(label: 'LISTOS', count: _listos.length),
-                          _TabConBadge(label: 'COBRAR', count: _cobrar.length),
-                        ],
-                      ),
-                    ),
-                    Semantics(
-                      label: 'Actualizar pedidos',
-                      button: true,
-                      child: IconButton(
-                        icon: const Icon(Icons.refresh, color: Colors.white70),
-                        tooltip: 'Actualizar',
-                        onPressed: _refrescar,
-                      ),
-                    ),
-                  ],
-                ),
-                // ── Contenido de cada tab ──
-                Expanded(
-                  child: TabBarView(
-                    controller: _tabController,
+                children: [
+                  // ── TabBar + refresh en el body (bajo el AppBar transparente) ──
+                  Row(
                     children: [
-                      _TabActivos(
-                        pedidos: _activos,
-                        cargando: _cargando,
-                        error: _error,
-                        onRefresh: _refrescar,
-                        onModificar: (p) => Navigator.push(
-                          context,
-                          AppRoute.slide(ModificarComanda(mesaIdInicial: p.mesaId)),
+                      Expanded(
+                        child: TabBar(
+                          controller: _tabController,
+                          indicatorColor: AppColors.button,
+                          labelColor: Colors.white,
+                          unselectedLabelColor: Colors.white54,
+                          indicatorWeight: 2.5,
+                          labelStyle: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
+                            letterSpacing: 0.8,
+                          ),
+                          unselectedLabelStyle: const TextStyle(
+                            fontWeight: FontWeight.w500,
+                            fontSize: 12,
+                          ),
+                          tabs: [
+                            _TabConBadge(
+                              label: 'ACTIVOS',
+                              count: _activos.length,
+                            ),
+                            _TabConBadge(
+                              label: 'LISTOS',
+                              count: _listos.length,
+                            ),
+                            _TabConBadge(
+                              label: 'COBRAR',
+                              count: _cobrar.length,
+                            ),
+                          ],
                         ),
-                        onCancelar: _iniciarCancelacion,
-                        onMover: _moverMesa,
-                        onTransferir: _transferirPedido,
                       ),
-                      _TabListos(
-                        pedidos: _listos,
-                        cargando: _cargando,
-                        error: _error,
-                        onRefresh: _refrescar,
-                        onEntregar: _marcarEntregado,
-                      ),
-                      _TabCobrar(
-                        pedidos: _cobrar,
-                        cargando: _cargando,
-                        error: _error,
-                        onRefresh: _refrescar,
-                        onSacarCuenta: (p) => Navigator.push(
-                          context,
-                          AppRoute.slide(SacarCuenta(mesaIdInicial: p.mesaId)),
+                      Semantics(
+                        label: 'Actualizar pedidos',
+                        button: true,
+                        child: IconButton(
+                          icon: const Icon(
+                            Icons.refresh,
+                            color: Colors.white70,
+                          ),
+                          tooltip: 'Actualizar',
+                          onPressed: _refrescar,
                         ),
                       ),
                     ],
                   ),
-                ),
-              ],
-            ),
+                  // ── Contenido de cada tab ──
+                  Expanded(
+                    child: TabBarView(
+                      controller: _tabController,
+                      children: [
+                        _TabActivos(
+                          pedidos: _activos,
+                          cargando: _cargando,
+                          error: _error,
+                          onRefresh: _refrescar,
+                          onModificar: (p) => Navigator.push(
+                            context,
+                            AppRoute.slide(
+                              ModificarComanda(mesaIdInicial: p.mesaId),
+                            ),
+                          ),
+                          onCancelar: _iniciarCancelacion,
+                          onMover: _moverMesa,
+                          onTransferir: _transferirPedido,
+                        ),
+                        _TabListos(
+                          pedidos: _listos,
+                          cargando: _cargando,
+                          error: _error,
+                          onRefresh: _refrescar,
+                          onEntregar: _marcarEntregado,
+                        ),
+                        _TabCobrar(
+                          pedidos: _cobrar,
+                          cargando: _cargando,
+                          error: _error,
+                          onRefresh: _refrescar,
+                          onSacarCuenta: (p) => Navigator.push(
+                            context,
+                            AppRoute.slide(
+                              SacarCuenta(mesaIdInicial: p.mesaId),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -644,10 +667,7 @@ class _CrearPedidoBottomSheet extends StatelessWidget {
           const SizedBox(height: 6),
           const Text(
             'Selecciona cómo quieres crear el pedido',
-            style: TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 12,
-            ),
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
           ),
           const SizedBox(height: 20),
 
@@ -659,10 +679,7 @@ class _CrearPedidoBottomSheet extends StatelessWidget {
             color: AppColors.button,
             onTap: () {
               Navigator.pop(context);
-              Navigator.push(
-                context,
-                AppRoute.slide(const PedidoRecoger()),
-              );
+              Navigator.push(context, AppRoute.slide(const PedidoRecoger()));
             },
           ),
 
@@ -676,10 +693,7 @@ class _CrearPedidoBottomSheet extends StatelessWidget {
             color: AppColors.info,
             onTap: () {
               Navigator.pop(context);
-              Navigator.push(
-                context,
-                AppRoute.slide(const PedidoDomicilio()),
-              );
+              Navigator.push(context, AppRoute.slide(const PedidoDomicilio()));
             },
           ),
 
@@ -906,8 +920,10 @@ class _PedidoTile extends StatelessWidget {
               children: [
                 // Chip de estado
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: _colorEstado.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(6),
@@ -926,8 +942,7 @@ class _PedidoTile extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 10),
-                Icon(_iconoUbicacion,
-                    size: 14, color: AppColors.textSecondary),
+                Icon(_iconoUbicacion, size: 14, color: AppColors.textSecondary),
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(
@@ -998,7 +1013,9 @@ class _PedidoTile extends StatelessWidget {
                               Text(
                                 'sin ${p.sin.join(', ')}',
                                 style: TextStyle(
-                                  color: AppColors.error.withValues(alpha: 0.85),
+                                  color: AppColors.error.withValues(
+                                    alpha: 0.85,
+                                  ),
                                   fontSize: 12,
                                   fontStyle: FontStyle.italic,
                                 ),
@@ -1037,7 +1054,9 @@ class _PedidoTile extends StatelessWidget {
                           width: 0.8,
                         ),
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 7),
+                          horizontal: 10,
+                          vertical: 7,
+                        ),
                         minimumSize: const Size(0, 32),
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         shape: RoundedRectangleBorder(
@@ -1047,7 +1066,9 @@ class _PedidoTile extends StatelessWidget {
                       child: Text(
                         labelAccionTerciaria!,
                         style: const TextStyle(
-                            fontSize: 11, fontWeight: FontWeight.w700),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ),
@@ -1064,7 +1085,9 @@ class _PedidoTile extends StatelessWidget {
                           width: 0.8,
                         ),
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 7),
+                          horizontal: 10,
+                          vertical: 7,
+                        ),
                         minimumSize: const Size(0, 32),
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         shape: RoundedRectangleBorder(
@@ -1074,7 +1097,9 @@ class _PedidoTile extends StatelessWidget {
                       child: Text(
                         labelAccionCuarta!,
                         style: const TextStyle(
-                            fontSize: 11, fontWeight: FontWeight.w700),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ),
@@ -1087,9 +1112,13 @@ class _PedidoTile extends StatelessWidget {
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.error,
                         side: const BorderSide(
-                            color: AppColors.error, width: 0.8),
+                          color: AppColors.error,
+                          width: 0.8,
+                        ),
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 7),
+                          horizontal: 10,
+                          vertical: 7,
+                        ),
                         minimumSize: const Size(0, 32),
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         shape: RoundedRectangleBorder(
@@ -1099,7 +1128,9 @@ class _PedidoTile extends StatelessWidget {
                       child: Text(
                         labelAccionSecundaria!,
                         style: const TextStyle(
-                            fontSize: 11, fontWeight: FontWeight.w700),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ),
@@ -1111,7 +1142,9 @@ class _PedidoTile extends StatelessWidget {
                     foregroundColor: Colors.white,
                     elevation: 0,
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 7),
+                      horizontal: 12,
+                      vertical: 7,
+                    ),
                     minimumSize: const Size(0, 32),
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     shape: RoundedRectangleBorder(
@@ -1121,7 +1154,9 @@ class _PedidoTile extends StatelessWidget {
                   child: Text(
                     labelAccion,
                     style: const TextStyle(
-                        fontSize: 11, fontWeight: FontWeight.w700),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ],
@@ -1168,11 +1203,7 @@ class _EstadoTab extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
-                Icons.error_outline,
-                size: 48,
-                color: AppColors.error,
-              ),
+              const Icon(Icons.error_outline, size: 48, color: AppColors.error),
               const SizedBox(height: 12),
               Text(
                 error!,
@@ -1196,9 +1227,10 @@ class _EstadoTab extends StatelessWidget {
                 child: const Text(
                   'REINTENTAR',
                   style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.8),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.8,
+                  ),
                 ),
               ),
             ],
@@ -1284,8 +1316,7 @@ class _TabActivos extends StatelessWidget {
             pedido: p,
             labelAccion: esLocal ? 'MODIFICAR' : 'CANCELAR',
             colorAccion: esLocal ? AppColors.button : AppColors.error,
-            onAccion: () =>
-                esLocal ? onModificar(p) : onCancelar(p),
+            onAccion: () => esLocal ? onModificar(p) : onCancelar(p),
             labelAccionSecundaria: esLocal ? 'CANCELAR' : null,
             onAccionSecundaria: esLocal ? () => onCancelar(p) : null,
             // MOVER MESA: solo para pedidos de mesa que aún no se han cobrado.
@@ -1497,8 +1528,10 @@ class _DialogMotivoCancelacionState extends State<_DialogMotivoCancelacion> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide:
-                      const BorderSide(color: AppColors.button, width: 1.5),
+                  borderSide: const BorderSide(
+                    color: AppColors.button,
+                    width: 1.5,
+                  ),
                 ),
               ),
             ),
@@ -1531,8 +1564,9 @@ class _DialogMotivoCancelacionState extends State<_DialogMotivoCancelacion> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.error,
                       foregroundColor: Colors.white,
-                      disabledBackgroundColor:
-                          AppColors.error.withValues(alpha: 0.3),
+                      disabledBackgroundColor: AppColors.error.withValues(
+                        alpha: 0.3,
+                      ),
                       padding: const EdgeInsets.symmetric(vertical: 13),
                       elevation: 0,
                       shape: RoundedRectangleBorder(

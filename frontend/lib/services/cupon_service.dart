@@ -42,8 +42,7 @@ class CuponService {
       'tipo': tipo,
       'valor': valor,
       'descripcion': descripcion,
-      'usos_maximos': usosMaximos,
-      if (usosMaximos != null) 'usos_maximos': usosMaximos,
+      'usos_maximos': ?usosMaximos,
       if (fechaInicio != null && fechaInicio.isNotEmpty)
         'fecha_inicio': fechaInicio,
       if (fechaFin != null && fechaFin.isNotEmpty) 'fecha_fin': fechaFin,
@@ -52,7 +51,6 @@ class CuponService {
     if (restauranteId != _noProvidedSentinel) {
       body['restaurante_id'] = restauranteId;
     }
-
 
     final res = await httpWithRetry(
       () => http.post(
@@ -86,7 +84,6 @@ class CuponService {
       'fecha_inicio': ?fechaInicio,
       'fecha_fin': ?fechaFin,
     };
-
 
     final res = await httpWithRetry(
       () => http.put(
@@ -160,9 +157,7 @@ class CuponService {
   }) async {
     final uri = Uri.parse('$baseUrl/cupones/$cuponId/usar');
 
-    final body = <String, dynamic>{
-      'restaurante_id': ?restauranteId,
-    };
+    final body = <String, dynamic>{'restaurante_id': ?restauranteId};
 
     final res = await httpWithRetry(
       () => http.post(
@@ -183,29 +178,10 @@ class CuponService {
     required String tipoFiltro,
     String? restauranteId,
   }) async {
-    final url = Uri.parse('$baseUrl/cupones/enviar-masivo');
-
-    try {
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'cuponId': cuponId,
-          'filtro': tipoFiltro,
-          'restauranteId': restauranteId,
-        }),
-      );
-
-      if (response.statusCode != 200 && response.statusCode != 201) {
-        final errorData = json.decode(response.body);
-        throw errorData['message'] ?? 'Error al procesar el envío masivo';
-      }
-    } catch (e) {
-      throw 'No se pudo conectar con el servidor: $e';
     final body = <String, dynamic>{
       'cuponId': cuponId,
       'filtro': tipoFiltro,
-      if (restauranteId != null) 'restauranteId': restauranteId,
+      'restauranteId': ?restauranteId,
     };
 
     final res = await httpWithRetry(
