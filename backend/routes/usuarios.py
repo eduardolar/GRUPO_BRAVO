@@ -202,6 +202,7 @@ def ver_perfil(user_id: str, _actor: dict = Depends(require_role(["admin", "supe
         "latitud": usuario.get("latitud"),
         "longitud": usuario.get("longitud"),
         "rol": usuario.get("rol", "cliente"),
+        "puntos": usuario.get("puntos", 0), # Ahora el Administrador puede ver los puntos de fidelidad acumulados por el cliente.
     }
 
 @router.put("/{user_id}")
