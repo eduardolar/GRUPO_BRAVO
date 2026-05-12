@@ -13,37 +13,24 @@ Cubre:
 from unittest.mock import AsyncMock, patch, MagicMock
 from bson import ObjectId
 from security import crear_token
+from tests.tok_helpers import tok, insertar_usuario_test, TEST_OID_ADMIN
+
+# OID extra para admin de R2 (distinto al de R1)
+_OID_ADMIN_R2 = ObjectId("bbbbbbbbbbbbbbbbbbbbbbbd")
 
 
 # ─── Helpers de tokens ────────────────────────────────────────────────────────
 
 def _tok_admin(rid: str = "R1") -> dict:
-    token = crear_token({
-        "sub": "admin_r1_id",
-        "correo": "admin@r1.com",
-        "rol": "admin",
-        "restaurante_id": rid,
-    })
-    return {"Authorization": f"Bearer {token}"}
+    return tok("admin", restaurante_id=rid)
 
 
 def _tok_admin_r2() -> dict:
-    token = crear_token({
-        "sub": "admin_r2_id",
-        "correo": "admin@r2.com",
-        "rol": "admin",
-        "restaurante_id": "R2",
-    })
-    return {"Authorization": f"Bearer {token}"}
+    return tok("admin", oid=_OID_ADMIN_R2, restaurante_id="R2")
 
 
 def _tok_super() -> dict:
-    token = crear_token({
-        "sub": "super_id",
-        "correo": "super@bravo.com",
-        "rol": "super_admin",
-    })
-    return {"Authorization": f"Bearer {token}"}
+    return tok("super_admin")
 
 
 # ─── Datos de test reutilizables ──────────────────────────────────────────────
@@ -441,13 +428,20 @@ def test_login_usuario_legacy_sin_campo_activo_no_bloquea(client):
 
 # ─── Fix 1: IDOR en endpoints de perfil ──────────────────────────────────────
 
-def _tok_cliente(user_id: str = "cliente_123") -> dict:
-    token = crear_token({
-        "sub": user_id,
-        "correo": "cliente@test.com",
-        "rol": "cliente",
-    })
-    return {"Authorization": f"Bearer {token}"}
+def _tok_cliente(user_id: str | None = None) -> dict:
+    """Token de cliente.
+
+    Si `user_id` es un ObjectId string real (devuelto por _insertar_usuario),
+    el usuario ya existe en BD con activo=True y no hay que volver a insertarlo.
+    """
+    if user_id is not None:
+        token = crear_token({
+            "sub": user_id,
+            "correo": "cliente@test.com",
+            "rol": "cliente",
+        })
+        return {"Authorization": f"Bearer {token}"}
+    return tok("cliente")
 
 
 def test_ver_perfil_sin_token_devuelve_401(client):

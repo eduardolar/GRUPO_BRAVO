@@ -8,31 +8,27 @@ Bloqueante 3 — los endpoints de creación de pago deben:
 from unittest.mock import MagicMock, patch
 from bson import ObjectId
 
-from security import crear_token
+from tests.tok_helpers import tok, TEST_OID_CLIENTE, TEST_OID_CAMARERO
+
+# ID de cliente fijo (ObjectId string) que se usa como usuario_id en pedidos
+_CLIENTE_ID = str(TEST_OID_CLIENTE)
+_OTRO_CLIENTE_ID = str(ObjectId("000000000000000000000001"))
 
 
 # ── Helpers de token ──────────────────────────────────────────────────────────
 
-def _token_cliente(user_id: str = "u_cliente", restaurante_id: str | None = None) -> dict:
-    payload = {"sub": user_id, "correo": "cliente@test.com", "rol": "cliente"}
-    if restaurante_id:
-        payload["restaurante_id"] = restaurante_id
-    token = crear_token(payload)
-    return {"Authorization": f"Bearer {token}"}
+def _token_cliente(restaurante_id: str | None = None) -> dict:
+    return tok("cliente", restaurante_id=restaurante_id)
 
 
 def _token_camarero(restaurante_id: str = "r1") -> dict:
-    token = crear_token({
-        "sub": "u_cam", "correo": "cam@test.com",
-        "rol": "camarero", "restaurante_id": restaurante_id,
-    })
-    return {"Authorization": f"Bearer {token}"}
+    return tok("camarero", restaurante_id=restaurante_id)
 
 
-def _make_pedido(pedido_id, usuario_id: str = "u_cliente", restaurante_id: str = "r1") -> dict:
+def _make_pedido(pedido_id, usuario_id: str | None = None, restaurante_id: str = "r1") -> dict:
     return {
         "_id": ObjectId(pedido_id),
-        "usuario_id": usuario_id,
+        "usuario_id": usuario_id if usuario_id is not None else _CLIENTE_ID,
         "restaurante_id": restaurante_id,
         "total": 20.0,
         "estado": "pendiente",
@@ -55,7 +51,8 @@ def test_stripe_intent_sin_token_devuelve_401(client):
 def test_stripe_intent_cliente_pedido_propio_devuelve_200(client):
     """Cliente con su propio pedido → 200 (Stripe mockeado)."""
     pedido_id = str(ObjectId())
-    pedido_doc = _make_pedido(pedido_id, usuario_id="u_cliente")
+    # usuario_id coincide con el sub del token (_CLIENTE_ID)
+    pedido_doc = _make_pedido(pedido_id, usuario_id=_CLIENTE_ID)
 
     mock_intent = MagicMock()
     mock_intent.__getitem__ = lambda self, k: {
@@ -76,7 +73,7 @@ def test_stripe_intent_cliente_pedido_propio_devuelve_200(client):
         resp = client.post(
             "/api/v1/payments/stripe/create-intent",
             json={"pedido_id": pedido_id, "currency": "eur"},
-            headers=_token_cliente("u_cliente"),
+            headers=_token_cliente(),
         )
 
     assert resp.status_code == 200
@@ -86,7 +83,8 @@ def test_stripe_intent_cliente_pedido_propio_devuelve_200(client):
 def test_stripe_intent_cliente_pedido_ajeno_devuelve_403(client):
     """Cliente intenta crear intent sobre pedido de otro usuario → 403."""
     pedido_id = str(ObjectId())
-    pedido_doc = _make_pedido(pedido_id, usuario_id="otro_usuario")
+    # usuario_id distinto al sub del token del cliente
+    pedido_doc = _make_pedido(pedido_id, usuario_id=_OTRO_CLIENTE_ID)
 
     with patch("pagos.coleccion_pedidos") as mock_col:
         mock_col.find_one.return_value = pedido_doc
@@ -94,7 +92,7 @@ def test_stripe_intent_cliente_pedido_ajeno_devuelve_403(client):
         resp = client.post(
             "/api/v1/payments/stripe/create-intent",
             json={"pedido_id": pedido_id, "currency": "eur"},
-            headers=_token_cliente("u_cliente"),  # sub distinto al usuario_id del pedido
+            headers=_token_cliente(),  # sub distinto al usuario_id del pedido
         )
 
     assert resp.status_code == 403
@@ -103,7 +101,7 @@ def test_stripe_intent_cliente_pedido_ajeno_devuelve_403(client):
 def test_stripe_intent_camarero_pedido_otra_sucursal_devuelve_403(client):
     """Camarero R1 intenta crear intent sobre pedido de R2 → 403."""
     pedido_id = str(ObjectId())
-    pedido_doc = _make_pedido(pedido_id, usuario_id="u_otro", restaurante_id="r2")
+    pedido_doc = _make_pedido(pedido_id, usuario_id=_OTRO_CLIENTE_ID, restaurante_id="r2")
 
     with patch("pagos.coleccion_pedidos") as mock_col:
         mock_col.find_one.return_value = pedido_doc
@@ -137,7 +135,7 @@ def test_checkout_session_sin_token_devuelve_401(client):
 def test_checkout_session_cliente_pedido_ajeno_devuelve_403(client):
     """Cliente intenta crear sesión sobre pedido ajeno → 403."""
     pedido_id = str(ObjectId())
-    pedido_doc = _make_pedido(pedido_id, usuario_id="otro_user")
+    pedido_doc = _make_pedido(pedido_id, usuario_id=_OTRO_CLIENTE_ID)
 
     with patch("pagos.coleccion_pedidos") as mock_col:
         mock_col.find_one.return_value = pedido_doc
@@ -150,7 +148,7 @@ def test_checkout_session_cliente_pedido_ajeno_devuelve_403(client):
                 "success_url": "https://example.com/ok",
                 "cancel_url": "https://example.com/cancel",
             },
-            headers=_token_cliente("u_cliente"),
+            headers=_token_cliente(),
         )
 
     assert resp.status_code == 403
@@ -171,7 +169,7 @@ def test_paypal_create_order_sin_token_devuelve_401(client):
 def test_paypal_create_order_cliente_pedido_ajeno_devuelve_403(client):
     """Cliente intenta crear orden PayPal sobre pedido ajeno → 403."""
     pedido_id = str(ObjectId())
-    pedido_doc = _make_pedido(pedido_id, usuario_id="otro_user")
+    pedido_doc = _make_pedido(pedido_id, usuario_id=_OTRO_CLIENTE_ID)
 
     with patch("pagos.coleccion_pedidos") as mock_col:
         mock_col.find_one.return_value = pedido_doc
@@ -179,7 +177,7 @@ def test_paypal_create_order_cliente_pedido_ajeno_devuelve_403(client):
         resp = client.post(
             "/api/v1/payments/paypal/create-order",
             json={"pedido_id": pedido_id, "currency": "EUR"},
-            headers=_token_cliente("u_cliente"),
+            headers=_token_cliente(),
         )
 
     assert resp.status_code == 403
@@ -200,7 +198,7 @@ def test_apple_pay_init_sin_token_devuelve_401(client):
 def test_apple_pay_init_cliente_pedido_ajeno_devuelve_403(client):
     """Cliente intenta Apple Pay sobre pedido ajeno → 403."""
     pedido_id = str(ObjectId())
-    pedido_doc = _make_pedido(pedido_id, usuario_id="otro_user")
+    pedido_doc = _make_pedido(pedido_id, usuario_id=_OTRO_CLIENTE_ID)
 
     with patch("pagos.coleccion_pedidos") as mock_col:
         mock_col.find_one.return_value = pedido_doc
@@ -208,7 +206,7 @@ def test_apple_pay_init_cliente_pedido_ajeno_devuelve_403(client):
         resp = client.post(
             "/api/v1/payments/apple-pay/init",
             json={"pedido_id": pedido_id, "currency": "EUR", "country": "ES"},
-            headers=_token_cliente("u_cliente"),
+            headers=_token_cliente(),
         )
 
     assert resp.status_code == 403
@@ -229,7 +227,7 @@ def test_google_pay_init_sin_token_devuelve_401(client):
 def test_google_pay_init_cliente_pedido_ajeno_devuelve_403(client):
     """Cliente intenta Google Pay sobre pedido ajeno → 403."""
     pedido_id = str(ObjectId())
-    pedido_doc = _make_pedido(pedido_id, usuario_id="otro_user")
+    pedido_doc = _make_pedido(pedido_id, usuario_id=_OTRO_CLIENTE_ID)
 
     with patch("pagos.coleccion_pedidos") as mock_col:
         mock_col.find_one.return_value = pedido_doc
@@ -237,7 +235,7 @@ def test_google_pay_init_cliente_pedido_ajeno_devuelve_403(client):
         resp = client.post(
             "/api/v1/payments/google-pay/init",
             json={"pedido_id": pedido_id, "currency": "EUR"},
-            headers=_token_cliente("u_cliente"),
+            headers=_token_cliente(),
         )
 
     assert resp.status_code == 403

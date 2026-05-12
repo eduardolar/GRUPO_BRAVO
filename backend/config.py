@@ -48,3 +48,9 @@ ALLOWED_ORIGINS: str = os.getenv("ALLOWED_ORIGINS", "")
 JWT_SECRET_KEY: str | None = os.getenv("JWT_SECRET_KEY")
 STRIPE_SECRET_KEY: str | None = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_WEBHOOK_SECRET: str | None = os.getenv("STRIPE_WEBHOOK_SECRET")
+# Entorno de ejecución. En "development"/"dev"/"test" se relajan algunas
+# validaciones (p. ej. permitir TLDs reservados como .test/.localhost en
+# emails). Default = "production" para que la app despliegue segura por
+# defecto si la variable no se define explícitamente.
+ENV: str = os.getenv("ENV", "production").lower()
+IS_PRODUCTION: bool = ENV in {"production", "prod"}

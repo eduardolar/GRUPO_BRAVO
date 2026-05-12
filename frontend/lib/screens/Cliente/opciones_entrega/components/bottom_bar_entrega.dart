@@ -48,7 +48,7 @@ class BottomBarEntrega extends StatelessWidget {
                       'TOTAL',
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.50),
-                        fontSize: 9,
+                        fontSize: 11,
                         letterSpacing: 2.0,
                       ),
                     ),
@@ -67,7 +67,7 @@ class BottomBarEntrega extends StatelessWidget {
                         'incl. ${envio.toStringAsFixed(2).replaceAll('.', ',')} € envío',
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.40),
-                          fontSize: 10,
+                          fontSize: 12,
                         ),
                       ),
                   ],

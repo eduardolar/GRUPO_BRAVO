@@ -102,7 +102,13 @@ class _InicioScreenState extends State<InicioScreen> {
         sessionId: sessionId,
       );
       if (!mounted || !pagado) return;
-      await ApiService.actualizarEstadoPago(referenciaPago: sessionId);
+      // El backend resuelve el ObjectId real del pedido a partir de la
+      // referencia_pago (session_id de Stripe) y nos lo devuelve. Lo usamos
+      // como pedidoId para que la pantalla de confirmación pueda hacer
+      // polling de estado y mostrar el código real `#XXXXXX`.
+      final pedidoIdReal = await ApiService.actualizarEstadoPago(
+        referenciaPago: sessionId,
+      );
       if (!mounted) return;
       navigator.push(
         AppRoute.reveal(
@@ -110,7 +116,7 @@ class _InicioScreenState extends State<InicioScreen> {
             tipoEntrega: _stripeEntrega,
             tipoPago: 'Tarjeta',
             total: _stripeTotal,
-            pedidoId: sessionId,
+            pedidoId: pedidoIdReal,
           ),
         ),
       );
@@ -299,7 +305,7 @@ class _SplashState extends State<_Splash> with SingleTickerProviderStateMixin {
                     'EST. 2024  ·  RESTAURANTE',
                     style: TextStyle(
                       color: AppColors.textSecondary,
-                      fontSize: 10,
+                      fontSize: 12,
                       fontWeight: FontWeight.w600,
                       letterSpacing: _subtitleSpacing.value,
                     ),
@@ -499,7 +505,7 @@ class _BadgeAnio extends StatelessWidget {
         'EST. 2024',
         style: TextStyle(
           color: AppColors.line,
-          fontSize: 10,
+          fontSize: 12,
           letterSpacing: 4,
           fontWeight: FontWeight.w600,
         ),

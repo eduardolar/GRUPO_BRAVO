@@ -57,7 +57,7 @@ class TarjetaDismissible extends StatelessWidget {
               'CANCELAR',
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 10,
+                fontSize: 12,
                 fontWeight: FontWeight.bold,
               ),
             ),

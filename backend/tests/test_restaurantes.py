@@ -1,23 +1,16 @@
 """Tests de endpoints de restaurantes: listado, soft-delete, hard-delete."""
 from bson import ObjectId
-from security import crear_token
+from tests.tok_helpers import tok
 
 
 # ── Helpers de tokens ─────────────────────────────────────────────────────────
 
 def _tok_super() -> dict:
-    token = crear_token({"sub": "super_id", "correo": "super@bravo.com", "rol": "super_admin"})
-    return {"Authorization": f"Bearer {token}"}
+    return tok("super_admin")
 
 
 def _tok_admin(rid: str = "R1") -> dict:
-    token = crear_token({
-        "sub": "admin_id",
-        "correo": "admin@r1.com",
-        "rol": "admin",
-        "restaurante_id": rid,
-    })
-    return {"Authorization": f"Bearer {token}"}
+    return tok("admin", restaurante_id=rid)
 
 
 # ── Helpers BD ────────────────────────────────────────────────────────────────
@@ -54,7 +47,7 @@ def test_listar_restaurantes_incluye_suspendidos_por_defecto(client):
     _insertar_restaurante("Activo")
     _insertar_restaurante_suspendido("Suspendido")
 
-    resp = client.get("/api/v1/restaurantes")
+    resp = client.get("/api/v1/restaurantes", headers=_tok_super())
     assert resp.status_code == 200
     data = resp.json()
     assert len(data) == 2
@@ -66,7 +59,10 @@ def test_listar_incluir_suspendidos_false_filtra(client):
     _insertar_restaurante("Activo 2")
     _insertar_restaurante_suspendido("Suspendido")
 
-    resp = client.get("/api/v1/restaurantes?incluir_suspendidos=false")
+    resp = client.get(
+        "/api/v1/restaurantes?incluir_suspendidos=false",
+        headers=_tok_super(),
+    )
     assert resp.status_code == 200
     data = resp.json()
     # Solo las dos activas
@@ -78,13 +74,44 @@ def test_listar_incluir_suspendidos_false_filtra(client):
 def test_listar_restaurante_serializa_campos_nuevos(client):
     """La respuesta incluye activo y suspendido_at."""
     _insertar_restaurante("Bravo Con Campos")
-    resp = client.get("/api/v1/restaurantes")
+    resp = client.get("/api/v1/restaurantes", headers=_tok_super())
     assert resp.status_code == 200
     data = resp.json()
     assert len(data) >= 1
     for r in data:
         assert "activo" in r
         assert "suspendido_at" in r
+
+
+# ── Tests Fix bonus — GET /restaurantes y GET /restaurantes/{id} exigen auth ──
+
+def test_listar_restaurantes_sin_token_401(client):
+    """Fix bonus: GET /restaurantes ahora exige autenticación."""
+    resp = client.get("/api/v1/restaurantes")
+    assert resp.status_code == 401
+
+
+def test_obtener_restaurante_sin_token_401(client):
+    """Fix bonus: GET /restaurantes/{id} ahora exige autenticación."""
+    rid = _insertar_restaurante("Bravo Auth Guard")
+    resp = client.get(f"/api/v1/restaurantes/{rid}")
+    assert resp.status_code == 401
+
+
+def test_listar_restaurantes_cualquier_rol_200(client):
+    """Cualquier rol autenticado (admin, camarero, cliente) puede listar sucursales."""
+    _insertar_restaurante("Bravo Visible")
+    for rol in ("admin", "camarero", "cliente"):
+        resp = client.get("/api/v1/restaurantes", headers=_tok_rol(rol))
+        assert resp.status_code == 200, f"Fallo para rol={rol}: {resp.json()}"
+
+
+def test_obtener_restaurante_cualquier_rol_200(client):
+    """Cualquier rol autenticado puede obtener el detalle de una sucursal."""
+    rid = _insertar_restaurante("Bravo Detalle")
+    for rol in ("admin", "camarero", "cliente"):
+        resp = client.get(f"/api/v1/restaurantes/{rid}", headers=_tok_rol(rol))
+        assert resp.status_code == 200, f"Fallo para rol={rol}: {resp.json()}"
 
 
 # ── Tests de suspender ────────────────────────────────────────────────────────
@@ -364,19 +391,12 @@ def test_actualizar_codigo_postal_no_digitos_422(client):
 
 def _tok_admin_rid(rid: str) -> dict:
     """Token de admin cuyo restaurante_id coincide exactamente con rid."""
-    token = crear_token({
-        "sub": "admin_own",
-        "correo": "admin_own@bravo.com",
-        "rol": "admin",
-        "restaurante_id": rid,
-    })
-    return {"Authorization": f"Bearer {token}"}
+    return tok("admin", restaurante_id=rid)
 
 
 def _tok_rol(rol: str) -> dict:
     """Token genérico para un rol dado, sin restaurante_id."""
-    token = crear_token({"sub": f"{rol}_id", "correo": f"{rol}@bravo.com", "rol": rol})
-    return {"Authorization": f"Bearer {token}"}
+    return tok(rol)
 
 
 def test_admin_puede_editar_su_propia_sucursal_200(client):

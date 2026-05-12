@@ -27,7 +27,7 @@ from datetime import datetime, timezone
 import bcrypt
 from bson import ObjectId
 from fastapi import APIRouter, Depends, Request
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 
 import config  # carga .env una sola vez
 from database import coleccion_usuarios, coleccion_pedidos
@@ -36,7 +36,7 @@ from exceptions import (
     AutenticacionError, AutorizacionError,
 )
 from limiter import limiter
-from models import UsuarioRegistro
+from models import CorreoStr, UsuarioRegistro
 from security import crear_token, get_current_user, normalizar_rol
 from utils.auth_helpers import (
     hash_otp,
@@ -61,16 +61,16 @@ _CAMPOS_EDITABLES = {"nombre", "telefono", "direccion", "latitud", "longitud"}
 # ── Modelos Pydantic ──────────────────────────────────────────────────────────
 
 class VerificacionCodigo(BaseModel):
-    correo: EmailStr
+    correo: CorreoStr
     codigo: str
 
 
 class RecuperarPassword(BaseModel):
-    correo: EmailStr
+    correo: CorreoStr
 
 
 class RestablecerPassword(BaseModel):
-    correo: EmailStr
+    correo: CorreoStr
     codigo: str
     nueva_password: str
 
@@ -144,11 +144,33 @@ async def registro_cliente(request: Request, usuario: UsuarioRegistro):
         }
 
         coleccion_usuarios.insert_one(usuario_dict)
-        await enviar_correo_verificacion(usuario.correo, codigo_otp)
 
+        # El envío del correo puede fallar (SMTP caído, dominio reservado en
+        # un servidor estricto, etc.). Antes ese fallo se propagaba como 500
+        # y dejaba al usuario creado pero sin recibir el código. Lo aislamos:
+        # si falla, devolvemos 200 con un flag para que el frontend muestre
+        # un aviso y ofrezca "Reenviar código".
+        correo_enviado = True
+        try:
+            await enviar_correo_verificacion(usuario.correo, codigo_otp)
+        except Exception:
+            correo_enviado = False
+            logger.error(
+                "registro_cliente: fallo enviando correo de verificación a %s",
+                correo_normalizado,
+                exc_info=True,
+            )
+
+        mensaje = (
+            "Registro exitoso. Revisa tu bandeja de entrada."
+            if correo_enviado
+            else "Registro completado, pero no pudimos enviar el correo de "
+            "verificación. Usa 'Reenviar código' o inténtalo de nuevo más tarde."
+        )
         return {
-            "mensaje": "Registro exitoso. Revisa tu bandeja de entrada.",
+            "mensaje": mensaje,
             "correo": usuario.correo,
+            "correo_enviado": correo_enviado,
         }
 
     except AppError:

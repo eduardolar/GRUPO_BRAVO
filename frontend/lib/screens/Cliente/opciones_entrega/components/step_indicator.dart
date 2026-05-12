@@ -123,7 +123,7 @@ class _StepDot extends StatelessWidget {
           label.toUpperCase(),
           style: TextStyle(
             color: filled ? Colors.white : Colors.white.withValues(alpha: 0.35),
-            fontSize: 8,
+            fontSize: 11,
             letterSpacing: 1.2,
             fontWeight: filled ? FontWeight.w700 : FontWeight.w400,
           ),

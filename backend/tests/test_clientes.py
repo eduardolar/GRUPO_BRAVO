@@ -24,6 +24,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from bson import ObjectId
 from security import crear_token
+from tests.tok_helpers import tok
 
 
 @pytest.fixture(autouse=True)
@@ -37,33 +38,31 @@ def _reset_rate_limiter():
 
 # ── Helpers de tokens ─────────────────────────────────────────────────────────
 
-def _tok_cliente(user_id: str = "cliente_id_test") -> dict:
-    token = crear_token({
-        "sub": user_id,
-        "correo": "cliente@test.com",
-        "rol": "cliente",
-    })
-    return {"Authorization": f"Bearer {token}"}
+def _tok_cliente(user_id: str | None = None) -> dict:
+    """Token de cliente.
+
+    Si `user_id` es un ObjectId string válido (devuelto por _insertar_cliente),
+    se usa directamente como sub. El usuario ya existe en BD con activo=True.
+    Si no se indica, usa el OID fijo del conftest.
+    """
+    if user_id is not None:
+        # user_id es un ObjectId string real insertado por _insertar_cliente.
+        # El usuario ya existe en BD así que no necesitamos insertar de nuevo.
+        token = crear_token({
+            "sub": user_id,
+            "correo": "cliente@test.com",
+            "rol": "cliente",
+        })
+        return {"Authorization": f"Bearer {token}"}
+    return tok("cliente")
 
 
 def _tok_admin() -> dict:
-    token = crear_token({
-        "sub": "admin_id_test",
-        "correo": "admin@test.com",
-        "rol": "admin",
-        "restaurante_id": "R1",
-    })
-    return {"Authorization": f"Bearer {token}"}
+    return tok("admin", restaurante_id="R1")
 
 
 def _tok_camarero() -> dict:
-    token = crear_token({
-        "sub": "camarero_id_test",
-        "correo": "camarero@test.com",
-        "rol": "camarero",
-        "restaurante_id": "R1",
-    })
-    return {"Authorization": f"Bearer {token}"}
+    return tok("camarero", restaurante_id="R1")
 
 
 # ── Helpers de fixtures ───────────────────────────────────────────────────────

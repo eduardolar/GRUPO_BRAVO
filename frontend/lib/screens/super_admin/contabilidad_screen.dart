@@ -284,7 +284,7 @@ class _ContabilidadScreenState extends State<ContabilidadScreen> {
   void _mostrarMensajePdf() {
     _snack(
       'PDF no disponible aún. Pide al equipo técnico instalar reportlab.',
-      color: Colors.amber.shade700,
+      color: AppColors.warningText,
     );
   }
 
@@ -478,7 +478,7 @@ class _ContabilidadScreenState extends State<ContabilidadScreen> {
           const Text(
             'FILTRAR POR FECHAS',
             style: TextStyle(
-              fontSize: 10,
+              fontSize: 12,
               color: Colors.white54,
               fontWeight: FontWeight.bold,
               letterSpacing: 1.2,
@@ -534,7 +534,7 @@ class _ContabilidadScreenState extends State<ContabilidadScreen> {
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: 10,
+                  fontSize: 12,
                   color: activo ? Colors.white70 : Colors.white38,
                   fontWeight: FontWeight.bold,
                 ),
@@ -693,19 +693,19 @@ class _ContabilidadScreenState extends State<ContabilidadScreen> {
         icon: Icons.receipt_long_outlined,
         label: 'PEDIDOS',
         value: '$pedidos',
-        accent: const Color(0xFF3B82F6),
+        accent: AppColors.info,
       ),
       _KpiDato(
         icon: Icons.analytics_outlined,
         label: 'TICKET MEDIO',
         value: '${fmt.format(ticket)} €',
-        accent: Colors.orangeAccent,
+        accent: AppColors.warningLight,
       ),
       _KpiDato(
         icon: Icons.shopping_bag_outlined,
         label: 'ITEMS VENDIDOS',
         value: '$items',
-        accent: Colors.purpleAccent,
+        accent: AppColors.primaryAccent,
       ),
     ];
 
@@ -743,7 +743,7 @@ class _ContabilidadScreenState extends State<ContabilidadScreen> {
             child: Text(
               'Mostrando los 1000 pedidos más recientes — acota el rango para mayor precisión',
               style: TextStyle(
-                color: Colors.orangeAccent,
+                color: AppColors.warningLight,
                 fontSize: 11,
                 fontStyle: FontStyle.italic,
               ),
@@ -780,7 +780,7 @@ class _ContabilidadScreenState extends State<ContabilidadScreen> {
                       child: Text(
                         d.label,
                         style: const TextStyle(
-                          fontSize: 9,
+                          fontSize: 11,
                           fontWeight: FontWeight.w800,
                           color: Colors.white60,
                           letterSpacing: 1.4,
@@ -990,11 +990,11 @@ class _ContabilidadScreenState extends State<ContabilidadScreen> {
   Color _colorMetodo(String metodo) {
     final m = metodo.toLowerCase();
     if (m.contains('tarjeta') || m.contains('card')) {
-      return const Color(0xFF3B82F6);
+      return AppColors.info;
     }
     if (m.contains('paypal')) return AppColors.paypal;
     if (m.contains('efectivo') || m.contains('cash')) return AppColors.disp;
-    return Colors.orangeAccent;
+    return AppColors.warningLight;
   }
 
   IconData _iconoMetodo(String metodo) {
@@ -1126,7 +1126,7 @@ class _ContabilidadScreenState extends State<ContabilidadScreen> {
             Text(
               titulo,
               style: const TextStyle(
-                fontSize: 10,
+                fontSize: 12,
                 fontWeight: FontWeight.w800,
                 color: Colors.white70,
                 letterSpacing: 1.8,
@@ -1202,7 +1202,7 @@ class _BottomSheetSucursal extends StatelessWidget {
                       'SELECCIONAR SUCURSAL',
                       style: TextStyle(
                         color: Colors.white70,
-                        fontSize: 10,
+                        fontSize: 12,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 1.8,
                       ),

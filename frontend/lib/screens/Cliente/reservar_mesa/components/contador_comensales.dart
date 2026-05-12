@@ -93,27 +93,33 @@ class _BotonComensales extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: activo ? onTap : null,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        width: 48,
-        height: 48,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: activo
-              ? AppColors.button
-              : Colors.white.withValues(alpha: 0.04),
-          border: Border.all(
+    final esAdd = icono == Icons.add_rounded;
+    return Semantics(
+      label: esAdd ? 'Añadir comensal' : 'Quitar comensal',
+      button: true,
+      enabled: activo,
+      child: GestureDetector(
+        onTap: activo ? onTap : null,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
             color: activo
                 ? AppColors.button
-                : Colors.white.withValues(alpha: 0.15),
+                : Colors.white.withValues(alpha: 0.04),
+            border: Border.all(
+              color: activo
+                  ? AppColors.button
+                  : Colors.white.withValues(alpha: 0.15),
+            ),
           ),
-        ),
-        child: Icon(
-          icono,
-          color: activo ? Colors.white : Colors.white24,
-          size: 22,
+          child: Icon(
+            icono,
+            color: activo ? Colors.white : Colors.white24,
+            size: 22,
+          ),
         ),
       ),
     );

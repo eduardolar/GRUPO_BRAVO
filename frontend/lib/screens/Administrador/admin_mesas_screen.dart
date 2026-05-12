@@ -1,6 +1,8 @@
 import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:frontend/components/admin/admin_max_width.dart';
+import 'package:frontend/components/shared/estado_chip.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/models/mesa_model.dart';
 import 'package:frontend/providers/auth_provider.dart';
@@ -11,7 +13,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 // ── Constantes de look glass ──────────────────────────────────────────────────
-const _kSheetBg = Color(0xFF1A1A1A);
+const _kSheetBg = AppColors.bottomSheetBg;
 
 class AdminMesasScreen extends StatefulWidget {
   const AdminMesasScreen({super.key});
@@ -360,6 +362,7 @@ class _AdminMesasScreenState extends State<AdminMesasScreen> {
                 ),
                 suffixIcon: _busqueda.isNotEmpty
                     ? IconButton(
+                        tooltip: 'Limpiar búsqueda',
                         icon: const Icon(
                           Icons.clear,
                           color: Colors.black54,
@@ -470,7 +473,7 @@ class _AdminMesasScreenState extends State<AdminMesasScreen> {
                     'CARGANDO MESAS',
                     style: TextStyle(
                       color: Colors.white60,
-                      fontSize: 10,
+                      fontSize: 12,
                       letterSpacing: 3.0,
                       fontWeight: FontWeight.w600,
                     ),
@@ -529,7 +532,8 @@ class _AdminMesasScreenState extends State<AdminMesasScreen> {
             ),
           ),
           SafeArea(
-            child: Column(
+            child: AdminMaxWidth(
+              child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // ── Header ──────────────────────────────────────────────────
@@ -537,12 +541,16 @@ class _AdminMesasScreenState extends State<AdminMesasScreen> {
                   padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
                   child: Row(
                     children: [
-                      GestureDetector(
-                        onTap: () => Navigator.pop(context),
-                        child: const Icon(
-                          Icons.arrow_back_ios_new,
-                          color: Colors.white,
-                          size: 18,
+                      Semantics(
+                        label: 'Volver',
+                        button: true,
+                        child: GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          child: const Icon(
+                            Icons.arrow_back_ios_new,
+                            color: Colors.white,
+                            size: 18,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 14),
@@ -600,11 +608,13 @@ class _AdminMesasScreenState extends State<AdminMesasScreen> {
                       _LegendaDot(
                         color: AppColors.button,
                         label: 'Disponible',
+                        icon: Icons.check_circle_outline,
                       ),
                       const SizedBox(width: 20),
                       _LegendaDot(
                         color: AppColors.iconPrimary,
                         label: 'Ocupada',
+                        icon: Icons.cancel_outlined,
                       ),
                     ],
                   ),
@@ -679,6 +689,7 @@ class _AdminMesasScreenState extends State<AdminMesasScreen> {
                         ),
                 ),
               ],
+              ),
             ),
           ),
         ],
@@ -802,7 +813,7 @@ class _SheetGestionAdmin extends StatelessWidget {
                           mesa.codigoQr,
                           style: const TextStyle(
                             color: Colors.white38,
-                            fontSize: 10,
+                            fontSize: 12,
                             letterSpacing: 0.5,
                             fontFamily: 'monospace',
                           ),
@@ -813,6 +824,7 @@ class _SheetGestionAdmin extends StatelessWidget {
                     ),
                   ),
                   IconButton(
+                    tooltip: 'Cerrar',
                     icon: const Icon(Icons.close, color: Colors.white60),
                     onPressed: () => Navigator.pop(context),
                   ),
@@ -1074,6 +1086,7 @@ class _SheetCrearMesaState extends State<_SheetCrearMesa> {
                         ),
                       ),
                       IconButton(
+                        tooltip: 'Cerrar',
                         icon: const Icon(Icons.close, color: Colors.white60),
                         onPressed: () => Navigator.pop(context),
                       ),
@@ -1141,7 +1154,7 @@ class _SheetCrearMesaState extends State<_SheetCrearMesa> {
                           'ZONA',
                           style: TextStyle(
                             color: Colors.white70,
-                            fontSize: 10,
+                            fontSize: 12,
                             fontWeight: FontWeight.w600,
                             letterSpacing: 1.5,
                           ),
@@ -1403,6 +1416,7 @@ class _SheetEditarMesaState extends State<_SheetEditarMesa> {
                         ),
                       ),
                       IconButton(
+                        tooltip: 'Cerrar',
                         icon: const Icon(Icons.close, color: Colors.white60),
                         onPressed: () => Navigator.pop(context),
                       ),
@@ -1465,7 +1479,7 @@ class _SheetEditarMesaState extends State<_SheetEditarMesa> {
                           'ZONA',
                           style: TextStyle(
                             color: Colors.white70,
-                            fontSize: 10,
+                            fontSize: 12,
                             fontWeight: FontWeight.w600,
                             letterSpacing: 1.5,
                           ),
@@ -1682,35 +1696,43 @@ class _MesaCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final disponible = mesa.disponible;
-    return GestureDetector(
-      onTap: onTap,
-      child: Opacity(
-        opacity: disponible ? 1.0 : 0.45,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              width: 90,
-              height: 90,
-              child: CustomPaint(
-                painter: _MesaPainter(
-                  numero: mesa.numero,
-                  capacidad: mesa.capacidad,
-                  disponible: disponible,
+    final estadoMesa =
+        disponible ? EstadoMesa.disponible : EstadoMesa.ocupada;
+    final estadoLabel = disponible ? 'LIBRE' : 'OCUPADA';
+    return Semantics(
+      label: 'Mesa ${mesa.numero}, $estadoLabel',
+      button: true,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Opacity(
+          opacity: disponible ? 1.0 : 0.45,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 90,
+                height: 90,
+                child: CustomPaint(
+                  painter: _MesaPainter(
+                    numero: mesa.numero,
+                    capacidad: mesa.capacidad,
+                    disponible: disponible,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              disponible ? 'LIBRE' : 'OCUPADA',
-              style: TextStyle(
-                color: disponible ? Colors.white : AppColors.iconPrimary,
-                fontSize: 9,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 1.5,
+              const SizedBox(height: 6),
+              EstadoChip(
+                estado: estadoMesa,
+                label: estadoLabel,
+                iconSize: 10,
+                fontSize: 11,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 6,
+                  vertical: 3,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -1722,29 +1744,33 @@ class _MesaCard extends StatelessWidget {
 class _LegendaDot extends StatelessWidget {
   final Color color;
   final String label;
+  final IconData icon;
 
-  const _LegendaDot({required this.color, required this.label});
+  const _LegendaDot({
+    required this.color,
+    required this.label,
+    required this.icon,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 10,
-          height: 10,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 6),
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white70,
-            fontSize: 11,
-            letterSpacing: 0.5,
+    return Semantics(
+      label: label,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 13),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 11,
+              letterSpacing: 0.5,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -1790,7 +1816,7 @@ class _StatChip extends StatelessWidget {
                   text: sublabel,
                   style: const TextStyle(
                     color: Colors.white38,
-                    fontSize: 10,
+                    fontSize: 12,
                     letterSpacing: 0.5,
                   ),
                 ),
@@ -1874,7 +1900,7 @@ class _Campo extends StatelessWidget {
           label.toUpperCase(),
           style: const TextStyle(
             color: Colors.white70,
-            fontSize: 10,
+            fontSize: 12,
             fontWeight: FontWeight.w600,
             letterSpacing: 1.5,
           ),

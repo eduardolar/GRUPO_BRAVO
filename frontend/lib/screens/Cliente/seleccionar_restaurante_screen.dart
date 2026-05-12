@@ -93,7 +93,7 @@ class _SeleccionarRestauranteScreenState
               'BIENVENIDO',
               style: TextStyle(
                 color: Colors.white54,
-                fontSize: 9,
+                fontSize: 11,
                 letterSpacing: 3.5,
                 fontWeight: FontWeight.w600,
               ),
@@ -336,7 +336,7 @@ class _RestauranteCard extends StatelessWidget {
                             child: Text(
                               abierto ? 'Abierto' : 'Cerrado',
                               style: TextStyle(
-                                fontSize: 10,
+                                fontSize: 11,
                                 fontWeight: FontWeight.w700,
                                 letterSpacing: 0.3,
                                 color: abierto

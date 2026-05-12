@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from exceptions import AppError, NotFoundError, ConflictError, ValidacionError
 from datetime import datetime, timezone, timedelta
 from bson import ObjectId
 from bson.errors import InvalidId
 from fastapi_mail import FastMail, MessageSchema, MessageType
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional
 import csv
 import io
@@ -17,6 +17,8 @@ from database import coleccion_pedidos, coleccion_productos, coleccion_ingredien
 from models import PedidoCrear, MetodoPago
 from routes.auth import conf
 from security import require_role, get_current_user, normalizar_rol
+from limiter import limiter
+import audit_general as ag
 
 router = APIRouter(prefix="/pedidos", tags=["Pedidos"])
 logger = logging.getLogger("uvicorn")
@@ -302,6 +304,9 @@ class ActualizarEstadoPago(BaseModel):
 
     referenciaPago: str
     estadoPago: str = "pagado"
+    # Método de pago empleado al cobrar manualmente (efectivo/tarjeta_fisica).
+    # Obligatorio cuando camarero/admin marca pagado directamente.
+    metodoPago: Optional[str] = None
 
 
 class ActualizarItemsPedido(BaseModel):
@@ -312,6 +317,16 @@ class ActualizarItemsPedido(BaseModel):
     estadoPago: Optional[str] = None
     estado: Optional[str] = None
     metodoPago: Optional[str] = None
+    version: Optional[int] = None
+    # Fix 2 — motivo obligatorio cuando se cancela un pedido
+    motivo_cancelacion: Optional[str] = None
+    # Fase 2 — descuento y propina aplicados al cobrar manualmente.
+    # Ambos en € (no porcentaje: el frontend ya hace el cálculo).
+    # `descuento` no puede superar el subtotal del pedido.
+    descuento: Optional[float] = Field(default=None, ge=0)
+    propina: Optional[float] = Field(default=None, ge=0)
+    # Fase 4 — destacar pedido urgente para cocina.
+    prioritario: Optional[bool] = None
 
 
 class ActualizarEstado(BaseModel):
@@ -399,11 +414,15 @@ def _pedido_a_respuesta(pedido_doc: dict, n_items: int) -> dict:
         "items": n_items,
         "mesaId": pedido_doc.get("mesa_id"),
         "numeroMesa": pedido_doc.get("numero_mesa"),
+        "version": pedido_doc.get("version", 1),
+        "prioritario": bool(pedido_doc.get("prioritario", False)),
     }
 
 
 @router.post("")
+@limiter.limit("20/minute")
 async def crear_pedido(
+    request: Request,
     pedido: PedidoCrear,
     current_user: dict = Depends(get_current_user),
     idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
@@ -430,6 +449,13 @@ async def crear_pedido(
         precio_real = float(producto_db.get("precio", 0))
         item["precio"] = precio_real
         total_calculado += precio_real * item["cantidad"]
+        # Las bebidas no pasan por cocina: el camarero las sirve directamente.
+        # Las marcamos `hecho=True` al crear el pedido para que el tablero del
+        # cocinero no las muestre como pendientes y, si un pedido es solo de
+        # bebidas, vaya directo a 'listo' sin intervención de cocina.
+        categoria = str(producto_db.get("categoria", "")).strip().lower()
+        if categoria == "bebidas":
+            item["hecho"] = True
 
     # ── NUEVO: CANJE DE BRAVO COINS ───────────────────────
     if pedido.puntosUsados > 0:
@@ -473,6 +499,16 @@ async def crear_pedido(
                 n = len(items_raw) if isinstance(items_raw, list) else 0
                 return _pedido_a_respuesta(existing, n)
 
+    # Si TODOS los items vienen marcados `hecho` (caso típico: pedido solo
+    # de bebidas), el pedido va directo a `listo`: no hay nada que cocinar.
+    # El camarero lo verá listo para entregar sin pasar por la pantalla de
+    # cocinero.
+    estado_inicial = (
+        "listo"
+        if items_dict and all(it.get("hecho", False) for it in items_dict)
+        else "pendiente"
+    )
+
     pedido_dict = {
         "usuario_id": usuario_id_pedido,
         "items": items_dict,
@@ -481,12 +517,18 @@ async def crear_pedido(
         "total": total_calculado,
         "notas": pedido.notas,
         "fecha": datetime.now(timezone.utc).isoformat(),
-        "estado": "pendiente",
+        "estado": estado_inicial,
         "referencia_pago": pedido.referenciaPago,
         "estado_pago": pedido.estadoPago or "pendiente",
+        "prioritario": bool(pedido.prioritario),
+        # Responsable inicial = quien crea. Cambia con /transferir.
+        "responsable_sub": current_user.get("sub"),
+        "responsable_correo": current_user.get("correo"),
+        # Auditoría de creación: sub/correo/rol del actor que abrió el pedido
         "creado_por_sub": current_user.get("sub"),
         "creado_por_correo": current_user.get("correo"),
         "creado_por_rol": normalizar_rol(current_user.get("rol", "")),
+        "version": 1,
     }
 
     if idempotency_key and idempotency_key.strip():
@@ -613,7 +655,17 @@ def actualizar_estado_pago(
     Requiere token JWT. Si el llamante es cliente, se verifica que la
     referencia de pago pertenezca a un pedido suyo.
     Camarero / admin / super_admin pueden actualizarlo sin esa restricción.
+
+    Fix 1 — cobro manual: cuando el actor es camarero/admin y marca pagado,
+    el método de pago debe ser "efectivo" o "tarjeta_fisica". Los métodos de
+    pasarela (stripe, paypal, etc.) solo pueden confirmarse vía webhook;
+    si un humano intenta usarlos aquí → 400.
     """
+    # Métodos que representan pasarelas de pago online (no deben usarse en cobro manual)
+    _METODOS_PASARELA = {"stripe", "paypal", "apple_pay", "applepay", "google_pay", "googlepay"}
+    # Métodos válidos para cobro en mano por personal de sala
+    _METODOS_COBRO_MANUAL = {"efectivo", "tarjeta_fisica"}
+
     rol = normalizar_rol(current_user.get("rol", ""))
 
     filtro: dict = {"referencia_pago": payload.referenciaPago}
@@ -632,6 +684,18 @@ def actualizar_estado_pago(
             )
         filtro["restaurante_id"] = rid
 
+        # Fix 1 — si el personal marca pagado, exigir método de cobro manual
+        if payload.estadoPago == "pagado":
+            metodo = (payload.metodoPago or "").strip().lower()
+            if metodo in _METODOS_PASARELA:
+                raise ValidacionError(
+                    "Los pagos por pasarela deben confirmarse vía webhook"
+                )
+            if metodo not in _METODOS_COBRO_MANUAL:
+                raise ValidacionError(
+                    f"Para cobro manual el método debe ser uno de: {sorted(_METODOS_COBRO_MANUAL)}"
+                )
+
     elif rol == "super_admin":
         pass  # sin restricción adicional
 
@@ -645,11 +709,22 @@ def actualizar_estado_pago(
     # Auditoría de cobro: cuando la transición es hacia "pagado", registrar quién cobró
     if payload.estadoPago == "pagado":
         # Comprobamos si ya estaba pagado para no sobreescribir cobrado_at en reintentos
-        pedido_prev = coleccion_pedidos.find_one(filtro, {"estado_pago": 1})
+        pedido_prev = coleccion_pedidos.find_one(filtro, {"estado_pago": 1, "total": 1})
         if pedido_prev and pedido_prev.get("estado_pago") != "pagado":
             set_fields["cobrado_por_sub"] = current_user.get("sub")
             set_fields["cobrado_por_correo"] = current_user.get("correo")
             set_fields["cobrado_at"] = datetime.now(timezone.utc).isoformat()
+            if payload.metodoPago:
+                set_fields["metodo_pago"] = payload.metodoPago.strip().lower()
+            # Auditoría de cobro manual
+            if rol in {"camarero", "admin"}:
+                ag.registrar(
+                    ag.PEDIDO_COBRADO_MANUAL,
+                    actor=current_user.get("sub"),
+                    objetivo=str(pedido_prev.get("_id", "")),
+                    detalle=f"metodo={payload.metodoPago} total={pedido_prev.get('total')}",
+                    extra={"metodo_pago": payload.metodoPago, "total": pedido_prev.get("total")},
+                )
 
     result = coleccion_pedidos.update_one(
         filtro,
@@ -657,7 +732,15 @@ def actualizar_estado_pago(
     )
     if result.matched_count == 0:
         raise NotFoundError("Pedido no encontrado con esa referencia de pago")
-    return {"updated": result.modified_count > 0}
+
+    # Devolvemos el pedido_id para que el frontend pueda navegar a la pantalla
+    # de seguimiento usando el ObjectId real (no el session_id de Stripe).
+    actualizado = coleccion_pedidos.find_one(filtro, {"_id": 1})
+    pedido_id = str(actualizado["_id"]) if actualizado else None
+    return {
+        "updated": result.modified_count > 0,
+        "pedido_id": pedido_id,
+    }
 
 
 @router.patch("/{pedido_id}/estado")
@@ -833,7 +916,15 @@ def marcar_item_hecho(
 
     Usar /items/{item_id}/hecho en su lugar. Este endpoint se mantiene
     temporalmente para retrocompatibilidad con clientes que envían el índice.
+    Nota: con concurrencia el índice puede apuntar a un item distinto.
     """
+    logger.warning(
+        "DEPRECATED endpoint hecho-por-indice usado por sub=%s rol=%s pedido=%s. "
+        "Migrar el caller a PATCH /items/{item_id}/hecho.",
+        current_user.get("sub"),
+        normalizar_rol(current_user.get("rol", "")),
+        pedido_id,
+    )
     if not ObjectId.is_valid(pedido_id):
         raise ValidacionError("ID de pedido inválido")
     if item_idx < 0:
@@ -919,16 +1010,31 @@ def actualizar_pedido(
                     f"{sorted(transiciones_permitidas) or '(estado terminal)'}"
                 )
 
+        # Fix 2 — cancelación con motivo obligatorio para personal de sala.
+        # El motivo queda en el documento y en la auditoría para trazabilidad.
+        if payload.estado == "cancelado":
+            motivo = (payload.motivo_cancelacion or "").strip()
+            if not motivo:
+                raise ValidacionError("Debes indicar el motivo de la cancelación")
+
     # ── Protección de estado terminal ─────────────────────────────────────────
     # En pedidos terminales (entregado/cancelado) solo se permite cambiar
-    # estadoPago (ej: post-cobro pendiente → pagado). El resto se rechaza.
+    # estadoPago (ej: post-cobro pendiente → pagado) y, junto con él,
+    # metodoPago — porque el cobro manual desde sala registra ambos a la vez
+    # (estadoPago=pagado + metodoPago=efectivo|tarjeta_fisica).
+    # En cualquier otro caso, metodoPago en estado terminal es manipulación
+    # de un registro histórico y se rechaza.
     if es_terminal:
         campos_bloqueados = []
+        es_cobro = (
+            payload.estadoPago == "pagado"
+            and pedido.get("estado_pago") != "pagado"
+        )
         if payload.items is not None:
             campos_bloqueados.append("items")
         if payload.total is not None:
             campos_bloqueados.append("total")
-        if payload.metodoPago is not None:
+        if payload.metodoPago is not None and not es_cobro:
             campos_bloqueados.append("metodoPago")
         if payload.estado is not None and payload.estado != estado_actual:
             campos_bloqueados.append("estado")
@@ -948,8 +1054,73 @@ def actualizar_pedido(
                 f"Valores válidos: {sorted(metodos_validos)}"
             )
 
+    # ── Defensa en profundidad: cobro manual desde sala ──────────────────────
+    # Cuando un camarero/admin marca un pedido como pagado por esta vía
+    # (ruta usada por `cerrarPedido` del frontend), debe usar un método
+    # físico. Las pasarelas (paypal, stripe…) solo pueden confirmarse vía
+    # webhook, nunca por un humano. super_admin queda exento por si necesita
+    # corregir un cobro a posteriori.
+    _METODOS_PASARELA = {"paypal", "google_pay", "googlepay", "apple_pay", "applepay", "stripe"}
+    _METODOS_COBRO_MANUAL = {"efectivo", "tarjeta_fisica"}
+    rol_actor = normalizar_rol(current_user.get("rol", ""))
+    if (
+        payload.estadoPago == "pagado"
+        and pedido.get("estado_pago") != "pagado"
+        and rol_actor in {"camarero", "admin"}
+    ):
+        metodo = (payload.metodoPago or "").strip().lower()
+        if not metodo:
+            raise ValidacionError(
+                "Indica el método de pago (efectivo o tarjeta_fisica) al cobrar manualmente"
+            )
+        if metodo in _METODOS_PASARELA:
+            raise ValidacionError(
+                "Los pagos por pasarela deben confirmarse vía webhook, no manualmente"
+            )
+        if metodo not in _METODOS_COBRO_MANUAL:
+            raise ValidacionError(
+                f"Método de pago manual inválido: '{metodo}'. "
+                f"Valores válidos: {sorted(_METODOS_COBRO_MANUAL)}"
+            )
+
     campos = {}
     if payload.items is not None:
+        # Defensa: no se pueden quitar/reducir items que el cocinero ya
+        # marcó como `hecho=True`. Esos platos ya están en plato y no se
+        # pueden devolver al stock. El camarero solo puede AÑADIR items
+        # nuevos o aumentar cantidades. Para cancelar, hay que cancelar el
+        # pedido entero (estado=cancelado) — auditado.
+        items_existentes = pedido.get("items", []) or []
+        cantidades_hechas: dict[str, int] = {}
+        for ex in items_existentes:
+            if not isinstance(ex, dict):
+                continue
+            if not ex.get("hecho"):
+                continue
+            pid = str(ex.get("producto_id") or ex.get("item_id") or "")
+            if not pid:
+                continue
+            cantidades_hechas[pid] = (
+                cantidades_hechas.get(pid, 0) + int(ex.get("cantidad", 1))
+            )
+        # Sumamos las cantidades del payload por producto y comparamos.
+        cantidades_nuevas: dict[str, int] = {}
+        for it in payload.items:
+            pid = str(it.get("producto_id") or it.get("item_id") or "")
+            if not pid:
+                continue
+            cantidades_nuevas[pid] = (
+                cantidades_nuevas.get(pid, 0) + int(it.get("cantidad", 1))
+            )
+        for pid, cant_hecha in cantidades_hechas.items():
+            cant_nueva = cantidades_nuevas.get(pid, 0)
+            if cant_nueva < cant_hecha:
+                raise ConflictError(
+                    "No se pueden quitar items que la cocina ya ha preparado. "
+                    "Si el cliente lo rechaza, cancela el pedido completo "
+                    "para dejar constancia del motivo."
+                )
+
         # Recalcular total desde los precios del payload (cantidad * precio por ítem)
         # para no fiarnos del campo total que envíe el cliente.
         total_recalculado = sum(
@@ -970,25 +1141,102 @@ def actualizar_pedido(
             campos["cobrado_at"] = datetime.now(timezone.utc).isoformat()
     if payload.estado is not None:
         campos["estado"] = payload.estado
+        # Fix 2 — persistir metadatos de cancelación para trazabilidad
+        if payload.estado == "cancelado":
+            campos["motivo_cancelacion"] = (payload.motivo_cancelacion or "").strip()
+            campos["cancelado_por_sub"] = current_user.get("sub")
+            campos["cancelado_por_correo"] = current_user.get("correo")
+            campos["cancelado_at"] = datetime.now(timezone.utc).isoformat()
     if payload.metodoPago is not None:
         campos["metodo_pago"] = payload.metodoPago
+    if payload.prioritario is not None:
+        campos["prioritario"] = bool(payload.prioritario)
+
+    # Fase 2 — descuento y propina aplicados al cobro manual.
+    # Validamos que el descuento no supere el subtotal vigente y persistimos
+    # el `total_final` cobrado para que la contabilidad lo refleje.
+    if payload.descuento is not None or payload.propina is not None:
+        # Subtotal de referencia: el total ya recalculado (si vinieron items
+        # nuevos) o el actual del pedido.
+        subtotal = float(
+            campos.get("total")
+            if campos.get("total") is not None
+            else pedido.get("total", 0)
+        )
+        descuento = float(payload.descuento or pedido.get("descuento", 0) or 0)
+        propina = float(payload.propina or pedido.get("propina", 0) or 0)
+        if descuento > subtotal:
+            raise ValidacionError(
+                f"El descuento ({descuento:.2f} €) no puede superar el subtotal "
+                f"({subtotal:.2f} €)"
+            )
+        if payload.descuento is not None:
+            campos["descuento"] = round(descuento, 2)
+        if payload.propina is not None:
+            campos["propina"] = round(propina, 2)
+        campos["total_final"] = round(subtotal - descuento + propina, 2)
 
     if not campos:
         return {"updated": False}
 
-    result = coleccion_pedidos.update_one(
-        {"_id": ObjectId(pedido_id)},
-        {"$set": campos},
-    )
-
-    if result.matched_count == 0:
-        raise NotFoundError("Pedido no encontrado")
+    # ── Concurrencia optimista con version ────────────────────────────────────
+    # Si el cliente envía `version`, el update solo aplica si el documento
+    # aún tiene esa versión. Si no coincide → 409 (otro usuario modificó antes).
+    # Sin `version` → comportamiento clásico last-writer-wins (compat antigua).
+    version_actual = pedido.get("version", 1)
+    if payload.version is not None:
+        # Cuando se mutan items o estado, incrementar la versión
+        if payload.items is not None or payload.estado is not None:
+            campos["version"] = payload.version + 1
+        filtro_version = {"_id": ObjectId(pedido_id), "version": payload.version}
+        result = coleccion_pedidos.update_one(filtro_version, {"$set": campos})
+        if result.matched_count == 0:
+            raise ConflictError(
+                "Conflicto de versión: el pedido fue modificado por otro usuario"
+            )
+    else:
+        # Sin version: comportamiento anterior (last-writer-wins)
+        if payload.items is not None or payload.estado is not None:
+            campos["version"] = version_actual + 1
+        result = coleccion_pedidos.update_one(
+            {"_id": ObjectId(pedido_id)},
+            {"$set": campos},
+        )
+        if result.matched_count == 0:
+            raise NotFoundError("Pedido no encontrado")
 
     logger.info(
         "actualizar_pedido | sub=%s correo=%s pedido_id=%s campos=%s",
         current_user.get("sub"), current_user.get("correo"),
         pedido_id, list(campos.keys()),
     )
+
+    # Fix 2 — auditoría de cancelación
+    if payload.estado == "cancelado" and result.modified_count > 0:
+        ag.registrar(
+            ag.PEDIDO_CANCELADO,
+            actor=current_user.get("sub"),
+            objetivo=pedido_id,
+            detalle=campos.get("motivo_cancelacion", ""),
+            extra={"motivo": campos.get("motivo_cancelacion")},
+        )
+        # Si el pedido cancelado era de mesa, liberamos la mesa para que
+        # el camarero la pueda volver a ocupar inmediatamente. Sin esto,
+        # las mesas se quedaban "ocupadas" para siempre tras cancelar.
+        from database import coleccion_mesas as _col_mesas
+
+        mesa_id_pedido = pedido.get("mesa_id")
+        if pedido.get("tipo_entrega") == "local" and mesa_id_pedido:
+            try:
+                _col_mesas.update_one(
+                    {"_id": ObjectId(mesa_id_pedido)},
+                    {"$set": {"estado": "libre"}},
+                )
+            except Exception:
+                logger.warning(
+                    "No se pudo liberar mesa %s tras cancelar pedido %s",
+                    mesa_id_pedido, pedido_id,
+                )
 
     return {"updated": result.modified_count > 0}
 
@@ -1042,8 +1290,20 @@ def _construir_filtro_contabilidad(
         # El super_admin puede filtrar por restaurante_id explícito
         rid = restaurante_id
     else:
-        # Admin (y cualquier otro rol de personal): usa el del JWT, ignora el query
+        # Admin (y cualquier otro rol de personal): usa el del JWT, ignora el query.
+        # Si no hay restaurante_id en el JWT, rechazamos para evitar devolver
+        # totales globales a una cuenta mal configurada.
         rid = current_user.get("restaurante_id")
+        if not rid:
+            logger.warning(
+                "_construir_filtro_contabilidad: usuario personal sin restaurante_id "
+                "en JWT (rol=%s sub=%s). Rechazando request.",
+                rol, current_user.get("sub"),
+            )
+            raise HTTPException(
+                status_code=400,
+                detail="Tu cuenta no está asignada a una sucursal",
+            )
 
     if rid:
         filtro["$or"] = [
@@ -1061,6 +1321,100 @@ def _construir_filtro_contabilidad(
         filtro["fecha"] = rango_fecha
 
     return filtro
+
+
+@router.get(
+    "/mi-turno",
+    summary="Estadísticas del turno actual del camarero autenticado",
+)
+def estadisticas_mi_turno(
+    desde: Optional[str] = Query(
+        None,
+        description="ISO datetime; default = hoy 00:00 hora local del servidor",
+    ),
+    hasta: Optional[str] = Query(
+        None,
+        description="ISO datetime; default = ahora",
+    ),
+    current_user: dict = Depends(require_role(["camarero", "admin", "super_admin"])),
+):
+    """KPIs del trabajador: cuánto ha cobrado, cuántos pedidos y mesas
+    atendidas, propinas, descuentos aplicados y pedidos cancelados.
+
+    Filtra por `cobrado_por_sub == actor.sub` (el que cobró) y rango
+    temporal opcional. Por defecto, "hoy desde medianoche".
+    """
+    # Rango temporal: aceptamos ISO; si no, usamos hoy local del servidor.
+    ahora = datetime.now(timezone.utc)
+    try:
+        dt_desde = (
+            datetime.fromisoformat(desde) if desde else
+            datetime(ahora.year, ahora.month, ahora.day, tzinfo=timezone.utc)
+        )
+    except ValueError:
+        raise ValidacionError("Parámetro `desde` con formato inválido (ISO 8601)")
+    try:
+        dt_hasta = datetime.fromisoformat(hasta) if hasta else ahora
+    except ValueError:
+        raise ValidacionError("Parámetro `hasta` con formato inválido (ISO 8601)")
+
+    sub = current_user.get("sub", "")
+    rid = current_user.get("restaurante_id")
+
+    # Pedidos cobrados por el actor en el rango. Aceptamos `cobrado_at`
+    # como string ISO (que es como lo persistimos en otros sitios).
+    filtro_cobrados: dict = {
+        "cobrado_por_sub": sub,
+        "estado_pago": "pagado",
+        "cobrado_at": {
+            "$gte": dt_desde.isoformat(),
+            "$lte": dt_hasta.isoformat(),
+        },
+    }
+    if rid:
+        filtro_cobrados["restaurante_id"] = rid
+
+    pedidos_cobrados = list(coleccion_pedidos.find(filtro_cobrados))
+    total_cobrado = 0.0
+    total_propinas = 0.0
+    total_descuentos = 0.0
+    mesas_atendidas: set[str] = set()
+    for p in pedidos_cobrados:
+        # Si hay total_final usamos ese (con descuento/propina aplicados).
+        importe = p.get("total_final")
+        if importe is None:
+            importe = p.get("total", 0)
+        total_cobrado += float(importe or 0)
+        total_propinas += float(p.get("propina") or 0)
+        total_descuentos += float(p.get("descuento") or 0)
+        mid = p.get("mesa_id")
+        if mid:
+            mesas_atendidas.add(str(mid))
+
+    # Cancelados: pedidos creados por este camarero (creado_por_sub) que
+    # acabaron en cancelado dentro del rango temporal.
+    filtro_cancelados: dict = {
+        "creado_por_sub": sub,
+        "estado": "cancelado",
+        "cancelado_at": {
+            "$gte": dt_desde.isoformat(),
+            "$lte": dt_hasta.isoformat(),
+        },
+    }
+    if rid:
+        filtro_cancelados["restaurante_id"] = rid
+    cancelados = coleccion_pedidos.count_documents(filtro_cancelados)
+
+    return {
+        "desde": dt_desde.isoformat(),
+        "hasta": dt_hasta.isoformat(),
+        "totalCobrado": round(total_cobrado, 2),
+        "pedidosCobrados": len(pedidos_cobrados),
+        "mesasAtendidas": len(mesas_atendidas),
+        "totalPropinas": round(total_propinas, 2),
+        "totalDescuentos": round(total_descuentos, 2),
+        "pedidosCancelados": cancelados,
+    }
 
 
 @router.get("/resumen")
@@ -1184,8 +1538,34 @@ def obtener_resumen_pedidos(
             "porcentaje": pct,
         })
 
+    # Merge final por nombre normalizado: items legacy sin producto_id se
+    # agrupaban en un bucket distinto del que tiene pid, produciendo entradas
+    # duplicadas en el top (p. ej. "Refresco" aparecía dos veces). Aquí
+    # consolidamos por nombre lowercase, prefiriendo conservar el producto_id
+    # del bucket que sí lo tenga.
+    productos_unificados: dict[str, dict] = {}
+    for bucket in productos.values():
+        nombre_norm = bucket["nombre"].strip().lower()
+        existente = productos_unificados.get(nombre_norm)
+        if existente is None:
+            productos_unificados[nombre_norm] = {
+                "producto_id": bucket.get("producto_id"),
+                "nombre": bucket["nombre"],
+                "unidades": bucket["unidades"],
+                "ingresos": bucket["ingresos"],
+            }
+        else:
+            existente["unidades"] += bucket["unidades"]
+            existente["ingresos"] += bucket["ingresos"]
+            # Preferimos conservar un producto_id real si alguno de los dos
+            # buckets lo trae; así el frontend puede enlazar a la ficha.
+            if not existente.get("producto_id") and bucket.get("producto_id"):
+                existente["producto_id"] = bucket["producto_id"]
+
     # Top 10 productos ordenados desc por unidades
-    top_productos = sorted(productos.values(), key=lambda x: x["unidades"], reverse=True)[:10]
+    top_productos = sorted(
+        productos_unificados.values(), key=lambda x: x["unidades"], reverse=True
+    )[:10]
     for tp in top_productos:
         tp["ingresos"] = round(tp["ingresos"], 2)
 
@@ -1354,18 +1734,21 @@ def obtener_pedidos(
     else:
         # Personal: si el JWT lleva restaurante_id, restringimos a esa sucursal
         # salvo que sea super_admin (puede ver todas las sucursales).
-        # NOTA: si en el futuro el JWT no incluyera restaurante_id para algún
-        # rol de personal legacy, simplemente no se aplica la restricción aquí
-        # y se loguea un aviso para que quede trazabilidad.
         jwt_restaurante = current_user.get("restaurante_id")
         if rol != "super_admin":
             if jwt_restaurante:
                 restauranteId = jwt_restaurante
             else:
+                # Cuenta de personal sin sucursal asignada: rechazamos para
+                # evitar que se devuelvan pedidos de todas las sucursales.
                 logger.warning(
                     "obtener_pedidos: usuario personal sin restaurante_id en JWT "
-                    "(rol=%s sub=%s). No se aplica restricción por sucursal.",
+                    "(rol=%s sub=%s). Rechazando request.",
                     rol, current_user.get("sub"),
+                )
+                raise HTTPException(
+                    status_code=400,
+                    detail="Tu cuenta no está asignada a una sucursal",
                 )
 
     # ── Validar y resolver filtro de estado(s) ────────────────────────────────
@@ -1443,6 +1826,7 @@ def obtener_pedidos(
             "numeroMesa": p.get("numero_mesa"),
             "notas": p.get("notas", ""),
             "restauranteId": str(p["restaurante_id"]) if p.get("restaurante_id") else None,
+            "prioritario": bool(p.get("prioritario", False)),
         })
     return resultado
 
@@ -1472,6 +1856,240 @@ def obtener_pedido(
         "mesaId": p.get("mesa_id"),
         "numeroMesa": p.get("numero_mesa"),
         "notas": p.get("notas", ""),
+        "prioritario": bool(p.get("prioritario", False)),
+    }
+
+
+class MoverMesaBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    nuevaMesaId: str
+
+
+class TransferirResponsableBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    nuevoResponsableSub: str
+
+
+@router.patch(
+    "/{pedido_id}/transferir",
+    summary="Transferir un pedido a otro camarero (cambio de turno)",
+)
+def transferir_pedido(
+    pedido_id: str,
+    payload: TransferirResponsableBody,
+    current_user: dict = Depends(require_role(["camarero", "admin", "super_admin"])),
+):
+    """Cambia el camarero responsable de un pedido. El nuevo responsable
+    asume las acciones (cobrar, modificar) sobre la mesa. Solo el
+    responsable actual o admin/super_admin pueden transferir."""
+    if not ObjectId.is_valid(pedido_id):
+        raise ValidacionError("ID de pedido inválido")
+
+    pedido = _obtener_pedido_o_404(pedido_id)
+    _verificar_acceso_pedido(pedido, current_user)
+
+    estado_actual = pedido.get("estado", "pendiente")
+    if estado_actual in {"entregado", "cancelado"}:
+        raise ConflictError(
+            f"No se puede transferir un pedido en estado '{estado_actual}'"
+        )
+
+    rol_actor = normalizar_rol(current_user.get("rol", ""))
+    actor_sub = current_user.get("sub")
+    responsable_actual = pedido.get("responsable_sub")
+    if (
+        rol_actor not in {"admin", "super_admin"}
+        and responsable_actual
+        and responsable_actual != actor_sub
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="Solo el camarero responsable o un admin pueden transferir",
+        )
+
+    # Validar que el nuevo responsable existe, está activo y es de la misma sucursal
+    from database import coleccion_usuarios as _col_users
+
+    try:
+        nuevo_oid = ObjectId(payload.nuevoResponsableSub)
+    except Exception:
+        raise ValidacionError("ID de usuario inválido")
+
+    nuevo = _col_users.find_one({"_id": nuevo_oid})
+    if not nuevo:
+        raise NotFoundError("Camarero no encontrado")
+    if nuevo.get("activo") is False:
+        raise ConflictError("El camarero está inactivo")
+    rol_nuevo = normalizar_rol(nuevo.get("rol", ""))
+    if rol_nuevo not in {"camarero", "admin", "super_admin"}:
+        raise ValidacionError(
+            "El usuario destino no tiene rol de camarero/admin"
+        )
+
+    rid_pedido = pedido.get("restaurante_id")
+    rid_nuevo = nuevo.get("restaurante_id")
+    if rid_pedido and rid_nuevo and rid_pedido != rid_nuevo:
+        raise HTTPException(
+            status_code=400,
+            detail="El camarero destino es de otra sucursal",
+        )
+
+    coleccion_pedidos.update_one(
+        {"_id": ObjectId(pedido_id)},
+        {"$set": {
+            "responsable_sub": payload.nuevoResponsableSub,
+            "responsable_correo": nuevo.get("correo"),
+        }},
+    )
+    ag.registrar(
+        ag.PEDIDO_CREADO,  # reusamos categoría general; el detalle clarifica.
+        actor=current_user.get("correo"),
+        objetivo=pedido_id,
+        detalle=(
+            f"transferido a {nuevo.get('correo')} desde "
+            f"{current_user.get('correo')}"
+        ),
+        extra={
+            "tipo": "transferencia",
+            "responsable_anterior_sub": responsable_actual,
+            "responsable_nuevo_sub": payload.nuevoResponsableSub,
+        },
+    )
+    return {
+        "ok": True,
+        "responsableSub": payload.nuevoResponsableSub,
+        "responsableCorreo": nuevo.get("correo"),
+    }
+
+
+@router.get(
+    "/camareros-disponibles",
+    summary="Lista de camareros activos de la sucursal (para transferencias)",
+)
+def listar_camareros_disponibles(
+    current_user: dict = Depends(require_role(["camarero", "admin", "super_admin"])),
+):
+    """Devuelve los camareros activos de la sucursal del actor (mínimo: id,
+    nombre, correo). Lo usa el dialog de transferencia para que el camarero
+    elija a quién pasarle la mesa al cambio de turno."""
+    from database import coleccion_usuarios as _col_users
+
+    rol = normalizar_rol(current_user.get("rol", ""))
+    rid = current_user.get("restaurante_id")
+    filtro: dict = {"activo": {"$ne": False}}
+    # Aceptamos rol canónico camarero y los alias legacy de BD por defensa.
+    filtro["rol"] = {"$in": ["camarero", "trabajador", "mesero"]}
+    if rol != "super_admin" and rid:
+        filtro["restaurante_id"] = rid
+
+    cursor = _col_users.find(
+        filtro,
+        {"nombre": 1, "correo": 1, "_id": 1},
+    ).sort("nombre", 1)
+    return [
+        {
+            "id": str(u["_id"]),
+            "nombre": u.get("nombre", ""),
+            "correo": u.get("correo", ""),
+        }
+        for u in cursor
+    ]
+
+
+@router.patch("/{pedido_id}/mover-mesa", summary="Mover un pedido a otra mesa")
+def mover_pedido_a_otra_mesa(
+    pedido_id: str,
+    payload: MoverMesaBody,
+    current_user: dict = Depends(require_role(["camarero", "admin", "super_admin"])),
+):
+    """Cambia la mesa asignada a un pedido activo. Caso típico: un grupo
+    se mueve de mesa. Libera la mesa origen y ocupa la destino. Solo se
+    puede mover pedidos NO terminales (pendiente/preparando/listo)."""
+    from database import coleccion_mesas as _col_mesas
+
+    if not ObjectId.is_valid(pedido_id):
+        raise ValidacionError("ID de pedido inválido")
+
+    pedido = _obtener_pedido_o_404(pedido_id)
+    _verificar_acceso_pedido(pedido, current_user)
+
+    estado_actual = pedido.get("estado", "pendiente")
+    if estado_actual in {"entregado", "cancelado"}:
+        raise ConflictError(
+            f"No se puede mover un pedido en estado '{estado_actual}'"
+        )
+
+    if pedido.get("tipo_entrega") != "local":
+        raise ValidacionError(
+            "Solo se pueden mover pedidos de mesa (tipo local)"
+        )
+
+    nueva_mesa_oid: ObjectId
+    try:
+        nueva_mesa_oid = ObjectId(payload.nuevaMesaId)
+    except Exception:
+        raise ValidacionError("ID de mesa inválido")
+
+    nueva_mesa = _col_mesas.find_one({"_id": nueva_mesa_oid})
+    if not nueva_mesa:
+        raise NotFoundError("Mesa destino no encontrada")
+
+    # Aislamiento por sucursal: la mesa destino debe ser del mismo restaurante
+    rid_pedido = pedido.get("restaurante_id")
+    rid_mesa = nueva_mesa.get("restaurante_id")
+    if rid_pedido and rid_mesa and rid_pedido != rid_mesa:
+        raise HTTPException(
+            status_code=400,
+            detail="La mesa destino pertenece a otra sucursal",
+        )
+
+    # Mesa destino debe estar libre. Aceptamos `por_limpiar` también: el
+    # camarero podría reasignar a una mesa que acaba de cobrar otra mesa.
+    estado_dest = nueva_mesa.get("estado", "libre")
+    if estado_dest == "ocupada":
+        raise ConflictError("La mesa destino ya está ocupada")
+
+    # Mesa origen — libérala. Captura por si el pedido huérfano no la tiene.
+    mesa_origen_id = pedido.get("mesa_id")
+    if mesa_origen_id:
+        try:
+            _col_mesas.update_one(
+                {"_id": ObjectId(mesa_origen_id)},
+                {"$set": {"estado": "libre"}},
+            )
+        except Exception:
+            logger.warning(
+                "No se pudo liberar mesa origen %s al mover pedido %s",
+                mesa_origen_id, pedido_id,
+            )
+
+    # Mesa destino — ocúpala
+    _col_mesas.update_one(
+        {"_id": nueva_mesa_oid},
+        {"$set": {"estado": "ocupada"}},
+    )
+
+    # Pedido — actualiza referencia
+    coleccion_pedidos.update_one(
+        {"_id": ObjectId(pedido_id)},
+        {"$set": {
+            "mesa_id": str(nueva_mesa_oid),
+            "numero_mesa": nueva_mesa.get("numero", 0),
+        }},
+    )
+
+    ag.registrar(
+        ag.MESA_ESTADO_CAMBIADO,
+        actor=current_user.get("correo"),
+        objetivo=str(nueva_mesa_oid),
+        detalle=f"pedido_id={pedido_id} origen={mesa_origen_id}",
+        extra={"restaurante_id": rid_pedido, "tipo": "mover_pedido"},
+    )
+
+    return {
+        "ok": True,
+        "mesaId": str(nueva_mesa_oid),
+        "numeroMesa": nueva_mesa.get("numero", 0),
     }
 
 
@@ -1481,11 +2099,38 @@ def actualizar_items_pedido(
     payload: ActualizarItemsPedido,
     current_user: dict = Depends(require_role(["camarero", "admin", "super_admin"])),
 ):
+    """[DEPRECATED] Actualiza los items de un pedido.
+
+    Fix 4 — este endpoint coexiste con PATCH /{id} que cubre el mismo caso
+    y sí valida máquina de estados. El frontend actual usa PATCH /{id}.
+    Se añaden aquí las mismas guardas de estados terminales para cerrar el
+    vector por el que un camarero podría mutar items de un pedido ya entregado,
+    cancelado o pagado usando esta ruta alternativa.
+
+    Plan de retiro: cuando confirmemos que ningún cliente legacy lo usa
+    (revisar logs ~30 días sin warnings) se puede eliminar.
+    """
     if not ObjectId.is_valid(pedido_id):
         raise ValidacionError("ID de pedido inválido")
 
+    logger.warning(
+        "DEPRECATED endpoint PATCH /pedidos/%s/items usado por sub=%s rol=%s. "
+        "Migrar el caller a PATCH /pedidos/{id}.",
+        pedido_id,
+        current_user.get("sub"),
+        normalizar_rol(current_user.get("rol", "")),
+    )
+
     pedido = _obtener_pedido_o_404(pedido_id)
     _verificar_acceso_pedido(pedido, current_user)
+
+    # Fix 4 — estados en los que NO se deben aceptar cambios de items
+    _ESTADOS_TERMINALES_ITEMS = {"entregado", "cancelado", "pagado"}
+    estado_actual = pedido.get("estado", "pendiente")
+    if estado_actual in _ESTADOS_TERMINALES_ITEMS:
+        raise ConflictError(
+            f"No se pueden modificar items de un pedido en estado '{estado_actual}'"
+        )
 
     total = payload.total if payload.total is not None else sum(
         it.get("cantidad", 1) * it.get("precio", 0) for it in payload.items

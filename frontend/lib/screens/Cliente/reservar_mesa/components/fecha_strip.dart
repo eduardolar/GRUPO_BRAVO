@@ -96,7 +96,7 @@ class _DateChip extends StatelessWidget {
                     : (esFinDeSemana
                           ? AppColors.button.withValues(alpha: 0.9)
                           : Colors.white60),
-                fontSize: 10,
+                fontSize: 12,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 1.4,
               ),
@@ -118,7 +118,7 @@ class _DateChip extends StatelessWidget {
                 color: seleccionada
                     ? Colors.white.withValues(alpha: 0.85)
                     : Colors.white54,
-                fontSize: 9,
+                fontSize: 11,
                 letterSpacing: 1.2,
                 fontWeight: FontWeight.w600,
               ),

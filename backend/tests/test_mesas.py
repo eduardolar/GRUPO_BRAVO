@@ -1,36 +1,31 @@
-"""Tests para PUT /api/v1/mesas/{mesa_id} — editar datos de una mesa,
-y PATCH /api/v1/mesas/{mesa_id} — cambiar estado libre/ocupada."""
+"""Tests para GET /api/v1/mesas (Fix 2), PUT /api/v1/mesas/{mesa_id} — editar
+datos de una mesa, y PATCH /api/v1/mesas/{mesa_id} — cambiar estado libre/ocupada."""
 from unittest.mock import MagicMock, patch
 from bson import ObjectId
 
-from security import crear_token
+from tests.tok_helpers import tok
 
 
 # ─── Helpers de autenticación ────────────────────────────────────────────────
 
 def _auth_admin(rid: str = "R1") -> dict:
-    token = crear_token({"sub": "u_admin", "correo": "admin@test.com", "rol": "admin", "restaurante_id": rid})
-    return {"Authorization": f"Bearer {token}"}
+    return tok("admin", restaurante_id=rid)
 
 
 def _auth_super_admin() -> dict:
-    token = crear_token({"sub": "u_super", "correo": "super@test.com", "rol": "super_admin"})
-    return {"Authorization": f"Bearer {token}"}
+    return tok("super_admin")
 
 
 def _auth_cliente() -> dict:
-    token = crear_token({"sub": "u_cliente", "correo": "cliente@test.com", "rol": "cliente"})
-    return {"Authorization": f"Bearer {token}"}
+    return tok("cliente")
 
 
 def _auth_camarero(rid: str = "R1") -> dict:
-    token = crear_token({"sub": "u_cam", "correo": "camarero@test.com", "rol": "camarero", "restaurante_id": rid})
-    return {"Authorization": f"Bearer {token}"}
+    return tok("camarero", restaurante_id=rid)
 
 
 def _auth_cocinero(rid: str = "R1") -> dict:
-    token = crear_token({"sub": "u_coc", "correo": "cocinero@test.com", "rol": "cocinero", "restaurante_id": rid})
-    return {"Authorization": f"Bearer {token}"}
+    return tok("cocinero", restaurante_id=rid)
 
 
 # ─── Datos de prueba ─────────────────────────────────────────────────────────
@@ -418,3 +413,67 @@ def test_patch_estado_super_admin_cualquier_sucursal_devuelve_200(client):
 
     assert resp.status_code == 200, resp.text
     assert resp.json()["estado"] == "libre"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Tests GET /api/v1/mesas — Fix 2: aislamiento multi-tenant
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def test_get_mesas_sin_token_devuelve_401(client):
+    """GET /mesas sin token → 401."""
+    resp = client.get("/api/v1/mesas")
+    assert resp.status_code == 401
+
+
+def test_get_mesas_camarero_usa_rid_del_jwt_ignora_query(client):
+    """Camarero de R1 con ?restaurante_id=R2 en query debe ver solo las mesas de R1."""
+    mesa_r1 = _mesa_r1()
+
+    cursor_mock = MagicMock()
+    cursor_mock.__iter__ = MagicMock(return_value=iter([mesa_r1]))
+
+    with patch("routes.mesas.coleccion_mesas") as mock_col:
+        mock_col.find.return_value = cursor_mock
+        resp = client.get(
+            "/api/v1/mesas?restaurante_id=R2",
+            headers=_auth_camarero(rid="R1"),
+        )
+
+    assert resp.status_code == 200, resp.text
+    # El filtro debe haberse aplicado con R1 (JWT), no R2 (query)
+    mock_col.find.assert_called_once_with({"restaurante_id": "R1"})
+
+
+def test_get_mesas_super_admin_usa_query(client):
+    """super_admin puede usar el query param para ver mesas de cualquier sucursal."""
+    mesa_r2 = _mesa_r2()
+
+    cursor_mock = MagicMock()
+    cursor_mock.__iter__ = MagicMock(return_value=iter([mesa_r2]))
+
+    with patch("routes.mesas.coleccion_mesas") as mock_col:
+        mock_col.find.return_value = cursor_mock
+        resp = client.get(
+            "/api/v1/mesas?restaurante_id=R2",
+            headers=_auth_super_admin(),
+        )
+
+    assert resp.status_code == 200, resp.text
+    mock_col.find.assert_called_once_with({"restaurante_id": "R2"})
+
+
+def test_get_mesas_personal_sin_rid_jwt_devuelve_400(client):
+    """Camarero/admin cuyo JWT no tiene restaurante_id recibe 400 (no filtro vacío)."""
+    from security import crear_token
+    from tests.tok_helpers import insertar_usuario_test
+    from bson import ObjectId as OID
+
+    legacy_oid = OID("bbbbbbbbbbbbbbbbbbbbbbba")
+    insertar_usuario_test(legacy_oid, "camarero", restaurante_id=None)
+    token = crear_token({"sub": str(legacy_oid), "correo": "cam_legacy@test.com", "rol": "camarero"})
+    headers = {"Authorization": f"Bearer {token}"}
+
+    resp = client.get("/api/v1/mesas", headers=headers)
+
+    assert resp.status_code == 400
+    assert "sucursal" in resp.json()["detail"].lower()

@@ -138,28 +138,33 @@ class _DireccionScreenState extends State<DireccionScreen> {
         return;
       }
 
-      bool exito = await usuarioService.actualizarDireccion(
+      await usuarioService.actualizarDireccion(
         direccion: direccionFinal,
         latitud: _puntoActual.latitude,
         longitud: _puntoActual.longitude,
       );
 
-      if (exito && mounted) {
-        auth.actualizarDireccionLocal(
-          nuevaDir: direccionFinal,
-          nuevaLat: _puntoActual.latitude,
-          nuevaLon: _puntoActual.longitude,
-        );
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("¡Dirección guardada!"),
-            backgroundColor: Colors.green,
-          ),
-        );
-        Navigator.pop(context);
-      }
+      if (!mounted) return;
+      auth.actualizarDireccionLocal(
+        nuevaDir: direccionFinal,
+        nuevaLat: _puntoActual.latitude,
+        nuevaLon: _puntoActual.longitude,
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("¡Dirección guardada!"),
+          backgroundColor: AppColors.success,
+        ),
+      );
+      Navigator.pop(context);
     } catch (e) {
-      _mostrarError("Error: $e");
+      // Mostramos el detail del backend (ApiException.toString() ya devuelve
+      // el mensaje crudo, sin el prefijo "Exception:"). Antes el catch era
+      // silencioso y la pantalla se quedaba colgada sin feedback.
+      final detalle = e.toString().replaceFirst(RegExp(r'^Exception:\s*'), '');
+      _mostrarError(
+        detalle.isEmpty ? 'No se pudo guardar la dirección' : detalle,
+      );
     } finally {
       if (mounted) setState(() => _cargando = false);
     }
@@ -167,7 +172,7 @@ class _DireccionScreenState extends State<DireccionScreen> {
 
   void _mostrarError(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: Colors.redAccent),
+      SnackBar(content: Text(msg), backgroundColor: AppColors.error),
     );
   }
 
@@ -217,7 +222,7 @@ class _DireccionScreenState extends State<DireccionScreen> {
                           height: 50,
                           child: const Icon(
                             Icons.location_on,
-                            color: Colors.red,
+                            color: AppColors.error,
                             size: 45,
                           ),
                         ),

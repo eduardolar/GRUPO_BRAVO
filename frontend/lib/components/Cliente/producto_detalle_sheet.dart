@@ -119,7 +119,7 @@ class _ProductoDetalleSheetState extends State<ProductoDetalleSheet> {
                         child: const Text(
                           'QUITAR INGREDIENTES',
                           style: TextStyle(
-                            fontSize: 9,
+                            fontSize: 11,
                             color: AppColors.textSecondary,
                             letterSpacing: 2.5,
                             fontWeight: FontWeight.w600,
@@ -132,59 +132,65 @@ class _ProductoDetalleSheetState extends State<ProductoDetalleSheet> {
                         runSpacing: 8,
                         children: p.ingredientes.map((ing) {
                           final excluido = _excluidos.contains(ing.nombre);
-                          return GestureDetector(
-                            onTap: () => setState(() {
-                              if (excluido) {
-                                _excluidos.remove(ing.nombre);
-                              } else {
-                                _excluidos.add(ing.nombre);
-                              }
-                            }),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 150),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
-                              ),
-                              decoration: BoxDecoration(
-                                color: excluido
-                                    ? AppColors.error.withValues(alpha: 0.08)
-                                    : Colors.transparent,
-                                border: Border.all(
-                                  color: excluido
-                                      ? AppColors.error
-                                      : AppColors.line,
-                                  width: excluido ? 1.5 : 1,
+                          return Semantics(
+                            label: excluido
+                                ? 'Incluir ${ing.nombre}'
+                                : 'Quitar ${ing.nombre}',
+                            button: true,
+                            child: GestureDetector(
+                              onTap: () => setState(() {
+                                if (excluido) {
+                                  _excluidos.remove(ing.nombre);
+                                } else {
+                                  _excluidos.add(ing.nombre);
+                                }
+                              }),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 150),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
                                 ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  if (excluido) ...[
-                                    const Icon(
-                                      Icons.close,
-                                      size: 11,
-                                      color: AppColors.error,
-                                    ),
-                                    const SizedBox(width: 4),
-                                  ],
-                                  Text(
-                                    ing.nombre,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: excluido
-                                          ? AppColors.error
-                                          : AppColors.textPrimary,
-                                      fontWeight: excluido
-                                          ? FontWeight.w600
-                                          : FontWeight.w400,
-                                      decoration: excluido
-                                          ? TextDecoration.lineThrough
-                                          : null,
-                                      decorationColor: AppColors.error,
-                                    ),
+                                decoration: BoxDecoration(
+                                  color: excluido
+                                      ? AppColors.error.withValues(alpha: 0.08)
+                                      : Colors.transparent,
+                                  border: Border.all(
+                                    color: excluido
+                                        ? AppColors.error
+                                        : AppColors.line,
+                                    width: excluido ? 1.5 : 1,
                                   ),
-                                ],
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (excluido) ...[
+                                      const Icon(
+                                        Icons.close,
+                                        size: 11,
+                                        color: AppColors.error,
+                                      ),
+                                      const SizedBox(width: 4),
+                                    ],
+                                    Text(
+                                      ing.nombre,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: excluido
+                                            ? AppColors.error
+                                            : AppColors.textPrimary,
+                                        fontWeight: excluido
+                                            ? FontWeight.w600
+                                            : FontWeight.w400,
+                                        decoration: excluido
+                                            ? TextDecoration.lineThrough
+                                            : null,
+                                        decorationColor: AppColors.error,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           );
@@ -291,15 +297,19 @@ class _StepBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: 44,
-          height: 50,
-          color: AppColors.panel,
-          child: Icon(icon, size: 18, color: AppColors.textPrimary),
+    return Semantics(
+      label: tooltip,
+      button: true,
+      child: Tooltip(
+        message: tooltip,
+        child: GestureDetector(
+          onTap: onTap,
+          child: Container(
+            width: 44,
+            height: 50,
+            color: AppColors.panel,
+            child: Icon(icon, size: 18, color: AppColors.textPrimary),
+          ),
         ),
       ),
     );

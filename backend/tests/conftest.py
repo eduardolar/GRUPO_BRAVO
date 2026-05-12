@@ -74,3 +74,18 @@ def _limpiar_colecciones():
     from database import db
     for nombre in db.list_collection_names():
         db[nombre].delete_many({})
+
+
+# ── Re-export de helpers de tokens ───────────────────────────────────────────
+# Los helpers de tokens viven en tok_helpers.py para que los test files
+# puedan importarlos directamente sin depender del conftest (que no es
+# importable como módulo normal desde dentro de los tests).
+from tests.tok_helpers import (  # noqa: F401  (re-export para compatibilidad)
+    tok,
+    insertar_usuario_test,
+    TEST_OID_SUPER,
+    TEST_OID_ADMIN,
+    TEST_OID_CAMARERO,
+    TEST_OID_COCINERO,
+    TEST_OID_CLIENTE,
+)

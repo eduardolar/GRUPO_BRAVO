@@ -11,8 +11,9 @@ import audit_general as ag
 from security import require_role, normalizar_rol, ROLES_CANONICOS
 from limiter import limiter
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 from fastapi_mail import FastMail, MessageSchema, MessageType
+from models import CorreoStr
 
 # Importar helpers compartidos
 from utils.auth_helpers import (
@@ -98,7 +99,7 @@ class UsuarioActualizar(BaseModel):
 # Modelo para crear usuarios desde el panel de Admin
 class UsuarioCrear(BaseModel):
     nombre: str
-    correo: EmailStr
+    correo: CorreoStr
     password: str = ''  # Opcional: si vacío, el backend genera una contraseña aleatoria
     rol: str
     restaurante_id: str

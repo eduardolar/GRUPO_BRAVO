@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../../components/admin/admin_max_width.dart';
 import '../../core/colors_style.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/download_helper.dart';
@@ -216,7 +217,7 @@ class _AdminContabilidadScreenState extends State<AdminContabilidadScreen> {
   void _mostrarMensajePdf() {
     _snack(
       'PDF no disponible aún. Pide al equipo técnico instalar la librería reportlab.',
-      color: Colors.amber.shade700,
+      color: AppColors.warningText,
     );
   }
 
@@ -291,7 +292,7 @@ class _AdminContabilidadScreenState extends State<AdminContabilidadScreen> {
               ),
             ),
           ),
-          SafeArea(child: _buildContenido()),
+          SafeArea(child: AdminMaxWidth(child: _buildContenido())),
         ],
       ),
     );
@@ -405,7 +406,7 @@ class _AdminContabilidadScreenState extends State<AdminContabilidadScreen> {
           const Text(
             'FILTRAR POR FECHAS',
             style: TextStyle(
-              fontSize: 10,
+              fontSize: 12,
               color: Colors.white54,
               fontWeight: FontWeight.bold,
               letterSpacing: 1.2,
@@ -462,7 +463,7 @@ class _AdminContabilidadScreenState extends State<AdminContabilidadScreen> {
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: 10,
+                  fontSize: 12,
                   color: activo ? Colors.white70 : Colors.white38,
                   fontWeight: FontWeight.bold,
                 ),
@@ -562,19 +563,19 @@ class _AdminContabilidadScreenState extends State<AdminContabilidadScreen> {
         icon: Icons.receipt_long_outlined,
         label: 'PEDIDOS',
         value: '$pedidos',
-        accent: const Color(0xFF3B82F6),
+        accent: AppColors.info,
       ),
       _KpiDato(
         icon: Icons.analytics_outlined,
         label: 'TICKET MEDIO',
         value: '${fmt.format(ticket)} €',
-        accent: Colors.orangeAccent,
+        accent: AppColors.warningLight,
       ),
       _KpiDato(
         icon: Icons.shopping_bag_outlined,
         label: 'ITEMS VENDIDOS',
         value: '$items',
-        accent: Colors.purpleAccent,
+        accent: AppColors.primaryAccent,
       ),
     ];
 
@@ -633,7 +634,7 @@ class _AdminContabilidadScreenState extends State<AdminContabilidadScreen> {
                       child: Text(
                         d.label,
                         style: const TextStyle(
-                          fontSize: 9,
+                          fontSize: 11,
                           fontWeight: FontWeight.w800,
                           color: Colors.white60,
                           letterSpacing: 1.4,
@@ -841,11 +842,11 @@ class _AdminContabilidadScreenState extends State<AdminContabilidadScreen> {
   Color _colorMetodo(String metodo) {
     final m = metodo.toLowerCase();
     if (m.contains('tarjeta') || m.contains('card')) {
-      return const Color(0xFF3B82F6);
+      return AppColors.info;
     }
     if (m.contains('paypal')) return AppColors.paypal;
     if (m.contains('efectivo') || m.contains('cash')) return AppColors.disp;
-    return Colors.orangeAccent;
+    return AppColors.warningLight;
   }
 
   IconData _iconoMetodo(String metodo) {
@@ -983,7 +984,7 @@ class _AdminContabilidadScreenState extends State<AdminContabilidadScreen> {
             Text(
               titulo,
               style: const TextStyle(
-                fontSize: 10,
+                fontSize: 12,
                 fontWeight: FontWeight.w800,
                 color: Colors.white70,
                 letterSpacing: 1.8,

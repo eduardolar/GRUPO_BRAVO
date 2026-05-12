@@ -458,6 +458,7 @@ class _AdminMenuScreenState extends State<AdminMenuScreen>
                 ),
                 suffixIcon: _busqueda.isNotEmpty
                     ? IconButton(
+                        tooltip: 'Limpiar búsqueda',
                         icon: const Icon(
                           Icons.clear,
                           color: Colors.black54,
@@ -516,7 +517,7 @@ class _AdminMenuScreenState extends State<AdminMenuScreen>
   Future<void> _abrirSelectorCategoriaMenu() async {
     final idx = await showModalBottomSheet<int>(
       context: context,
-      backgroundColor: const Color(0xFF1A1A1A),
+      backgroundColor: AppColors.bottomSheetBg,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -769,7 +770,7 @@ class _ProductoAdminCard extends StatelessWidget {
                           'AGOTADO',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 10,
+                            fontSize: 11,
                             fontWeight: FontWeight.w800,
                             letterSpacing: 0.8,
                           ),
@@ -833,8 +834,8 @@ class _ProductoAdminCard extends StatelessWidget {
                               ? Icons.toggle_on_outlined
                               : Icons.toggle_off_outlined,
                           color: producto.estaDisponible
-                              ? const Color(0xFF4CAF50)
-                              : const Color(0xFFEF5350),
+                              ? AppColors.success
+                              : AppColors.error,
                           size: 28,
                         ),
                         onPressed: onToggleDisponible,
