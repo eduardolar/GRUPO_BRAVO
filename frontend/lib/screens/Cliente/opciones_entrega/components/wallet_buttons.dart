@@ -56,7 +56,7 @@ class GooglePayButton extends StatelessWidget {
                           width: 42,
                           height: 42,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF5F5F5),
+                            color: AppColors.surface,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           alignment: Alignment.center,
@@ -177,7 +177,7 @@ class GooglePayButton extends StatelessWidget {
                 googlePayAutorizado
                     ? Icons.check_circle
                     : Icons.info_outline_rounded,
-                color: googlePayAutorizado ? Colors.greenAccent : Colors.white70,
+                color: googlePayAutorizado ? AppColors.successVibrant : Colors.white70,
                 size: 18,
               ),
               const SizedBox(width: 10),
@@ -245,7 +245,7 @@ class PaypalButton extends StatelessWidget {
             padding: EdgeInsets.only(top: 8),
             child: Row(
               children: [
-                Icon(Icons.check_circle, color: Colors.greenAccent, size: 18),
+                Icon(Icons.check_circle, color: AppColors.successVibrant, size: 18),
                 SizedBox(width: 8),
                 Flexible(
                   child: Text(
@@ -305,7 +305,7 @@ class ApplePayButton extends StatelessWidget {
             padding: EdgeInsets.only(top: 8),
             child: Row(
               children: [
-                Icon(Icons.check_circle, color: Colors.greenAccent, size: 18),
+                Icon(Icons.check_circle, color: AppColors.successVibrant, size: 18),
                 SizedBox(width: 8),
                 Text(
                   'Apple Pay autorizado',
@@ -349,27 +349,27 @@ class LogoGooglePayButton extends StatelessWidget {
             children: [
               TextSpan(
                 text: 'G',
-                style: TextStyle(color: Color(0xFF4285F4)),
+                style: TextStyle(color: AppColors.googleBlue),
               ),
               TextSpan(
                 text: 'o',
-                style: TextStyle(color: Color(0xFFEA4335)),
+                style: TextStyle(color: AppColors.googleRed),
               ),
               TextSpan(
                 text: 'o',
-                style: TextStyle(color: Color(0xFFFBBC05)),
+                style: TextStyle(color: AppColors.googleYellow),
               ),
               TextSpan(
                 text: 'g',
-                style: TextStyle(color: Color(0xFF4285F4)),
+                style: TextStyle(color: AppColors.googleBlue),
               ),
               TextSpan(
                 text: 'l',
-                style: TextStyle(color: Color(0xFF34A853)),
+                style: TextStyle(color: AppColors.googleGreen),
               ),
               TextSpan(
                 text: 'e',
-                style: TextStyle(color: Color(0xFFEA4335)),
+                style: TextStyle(color: AppColors.googleRed),
               ),
               TextSpan(
                 text: ' Pay',

@@ -123,6 +123,7 @@ class _ActivarCuentaScreenState extends State<ActivarCuentaScreen> {
             top: 20,
             left: 10,
             child: IconButton(
+              tooltip: 'Volver',
               icon: const Icon(
                 Icons.arrow_back_ios_new,
                 color: Colors.white,

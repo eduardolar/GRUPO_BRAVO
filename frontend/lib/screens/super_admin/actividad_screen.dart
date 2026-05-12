@@ -42,11 +42,11 @@ const Map<String, String> _kAccionesDisponibles = {
 Color _colorEstadoPago(String estado) {
   switch (estado.toLowerCase()) {
     case 'ok':
-      return Colors.greenAccent;
+      return AppColors.successVibrant;
     case 'error':
       return AppColors.error;
     default:
-      return Colors.orange;
+      return AppColors.warningLight;
   }
 }
 
@@ -64,9 +64,9 @@ Color _colorAccion(String accion) {
     return AppColors.error;
   }
   if (accion.contains('creado') || accion.contains('login_ok')) {
-    return Colors.greenAccent;
+    return AppColors.successVibrant;
   }
-  if (accion.contains('rol') || accion.contains('estado')) return Colors.orange;
+  if (accion.contains('rol') || accion.contains('estado')) return AppColors.warningLight;
   return AppColors.button;
 }
 
@@ -636,7 +636,7 @@ class _ChipContador extends StatelessWidget {
       child: Text(
         texto,
         style: GoogleFonts.manrope(
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: FontWeight.w700,
           color: Colors.white70,
         ),
@@ -887,7 +887,7 @@ class _EventoUsuarioTile extends StatelessWidget {
                               Text(
                                 fecha,
                                 style: GoogleFonts.manrope(
-                                  fontSize: 10,
+                                  fontSize: 12,
                                   color: Colors.white60,
                                   fontFeatures: const [
                                     FontFeature.tabularFigures(),
@@ -934,7 +934,7 @@ class _EventoUsuarioTile extends StatelessWidget {
                                   child: Text(
                                     evento.actor!,
                                     style: GoogleFonts.manrope(
-                                      fontSize: 10,
+                                      fontSize: 12,
                                       fontWeight: FontWeight.w600,
                                       color: Colors.white.withValues(
                                         alpha: 0.55,
@@ -978,7 +978,7 @@ class _TagAccion extends StatelessWidget {
       child: Text(
         label.toUpperCase(),
         style: GoogleFonts.manrope(
-          fontSize: 9,
+          fontSize: 11,
           fontWeight: FontWeight.w800,
           color: color,
           letterSpacing: 0.8,
@@ -1093,7 +1093,7 @@ class _EventoPagoTile extends StatelessWidget {
                               Text(
                                 fecha,
                                 style: GoogleFonts.manrope(
-                                  fontSize: 10,
+                                  fontSize: 12,
                                   color: Colors.white60,
                                   fontFeatures: const [
                                     FontFeature.tabularFigures(),
@@ -1221,7 +1221,7 @@ class _FilaDetalle extends StatelessWidget {
             label.toUpperCase(),
             style: GoogleFonts.manrope(
               color: Colors.white38,
-              fontSize: 10,
+              fontSize: 12,
               fontWeight: FontWeight.w700,
               letterSpacing: 1.2,
             ),

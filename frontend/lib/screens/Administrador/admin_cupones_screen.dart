@@ -7,7 +7,7 @@ import '../../services/cupon_service.dart';
 import '../../services/http_client.dart';
 
 // ─── Constantes de estilo ─────────────────────────────────────────────────────
-const _kSheetBg = Color(0xFF1A1A1A);
+const _kSheetBg = AppColors.bottomSheetBg;
 // Negro translúcido (alpha ~55%): sobre la imagen Bravo de fondo el blanco
 // translúcido se confundía con el papel claro y dejaba el texto invisible.
 const _kFieldFill = Color(0x8C000000);
@@ -508,7 +508,7 @@ class _FormularioCuponSheetState extends State<_FormularioCuponSheet> {
         data: ThemeData.dark().copyWith(
           colorScheme: const ColorScheme.dark(
             primary: AppColors.button,
-            surface: Color(0xFF1A1A1A),
+            surface: AppColors.bottomSheetBg,
           ),
         ),
         child: child!,

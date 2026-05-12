@@ -68,7 +68,7 @@ class _PerfilTrabajadorScreenState extends State<PerfilTrabajadorScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Datos actualizados correctamente'),
-          backgroundColor: Colors.green,
+          backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -95,7 +95,7 @@ class _PerfilTrabajadorScreenState extends State<PerfilTrabajadorScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(
           children: [
-            Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 26),
+            Icon(Icons.warning_amber_rounded, color: AppColors.error, size: 26),
             SizedBox(width: 10),
             Text(
               'Eliminar cuenta',
@@ -139,7 +139,7 @@ class _PerfilTrabajadorScreenState extends State<PerfilTrabajadorScreen> {
                     await _eliminarCuenta();
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.redAccent,
+                    backgroundColor: AppColors.error,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 13),
                     shape: const RoundedRectangleBorder(
@@ -264,7 +264,7 @@ class _PerfilTrabajadorScreenState extends State<PerfilTrabajadorScreen> {
                     height: 52,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.redAccent,
+                        backgroundColor: AppColors.error,
                         foregroundColor: Colors.white,
                         disabledBackgroundColor: Colors.white12,
                         shape: const RoundedRectangleBorder(
@@ -289,7 +289,7 @@ class _PerfilTrabajadorScreenState extends State<PerfilTrabajadorScreen> {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
                                       content: Text('2FA desactivado correctamente'),
-                                      backgroundColor: Colors.green,
+                                      backgroundColor: AppColors.success,
                                       behavior: SnackBarBehavior.floating,
                                     ),
                                   );
@@ -452,7 +452,7 @@ class _PerfilTrabajadorScreenState extends State<PerfilTrabajadorScreen> {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
                                       content: Text('Contraseña actualizada correctamente'),
-                                      backgroundColor: Colors.green,
+                                      backgroundColor: AppColors.success,
                                       behavior: SnackBarBehavior.floating,
                                     ),
                                   );
@@ -520,6 +520,7 @@ class _PerfilTrabajadorScreenState extends State<PerfilTrabajadorScreen> {
         ),
         prefixIcon: const Icon(Icons.lock_outline, color: AppColors.button, size: 20),
         suffixIcon: IconButton(
+          tooltip: oculto ? 'Mostrar contraseña' : 'Ocultar contraseña',
           icon: Icon(
             oculto ? Icons.visibility_off_outlined : Icons.visibility_outlined,
             color: Colors.white38,
@@ -698,7 +699,7 @@ class _PerfilTrabajadorScreenState extends State<PerfilTrabajadorScreen> {
                           _buildAccion(
                             icono: Icons.delete_outline,
                             label: 'Eliminar cuenta',
-                            color: Colors.redAccent,
+                            color: AppColors.error,
                             onTap: _mostrarDialogoEliminarCuenta,
                           ),
                           const SizedBox(height: 40),
@@ -721,6 +722,7 @@ class _PerfilTrabajadorScreenState extends State<PerfilTrabajadorScreen> {
       child: Row(
         children: [
           IconButton(
+            tooltip: 'Volver',
             icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
             onPressed: () => Navigator.pop(context),
           ),
@@ -908,7 +910,7 @@ class _PerfilTrabajadorScreenState extends State<PerfilTrabajadorScreen> {
           children: [
             Icon(
               habilitado ? Icons.verified_user_outlined : Icons.security_outlined,
-              color: habilitado ? Colors.greenAccent : Colors.white70,
+              color: habilitado ? AppColors.successVibrant : Colors.white70,
               size: 20,
             ),
             const SizedBox(width: 14),
@@ -931,7 +933,7 @@ class _PerfilTrabajadorScreenState extends State<PerfilTrabajadorScreen> {
                         : 'No activada — toca para activar',
                     style: TextStyle(
                       color: habilitado
-                          ? Colors.greenAccent.withValues(alpha: 0.8)
+                          ? AppColors.successVibrant.withValues(alpha: 0.8)
                           : Colors.white38,
                       fontSize: 11,
                     ),
@@ -957,13 +959,13 @@ class _PerfilTrabajadorScreenState extends State<PerfilTrabajadorScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
         decoration: BoxDecoration(
-          color: color == Colors.redAccent
-              ? Colors.redAccent.withValues(alpha: 0.08)
+          color: color == AppColors.error
+              ? AppColors.error.withValues(alpha: 0.08)
               : Colors.white.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: color == Colors.redAccent
-                ? Colors.redAccent.withValues(alpha: 0.3)
+            color: color == AppColors.error
+                ? AppColors.error.withValues(alpha: 0.3)
                 : Colors.white12,
           ),
         ),

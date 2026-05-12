@@ -20,6 +20,7 @@ class TrabajadorAppBar extends StatelessWidget implements PreferredSizeWidget {
       backgroundColor: Colors.transparent,
       elevation: 0,
       leading: IconButton(
+        tooltip: 'Volver',
         icon: const Icon(Icons.arrow_back, color: Colors.white),
         onPressed: onBackPressed ?? () => Navigator.pop(context),
       ),
@@ -28,7 +29,7 @@ class TrabajadorAppBar extends StatelessWidget implements PreferredSizeWidget {
         title.toUpperCase(),
         style: const TextStyle(
           fontFamily: 'Playfair Display',
-          color: Color(0xFFFFF8E1),
+          color: AppColors.textAppBar,
           fontSize: 16,
           fontWeight: FontWeight.w700,
           letterSpacing: 2.0,

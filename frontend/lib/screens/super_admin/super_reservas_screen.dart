@@ -8,7 +8,7 @@ import '../../services/restaurante_service.dart';
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 
-const _kSheetBg = Color(0xFF1A1A1A);
+const _kSheetBg = AppColors.bottomSheetBg;
 const _kFieldFill = Color(0x8C000000);
 const _kBorder = Color(0x33FFFFFF);
 
@@ -126,7 +126,7 @@ class _SuperReservasScreenState extends State<SuperReservasScreen> {
         data: ThemeData.dark().copyWith(
           colorScheme: const ColorScheme.dark(
             primary: AppColors.button,
-            surface: Color(0xFF1A1A1A),
+            surface: AppColors.bottomSheetBg,
           ),
         ),
         child: child!,
@@ -164,7 +164,7 @@ class _SuperReservasScreenState extends State<SuperReservasScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A1A),
+        backgroundColor: AppColors.bottomSheetBg,
         shape:
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text(
@@ -617,7 +617,7 @@ class _SuperReservasScreenState extends State<SuperReservasScreen> {
                       style: TextStyle(
                         color: numeroMesa != null
                             ? Colors.white60
-                            : Colors.orange,
+                            : AppColors.warningLight,
                         fontSize: 13,
                       ),
                     ),
@@ -695,16 +695,16 @@ class _SuperReservasScreenState extends State<SuperReservasScreen> {
     final Color color;
     switch (estado) {
       case 'Confirmada':
-        color = Colors.green;
+        color = AppColors.success;
       case 'Cancelada':
         color = AppColors.error;
       case 'Llegado':
-        color = Colors.blue;
+        color = AppColors.info;
       case 'NoShow':
-        color = Colors.grey;
+        color = AppColors.lineStrong;
       case 'Pendiente':
       default:
-        color = Colors.amber;
+        color = AppColors.warning;
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),

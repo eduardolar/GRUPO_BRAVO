@@ -153,7 +153,7 @@ class _CrearPedidosState extends State<CrearComanda> {
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
-        backgroundColor: const Color(0xFF1A1A1A),
+        backgroundColor: AppColors.bottomSheetBg,
         shape: const RoundedRectangleBorder(),
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -303,7 +303,7 @@ class _CrearPedidosState extends State<CrearComanda> {
     final confirmar = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A1A),
+        backgroundColor: AppColors.bottomSheetBg,
         title: const Text(
           'Hay platos sin enviar',
           style: TextStyle(color: Colors.white),
@@ -488,7 +488,7 @@ class _CrearPedidosState extends State<CrearComanda> {
           ],
         ),
         duration: const Duration(seconds: 3),
-        backgroundColor: error ? Colors.red.shade800 : AppColors.button,
+        backgroundColor: error ? AppColors.errorText : AppColors.button,
         behavior: SnackBarBehavior.floating,
         shape: const RoundedRectangleBorder(),
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 32),
@@ -533,7 +533,7 @@ class _CrearPedidosState extends State<CrearComanda> {
                     'CARGANDO CARTA',
                     style: TextStyle(
                       color: Colors.white60,
-                      fontSize: 10,
+                      fontSize: 12,
                       letterSpacing: 3.0,
                       fontWeight: FontWeight.w600,
                     ),
@@ -711,6 +711,7 @@ class _CrearPedidosState extends State<CrearComanda> {
                       ),
                       const SizedBox(width: 12),
                       IconButton(
+                        tooltip: 'Mi perfil',
                         icon: const CircleAvatar(
                           backgroundColor: Colors.white24,
                           radius: 18,
@@ -755,7 +756,7 @@ class _CrearPedidosState extends State<CrearComanda> {
                                 'SIN PLATOS DISPONIBLES',
                                 style: TextStyle(
                                   color: Colors.white60,
-                                  fontSize: 10,
+                                  fontSize: 12,
                                   letterSpacing: 3.0,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -1078,7 +1079,7 @@ class _PlateAnimationState extends State<_PlateAnimation>
                     height: 72,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: const Color(0xFF2A2A2A),
+                      color: AppColors.surfaceDark,
                       border: Border.all(color: Colors.white12, width: 2),
                       boxShadow: [
                         BoxShadow(
@@ -1094,7 +1095,7 @@ class _PlateAnimationState extends State<_PlateAnimation>
                         height: 52,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: const Color(0xFF222222),
+                          color: AppColors.backgroundDark,
                           border: Border.all(color: Colors.white10, width: 1),
                         ),
                       ),

@@ -944,7 +944,7 @@ class _PedidoCard extends StatelessWidget {
                         'URGENTE',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 10,
+                          fontSize: 11,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 1.5,
                         ),
@@ -1254,7 +1254,7 @@ class _ChipCronometro extends StatelessWidget {
             style: TextStyle(
               color: color,
               fontWeight: FontWeight.w700,
-              fontSize: 10,
+              fontSize: 11,
               letterSpacing: 0.3,
             ),
           ),

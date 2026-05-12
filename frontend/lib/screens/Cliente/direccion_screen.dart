@@ -153,7 +153,7 @@ class _DireccionScreenState extends State<DireccionScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("¡Dirección guardada!"),
-          backgroundColor: Colors.green,
+          backgroundColor: AppColors.success,
         ),
       );
       Navigator.pop(context);
@@ -172,7 +172,7 @@ class _DireccionScreenState extends State<DireccionScreen> {
 
   void _mostrarError(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: Colors.redAccent),
+      SnackBar(content: Text(msg), backgroundColor: AppColors.error),
     );
   }
 
@@ -222,7 +222,7 @@ class _DireccionScreenState extends State<DireccionScreen> {
                           height: 50,
                           child: const Icon(
                             Icons.location_on,
-                            color: Colors.red,
+                            color: AppColors.error,
                             size: 45,
                           ),
                         ),

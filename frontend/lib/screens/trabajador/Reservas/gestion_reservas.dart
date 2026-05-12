@@ -449,7 +449,7 @@ class _TabConBadge extends StatelessWidget {
                 style: const TextStyle(
                   color: AppColors.button,
                   fontWeight: FontWeight.w700,
-                  fontSize: 10,
+                  fontSize: 11,
                 ),
               ),
             ),
@@ -668,15 +668,19 @@ class _TabHistorial extends StatelessWidget {
                   ),
                 ),
                 if (busqueda.isNotEmpty)
-                  GestureDetector(
-                    onTap: () {
-                      ctrlBusqueda.clear();
-                      onBusquedaCambiada('');
-                    },
-                    child: const Icon(
-                      Icons.close,
-                      color: AppColors.textSecondary,
-                      size: 18,
+                  Semantics(
+                    label: 'Limpiar búsqueda',
+                    button: true,
+                    child: GestureDetector(
+                      onTap: () {
+                        ctrlBusqueda.clear();
+                        onBusquedaCambiada('');
+                      },
+                      child: const Icon(
+                        Icons.close,
+                        color: AppColors.textSecondary,
+                        size: 18,
+                      ),
                     ),
                   ),
               ],
@@ -750,7 +754,7 @@ class _ReservaTile extends StatelessWidget {
       case 'confirmada':
         return AppColors.disp;
       case 'pendiente':
-        return Colors.orange;
+        return AppColors.warningLight;
       case 'cancelada':
         return AppColors.error;
       default:
@@ -808,7 +812,7 @@ class _ReservaTile extends StatelessWidget {
                       style: TextStyle(
                         color: colorEstado,
                         fontWeight: FontWeight.w700,
-                        fontSize: 10,
+                        fontSize: 11,
                         letterSpacing: 0.8,
                       ),
                     ),
@@ -826,7 +830,7 @@ class _ReservaTile extends StatelessWidget {
                       _turnoLabel,
                       style: const TextStyle(
                         color: AppColors.textSecondary,
-                        fontSize: 10,
+                        fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -964,7 +968,7 @@ class _ReservaTile extends StatelessWidget {
                         child: const Text(
                           'NO VINO',
                           style: TextStyle(
-                            fontSize: 10,
+                            fontSize: 11,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -989,7 +993,7 @@ class _ReservaTile extends StatelessWidget {
                         child: const Text(
                           'LLEGÓ',
                           style: TextStyle(
-                            fontSize: 10,
+                            fontSize: 11,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -1011,7 +1015,7 @@ class _ReservaTile extends StatelessWidget {
                       child: const Text(
                         'CANCELAR',
                         style: TextStyle(
-                          fontSize: 10,
+                          fontSize: 11,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -1034,7 +1038,7 @@ class _ReservaTile extends StatelessWidget {
                       child: const Text(
                         'MODIFICAR',
                         style: TextStyle(
-                          fontSize: 10,
+                          fontSize: 11,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -1374,6 +1378,7 @@ class _EditarReservaDialogState extends State<_EditarReservaDialog> {
               child: Row(
                 children: [
                   IconButton(
+                    tooltip: 'Reducir comensales',
                     onPressed: (pasada || _comensales <= 1)
                         ? null
                         : () => _cambiarComensales(-1),
@@ -1392,6 +1397,7 @@ class _EditarReservaDialogState extends State<_EditarReservaDialog> {
                     ),
                   ),
                   IconButton(
+                    tooltip: 'Aumentar comensales',
                     onPressed: (pasada || _comensales >= _maxComensalesEdit)
                         ? null
                         : () => _cambiarComensales(1),

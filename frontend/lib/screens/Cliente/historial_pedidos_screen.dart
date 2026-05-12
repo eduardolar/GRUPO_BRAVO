@@ -450,7 +450,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
                         '$count',
                         style: GoogleFonts.manrope(
                           color: Colors.white70,
-                          fontSize: 10,
+                          fontSize: 11,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -876,7 +876,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
                 color: completado || actual
                     ? Colors.white
                     : Colors.white54,
-                fontSize: 10,
+                fontSize: 12,
                 fontWeight: actual ? FontWeight.w700 : FontWeight.w500,
               ),
             ),
@@ -1033,7 +1033,7 @@ class _BadgeEstado extends StatelessWidget {
         label.toUpperCase(),
         style: GoogleFonts.manrope(
           color: color,
-          fontSize: 9,
+          fontSize: 11,
           fontWeight: FontWeight.w800,
           letterSpacing: 0.5,
         ),
@@ -1089,7 +1089,7 @@ class _SectionLabel extends StatelessWidget {
       label,
       style: GoogleFonts.manrope(
         color: Colors.white54,
-        fontSize: 10,
+        fontSize: 12,
         fontWeight: FontWeight.w800,
         letterSpacing: 1.5,
       ),

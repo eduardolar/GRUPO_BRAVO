@@ -294,7 +294,7 @@ class _AdminCierreCajaScreenState extends State<AdminCierreCajaScreen> {
                   const Text(
                     'FECHA DEL TURNO',
                     style: TextStyle(
-                      fontSize: 9,
+                      fontSize: 11,
                       fontWeight: FontWeight.w800,
                       color: Colors.white54,
                       letterSpacing: 1.4,
@@ -528,7 +528,7 @@ class _CardTurno extends StatelessWidget {
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF8B0000), // granate oscuro
+                backgroundColor: AppColors.primaryHover, // granate oscuro
                 foregroundColor: Colors.white,
                 minimumSize: const Size(double.infinity, 48),
                 shape: RoundedRectangleBorder(
@@ -557,7 +557,7 @@ class _CardTurno extends StatelessWidget {
       colorDescuadre = AppColors.disp;
       textoDescuadre = '0,00 €';
     } else if (descuadre.abs() <= 5) {
-      colorDescuadre = Colors.amber;
+      colorDescuadre = AppColors.warning;
       textoDescuadre = '${_fmtEuros.format(descuadre)} €';
     } else {
       colorDescuadre = AppColors.error;
@@ -837,7 +837,7 @@ class _SheetCerrarState extends State<_SheetCerrar> {
     } else if (descuadre > 0) {
       emoji = '⚠️'; // ⚠️
       titulo = 'Sobra ${_fmtEuros.format(descuadre)} €';
-      color = Colors.amber;
+      color = AppColors.warning;
     } else {
       emoji = '⛔'; // ⛔
       titulo = 'Falta ${_fmtEuros.format(descuadre.abs())} €';
@@ -848,7 +848,7 @@ class _SheetCerrarState extends State<_SheetCerrar> {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A1A),
+        backgroundColor: AppColors.bottomSheetBg,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
@@ -902,7 +902,7 @@ class _SheetCerrarState extends State<_SheetCerrar> {
     return _BaseSheet(
       titulo: 'Cerrar turno de $_labelTurno',
       icono: Icons.lock_outline,
-      iconColor: const Color(0xFF8B0000),
+      iconColor: AppColors.primaryHover,
       child: Form(
         key: _formKey,
         child: Column(
@@ -968,7 +968,7 @@ class _SheetCerrarState extends State<_SheetCerrar> {
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF8B0000),
+                  backgroundColor: AppColors.primaryHover,
                   foregroundColor: Colors.white,
                   minimumSize: const Size(double.infinity, 52),
                   shape: RoundedRectangleBorder(
@@ -1033,7 +1033,7 @@ class _SheetReabrirState extends State<_SheetReabrir> {
     return _BaseSheet(
       titulo: 'Reabrir turno',
       icono: Icons.lock_open_outlined,
-      iconColor: Colors.orange,
+      iconColor: AppColors.warningLight,
       child: Form(
         key: _formKey,
         child: Column(
@@ -1043,22 +1043,22 @@ class _SheetReabrirState extends State<_SheetReabrir> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.amber.withValues(alpha: 0.15),
+                color: AppColors.warningBg,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                  color: Colors.amber.withValues(alpha: 0.4),
+                  color: AppColors.warning.withValues(alpha: 0.4),
                 ),
               ),
               child: const Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 20),
+                  Icon(Icons.warning_amber_rounded, color: AppColors.warning, size: 20),
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'Reabrir un cierre debe ser excepcional. '
                       'Quedará registrado en el log de auditoría.',
-                      style: TextStyle(color: Colors.amber, fontSize: 13),
+                      style: TextStyle(color: AppColors.warningText, fontSize: 13),
                     ),
                   ),
                 ],
@@ -1081,7 +1081,7 @@ class _SheetReabrirState extends State<_SheetReabrir> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Colors.orange),
+                  borderSide: const BorderSide(color: AppColors.warningLight),
                 ),
                 errorBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -1122,7 +1122,7 @@ class _SheetReabrirState extends State<_SheetReabrir> {
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange.shade700,
+                  backgroundColor: AppColors.warningText,
                   foregroundColor: Colors.white,
                   minimumSize: const Size(double.infinity, 52),
                   shape: RoundedRectangleBorder(
@@ -1186,7 +1186,7 @@ class _ChipEstado extends StatelessWidget {
       color = AppColors.disp;
       label = 'ABIERTO';
     } else if (estado == 'cerrado') {
-      color = Colors.blue.shade400;
+      color = AppColors.info;
       label = 'CERRADO';
     } else {
       color = Colors.white38;
@@ -1274,7 +1274,7 @@ class _MiniKpi extends StatelessWidget {
           Text(
             label,
             style: const TextStyle(
-              fontSize: 8,
+              fontSize: 11,
               fontWeight: FontWeight.w800,
               color: Colors.white54,
               letterSpacing: 1.0,
@@ -1319,7 +1319,7 @@ class _BaseSheet extends StatelessWidget {
 
     return Container(
       decoration: const BoxDecoration(
-        color: Color(0xFF111111),
+        color: AppColors.backgroundDark,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: SafeArea(

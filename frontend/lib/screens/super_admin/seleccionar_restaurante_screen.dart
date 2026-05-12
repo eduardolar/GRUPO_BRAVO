@@ -530,7 +530,7 @@ class _HeroHeader extends StatelessWidget {
                     'EST. 2024',
                     style: GoogleFonts.manrope(
                       color: Colors.white,
-                      fontSize: 10,
+                      fontSize: 12,
                       fontWeight: FontWeight.w600,
                       letterSpacing: 4,
                     ),
@@ -758,7 +758,7 @@ class _RestauranteCard extends StatelessWidget {
                       Text(
                         'GESTIONAR',
                         style: GoogleFonts.manrope(
-                          fontSize: 10,
+                          fontSize: 12,
                           fontWeight: FontWeight.w700,
                           color: AppColors.button,
                           letterSpacing: 1.5,
@@ -864,20 +864,20 @@ class _BadgeEstado extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
         color: abierto
-            ? const Color(0xFF2E7D32).withValues(alpha: 0.10)
+            ? AppColors.success.withValues(alpha: 0.10)
             : AppColors.error.withValues(alpha: 0.10),
         border: Border.all(
           color: abierto
-              ? const Color(0xFF2E7D32).withValues(alpha: 0.40)
+              ? AppColors.success.withValues(alpha: 0.40)
               : AppColors.error.withValues(alpha: 0.40),
         ),
       ),
       child: Text(
         abierto ? 'ABIERTO' : 'CERRADO',
         style: GoogleFonts.manrope(
-          fontSize: 8,
+          fontSize: 11,
           fontWeight: FontWeight.w800,
-          color: abierto ? const Color(0xFF2E7D32) : AppColors.error,
+          color: abierto ? AppColors.success : AppColors.error,
           letterSpacing: 1,
         ),
       ),
@@ -900,7 +900,7 @@ class _BadgeSuspendida extends StatelessWidget {
       child: Text(
         'SUSPENDIDA',
         style: GoogleFonts.manrope(
-          fontSize: 8,
+          fontSize: 11,
           fontWeight: FontWeight.w800,
           color: AppColors.error,
           letterSpacing: 1,

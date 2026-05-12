@@ -590,7 +590,7 @@ class _TabConBadge extends StatelessWidget {
                 style: const TextStyle(
                   color: AppColors.button,
                   fontWeight: FontWeight.w700,
-                  fontSize: 10,
+                  fontSize: 11,
                 ),
               ),
             ),
@@ -919,7 +919,7 @@ class _PedidoTile extends StatelessWidget {
                     style: TextStyle(
                       color: _colorEstado,
                       fontWeight: FontWeight.w700,
-                      fontSize: 10,
+                      fontSize: 11,
                       letterSpacing: 0.8,
                     ),
                   ),
@@ -952,7 +952,7 @@ class _PedidoTile extends StatelessWidget {
                       _tiempoEnMesa(pedido.fecha),
                       style: const TextStyle(
                         color: AppColors.textSecondary,
-                        fontSize: 9,
+                        fontSize: 12,
                         fontStyle: FontStyle.italic,
                       ),
                     ),
@@ -998,7 +998,7 @@ class _PedidoTile extends StatelessWidget {
                                 'sin ${p.sin.join(', ')}',
                                 style: TextStyle(
                                   color: AppColors.error.withValues(alpha: 0.85),
-                                  fontSize: 10,
+                                  fontSize: 12,
                                   fontStyle: FontStyle.italic,
                                 ),
                               ),
@@ -1046,7 +1046,7 @@ class _PedidoTile extends StatelessWidget {
                       child: Text(
                         labelAccionTerciaria!,
                         style: const TextStyle(
-                            fontSize: 10, fontWeight: FontWeight.w700),
+                            fontSize: 11, fontWeight: FontWeight.w700),
                       ),
                     ),
                   ),
@@ -1073,7 +1073,7 @@ class _PedidoTile extends StatelessWidget {
                       child: Text(
                         labelAccionCuarta!,
                         style: const TextStyle(
-                            fontSize: 10, fontWeight: FontWeight.w700),
+                            fontSize: 11, fontWeight: FontWeight.w700),
                       ),
                     ),
                   ),
@@ -1098,7 +1098,7 @@ class _PedidoTile extends StatelessWidget {
                       child: Text(
                         labelAccionSecundaria!,
                         style: const TextStyle(
-                            fontSize: 10, fontWeight: FontWeight.w700),
+                            fontSize: 11, fontWeight: FontWeight.w700),
                       ),
                     ),
                   ),
@@ -1120,7 +1120,7 @@ class _PedidoTile extends StatelessWidget {
                   child: Text(
                     labelAccion,
                     style: const TextStyle(
-                        fontSize: 10, fontWeight: FontWeight.w700),
+                        fontSize: 11, fontWeight: FontWeight.w700),
                   ),
                 ),
               ],

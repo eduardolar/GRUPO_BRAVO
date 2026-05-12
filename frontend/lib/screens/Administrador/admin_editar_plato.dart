@@ -11,7 +11,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 
-const _kSheetBg = Color(0xFF1A1A1A);
+const _kSheetBg = AppColors.bottomSheetBg;
 const _kBorder = Color(0x33FFFFFF); // blanco 20%
 const _kBorderFocus = AppColors.button;
 
@@ -214,7 +214,7 @@ class _EditorProductoSheetState extends State<_EditorProductoSheet> {
             'Selector de imagen no disponible. Reinicia la app '
             '(flutter clean && flutter run) para registrar el plugin.',
           ),
-          backgroundColor: Colors.orange,
+          backgroundColor: AppColors.warning,
           duration: Duration(seconds: 6),
         ),
       );
@@ -224,7 +224,7 @@ class _EditorProductoSheetState extends State<_EditorProductoSheet> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('No se pudo abrir el selector: $e'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.error,
         ),
       );
       return;
@@ -241,7 +241,7 @@ class _EditorProductoSheetState extends State<_EditorProductoSheet> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Imagen demasiado grande. Máx 5 MB.'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.error,
         ),
       );
       return;
@@ -256,7 +256,7 @@ class _EditorProductoSheetState extends State<_EditorProductoSheet> {
           content: Text(
             'Formato no permitido. Usa JPG, PNG o WebP.',
           ),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.error,
         ),
       );
       return;
@@ -349,7 +349,7 @@ class _EditorProductoSheetState extends State<_EditorProductoSheet> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text('No se pudo eliminar la imagen: $e'),
-                backgroundColor: Colors.orange,
+                backgroundColor: AppColors.warning,
               ),
             );
           }
@@ -374,7 +374,7 @@ class _EditorProductoSheetState extends State<_EditorProductoSheet> {
             SnackBar(
               content: Text(msg),
               backgroundColor:
-                  e.toString().contains('503') ? Colors.orange : Colors.red,
+                  e.toString().contains('503') ? AppColors.warning : AppColors.error,
             ),
           );
           // El producto sí fue creado/actualizado; cerramos igualmente.
@@ -573,35 +573,40 @@ class _EditorProductoSheetState extends State<_EditorProductoSheet> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // ── Área principal: tap abre galería ──────────────────────────────
-        GestureDetector(
-          onTap: () => _seleccionarImagen(),
-          child: Container(
-            height: 180,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.07),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: _kBorder),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: hayBytesNuevos
-                ? Image.memory(
-                    _imagenBytesNueva!,
-                    fit: BoxFit.cover,
-                  )
-                : hayUrlExistente
-                ? CachedNetworkImage(
-                    imageUrl: _imagenUrlActual!,
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => const Center(
-                      child: CircularProgressIndicator(
-                        color: Colors.white54,
-                        strokeWidth: 2,
+        Semantics(
+          label: 'Seleccionar imagen del plato',
+          button: true,
+          child: GestureDetector(
+            onTap: () => _seleccionarImagen(),
+            child: Container(
+              height: 180,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.07),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: _kBorder),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: hayBytesNuevos
+                  ? Image.memory(
+                      _imagenBytesNueva!,
+                      fit: BoxFit.cover,
+                    )
+                  : hayUrlExistente
+                  ? CachedNetworkImage(
+                      imageUrl: _imagenUrlActual!,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => const Center(
+                        child: CircularProgressIndicator(
+                          color: Colors.white54,
+                          strokeWidth: 2,
+                        ),
                       ),
-                    ),
-                    errorWidget: (context, url, error) => _placeholderImagen(),
-                  )
-                : _placeholderImagen(),
+                      errorWidget: (context, url, error) =>
+                          _placeholderImagen(),
+                    )
+                  : _placeholderImagen(),
+            ),
           ),
         ),
 
@@ -835,6 +840,7 @@ class _EditorProductoSheetState extends State<_EditorProductoSheet> {
             ),
           ),
           IconButton(
+            tooltip: 'Cerrar',
             icon: const Icon(Icons.close, color: Colors.white60),
             onPressed: () => Navigator.pop(context, false),
           ),
@@ -1075,6 +1081,7 @@ class _EditorProductoSheetState extends State<_EditorProductoSheet> {
               height: 44,
               child: IconButton(
                 padding: EdgeInsets.zero,
+                tooltip: 'Eliminar ingrediente',
                 icon: Icon(
                   Icons.delete_outline,
                   color: AppColors.error.withValues(alpha: 0.8),
@@ -1300,6 +1307,7 @@ class _SelectorIngredientesSheetState
                 prefixIcon: const Icon(Icons.search, color: Colors.white60),
                 suffixIcon: _query.isNotEmpty
                     ? IconButton(
+                        tooltip: 'Limpiar búsqueda',
                         icon: const Icon(
                           Icons.clear,
                           color: Colors.white60,

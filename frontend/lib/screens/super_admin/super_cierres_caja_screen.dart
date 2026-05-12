@@ -111,7 +111,7 @@ class _SuperCierresCajaScreenState extends State<SuperCierresCajaScreen> {
         data: ThemeData.dark().copyWith(
           colorScheme: const ColorScheme.dark(
             primary: AppColors.button,
-            surface: Color(0xFF1A1A1A),
+            surface: AppColors.bottomSheetBg,
           ),
         ),
         child: child!,
@@ -291,7 +291,7 @@ class _SuperCierresCajaScreenState extends State<SuperCierresCajaScreen> {
                     const Text(
                       'SUCURSAL',
                       style: TextStyle(
-                        fontSize: 9,
+                        fontSize: 11,
                         fontWeight: FontWeight.w800,
                         color: Colors.white54,
                         letterSpacing: 1.4,
@@ -336,7 +336,7 @@ class _SuperCierresCajaScreenState extends State<SuperCierresCajaScreen> {
                   const Text(
                     'FECHA',
                     style: TextStyle(
-                      fontSize: 9,
+                      fontSize: 11,
                       fontWeight: FontWeight.w800,
                       color: Colors.white54,
                       letterSpacing: 1.4,
@@ -445,7 +445,7 @@ class _CierreCard extends StatelessWidget {
     if (descuadre == 0) {
       colorDescuadre = AppColors.disp;
     } else if (descuadre.abs() <= 5) {
-      colorDescuadre = Colors.amber;
+      colorDescuadre = AppColors.warning;
     } else {
       colorDescuadre = AppColors.error;
     }
@@ -556,7 +556,7 @@ class _CierreCard extends StatelessWidget {
               child: Text(
                 'VER DETALLE →',
                 style: TextStyle(
-                  fontSize: 10,
+                  fontSize: 12,
                   fontWeight: FontWeight.w800,
                   color: AppColors.button,
                   letterSpacing: 1.2,
@@ -576,7 +576,7 @@ class _CierreCard extends StatelessWidget {
       color = AppColors.disp;
       label = 'ABIERTO';
     } else if (estado == 'cerrado') {
-      color = Colors.blue.shade400;
+      color = AppColors.info;
       label = 'CERRADO';
     } else {
       color = Colors.white38;
@@ -593,7 +593,7 @@ class _CierreCard extends StatelessWidget {
         label,
         style: TextStyle(
           color: color,
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: FontWeight.bold,
           letterSpacing: 0.8,
         ),
@@ -663,7 +663,7 @@ class _SelectorSucursalSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
-        color: Color(0xFF111111),
+        color: AppColors.backgroundDark,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: SafeArea(

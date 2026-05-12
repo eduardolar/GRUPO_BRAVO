@@ -533,7 +533,7 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
               hoy ? 'HOY' : _diasAbrev[fecha.weekday - 1],
               style: TextStyle(
                 color: seleccionada ? Colors.white : Colors.white60,
-                fontSize: 10,
+                fontSize: 12,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 1,
               ),
@@ -553,7 +553,7 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
               _mesesAbrev[fecha.month - 1],
               style: TextStyle(
                 color: seleccionada ? Colors.white70 : Colors.white54,
-                fontSize: 10,
+                fontSize: 12,
                 letterSpacing: 0.5,
               ),
             ),
