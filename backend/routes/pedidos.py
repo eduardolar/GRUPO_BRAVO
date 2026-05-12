@@ -715,7 +715,15 @@ def actualizar_estado_pago(
     )
     if result.matched_count == 0:
         raise NotFoundError("Pedido no encontrado con esa referencia de pago")
-    return {"updated": result.modified_count > 0}
+
+    # Devolvemos el pedido_id para que el frontend pueda navegar a la pantalla
+    # de seguimiento usando el ObjectId real (no el session_id de Stripe).
+    actualizado = coleccion_pedidos.find_one(filtro, {"_id": 1})
+    pedido_id = str(actualizado["_id"]) if actualizado else None
+    return {
+        "updated": result.modified_count > 0,
+        "pedido_id": pedido_id,
+    }
 
 
 @router.patch("/{pedido_id}/estado")
@@ -1513,8 +1521,34 @@ def obtener_resumen_pedidos(
             "porcentaje": pct,
         })
 
+    # Merge final por nombre normalizado: items legacy sin producto_id se
+    # agrupaban en un bucket distinto del que tiene pid, produciendo entradas
+    # duplicadas en el top (p. ej. "Refresco" aparecía dos veces). Aquí
+    # consolidamos por nombre lowercase, prefiriendo conservar el producto_id
+    # del bucket que sí lo tenga.
+    productos_unificados: dict[str, dict] = {}
+    for bucket in productos.values():
+        nombre_norm = bucket["nombre"].strip().lower()
+        existente = productos_unificados.get(nombre_norm)
+        if existente is None:
+            productos_unificados[nombre_norm] = {
+                "producto_id": bucket.get("producto_id"),
+                "nombre": bucket["nombre"],
+                "unidades": bucket["unidades"],
+                "ingresos": bucket["ingresos"],
+            }
+        else:
+            existente["unidades"] += bucket["unidades"]
+            existente["ingresos"] += bucket["ingresos"]
+            # Preferimos conservar un producto_id real si alguno de los dos
+            # buckets lo trae; así el frontend puede enlazar a la ficha.
+            if not existente.get("producto_id") and bucket.get("producto_id"):
+                existente["producto_id"] = bucket["producto_id"]
+
     # Top 10 productos ordenados desc por unidades
-    top_productos = sorted(productos.values(), key=lambda x: x["unidades"], reverse=True)[:10]
+    top_productos = sorted(
+        productos_unificados.values(), key=lambda x: x["unidades"], reverse=True
+    )[:10]
     for tp in top_productos:
         tp["ingresos"] = round(tp["ingresos"], 2)
 

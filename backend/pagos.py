@@ -80,7 +80,12 @@ class CheckoutSessionCreate(BaseModel):
     cancel_url: str
 
 class PayPalOrderCreate(BaseModel):
-    pedido_id: str
+    # Mismo patrón que Stripe Checkout: pedido_id es opcional. El flujo cliente
+    # del frontend crea el pedido DESPUÉS de que el pago se confirma, así que
+    # en la primera llamada solo se conoce el total. Si llega pedido_id, se
+    # autoriza propiedad y el total se lee de BD (seguro contra manipulación).
+    pedido_id: Optional[str] = None
+    total: Optional[float] = Field(default=None, ge=0)
     currency: str = "EUR"
 
 class PayPalCaptureRequest(BaseModel):
@@ -517,8 +522,20 @@ async def crear_orden_paypal(
     payload: PayPalOrderCreate,
     current_user: dict = Depends(get_current_user),
 ):
-    _autorizar_pedido(payload.pedido_id, current_user)
-    total = _total_pedido(payload.pedido_id)
+    # Si llega pedido_id: autorizamos propiedad y leemos total de BD (seguro
+    # contra manipulación del importe). Si no llega: usamos el total que
+    # mandó el frontend — caso del flujo cliente, que crea el pedido DESPUÉS
+    # de que el pago se captura (mismo patrón que Stripe Checkout).
+    if payload.pedido_id:
+        _autorizar_pedido(payload.pedido_id, current_user)
+        total = _total_pedido(payload.pedido_id)
+    else:
+        if payload.total is None or payload.total <= 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Proporciona pedido_id o un total válido",
+            )
+        total = float(payload.total)
     logger.info(
         "payment.paypal.create_order sub=%s correo=%s pedido_id=%s monto=%.2f",
         current_user.get("sub"), current_user.get("correo"), payload.pedido_id, total,

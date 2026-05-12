@@ -102,7 +102,13 @@ class _InicioScreenState extends State<InicioScreen> {
         sessionId: sessionId,
       );
       if (!mounted || !pagado) return;
-      await ApiService.actualizarEstadoPago(referenciaPago: sessionId);
+      // El backend resuelve el ObjectId real del pedido a partir de la
+      // referencia_pago (session_id de Stripe) y nos lo devuelve. Lo usamos
+      // como pedidoId para que la pantalla de confirmación pueda hacer
+      // polling de estado y mostrar el código real `#XXXXXX`.
+      final pedidoIdReal = await ApiService.actualizarEstadoPago(
+        referenciaPago: sessionId,
+      );
       if (!mounted) return;
       navigator.push(
         AppRoute.reveal(
@@ -110,7 +116,7 @@ class _InicioScreenState extends State<InicioScreen> {
             tipoEntrega: _stripeEntrega,
             tipoPago: 'Tarjeta',
             total: _stripeTotal,
-            pedidoId: sessionId,
+            pedidoId: pedidoIdReal,
           ),
         ),
       );

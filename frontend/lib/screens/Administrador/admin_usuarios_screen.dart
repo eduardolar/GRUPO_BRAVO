@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../components/admin/admin_max_width.dart';
 import '../../components/bravo_app_bar.dart';
 import '../../core/colors_style.dart';
 import '../../models/usuario_model.dart';
@@ -393,7 +394,7 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen>
                 ? const Center(
                     child: CircularProgressIndicator(color: AppColors.button),
                   )
-                : _buildContenido(),
+                : AdminMaxWidth(child: _buildContenido()),
           ),
         ),
       ),

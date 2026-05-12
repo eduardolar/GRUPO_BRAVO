@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:frontend/components/admin/admin_max_width.dart';
 import 'package:frontend/components/shared/estado_chip.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/models/mesa_model.dart';
@@ -531,7 +532,8 @@ class _AdminMesasScreenState extends State<AdminMesasScreen> {
             ),
           ),
           SafeArea(
-            child: Column(
+            child: AdminMaxWidth(
+              child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // ── Header ──────────────────────────────────────────────────
@@ -687,6 +689,7 @@ class _AdminMesasScreenState extends State<AdminMesasScreen> {
                         ),
                 ),
               ],
+              ),
             ),
           ),
         ],

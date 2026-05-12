@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:frontend/components/admin/admin_max_width.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/models/ingrediente_model.dart';
 import 'package:frontend/providers/auth_provider.dart';
@@ -317,7 +318,8 @@ class _AdminStockScreenState extends State<AdminStockScreen> {
             ),
           ),
           SafeArea(
-            child: Column(
+            child: AdminMaxWidth(
+              child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildStatsRow(bajoCant),
@@ -351,6 +353,7 @@ class _AdminStockScreenState extends State<AdminStockScreen> {
                         ),
                 ),
               ],
+              ),
             ),
           ),
         ],

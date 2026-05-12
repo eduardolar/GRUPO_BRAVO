@@ -1,5 +1,6 @@
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:frontend/components/admin/admin_max_width.dart';
 import 'package:frontend/core/app_snackbar.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/screens/Administrador/admin_cierre_detalle_screen.dart';
@@ -188,7 +189,7 @@ class _AdminCierreCajaScreenState extends State<AdminCierreCajaScreen> {
               ),
             ),
           ),
-          SafeArea(child: _buildBody()),
+          SafeArea(child: AdminMaxWidth(child: _buildBody())),
         ],
       ),
     );

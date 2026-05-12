@@ -859,7 +859,16 @@ class _DialogConfirmacion extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
+    // Envolvemos en Semantics para que el a11y tree exponga "Iniciar pedido
+    // en Mesa N · ubicación · capacidad". Antes, lectores de pantalla y
+    // herramientas E2E solo veían los botones CANCELAR/CONFIRMAR sin contexto.
+    return Semantics(
+      container: true,
+      label:
+          'Confirmar inicio de pedido en Mesa ${mesa.numero}. '
+          '$_ubicacionLabel, capacidad para ${mesa.capacidad} personas. '
+          'Al confirmar, la mesa quedará marcada como ocupada.',
+      child: Dialog(
       backgroundColor: AppColors.panel,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: Padding(
@@ -963,6 +972,7 @@ class _DialogConfirmacion extends StatelessWidget {
           ],
         ),
       ),
+    ),
     );
   }
 }
