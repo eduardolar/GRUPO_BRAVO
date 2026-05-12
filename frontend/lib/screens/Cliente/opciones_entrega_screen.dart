@@ -13,6 +13,7 @@ import '../../models/opciones_pedido.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/cart_provider.dart';
 import '../../services/api_service.dart';
+import '../../services/cupon_service.dart';
 import 'direccion_screen.dart';
 import 'opciones_entrega/components/components.dart';
 import 'pedido_confirmado_screen.dart';
@@ -71,6 +72,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
   final _controladorCupon = TextEditingController();
 
   String? _cuponAplicado;
+  String? _cuponIdAplicado;
   String? _errorCupon;
   bool _validandoCupon = false;
   double _descuentoCuponAplicado = 0.0;
@@ -118,17 +120,21 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
 
     try {
       final cart = context.read<CartProvider>();
-      final resp = _validarCuponLocal(
+      final resp = await CuponService.validar(
         codigo: codigo,
         subtotal: cart.totalPrice,
         costeEnvio: _costeEnvio(),
+        restauranteId: cart.restauranteId,
       );
+
+      if (!mounted) return;
 
       final valido = resp['valido'] == true;
       if (!valido) {
         setState(() {
           _validandoCupon = false;
           _cuponAplicado = null;
+          _cuponIdAplicado = null;
           _descuentoCuponAplicado = 0.0;
           _errorCupon = (resp['mensaje'] ?? 'Cupón no válido').toString();
         });
@@ -136,10 +142,12 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       }
 
       final descuento = (resp['descuento'] as num?)?.toDouble() ?? 0.0;
+      final id = resp['id']?.toString();
 
       setState(() {
         _validandoCupon = false;
         _cuponAplicado = codigo;
+        _cuponIdAplicado = id;
         _descuentoCuponAplicado = descuento;
         _errorCupon = null;
         _controladorCupon.text = codigo;
@@ -154,6 +162,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       setState(() {
         _validandoCupon = false;
         _cuponAplicado = null;
+        _cuponIdAplicado = null;
         _descuentoCuponAplicado = 0.0;
         _errorCupon = 'No se pudo validar el cupón';
       });
@@ -163,42 +172,25 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
   void _quitarCupon() {
     setState(() {
       _cuponAplicado = null;
+      _cuponIdAplicado = null;
       _errorCupon = null;
       _descuentoCuponAplicado = 0.0;
       _controladorCupon.clear();
     });
   }
 
-  Map<String, dynamic> _validarCuponLocal({
-    required String codigo,
-    required double subtotal,
-    required double costeEnvio,
-  }) {
-    switch (codigo) {
-      case 'DESC10':
-        return {
-          'valido': true,
-          'descuento': subtotal * 0.10,
-          'mensaje': 'Cupón válido',
-        };
-      case 'DESC20':
-        return {
-          'valido': true,
-          'descuento': subtotal * 0.20,
-          'mensaje': 'Cupón válido',
-        };
-      case 'ENVIOGRATIS':
-        return {
-          'valido': true,
-          'descuento': costeEnvio,
-          'mensaje': 'Cupón válido',
-        };
-      default:
-        return {
-          'valido': false,
-          'descuento': 0.0,
-          'mensaje': 'Cupón no válido o caducado',
-        };
+  /// Descuenta un uso del cupón aplicado en el backend tras crear el pedido.
+  /// Silencia errores: si falla no debe abortar la confirmación del pedido,
+  /// pero limpiamos el estado para no volver a intentarlo en este flujo.
+  Future<void> _consumirCuponAplicado() async {
+    final id = _cuponIdAplicado;
+    if (id == null || id.isEmpty) return;
+    try {
+      await CuponService.registrarUso(id);
+    } catch (e) {
+      debugPrint('No se pudo registrar el uso del cupón: $e');
+    } finally {
+      _cuponIdAplicado = null;
     }
   }
 
@@ -717,7 +709,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
                         ),
                         Switch(
                           value: _usarPuntos,
-                          activeColor: Colors.amber,
+                          activeThumbColor: Colors.amber,
                           onChanged: (val) {
                             setState(() {
                               _usarPuntos = val;
@@ -1077,6 +1069,9 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       }
       if (!mounted) return;
 
+      await _consumirCuponAplicado();
+      if (!mounted) return;
+
       // Limpiar el carrito sólo cuando el pago está confirmado
       context.read<CartProvider>().clearCart();
 
@@ -1243,6 +1238,8 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
 
       final pedidoId =
           resultado['id']?.toString() ?? resultado['pedido_id']?.toString();
+
+      await _consumirCuponAplicado();
 
       cart.clearCart();
 

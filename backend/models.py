@@ -309,7 +309,7 @@ class RestauranteActualizar(BaseModel):
 class UsuarioResponse(BaseModel):
     id: str
     nombre: str
-    correo: EmailStr
+    correo: CorreoStr
     telefono: str
     direccion: str
     rol: str
