@@ -1,7 +1,32 @@
 import re
 from enum import Enum
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
-from typing import Any, Dict, List, Optional
+from typing import Annotated, Any, Dict, List, Optional
+
+from email_validator import EmailNotValidError, validate_email
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validator
+
+import config
+
+
+def _validar_correo(value: str) -> str:
+    """Valida un correo. En entornos no-producción permite TLDs reservados
+    (.test, .localhost, etc.) para facilitar pruebas E2E sin emails reales.
+    Siempre normaliza a minúsculas el dominio.
+    """
+    try:
+        result = validate_email(
+            value,
+            test_environment=not config.IS_PRODUCTION,
+            check_deliverability=False,
+        )
+    except EmailNotValidError as exc:
+        raise ValueError(str(exc)) from exc
+    return result.normalized
+
+
+# Tipo de correo permisivo en dev/test y estricto en prod. Sustituye a EmailStr
+# cuando se quiera aceptar dominios reservados durante pruebas.
+CorreoStr = Annotated[str, AfterValidator(_validar_correo)]
 
 
 # ── Enums ─────────────────────────────────────────────────────────────────────
@@ -14,7 +39,10 @@ class TipoEntrega(str, Enum):
 
 class MetodoPago(str, Enum):
     efectivo = "efectivo"
+    # tarjeta_fisica = TPV físico operado por el camarero (cobro en sala).
+    # tarjeta legacy (= TPV) se mantiene por compatibilidad con pedidos antiguos.
     tarjeta = "tarjeta"
+    tarjeta_fisica = "tarjeta_fisica"
     paypal = "paypal"
     google_pay = "google_pay"
     apple_pay = "apple_pay"
@@ -41,7 +69,7 @@ class ItemPedido(BaseModel):
 class UsuarioRegistro(BaseModel):
     nombre: str
     password: str = Field(..., min_length=8)
-    correo: EmailStr
+    correo: CorreoStr
     telefono: str
     direccion: str
     rol: str = "cliente"
@@ -90,6 +118,9 @@ class PedidoCrear(BaseModel):
     referenciaPago: Optional[str] = None
     estadoPago: Optional[EstadoPago] = EstadoPago.pendiente
     restauranteId: Optional[str] = None
+    # Prioridad para cocina: pedidos urgentes (cliente con prisa, alergia, etc.)
+    # se destacan en la pantalla del cocinero con un banner rojo.
+    prioritario: bool = False
 
     @field_validator("tipoEntrega", mode="before")
     @classmethod
@@ -142,7 +173,11 @@ class VerificarRecuperacion(BaseModel):
 
 
 class ReservaCrear(BaseModel):
-    usuarioId: str
+    # Opcional: cliente registrado lo manda con su id; camarero/admin
+    # creando "walk-in" para alguien sin cuenta no lo manda. El backend
+    # fuerza el sub del JWT cuando el actor es cliente (no se confía en
+    # lo que envíe).
+    usuarioId: Optional[str] = None
     nombreCompleto: str
     fecha: str
     hora: str
@@ -229,7 +264,7 @@ class ProductoCrear(BaseModel):
 
     #Validacion para verficar login 2 FA.
 class VerificarLogin2FA(BaseModel):
-    correo: EmailStr
+    correo: CorreoStr
     codigo: str
 
 

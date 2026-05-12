@@ -3,6 +3,8 @@ import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
+from bson import ObjectId
+from bson.errors import InvalidId
 from fastapi import Depends, HTTPException, Header
 from jose import JWTError, jwt
 
@@ -64,10 +66,51 @@ def _decodificar_token(token: str) -> dict:
 
 
 def get_current_user(authorization: Optional[str] = Header(None)) -> dict:
+    """Decodifica el JWT y revalida el estado del usuario contra la BD.
+
+    Además de verificar la firma y expiración del token, realiza un lookup
+    ligero en `coleccion_usuarios` para garantizar que:
+      - El usuario sigue existiendo (no fue borrado físicamente).
+      - La cuenta está activa (`activo != False`).
+      - El rol actual de BD se usa si difiere del del JWT (cambio de rol en caliente).
+
+    Tradeoff: añade un `find_one` por cada request autenticado.
+    Para el tamaño actual del proyecto (dev/MVP) es asumible.
+    En producción con carga alta conviene cachear con TTL corto (Redis o
+    lru_cache con ttl) para no saturar MongoDB con lecturas de sesión.
+    """
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Autenticación requerida")
     token = authorization.removeprefix("Bearer ").strip()
-    return _decodificar_token(token)
+    payload = _decodificar_token(token)
+
+    # Lookup ligero: solo leemos activo y rol para minimizar I/O
+    from database import coleccion_usuarios  # import local para evitar ciclo
+
+    sub = payload.get("sub", "")
+    try:
+        oid = ObjectId(sub)
+    except (InvalidId, TypeError):
+        raise HTTPException(status_code=401, detail="Sesión inválida, vuelve a entrar")
+
+    doc = coleccion_usuarios.find_one({"_id": oid}, {"activo": 1, "rol": 1})
+    if doc is None:
+        raise HTTPException(status_code=401, detail="Sesión inválida, vuelve a entrar")
+    if doc.get("activo") is False:
+        raise HTTPException(status_code=401, detail="Cuenta suspendida")
+
+    # Si el admin cambió el rol del usuario mientras tenía sesión abierta,
+    # forzamos el rol de BD para que require_role lo evalúe correctamente.
+    rol_bd = normalizar_rol(doc.get("rol", ""))
+    rol_jwt = normalizar_rol(payload.get("rol", ""))
+    if rol_bd and rol_bd != rol_jwt:
+        logger.warning(
+            "Rol en BD (%r) difiere del JWT (%r) para sub=%s — se usa el de BD",
+            rol_bd, rol_jwt, sub,
+        )
+        payload["rol"] = rol_bd
+
+    return payload
 
 
 def require_role(roles: list[str]):

@@ -133,7 +133,7 @@ class _PedidoConfirmadoScreenState extends State<PedidoConfirmadoScreen>
     _fadeAnim = CurvedAnimation(parent: _ctrl, curve: Curves.easeIn);
     _ctrl.forward();
 
-    if (widget.pedidoId != null) {
+    if (_pedidoIdEsValido) {
       _pollEstado();
       _pollTimer = Timer.periodic(_kPollInterval, (_) => _pollEstado());
     }
@@ -155,8 +155,17 @@ class _PedidoConfirmadoScreenState extends State<PedidoConfirmadoScreen>
     super.dispose();
   }
 
+  /// Acepta polling solo si el pedidoId tiene forma de ObjectId Mongo
+  /// (24 caracteres hexadecimales). Antes recibíamos también session_id de
+  /// Stripe (`cs_test_…`) y el backend respondía 422 cuatro veces tras pagar.
+  bool get _pedidoIdEsValido {
+    final id = widget.pedidoId;
+    if (id == null || id.isEmpty) return false;
+    return RegExp(r'^[a-fA-F0-9]{24}$').hasMatch(id);
+  }
+
   Future<void> _pollEstado() async {
-    if (widget.pedidoId == null) return;
+    if (!_pedidoIdEsValido) return;
     try {
       final pedido = await ApiService.obtenerPedido(widget.pedidoId!);
       if (!mounted) return;
@@ -542,7 +551,7 @@ class _PanelDetalles extends StatelessWidget {
                   'TOTAL',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.45),
-                    fontSize: 10,
+                    fontSize: 12,
                     letterSpacing: 2.0,
                     fontWeight: FontWeight.w600,
                   ),
@@ -683,7 +692,7 @@ class _SeguimientoWidget extends StatelessWidget {
             'SEGUIMIENTO',
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.45),
-              fontSize: 10,
+              fontSize: 12,
               letterSpacing: 2.0,
               fontWeight: FontWeight.w600,
             ),
@@ -719,7 +728,7 @@ class _SeguimientoWidget extends StatelessWidget {
                         color: p.hecho || p.actual
                             ? Colors.white.withValues(alpha: 0.85)
                             : Colors.white.withValues(alpha: 0.30),
-                        fontSize: 9,
+                        fontSize: 12,
                         fontWeight: p.actual
                             ? FontWeight.w700
                             : FontWeight.w400,
@@ -798,7 +807,7 @@ class _ResumenArticulos extends StatelessWidget {
               'RESUMEN DEL PEDIDO',
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.45),
-                fontSize: 10,
+                fontSize: 12,
                 letterSpacing: 2.0,
                 fontWeight: FontWeight.w600,
               ),
@@ -866,7 +875,7 @@ class _FilaItem extends StatelessWidget {
                     'Sin: ${sin.join(', ')}',
                     style: const TextStyle(
                       color: AppColors.excludedIngredient,
-                      fontSize: 10,
+                      fontSize: 12,
                       fontStyle: FontStyle.italic,
                     ),
                   ),
@@ -912,7 +921,7 @@ class _FilaDetalle extends StatelessWidget {
             etiqueta,
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.45),
-              fontSize: 10,
+              fontSize: 12,
               letterSpacing: 1.8,
               fontWeight: FontWeight.w600,
             ),

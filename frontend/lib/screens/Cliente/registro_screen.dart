@@ -9,6 +9,7 @@ import '../../core/app_snackbar.dart';
 import '../../core/colors_style.dart';
 import '../../models/destino_login.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/http_client.dart';
 import 'login_screen.dart';
 import 'verificacion_screen.dart';
 
@@ -118,7 +119,11 @@ class _RegistroScreenState extends State<RegistroScreen> {
 
   String? _validarEmail(String? v) {
     if (v == null || v.trim().isEmpty) return 'Introduce tu correo';
-    final regex = RegExp(r'^[\w.+\-]+@[\w\-]+\.[a-z]{2,}$', caseSensitive: false);
+    // Acepta subdominios (p.ej. eln0001@alu.medac.es, foo@bar.co.uk).
+    final regex = RegExp(
+      r'^[\w.+\-]+@([\w\-]+\.)+[a-z]{2,}$',
+      caseSensitive: false,
+    );
     if (!regex.hasMatch(v.trim())) return 'Correo electrónico no válido';
     return null;
   }
@@ -135,6 +140,11 @@ class _RegistroScreenState extends State<RegistroScreen> {
     if (v.length < 8) return 'Mínimo 8 caracteres';
     if (!RegExp(r'[A-Z]').hasMatch(v)) return 'Debe incluir una mayúscula';
     if (!RegExp(r'[0-9]').hasMatch(v)) return 'Debe incluir un número';
+    // Alineado con el backend (models.UsuarioRegistro): exige también un
+    // carácter no alfanumérico para que el front y back no diverjan en la
+    // política de contraseñas — antes, el back rechazaba lo que el front
+    // aceptaba.
+    if (!RegExp(r'[^\w\s]').hasMatch(v)) return 'Debe incluir un símbolo';
     return null;
   }
 
@@ -142,6 +152,37 @@ class _RegistroScreenState extends State<RegistroScreen> {
     if (v == null || v.isEmpty) return 'Campo requerido';
     if (v != _ctrl.passwordCtrl.text) return 'Las contraseñas no coinciden';
     return null;
+  }
+
+  /// Traduce errores 422/400 del backend a algo legible para el cliente final.
+  /// El backend manda detalles como "password: Value error, La contraseña…" o
+  /// "correo: value is not a valid email address: …". Aquí limpiamos prefijos
+  /// y mapeamos los casos conocidos.
+  String _resumirMensaje422(String raw) {
+    final lower = raw.toLowerCase();
+    if (lower.contains('valid email') ||
+        lower.contains('special-use') ||
+        lower.contains('reserved name')) {
+      return 'El correo no es válido o usa un dominio no permitido.';
+    }
+    if (lower.contains('contraseña debe tener') ||
+        lower.contains('password')) {
+      // El backend ya entrega un texto explicativo; quitamos el prefijo
+      // "password: Value error, " si está presente.
+      final limpio = raw
+          .replaceFirst(RegExp(r'^password:\s*Value error,\s*'), '')
+          .replaceFirst(RegExp(r';.*$'), '')
+          .trim();
+      return limpio.isEmpty
+          ? 'La contraseña no cumple los requisitos.'
+          : limpio;
+    }
+    if (lower.contains('consentimiento') || lower.contains('rgpd')) {
+      return 'Debes aceptar la Política de Privacidad.';
+    }
+    // Mensaje de fallback con el texto crudo: prioriza informar al usuario
+    // sobre el motivo real antes que un mensaje genérico.
+    return raw.length > 200 ? '${raw.substring(0, 197)}…' : raw;
   }
 
   // ── Navegación entre pasos ─────────────────────────────────────────────────
@@ -196,26 +237,46 @@ class _RegistroScreenState extends State<RegistroScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      final msg = e.toString().toLowerCase();
-      if (msg.contains('409') ||
-          msg.contains('ya existe') ||
-          msg.contains('duplicate') ||
-          msg.contains('correo')) {
-        showAppInfo(
-          context,
-          'Ya existe una cuenta con ese correo. ¿Quieres iniciar sesión?',
-          action: SnackBarAction(
-            label: 'IR AL LOGIN',
-            textColor: Colors.white,
-            onPressed: () => Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (_) => LoginScreen(destino: widget.destino),
+      // Discriminamos por código HTTP y no por subcadenas del mensaje: el
+      // backend devuelve 409 cuando el correo ya está registrado y 422 cuando
+      // falla la validación (correo inválido, contraseña sin símbolo, etc.).
+      // Antes, msg.contains('correo') matcheaba ambos casos y siempre mostraba
+      // "Ya existe esa cuenta" aunque el 422 fuera por otro motivo.
+      if (e is ApiException) {
+        if (e.statusCode == 409) {
+          showAppInfo(
+            context,
+            'Ya existe una cuenta con ese correo. ¿Quieres iniciar sesión?',
+            action: SnackBarAction(
+              label: 'IR AL LOGIN',
+              textColor: Colors.white,
+              onPressed: () => Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => LoginScreen(destino: widget.destino),
+                ),
               ),
             ),
-          ),
-        );
-      } else if (msg.contains('socketexception') ||
+          );
+        } else if (e.statusCode == 422 || e.statusCode == 400) {
+          // Mostramos el detalle real del backend para que el usuario sepa
+          // qué corregir (TLD reservado, contraseña sin símbolo, etc.).
+          showAppError(context, _resumirMensaje422(e.message));
+        } else if (e.statusCode == 429) {
+          showAppError(
+            context,
+            'Demasiados intentos. Espera un momento e inténtalo de nuevo.',
+          );
+        } else {
+          showAppError(
+            context,
+            'No pudimos crear tu cuenta. Inténtalo de nuevo.',
+          );
+        }
+        return;
+      }
+      final msg = e.toString().toLowerCase();
+      if (msg.contains('socketexception') ||
           msg.contains('sin conexión') ||
           msg.contains('network')) {
         showAppError(
@@ -493,7 +554,7 @@ class _Paso2 extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(bottom: 12, top: 2),
                 child: Text(
-                  'Mínimo 8 caracteres, una mayúscula y un número',
+                  'Mínimo 8 caracteres, una mayúscula, un número y un símbolo',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.55),
                     fontSize: 12,
@@ -859,7 +920,7 @@ class _PasswordStrengthBarState extends State<_PasswordStrengthBar> {
   Color get _color {
     if (_score <= 1) return AppColors.error;
     if (_score == 2) return AppColors.noDisp;
-    if (_score == 3) return const Color(0xFFD97706);
+    if (_score == 3) return AppColors.warning;
     return AppColors.disp;
   }
 

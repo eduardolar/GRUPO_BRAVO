@@ -8,11 +8,11 @@ import bcrypt
 import pyotp
 from bson import ObjectId
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 
 import config  # carga .env una sola vez (efecto de import)
 from database import coleccion_usuarios
-from models import UsuarioLogin, VerificarRecuperacion
+from models import CorreoStr, UsuarioLogin, VerificarRecuperacion
 from limiter import limiter
 from security import crear_token
 from exceptions import (
@@ -64,11 +64,11 @@ class ConfirmarEmail2FA(BaseModel):
 
 
 class Reenviar2FA(BaseModel):
-    correo: EmailStr
+    correo: CorreoStr
 
 
 class VerificarLogin2FA(BaseModel):
-    correo: EmailStr
+    correo: CorreoStr
     codigo: str
 
 

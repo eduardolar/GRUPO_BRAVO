@@ -18,29 +18,27 @@ from datetime import datetime, timezone, timedelta
 
 from bson import ObjectId
 
-from security import crear_token
+from bson import ObjectId
+from tests.tok_helpers import tok, insertar_usuario_test, TEST_OID_ADMIN
+
+# OID extra para el admin de R2 (distinto al de R1 que usa TEST_OID_ADMIN)
+_OID_ADMIN_R2 = ObjectId("bbbbbbbbbbbbbbbbbbbbbbbc")
 
 
 # ─── Helpers de tokens ────────────────────────────────────────────────────────
 
 def _tok_admin(rid: str = "R1") -> dict:
-    token = crear_token({
-        "sub": f"admin_{rid}",
-        "correo": f"admin@{rid}.com",
-        "rol": "admin",
-        "restaurante_id": rid,
-    })
-    return {"Authorization": f"Bearer {token}"}
+    if rid == "R2":
+        return tok("admin", oid=_OID_ADMIN_R2, restaurante_id=rid)
+    return tok("admin", restaurante_id=rid)
 
 
 def _tok_super() -> dict:
-    token = crear_token({"sub": "super_id", "correo": "super@bravo.com", "rol": "super_admin"})
-    return {"Authorization": f"Bearer {token}"}
+    return tok("super_admin")
 
 
 def _tok_camarero() -> dict:
-    token = crear_token({"sub": "cam_id", "correo": "cam@r1.com", "rol": "camarero", "restaurante_id": "R1"})
-    return {"Authorization": f"Bearer {token}"}
+    return tok("camarero", restaurante_id="R1")
 
 
 # ─── Helpers BD ───────────────────────────────────────────────────────────────
@@ -498,13 +496,19 @@ def test_abierto_actual_con_cierre_abierto_devuelve_200(client):
     assert data["fecha"] == hoy
 
 
-def test_abierto_actual_sin_cierre_abierto_devuelve_404(client):
-    """Si no hay ningún cierre abierto de hoy → 404."""
+def test_abierto_actual_sin_cierre_abierto_devuelve_null(client):
+    """Si no hay ningún cierre abierto de hoy → 200 + null.
+
+    Antes devolvía 404, pero el panel admin tenía que manejar el 404 como caso
+    normal. Ahora es 200 + null para diferenciar "no hay turno abierto" de un
+    error real (red/permisos).
+    """
     resp = client.get(
         "/api/v1/cierres-caja/abierto-actual?turno=cena",
         headers=_tok_admin("R1"),
     )
-    assert resp.status_code == 404
+    assert resp.status_code == 200
+    assert resp.json() is None
 
 
 def test_abierto_actual_turno_invalido_devuelve_422(client):

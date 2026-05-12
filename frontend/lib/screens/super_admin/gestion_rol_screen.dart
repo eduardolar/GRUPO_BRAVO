@@ -511,7 +511,7 @@ class _RolTile extends StatelessWidget {
                         child: Text(
                           rolLabel.toUpperCase(),
                           style: GoogleFonts.manrope(
-                            fontSize: 10,
+                            fontSize: 11,
                             fontWeight: FontWeight.w700,
                             color: Colors.white,
                             letterSpacing: 1,
@@ -522,6 +522,7 @@ class _RolTile extends StatelessWidget {
                   ),
                 ),
                 IconButton(
+                  tooltip: 'Editar rol',
                   icon: const Icon(
                     Icons.edit_outlined,
                     color: Colors.white70,

@@ -18,9 +18,9 @@ const String _apiBaseUrlOverride = String.fromEnvironment(
 String get baseUrl {
   if (_apiBaseUrlOverride.isNotEmpty) return '$_apiBaseUrlOverride/api/v1';
   const port = 8000;
-  if (kIsWeb) return 'http://localhost:$port/api/v1';
+  if (kIsWeb) return 'http://127.0.0.1:$port/api/v1';
   if (isAndroid) return 'http://10.0.2.2:$port/api/v1';
-  return 'http://localhost:$port/api/v1';
+  return 'http://127.0.0.1:$port/api/v1';
 }
 
 /// Stripe publishable key.

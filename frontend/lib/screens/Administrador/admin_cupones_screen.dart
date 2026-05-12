@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import '../../components/admin/admin_max_width.dart';
 import '../../components/bravo_app_bar.dart';
 import '../../core/colors_style.dart';
 import '../../models/cupon_model.dart';
@@ -7,7 +8,7 @@ import '../../services/cupon_service.dart';
 import '../../services/http_client.dart';
 
 // ─── Constantes de estilo ─────────────────────────────────────────────────────
-const _kSheetBg = Color(0xFF1A1A1A);
+const _kSheetBg = AppColors.bottomSheetBg;
 // Negro translúcido (alpha ~55%): sobre la imagen Bravo de fondo el blanco
 // translúcido se confundía con el papel claro y dejaba el texto invisible.
 const _kFieldFill = Color(0x8C000000);
@@ -165,8 +166,9 @@ class _AdminCuponesScreenState extends State<AdminCuponesScreen>
             ),
           ),
           child: SafeArea(
-            child: Column(
-              children: [
+            child: AdminMaxWidth(
+              child: Column(
+                children: [
                 // ─── Buscador glass ────────────────────────────────
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
@@ -223,6 +225,7 @@ class _AdminCuponesScreenState extends State<AdminCuponesScreen>
 
                 Expanded(child: _buildCuerpo()),
               ],
+            ),
             ),
           ),
         ),
@@ -508,7 +511,7 @@ class _FormularioCuponSheetState extends State<_FormularioCuponSheet> {
         data: ThemeData.dark().copyWith(
           colorScheme: const ColorScheme.dark(
             primary: AppColors.button,
-            surface: Color(0xFF1A1A1A),
+            surface: AppColors.bottomSheetBg,
           ),
         ),
         child: child!,

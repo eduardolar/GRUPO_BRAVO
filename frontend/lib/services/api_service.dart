@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
@@ -9,6 +8,7 @@ import '../models/mesa_model.dart';
 import '../models/reserva_model.dart';
 import '../models/ingrediente_model.dart';
 
+import 'api_config.dart' as api_config;
 import 'auth_service.dart';
 import 'producto_service.dart';
 import 'ingredientes_service.dart';
@@ -19,15 +19,9 @@ import 'http_client.dart';
 import 'auth_session.dart';
 
 class ApiService {
-  static String get baseUrl {
-    if (kIsWeb) {
-      return 'http://localhost:8000/api/v1';
-    }
-    if (Platform.isAndroid) {
-      return 'http://10.0.2.2:8000/api/v1';
-    }
-    return 'http://127.0.0.1:8000/api/v1';
-  }
+  // Comparte una única fuente de verdad con api_config.dart para que el
+  // override --dart-define=API_BASE_URL se respete también aquí.
+  static String get baseUrl => api_config.baseUrl;
 
   // ─── AUTH ────────────────────────────────────────────────────
 
@@ -94,8 +88,13 @@ class ApiService {
 
   // ─── PRODUCTOS ───────────────────────────────────────────────
 
-  static Future<List<Producto>> obtenerProductos({String? categoria}) =>
-      ProductoService.obtenerProductos(categoria: categoria);
+  static Future<List<Producto>> obtenerProductos({
+    String? categoria,
+    String? restauranteId,
+  }) => ProductoService.obtenerProductos(
+    categoria: categoria,
+    restauranteId: restauranteId,
+  );
 
   static Future<Producto> crearProducto(Map<String, dynamic> datos) =>
       ProductoService.crearProducto(datos);
@@ -167,6 +166,7 @@ class ApiService {
     required String estadoPago,
     String? restauranteId,
     String? idempotencyKey,
+    bool prioritario = false,
   }) => PedidoService.crearPedido(
     userId: userId,
     items: items,
@@ -181,16 +181,19 @@ class ApiService {
     estadoPago: estadoPago,
     restauranteId: restauranteId,
     idempotencyKey: idempotencyKey,
+    prioritario: prioritario,
   );
 
-  static Future<void> agregarItemsPedido({
+  static Future<Map<String, dynamic>> agregarItemsPedido({
     required String pedidoId,
     required List<Map<String, dynamic>> items,
     required double totalExtra,
+    int? version,
   }) => PedidoService.agregarItemsPedido(
     pedidoId: pedidoId,
     items: items,
     totalExtra: totalExtra,
+    version: version,
   );
 
   static Future<List<Pedido>> obtenerHistorialPedidos({
@@ -216,6 +219,14 @@ class ApiService {
   }) =>
       PedidoService.actualizarEstadoPedido(pedidoId: pedidoId, estado: estado);
 
+  static Future<void> cancelarPedido({
+    required String pedidoId,
+    required String motivoCancelacion,
+  }) => PedidoService.cancelarPedido(
+    pedidoId: pedidoId,
+    motivoCancelacion: motivoCancelacion,
+  );
+
   static Future<Map<String, dynamic>> marcarItemHecho({
     required String pedidoId,
     String? itemId,
@@ -236,14 +247,30 @@ class ApiService {
     required String pedidoId,
     required String metodoPago,
     String? idempotencyKey,
+    double? descuento,
+    double? propina,
   }) => PedidoService.cerrarPedido(
     pedidoId: pedidoId,
     metodoPago: metodoPago,
     idempotencyKey: idempotencyKey,
+    descuento: descuento,
+    propina: propina,
   );
 
-  static Future<void> marcarMesaLibre(String mesaId) =>
-      MesaService.marcarMesaLibre(mesaId);
+  static Future<void> marcarMesaLibre(
+    String mesaId, {
+    String? idempotencyKey,
+  }) => MesaService.marcarMesaLibre(mesaId, idempotencyKey: idempotencyKey);
+
+  /// Marca la mesa como pendiente de limpiar (estado intermedio entre
+  /// ocupada y libre). Tras cobrar, la mesa NO debe quedar libre directa.
+  static Future<void> marcarMesaPorLimpiar(String mesaId) =>
+      MesaService.marcarMesaPorLimpiar(mesaId);
+
+  static Future<void> marcarMesaOcupada(
+    String mesaId, {
+    String? idempotencyKey,
+  }) => MesaService.marcarMesaOcupada(mesaId, idempotencyKey: idempotencyKey);
 
   // ─── PAGOS TARJETA / STRIPE ──────────────────────────────────
 
@@ -409,7 +436,11 @@ class ApiService {
     return decodeBody(response)['paid'] == true;
   }
 
-  static Future<void> actualizarEstadoPago({
+  /// Marca el pedido identificado por [referenciaPago] como pagado. El backend
+  /// resuelve el ObjectId real del pedido a partir de la referencia y lo
+  /// devuelve para que la pantalla de confirmación pueda mostrar el código
+  /// correcto y hacer polling del estado.
+  static Future<String?> actualizarEstadoPago({
     required String referenciaPago,
     String estadoPago = 'pagado',
   }) async {
@@ -427,6 +458,9 @@ class ApiService {
     if (response.statusCode >= 400) {
       throw toApiException(response.statusCode, decodeBody(response));
     }
+    final data = decodeBody(response);
+    final id = data['pedido_id'] ?? data['pedidoId'];
+    return id is String && id.isNotEmpty ? id : null;
   }
 
   // ─── PAYPAL ──────────────────────────────────────────────────

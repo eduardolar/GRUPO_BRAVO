@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../components/admin/admin_max_width.dart';
 import '../../components/bravo_app_bar.dart';
 import '../../core/colors_style.dart';
 import '../../models/usuario_model.dart';
@@ -7,7 +8,7 @@ import '../../providers/auth_provider.dart';
 import '../../services/usuario_service.dart';
 
 // ─── Constantes de estilo ────────────────────────────────────────────────────
-const _kSheetBg = Color(0xFF1A1A1A);
+const _kSheetBg = AppColors.bottomSheetBg;
 // Negro translúcido (alpha ~55%): sobre la imagen Bravo de fondo el blanco
 // translúcido se confundía con el papel claro y dejaba el texto invisible.
 const _kFieldFill = Color(0x8C000000);
@@ -114,7 +115,7 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen>
       cuerpo:
           'Se suspenderá la cuenta de ${usuario.nombre}. Podrás reactivarla más adelante.',
       accionLabel: 'SUSPENDER',
-      accionColor: Colors.orange,
+      accionColor: AppColors.warningLight,
     );
     if (confirmar != true) return;
 
@@ -196,7 +197,7 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen>
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSt) => AlertDialog(
-          backgroundColor: const Color(0xFF1A1A1A),
+          backgroundColor: AppColors.bottomSheetBg,
           title: const Text(
             'Confirmación final',
             style: TextStyle(
@@ -297,7 +298,7 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen>
     return showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A1A),
+        backgroundColor: AppColors.bottomSheetBg,
         title: Text(
           titulo,
           style: const TextStyle(
@@ -393,7 +394,7 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen>
                 ? const Center(
                     child: CircularProgressIndicator(color: AppColors.button),
                   )
-                : _buildContenido(),
+                : AdminMaxWidth(child: _buildContenido()),
           ),
         ),
       ),
@@ -436,6 +437,7 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen>
                       const Icon(Icons.search, color: Colors.black54),
                   suffixIcon: _busqueda.isNotEmpty
                       ? IconButton(
+                          tooltip: 'Limpiar búsqueda',
                           icon: const Icon(Icons.clear,
                               color: Colors.black54),
                           onPressed: () {
@@ -526,7 +528,7 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen>
             children: [
               CircleAvatar(
                 backgroundColor:
-                    suspendido ? Colors.grey : AppColors.button,
+                    suspendido ? AppColors.lineStrong : AppColors.button,
                 child: Text(
                   usuario.nombre.isNotEmpty
                       ? usuario.nombre[0].toUpperCase()
@@ -545,7 +547,7 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen>
                     width: 12,
                     height: 12,
                     decoration: const BoxDecoration(
-                      color: Colors.grey,
+                      color: AppColors.lineStrong,
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(Icons.block,
@@ -574,16 +576,16 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen>
                   padding: const EdgeInsets.symmetric(
                       horizontal: 7, vertical: 2),
                   decoration: BoxDecoration(
-                    color: Colors.amber.withValues(alpha: 0.25),
+                    color: AppColors.warningBg,
                     borderRadius: BorderRadius.circular(6),
                     border: Border.all(
-                        color: Colors.amber.withValues(alpha: 0.7)),
+                        color: AppColors.warning.withValues(alpha: 0.7)),
                   ),
                   child: const Text(
                     'SUSPENDIDO',
                     style: TextStyle(
-                      color: Colors.amber,
-                      fontSize: 9,
+                      color: AppColors.warningText,
+                      fontSize: 11,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 1,
                     ),
@@ -658,7 +660,7 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen>
       children: [
         // Botón suspender
         IconButton(
-          icon: const Icon(Icons.block, color: Colors.orange, size: 24),
+          icon: const Icon(Icons.block, color: AppColors.warningLight, size: 24),
           tooltip: 'Suspender empleado',
           onPressed: () => _suspenderUsuario(usuario),
         ),
@@ -666,7 +668,7 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen>
         PopupMenuButton<String>(
           icon: const Icon(Icons.manage_accounts,
               color: Colors.white, size: 26),
-          color: const Color(0xFF222222),
+          color: AppColors.backgroundDark,
           tooltip: 'Cambiar rol',
           onSelected: (r) => _cambiarRol(usuario, r),
           itemBuilder: (_) => const [

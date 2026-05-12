@@ -431,7 +431,7 @@ class _SucursalHero extends StatelessWidget {
                     'SUCURSAL',
                     style: GoogleFonts.manrope(
                       color: Colors.white,
-                      fontSize: 10,
+                      fontSize: 12,
                       fontWeight: FontWeight.w600,
                       letterSpacing: 4,
                     ),
@@ -599,7 +599,7 @@ class _KpiGlassCard extends StatelessWidget {
                     child: Text(
                       label,
                       style: GoogleFonts.manrope(
-                        fontSize: 9,
+                        fontSize: 11,
                         fontWeight: FontWeight.w800,
                         color: Colors.white.withValues(alpha: 0.7),
                         letterSpacing: 1.5,

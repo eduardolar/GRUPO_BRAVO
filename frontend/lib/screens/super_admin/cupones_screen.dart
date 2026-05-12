@@ -10,13 +10,13 @@ import '../../core/colors_style.dart';
 import '../../services/restaurante_service.dart';
 
 // ─── Colores ─────────────────────────────────────────────────────────────────
-const _kCard = Color(0xFF1C1C1E);
-const _kText = Color(0xFFEAEAEA);
-const _kSub = Color(0xFF8E8E93);
-const _kGreen = Color(0xFF34C759);
-const _kRed = Color(0xFFFF3B30);
-const _kBlue = Color(0xFF0A84FF);
-const _kGranate = Color(0xFF800020); // granate para cupones globales
+const _kCard = AppColors.surfaceDark;
+const _kText = AppColors.textOnDark;
+const _kSub = AppColors.textMidGrey;
+const _kGreen = AppColors.successVibrant;
+const _kRed = AppColors.error;
+const _kBlue = AppColors.info;
+const _kGranate = AppColors.primary; // granate para cupones globales
 const _kAccent = AppColors.button;
 
 class CuponesScreen extends StatefulWidget {
@@ -145,7 +145,7 @@ class _CuponesScreenState extends State<CuponesScreen>
         title: const Row(
           children: [
             Icon(Icons.warning_amber_rounded,
-                color: Colors.amber, size: 22),
+                color: AppColors.warning, size: 22),
             SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -420,7 +420,7 @@ class _CuponesScreenState extends State<CuponesScreen>
         child: const Text(
           'GLOBAL',
           style: TextStyle(
-            fontSize: 9,
+            fontSize: 11,
             fontWeight: FontWeight.w800,
             color: _kGranate,
             letterSpacing: 1,
@@ -444,7 +444,7 @@ class _CuponesScreenState extends State<CuponesScreen>
       child: Text(
         nombre ?? 'Sucursal',
         style: const TextStyle(
-          fontSize: 9,
+          fontSize: 11,
           fontWeight: FontWeight.w800,
           color: _kBlue,
           letterSpacing: 0.8,
@@ -761,7 +761,7 @@ class _FormCrearCuponState extends State<_FormCrearCupon> {
 
     return Container(
       decoration: const BoxDecoration(
-        color: Color(0xFF111111),
+        color: AppColors.backgroundDark,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: SafeArea(
@@ -813,7 +813,7 @@ class _FormCrearCuponState extends State<_FormCrearCupon> {
                         'ALCANCE DEL CUPON',
                         style: TextStyle(
                           color: Colors.white54,
-                          fontSize: 10,
+                          fontSize: 12,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 1.4,
                         ),
@@ -859,7 +859,7 @@ class _FormCrearCuponState extends State<_FormCrearCupon> {
                                       'Todas las sucursales',
                                       style: TextStyle(
                                         color: Colors.white54,
-                                        fontSize: 10,
+                                        fontSize: 12,
                                       ),
                                       textAlign: TextAlign.center,
                                     ),
@@ -907,7 +907,7 @@ class _FormCrearCuponState extends State<_FormCrearCupon> {
                                       'Una sucursal específica',
                                       style: TextStyle(
                                         color: Colors.white54,
-                                        fontSize: 10,
+                                        fontSize: 12,
                                       ),
                                       textAlign: TextAlign.center,
                                     ),

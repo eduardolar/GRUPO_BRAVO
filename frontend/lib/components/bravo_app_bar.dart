@@ -30,6 +30,7 @@ class BravoAppBar extends StatelessWidget implements PreferredSizeWidget {
         Padding(
           padding: EdgeInsets.only(right: auth.estaAutenticado ? 0 : 16.0),
           child: IconButton(
+            tooltip: auth.estaAutenticado ? 'Mi perfil' : 'Iniciar sesión',
             icon: CircleAvatar(
               backgroundColor: Colors.white24,
               radius: 18,

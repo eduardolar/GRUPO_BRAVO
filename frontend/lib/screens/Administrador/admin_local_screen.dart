@@ -286,7 +286,7 @@ class _AdminLocalScreenState extends State<AdminLocalScreen> {
                       titulo.toUpperCase(),
                       style: const TextStyle(
                         color: Colors.white38,
-                        fontSize: 10,
+                        fontSize: 12,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 1.5,
                       ),
@@ -342,7 +342,7 @@ class _AdminLocalScreenState extends State<AdminLocalScreen> {
                       'HORARIO',
                       style: TextStyle(
                         color: Colors.white38,
-                        fontSize: 10,
+                        fontSize: 12,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 1.5,
                       ),
@@ -457,7 +457,7 @@ class _AdminLocalScreenState extends State<AdminLocalScreen> {
                       'ESTADO ACTUAL',
                       style: TextStyle(
                         color: Colors.white38,
-                        fontSize: 10,
+                        fontSize: 12,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 1.5,
                       ),

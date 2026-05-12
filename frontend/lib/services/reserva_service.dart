@@ -54,6 +54,8 @@ class ReservaService {
         mesaId: mesaAsignada.id,
         numeroMesa: mesaAsignada.numero,
         notas: notas,
+        telefonoCliente: telefonoCliente,
+        correoCliente: correoCliente,
       );
 
       MockData.reservas.add(reserva);

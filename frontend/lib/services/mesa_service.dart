@@ -137,7 +137,10 @@ class MesaService {
     }
   }
 
-  static Future<void> marcarMesaOcupada(String mesaId) async {
+  static Future<void> marcarMesaOcupada(
+    String mesaId, {
+    String? idempotencyKey,
+  }) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 200));
       final index = MockData.mesas.indexWhere((m) => m.id == mesaId);
@@ -149,10 +152,14 @@ class MesaService {
       return;
     }
 
+    final extra = <String, String>{};
+    if (idempotencyKey != null && idempotencyKey.isNotEmpty) {
+      extra['Idempotency-Key'] = idempotencyKey;
+    }
     final response = await httpWithRetry(
       () => http.patch(
         Uri.parse('$baseUrl/mesas/$mesaId'),
-        headers: AuthSession.headers(),
+        headers: AuthSession.headers(extra: extra),
         body: jsonEncode({'disponible': false}),
       ),
       retry: false,
@@ -212,7 +219,10 @@ class MesaService {
     throw toApiException(response.statusCode, decodeBody(response));
   }
 
-  static Future<void> marcarMesaLibre(String mesaId) async {
+  static Future<void> marcarMesaLibre(
+    String mesaId, {
+    String? idempotencyKey,
+  }) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 200));
       final index = MockData.mesas.indexWhere((m) => m.id == mesaId);
@@ -224,15 +234,45 @@ class MesaService {
       return;
     }
 
+    final extra = <String, String>{};
+    if (idempotencyKey != null && idempotencyKey.isNotEmpty) {
+      extra['Idempotency-Key'] = idempotencyKey;
+    }
     final response = await httpWithRetry(
       () => http.patch(
         Uri.parse('$baseUrl/mesas/$mesaId'),
-        headers: AuthSession.headers(),
+        headers: AuthSession.headers(extra: extra),
         body: jsonEncode({'disponible': true}),
       ),
       retry: false,
     );
 
+    if (response.statusCode != 200) {
+      throw toApiException(response.statusCode, decodeBody(response));
+    }
+  }
+
+  /// Marca una mesa como pendiente de limpiar tras cobrar al cliente.
+  /// La mesa NO se puede ocupar hasta que alguien la marque limpia (libre).
+  static Future<void> marcarMesaPorLimpiar(String mesaId) async {
+    if (!usarApiReal) {
+      await Future.delayed(const Duration(milliseconds: 200));
+      final index = MockData.mesas.indexWhere((m) => m.id == mesaId);
+      if (index != -1) {
+        MockData.mesas[index] = MockData.mesas[index].copyWith(
+          disponible: false,
+          estado: 'por_limpiar',
+        );
+      }
+      return;
+    }
+    final response = await httpWithRetry(
+      () => http.post(
+        Uri.parse('$baseUrl/mesas/$mesaId/marcar-por-limpiar'),
+        headers: AuthSession.headers(),
+      ),
+      retry: false,
+    );
     if (response.statusCode != 200) {
       throw toApiException(response.statusCode, decodeBody(response));
     }

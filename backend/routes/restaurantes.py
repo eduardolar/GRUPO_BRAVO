@@ -51,12 +51,16 @@ def listar_restaurantes(
         True,
         description="Si es false, excluye las sucursales suspendidas (activo=false)",
     ),
+    _user: dict = Depends(get_current_user),
 ):
     """Lista todas las sucursales.
 
     Por defecto devuelve todas (incluidas las suspendidas) para que el panel
     de super_admin las muestre. Pasa ?incluir_suspendidos=false para filtrar
     solo las activas (útil para los dropdowns de clientes y administradores).
+
+    Requiere autenticación (cualquier rol). La lista de sucursales no es
+    multi-tenant — todos los roles necesitan verla para navegación intra-app.
     """
     try:
         filtro: dict = {}
@@ -71,14 +75,24 @@ def listar_restaurantes(
         raise HTTPException(status_code=500, detail=f"Error al obtener restaurantes: {str(e)}")
 
 @router.get("/{id}")
-def obtener_restaurante(id: str):
+def obtener_restaurante(
+    id: str,
+    _user: dict = Depends(get_current_user),
+):
+    """Obtiene los datos de una sucursal por ID.
+
+    Requiere autenticación (cualquier rol).
+    """
     restaurante = coleccion_restaurantes.find_one({"_id": ObjectId(id)})
     if restaurante:
         return _serializar_restaurante(restaurante)
     raise HTTPException(status_code=404, detail="Restaurante no encontrado")
 
 @router.post("")
-def crear_restaurante(datos: RestauranteCrear):
+def crear_restaurante(
+    datos: RestauranteCrear,
+    _actor: dict = Depends(require_role(["super_admin"])),
+):
     codigo = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
     nuevo = {
         "nombre": datos.nombre.strip(),

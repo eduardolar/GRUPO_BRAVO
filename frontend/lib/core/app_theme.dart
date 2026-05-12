@@ -74,7 +74,7 @@ abstract final class AppTheme {
         letterSpacing: 1.0,
       ),
       labelSmall: manrope(
-        fontSize: 10,
+        fontSize: 11,
         fontWeight: FontWeight.w700,
         letterSpacing: 1.0,
       ),
@@ -84,12 +84,12 @@ abstract final class AppTheme {
   // ── ColorScheme ────────────────────────────────────────────────────────────
   static const ColorScheme _colorScheme = ColorScheme(
     brightness: Brightness.light,
-    primary: AppColors.button, // burdeos #800020
+    primary: AppColors.button, // burdeos #6E001B
     onPrimary: Colors.white,
-    secondary: AppColors.sombra, // burdeos oscuro #660019
+    secondary: AppColors.primaryHover, // burdeos oscuro #4D0014
     onSecondary: Colors.white,
-    surface: AppColors.background, // blanco cálido #FBF9F6
-    onSurface: AppColors.textPrimary, // casi negro #2D2D2D
+    surface: AppColors.background, // blanco #FFFFFF
+    onSurface: AppColors.textPrimary, // casi negro #1A1A1A
     error: AppColors.error,
     onError: Colors.white,
   );
@@ -117,9 +117,10 @@ abstract final class AppTheme {
   static final InputDecorationTheme _inputDecorationTheme =
       InputDecorationTheme(
         filled: true,
-        fillColor: AppColors.panel,
+        fillColor: AppColors.surface,
         labelStyle: const TextStyle(color: AppColors.textSecondary),
-        errorStyle: const TextStyle(color: AppColors.error),
+        hintStyle: const TextStyle(color: AppColors.textSecondary),
+        errorStyle: const TextStyle(color: AppColors.errorText),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 14,
@@ -127,11 +128,11 @@ abstract final class AppTheme {
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(15),
-          borderSide: const BorderSide(color: AppColors.line),
+          borderSide: const BorderSide(color: AppColors.lineStrong),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(15),
-          borderSide: const BorderSide(color: AppColors.button, width: 2),
+          borderSide: const BorderSide(color: AppColors.primary, width: 2.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(15),
@@ -145,10 +146,12 @@ abstract final class AppTheme {
 
   // ── AppBarTheme ────────────────────────────────────────────────────────────
   static AppBarTheme _appBarTheme(TextTheme tt) => AppBarTheme(
-    backgroundColor: Colors.transparent,
+    backgroundColor: AppColors.primary,
+    surfaceTintColor: AppColors.primary,
     elevation: 0,
     centerTitle: true,
-    iconTheme: const IconThemeData(color: Colors.white),
+    iconTheme: const IconThemeData(color: AppColors.textAppBar),
+    actionsIconTheme: const IconThemeData(color: AppColors.textAppBar),
     titleTextStyle: tt.headlineMedium?.copyWith(
       color: AppColors.textAppBar,
       letterSpacing: 2.0,
@@ -166,11 +169,17 @@ abstract final class AppTheme {
       inputDecorationTheme: _inputDecorationTheme,
       appBarTheme: _appBarTheme(tt),
       scaffoldBackgroundColor: AppColors.background,
+      canvasColor: AppColors.background,
+      dividerColor: AppColors.lineSubtle,
+      focusColor: AppColors.focusRing.withValues(alpha: 0.25),
+      hoverColor: AppColors.primary.withValues(alpha: 0.06),
+      splashColor: AppColors.primary.withValues(alpha: 0.10),
+      highlightColor: AppColors.primary.withValues(alpha: 0.08),
       textSelectionTheme: const TextSelectionThemeData(
         cursorColor: AppColors.button,
         selectionHandleColor: AppColors.button,
+        selectionColor: Color(0x336E001B),
       ),
-      dividerColor: AppColors.line,
     );
   }
 }

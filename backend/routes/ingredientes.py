@@ -7,6 +7,7 @@ import logging
 from database import coleccion_ingredientes, coleccion_productos, cliente
 from models import IngredienteCrear, IngredienteActualizar
 from security import get_current_user, normalizar_rol, require_role
+import audit_general as ag
 
 router = APIRouter(prefix="/ingredientes", tags=["Ingredientes"])
 logger = logging.getLogger("uvicorn")
@@ -42,7 +43,8 @@ def _oid(id_str: str) -> ObjectId:
 def _restaurante_filtrado(usuario: dict, query_rid: Optional[str]) -> Optional[str]:
     """Devuelve el restaurante_id que debe aplicarse en lecturas, forzando
     el aislamiento por sucursal. super_admin pasa libre; el resto se ata al
-    JWT. Si el JWT no lleva sucursal (legacy), no se restringe (con aviso)."""
+    JWT. Si el JWT no lleva sucursal, se rechaza la request con 400 para
+    evitar exponer ingredientes de todas las sucursales."""
     rol = normalizar_rol(usuario.get("rol", "") or "")
     if rol == "super_admin":
         # super_admin puede cruzar sucursales: usa el filtro de la query tal cual
@@ -51,14 +53,17 @@ def _restaurante_filtrado(usuario: dict, query_rid: Optional[str]) -> Optional[s
     jwt_rid = usuario.get("restaurante_id")
     if jwt_rid:
         return jwt_rid
-    # JWT sin restaurante_id (cuenta legacy): no restringimos, pero lo trazamos
+    # JWT sin restaurante_id: rechazamos en lugar de dejar pasar sin filtro
     logger.warning(
         "ingredientes lectura: usuario sin restaurante_id en JWT "
-        "(rol=%s sub=%s). No se aplica restricción por sucursal.",
+        "(rol=%s sub=%s). Rechazando request.",
         rol,
         usuario.get("sub"),
     )
-    return query_rid
+    raise HTTPException(
+        status_code=400,
+        detail="Tu cuenta no está asignada a una sucursal",
+    )
 
 
 def _exigir_misma_sucursal(ingrediente: dict, usuario: dict) -> None:
@@ -319,6 +324,36 @@ def actualizar_ingrediente(
         raise HTTPException(status_code=400, detail="No hay campos para actualizar")
     coleccion_ingredientes.update_one({"_id": oid}, {"$set": campos})
     return {"mensaje": "Ingrediente actualizado"}
+
+
+@router.post("/{ingrediente_id}/poner-a-cero", summary="Poner stock a 0 (camarero/admin/super_admin)")
+def poner_stock_a_cero(
+    ingrediente_id: str,
+    usuario: dict = Depends(require_role(["camarero", "admin", "super_admin"])),
+):
+    """Marca un ingrediente como agotado poniendo cantidad_actual = 0.
+
+    Disponible para camarero, admin y super_admin con aislamiento por sucursal.
+    El camarero solo puede actuar sobre ingredientes de su propia sucursal.
+    """
+    oid = _oid(ingrediente_id)
+    existente = coleccion_ingredientes.find_one({"_id": oid})
+    if not existente:
+        raise HTTPException(status_code=404, detail="Ingrediente no encontrado")
+    _exigir_misma_sucursal(existente, usuario)
+
+    coleccion_ingredientes.update_one({"_id": oid}, {"$set": {"cantidad_actual": 0}})
+    ag.registrar(
+        ag.INGREDIENTE_PUESTO_A_CERO,
+        actor=usuario.get("correo"),
+        objetivo=ingrediente_id,
+        detalle=f"nombre={existente.get('nombre', '')}",
+        extra={
+            "rol": normalizar_rol(usuario.get("rol", "") or ""),
+            "restaurante_id": existente.get("restaurante_id"),
+        },
+    )
+    return {"mensaje": "Stock puesto a 0", "ingrediente_id": ingrediente_id}
 
 
 @router.delete("/{ingrediente_id}", summary="Eliminar ingrediente (admin)")

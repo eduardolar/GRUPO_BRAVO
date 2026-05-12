@@ -11,39 +11,41 @@ Cubre:
 """
 from unittest.mock import MagicMock, patch
 from bson import ObjectId
+from tests.tok_helpers import tok, insertar_usuario_test, TEST_OID_CLIENTE, TEST_OID_CAMARERO
 from security import crear_token
+
+
+# OIDs fijos para clientes de prueba en reservas
+_OID_CLIENTE_1 = TEST_OID_CLIENTE
+_OID_CLIENTE_2 = ObjectId("111111111111111111111111")
+_OID_CLIENTE_PROPIO = ObjectId("222222222222222222222222")
 
 
 # ─── Helpers de tokens ────────────────────────────────────────────────────────
 
-def _tok_cliente(sub: str = "cliente_id_1") -> dict:
-    token = crear_token({"sub": sub, "correo": "cliente@test.com", "rol": "cliente"})
+def _tok_cliente(oid: ObjectId = _OID_CLIENTE_1) -> dict:
+    """Token de cliente. Acepta ObjectId o string-OID como identificador."""
+    if isinstance(oid, str):
+        # Compatibilidad: si se pasa un string que no sea OID, usar el OID_CLIENTE_1
+        try:
+            oid = ObjectId(oid)
+        except Exception:
+            oid = _OID_CLIENTE_1
+    insertar_usuario_test(oid, "cliente")
+    token = crear_token({"sub": str(oid), "correo": "cliente@test.com", "rol": "cliente"})
     return {"Authorization": f"Bearer {token}"}
 
 
 def _tok_admin(rid: str = "R1") -> dict:
-    token = crear_token({
-        "sub": "admin_id",
-        "correo": "admin@r1.com",
-        "rol": "admin",
-        "restaurante_id": rid,
-    })
-    return {"Authorization": f"Bearer {token}"}
+    return tok("admin", restaurante_id=rid)
 
 
 def _tok_super() -> dict:
-    token = crear_token({"sub": "super_id", "correo": "super@bravo.com", "rol": "super_admin"})
-    return {"Authorization": f"Bearer {token}"}
+    return tok("super_admin")
 
 
 def _tok_camarero(rid: str = "R1") -> dict:
-    token = crear_token({
-        "sub": "camarero_id",
-        "correo": "camarero@r1.com",
-        "rol": "camarero",
-        "restaurante_id": rid,
-    })
-    return {"Authorization": f"Bearer {token}"}
+    return tok("camarero", restaurante_id=rid)
 
 
 # ─── Helpers BD de test ───────────────────────────────────────────────────────
@@ -96,19 +98,19 @@ def test_post_reserva_sin_token_401(client):
 
 def test_cliente_solo_ve_sus_reservas(client):
     """Cliente que pasa usuarioId=otro_usuario solo recibe sus propias reservas."""
-    _insertar_reserva("cliente_id_1", "R1")
-    _insertar_reserva("cliente_id_2", "R1")
+    _insertar_reserva(str(_OID_CLIENTE_1), "R1")
+    _insertar_reserva(str(_OID_CLIENTE_2), "R1")
 
     # Pasa usuarioId ajeno en la query; debe ignorarse y devolver solo las suyas
     resp = client.get(
-        "/api/v1/reservas?usuarioId=cliente_id_2",
-        headers=_tok_cliente("cliente_id_1"),
+        f"/api/v1/reservas?usuarioId={_OID_CLIENTE_2}",
+        headers=_tok_cliente(_OID_CLIENTE_1),
     )
     assert resp.status_code == 200, resp.json()
     data = resp.json()
-    # Solo ve las reservas del cliente_id_1 (sub del JWT)
+    # Solo ve las reservas del _OID_CLIENTE_1 (sub del JWT)
     for r in data:
-        assert r["usuarioId"] == "cliente_id_1", f"Vio reserva ajena: {r['usuarioId']}"
+        assert r["usuarioId"] == str(_OID_CLIENTE_1), f"Vio reserva ajena: {r['usuarioId']}"
 
 
 # ─── Tests de panel admin ─────────────────────────────────────────────────────
@@ -389,7 +391,7 @@ def test_reserva_dia_abierto_acepta_hora_en_rango(client):
     resp = client.post(
         "/api/v1/reservas",
         json=_payload_reserva(rid, fecha="2026-12-01", hora="13:00"),
-        headers=_tok_cliente("u_test"),
+        headers=_tok_cliente(_OID_CLIENTE_1),
     )
     assert resp.status_code in (200, 201), resp.json()
     data = resp.json()
@@ -407,7 +409,7 @@ def test_reserva_dia_cerrado_devuelve_400(client):
     resp = client.post(
         "/api/v1/reservas",
         json=_payload_reserva(rid, fecha="2026-12-01", hora="13:00"),
-        headers=_tok_cliente("u_test"),
+        headers=_tok_cliente(_OID_CLIENTE_1),
     )
     assert resp.status_code == 400, resp.json()
     assert "cerrado" in resp.json()["detail"].lower()
@@ -454,8 +456,8 @@ def test_camarero_crea_reserva_con_datos_cliente_real(client):
     )
     assert doc.get("correo_cliente") == "juan@example.com"
     assert doc.get("creado_por_actor") is not None, "creado_por_actor debe estar presente"
-    assert doc["creado_por_actor"]["sub"] == "camarero_id", (
-        f"sub esperado 'camarero_id', obtenido '{doc['creado_por_actor'].get('sub')}'"
+    assert doc["creado_por_actor"]["sub"] == str(TEST_OID_CAMARERO), (
+        f"sub esperado '{TEST_OID_CAMARERO}', obtenido '{doc['creado_por_actor'].get('sub')}'"
     )
     assert doc["creado_por_actor"]["rol"] == "camarero"
 
@@ -482,7 +484,7 @@ def test_cliente_crea_reserva_ignora_telefono_correo_cliente(client):
     resp = client.post(
         "/api/v1/reservas",
         json=payload,
-        headers=_tok_cliente("u_propio"),
+        headers=_tok_cliente(_OID_CLIENTE_PROPIO),
     )
     assert resp.status_code in (200, 201), resp.json()
 
