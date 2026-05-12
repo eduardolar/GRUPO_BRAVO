@@ -12,7 +12,7 @@ from pydantic import BaseModel
 
 import config  # carga .env una sola vez (efecto de import)
 from database import coleccion_usuarios
-from models import CorreoStr, UsuarioLogin, VerificarRecuperacion
+from models import CorreoStr, UsuarioLogin, UsuarioRegistro, VerificarRecuperacion
 from limiter import limiter
 from security import crear_token
 from exceptions import (
@@ -68,6 +68,11 @@ class Reenviar2FA(BaseModel):
 
 
 class VerificarLogin2FA(BaseModel):
+    correo: CorreoStr
+    codigo: str
+
+
+class VerificacionCodigo(BaseModel):
     correo: CorreoStr
     codigo: str
 

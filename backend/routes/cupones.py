@@ -3,27 +3,20 @@ import re
 from datetime import date
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
-from typing import Optional
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
+from fastapi_mail import FastMail, MessageSchema, MessageType
 from pydantic import BaseModel, field_validator
 from bson import ObjectId
 from bson.errors import InvalidId
 from pymongo import ReturnDocument
 
-from database import coleccion_cupones
-from security import require_role, get_current_user, normalizar_rol
+from database import coleccion_cupones, coleccion_usuarios
+from limiter import limiter
+from security import get_current_user, normalizar_rol, require_role
+from utils.auth_helpers import conf
 import audit_general as ag
 
 logger = logging.getLogger("uvicorn")
-from database import coleccion_cupones, coleccion_usuarios
-from security import require_role, get_current_user
-import re
-import os
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-
 
 router = APIRouter(prefix="/cupones", tags=["Cupones"])
 
@@ -362,6 +355,113 @@ def eliminar_cupon(
     coleccion_cupones.delete_one({"_id": oid})
     ag.registrar(ag.CUPON_ELIMINADO, actor=actor.get("correo"), objetivo=cupon_id)
     return {"mensaje": "Cupón eliminado"}
+
+
+async def _enviar_email_cupon(
+    email_destino: str,
+    nombre: str,
+    codigo: str,
+    descripcion: str,
+) -> None:
+    """Envía un email con un cupón a un cliente. Se invoca como BackgroundTask
+    desde el endpoint de envío masivo para no bloquear la respuesta HTTP.
+    Errores SMTP se loggean pero no rompen el flujo: si falla un destinatario,
+    los demás siguen recibiendo el correo.
+    """
+    html = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;">
+        <h2 style="color: #800020;">¡Hola {nombre}!</h2>
+        <p>Tienes un nuevo beneficio exclusivo de <strong>Bravo</strong>.</p>
+        <div style="background: #111; color: #fff; padding: 20px; border-radius: 10px; text-align: center;">
+            <h1 style="font-size: 35px; letter-spacing: 4px; color: #d4af37;">{codigo}</h1>
+            <p style="color: #ccc; font-size: 16px;">{descripcion}</p>
+        </div>
+        <p style="color: #666; font-size: 12px; margin-top: 20px;">Válido por tiempo limitado. ¡Te esperamos!</p>
+    </div>
+    """
+    mensaje = MessageSchema(
+        subject=f"¡{nombre}, tenemos un regalo para ti!",
+        recipients=[email_destino],
+        body=html,
+        subtype=MessageType.html,
+    )
+    try:
+        await FastMail(conf).send_message(mensaje)
+    except Exception as e:
+        logger.error(f"Error enviando cupón a {email_destino}: {e}")
+
+
+@router.post("/enviar-masivo", summary="Envío masivo de cupón por email (admin)")
+@limiter.limit("3/minute")
+def enviar_cupon_masivo(
+    request: Request,
+    datos: EnvioMasivoRequest,
+    background_tasks: BackgroundTasks,
+    actor: dict = Depends(require_role(["admin", "super_admin"])),
+):
+    """Envía un cupón por email a todos los clientes que cumplen el filtro.
+
+    - `filtro="todos"`: todos los clientes activos.
+    - `filtro="restaurante"`: clientes activos asociados a `restauranteId`.
+
+    El envío SMTP corre en background para no bloquear la respuesta. Si falla
+    un correo concreto, los demás siguen llegando (el error se loggea).
+    """
+    cupon = coleccion_cupones.find_one({"_id": _oid(datos.cuponId)})
+    if not cupon:
+        raise HTTPException(status_code=404, detail="Cupón no encontrado")
+
+    # Un admin no puede mandar masivos de cupones que no son de su sucursal
+    # (incluidos los globales, que son territorio del super_admin).
+    _verificar_propiedad_cupon(cupon, actor)
+
+    query: dict = {"rol": "cliente", "activo": True}
+    if datos.filtro == "restaurante":
+        if not datos.restauranteId:
+            raise HTTPException(
+                status_code=400,
+                detail="Falta restauranteId para el filtro 'restaurante'",
+            )
+        query["restaurante_id"] = datos.restauranteId
+    elif datos.filtro != "todos":
+        raise HTTPException(
+            status_code=400,
+            detail="filtro debe ser 'todos' o 'restaurante'",
+        )
+
+    clientes = list(coleccion_usuarios.find(query, {"correo": 1, "nombre": 1}))
+    if not clientes:
+        raise HTTPException(
+            status_code=404,
+            detail="No se encontraron clientes para este filtro",
+        )
+
+    codigo = cupon.get("codigo", "")
+    descripcion = cupon.get("descripcion", "")
+    encolados = 0
+    for cliente in clientes:
+        correo = cliente.get("correo")
+        if not correo:
+            continue
+        background_tasks.add_task(
+            _enviar_email_cupon,
+            correo,
+            cliente.get("nombre", "Cliente"),
+            codigo,
+            descripcion,
+        )
+        encolados += 1
+
+    ag.registrar(
+        ag.CUPON_ENVIADO_MASIVO,
+        actor=actor.get("correo"),
+        objetivo=codigo,
+        detalle=f"filtro={datos.filtro}, destinatarios={encolados}",
+    )
+    return {
+        "mensaje": f"Procesando el envío de {encolados} correos.",
+        "destinatarios": encolados,
+    }
 
 
 @router.post("/{cupon_id}/usar", summary="Registrar uso del cupón")
