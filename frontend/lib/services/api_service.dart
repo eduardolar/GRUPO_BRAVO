@@ -167,6 +167,7 @@ class ApiService {
     required String estadoPago,
     String? restauranteId,
     String? idempotencyKey,
+    int puntosUsados = 0,
   }) => PedidoService.crearPedido(
     userId: userId,
     items: items,
@@ -181,6 +182,7 @@ class ApiService {
     estadoPago: estadoPago,
     restauranteId: restauranteId,
     idempotencyKey: idempotencyKey,
+    puntosUsados: puntosUsados,
   );
 
   static Future<void> agregarItemsPedido({
