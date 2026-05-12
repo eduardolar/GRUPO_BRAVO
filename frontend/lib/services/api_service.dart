@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
@@ -9,6 +8,7 @@ import '../models/mesa_model.dart';
 import '../models/reserva_model.dart';
 import '../models/ingrediente_model.dart';
 
+import 'api_config.dart' as api_config;
 import 'auth_service.dart';
 import 'producto_service.dart';
 import 'ingredientes_service.dart';
@@ -19,15 +19,9 @@ import 'http_client.dart';
 import 'auth_session.dart';
 
 class ApiService {
-  static String get baseUrl {
-    if (kIsWeb) {
-      return 'http://localhost:8000/api/v1';
-    }
-    if (Platform.isAndroid) {
-      return 'http://10.0.2.2:8000/api/v1';
-    }
-    return 'http://127.0.0.1:8000/api/v1';
-  }
+  // Comparte una única fuente de verdad con api_config.dart para que el
+  // override --dart-define=API_BASE_URL se respete también aquí.
+  static String get baseUrl => api_config.baseUrl;
 
   // ─── AUTH ────────────────────────────────────────────────────
 
@@ -442,7 +436,11 @@ class ApiService {
     return decodeBody(response)['paid'] == true;
   }
 
-  static Future<void> actualizarEstadoPago({
+  /// Marca el pedido identificado por [referenciaPago] como pagado. El backend
+  /// resuelve el ObjectId real del pedido a partir de la referencia y lo
+  /// devuelve para que la pantalla de confirmación pueda mostrar el código
+  /// correcto y hacer polling del estado.
+  static Future<String?> actualizarEstadoPago({
     required String referenciaPago,
     String estadoPago = 'pagado',
   }) async {
@@ -460,6 +458,9 @@ class ApiService {
     if (response.statusCode >= 400) {
       throw toApiException(response.statusCode, decodeBody(response));
     }
+    final data = decodeBody(response);
+    final id = data['pedido_id'] ?? data['pedidoId'];
+    return id is String && id.isNotEmpty ? id : null;
   }
 
   // ─── PAYPAL ──────────────────────────────────────────────────

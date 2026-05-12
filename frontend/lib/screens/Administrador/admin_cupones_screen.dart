@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import '../../components/admin/admin_max_width.dart';
 import '../../components/bravo_app_bar.dart';
 import '../../core/colors_style.dart';
 import '../../models/cupon_model.dart';
@@ -165,8 +166,9 @@ class _AdminCuponesScreenState extends State<AdminCuponesScreen>
             ),
           ),
           child: SafeArea(
-            child: Column(
-              children: [
+            child: AdminMaxWidth(
+              child: Column(
+                children: [
                 // ─── Buscador glass ────────────────────────────────
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
@@ -223,6 +225,7 @@ class _AdminCuponesScreenState extends State<AdminCuponesScreen>
 
                 Expanded(child: _buildCuerpo()),
               ],
+            ),
             ),
           ),
         ),

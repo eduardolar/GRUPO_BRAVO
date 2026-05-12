@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../../components/admin/admin_max_width.dart';
 import '../../core/colors_style.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/download_helper.dart';
@@ -291,7 +292,7 @@ class _AdminContabilidadScreenState extends State<AdminContabilidadScreen> {
               ),
             ),
           ),
-          SafeArea(child: _buildContenido()),
+          SafeArea(child: AdminMaxWidth(child: _buildContenido())),
         ],
       ),
     );

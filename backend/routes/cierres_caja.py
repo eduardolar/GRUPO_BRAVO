@@ -360,6 +360,9 @@ def obtener_abierto_actual(
 ):
     """Atajo para el panel: devuelve el cierre abierto del turno de hoy.
 
+    Si no hay turno abierto devuelve null con 200 (caso normal, no error)
+    para que el panel no tenga que tratar un 404 como excepción.
+
     - Admin: siempre usa su restaurante_id del JWT.
     - super_admin: puede pasar ?restaurante_id= en la query (no implementado
       en este helper; el super_admin debe usar GET /cierres-caja con filtros).
@@ -385,7 +388,7 @@ def obtener_abierto_actual(
 
     doc = coleccion_cierres_caja.find_one(filtro)
     if not doc:
-        raise NotFoundError("No hay turno abierto para ese turno hoy")
+        return None
 
     return _serializar(doc)
 

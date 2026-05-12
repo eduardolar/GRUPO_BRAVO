@@ -496,13 +496,19 @@ def test_abierto_actual_con_cierre_abierto_devuelve_200(client):
     assert data["fecha"] == hoy
 
 
-def test_abierto_actual_sin_cierre_abierto_devuelve_404(client):
-    """Si no hay ningún cierre abierto de hoy → 404."""
+def test_abierto_actual_sin_cierre_abierto_devuelve_null(client):
+    """Si no hay ningún cierre abierto de hoy → 200 + null.
+
+    Antes devolvía 404, pero el panel admin tenía que manejar el 404 como caso
+    normal. Ahora es 200 + null para diferenciar "no hay turno abierto" de un
+    error real (red/permisos).
+    """
     resp = client.get(
         "/api/v1/cierres-caja/abierto-actual?turno=cena",
         headers=_tok_admin("R1"),
     )
-    assert resp.status_code == 404
+    assert resp.status_code == 200
+    assert resp.json() is None
 
 
 def test_abierto_actual_turno_invalido_devuelve_422(client):

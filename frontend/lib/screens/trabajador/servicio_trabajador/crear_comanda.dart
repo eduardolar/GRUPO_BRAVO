@@ -341,12 +341,28 @@ class _CrearPedidosState extends State<CrearComanda> {
   /// Si el camarero nunca llegó a enviar un pedido, devuelve la mesa al
   /// pool de libres. Si ya se envió, la mesa queda ocupada (el cliente
   /// sigue allí pendiente de servirse / cobrar).
+  ///
+  /// Si la liberación falla (p. ej. caída de red), avisamos al usuario en
+  /// lugar de tragar el error en silencio: antes esto provocaba que la mesa
+  /// quedara marcada como OCUPADA en el plano aunque no hubiera comanda.
   Future<void> _liberarMesaSiSinPedido() async {
     if (_pedidoId != null) return;
     try {
       await ApiService.marcarMesaLibre(widget.mesaId);
     } catch (e) {
       debugPrint('No se pudo liberar mesa ${widget.mesaId} al salir: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'No se pudo liberar la mesa automáticamente. '
+              'Refresca el plano y libérala manualmente si quedó ocupada.',
+            ),
+            backgroundColor: AppColors.warning,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 

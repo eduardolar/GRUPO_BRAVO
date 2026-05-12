@@ -133,7 +133,7 @@ class _PedidoConfirmadoScreenState extends State<PedidoConfirmadoScreen>
     _fadeAnim = CurvedAnimation(parent: _ctrl, curve: Curves.easeIn);
     _ctrl.forward();
 
-    if (widget.pedidoId != null) {
+    if (_pedidoIdEsValido) {
       _pollEstado();
       _pollTimer = Timer.periodic(_kPollInterval, (_) => _pollEstado());
     }
@@ -155,8 +155,17 @@ class _PedidoConfirmadoScreenState extends State<PedidoConfirmadoScreen>
     super.dispose();
   }
 
+  /// Acepta polling solo si el pedidoId tiene forma de ObjectId Mongo
+  /// (24 caracteres hexadecimales). Antes recibíamos también session_id de
+  /// Stripe (`cs_test_…`) y el backend respondía 422 cuatro veces tras pagar.
+  bool get _pedidoIdEsValido {
+    final id = widget.pedidoId;
+    if (id == null || id.isEmpty) return false;
+    return RegExp(r'^[a-fA-F0-9]{24}$').hasMatch(id);
+  }
+
   Future<void> _pollEstado() async {
-    if (widget.pedidoId == null) return;
+    if (!_pedidoIdEsValido) return;
     try {
       final pedido = await ApiService.obtenerPedido(widget.pedidoId!);
       if (!mounted) return;

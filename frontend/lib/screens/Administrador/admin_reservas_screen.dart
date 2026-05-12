@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../components/admin/admin_max_width.dart';
 import '../../components/bravo_app_bar.dart';
 import '../../core/colors_style.dart';
 import '../../models/mesa_model.dart';
@@ -289,13 +290,15 @@ class _AdminReservasScreenState extends State<AdminReservasScreen> {
             ),
           ),
           child: SafeArea(
-            child: Column(
-              children: [
-                _buildCabecera(),
-                _buildChipsFiltro(),
-                const SizedBox(height: 4),
-                Expanded(child: _buildCuerpo()),
-              ],
+            child: AdminMaxWidth(
+              child: Column(
+                children: [
+                  _buildCabecera(),
+                  _buildChipsFiltro(),
+                  const SizedBox(height: 4),
+                  Expanded(child: _buildCuerpo()),
+                ],
+              ),
             ),
           ),
         ),

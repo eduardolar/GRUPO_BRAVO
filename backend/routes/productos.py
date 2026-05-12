@@ -181,7 +181,30 @@ def obtener_productos(
                 else:
                     ingredientes.append({"id": "", "nombre": ing})
             elif isinstance(ing, dict):
-                ingredientes.append(ing)
+                # Hidratamos con el stock real del ingrediente. Si el dict ya
+                # trae 'cantidad_actual' lo usamos; si no, lo buscamos por
+                # ingrediente_id (caso típico cuando el producto se creó con
+                # `_normalizar_ingrediente_item`). Sin esta hidratación, el
+                # check de disponibilidad por stock se quedaba siempre en True
+                # porque el dict no tenía cantidad_actual.
+                ing_hidratado = dict(ing)
+                if "cantidad_actual" not in ing_hidratado:
+                    ing_id = ing.get("ingrediente_id") or ing.get("id")
+                    if ing_id and ObjectId.is_valid(str(ing_id)):
+                        ing_db = coleccion_ingredientes.find_one(
+                            {"_id": ObjectId(str(ing_id))}
+                        )
+                        if ing_db:
+                            ing_hidratado["cantidad_actual"] = ing_db.get(
+                                "cantidad_actual", 0
+                            )
+                            ing_hidratado.setdefault(
+                                "unidad", ing_db.get("unidad", "kg")
+                            )
+                            ing_hidratado.setdefault(
+                                "stock_minimo", ing_db.get("stock_minimo", 0)
+                            )
+                ingredientes.append(ing_hidratado)
         # Determinar disponibilidad: si algún ingrediente tiene stock <= 0, producto no disponible
         disponible_por_stock = True
         for ing_info in ingredientes:

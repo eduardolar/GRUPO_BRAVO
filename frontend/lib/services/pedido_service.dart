@@ -144,9 +144,16 @@ class PedidoService {
       return null;
     }
 
+    // Solo nos interesan pedidos NO terminales. Antes pedíamos todos los
+    // pedidos de la mesa y nos quedábamos con el primero (raw.first), lo que
+    // hacía que la app intentara añadir items a un pedido `entregado` o
+    // `cancelado` y el backend respondiera 409 "estado terminal".
     final response = await httpWithRetry(
       () => http.get(
-        Uri.parse('$baseUrl/pedidos?mesaId=$mesaId'),
+        Uri.parse(
+          '$baseUrl/pedidos?mesaId=$mesaId'
+          '&estados=pendiente,preparando,listo',
+        ),
         headers: AuthSession.headers(extra: {'Accept': 'application/json'}),
       ),
     );

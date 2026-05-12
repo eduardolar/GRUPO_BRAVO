@@ -63,13 +63,18 @@ def obtener_mesas(
     - El resto del personal (admin, camarero, cocinero, etc.) siempre ve solo las
       mesas de SU sucursal del JWT; el query-param se ignora para evitar IDOR.
     - Si el usuario de personal no tiene restaurante_id en el JWT → 400.
-    - Los clientes no deberían usar este endpoint (usan validar-qr), pero si
-      llegaran se aplica la misma lógica restrictiva.
+    - Cliente: usa el query-param (eligió sucursal en la pantalla previa).
+      El listado de mesas no contiene información sensible: las plantas son
+      públicas para reservar/escanear QR. No hay riesgo IDOR aquí.
     """
     rol = normalizar_rol(current_user.get("rol", "") or "")
 
     if rol == "super_admin":
         # super_admin puede cruzar sucursales usando el query param
+        rid = restaurante_id or restauranteId
+    elif rol == "cliente":
+        # Cliente: confiamos en el restauranteId del query (es la sucursal que
+        # acaba de elegir en la pantalla anterior). Su JWT es null por diseño.
         rid = restaurante_id or restauranteId
     else:
         # Personal: ignoramos el query y forzamos el JWT
