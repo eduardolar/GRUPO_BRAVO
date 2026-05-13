@@ -1,3 +1,21 @@
+// ============================================================================
+// frontend/lib/core/app_routes.dart
+// ----------------------------------------------------------------------------
+// Transiciones de pantalla centralizadas.
+//
+// En lugar de usar el `MaterialPageRoute` por defecto (que usa una sola
+// transición para todo), aquí elegimos la animación según la INTENCIÓN
+// narrativa del cambio de pantalla. Esto le da a la app una "sensación"
+// más cuidada y coherente.
+//
+// Uso típico:
+//   Navigator.push(context, AppRoute.slide(SiguienteScreen()));
+//   Navigator.push(context, AppRoute.slideUp(LoginScreen()));
+//
+// Cada método encapsula `PageRouteBuilder` con su propia curva, duración y
+// transform. Al estar centralizadas, cambiar el "tempo" de toda la app es
+// editar solo este archivo.
+// ============================================================================
 import 'package:flutter/material.dart';
 
 /// Transiciones de pantalla centralizadas.

@@ -1,3 +1,17 @@
+// ============================================================================
+// frontend/lib/components/bravo_app_bar.dart
+// ----------------------------------------------------------------------------
+// AppBar corporativa compartida por TODAS las pantallas.
+//
+// Centralizar el AppBar tiene dos ventajas:
+//   1) Un solo sitio para cambiar el comportamiento global (logout,
+//      navegación a perfil, breakpoints responsive, etc.).
+//   2) Coherencia visual: mismo fondo burdeos, misma tipografía, mismo
+//      icono de menú/perfil/logout en toda la app.
+//
+// `isRoot=true` se usa en `InicioScreen` para que el logout NO redirija
+// (ya estás en la pantalla de inicio).
+// ============================================================================
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:frontend/core/app_routes.dart';

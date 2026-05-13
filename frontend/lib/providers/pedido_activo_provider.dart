@@ -1,3 +1,20 @@
+// ============================================================================
+// frontend/lib/providers/pedido_activo_provider.dart
+// ----------------------------------------------------------------------------
+// Pedido EN CURSO del cliente (ya enviado al backend, esperando).
+//
+// Mantiene el id, el estado, el método de entrega y el total del pedido
+// activo y los persiste en SharedPreferences para que sobrevivan a un F5
+// o a un reinicio.
+//
+// Cuando hay sesión activa y el pedido está en un estado "vivo"
+// (pendiente / preparando / listo), inicia un polling cada 15s al backend
+// para sincronizar el estado. Al transicionar a "listo", el watcher
+// dispara una notificación local ("Tu pedido está listo").
+//
+// Depende de AuthProvider (vía ChangeNotifierProxyProvider en main.dart)
+// para arrancar/parar el polling según haya sesión o no.
+// ============================================================================
 import 'dart:async';
 
 import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;

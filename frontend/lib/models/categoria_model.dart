@@ -1,3 +1,9 @@
+// ============================================================================
+// frontend/lib/models/categoria_model.dart
+// ----------------------------------------------------------------------------
+// Categoría de la carta (Entrantes, Principales, Postres...). `icono`
+// guarda un nombre de Material Icon opcional para el chip de filtro.
+// ============================================================================
 class Categoria {
   final String id;
   final String nombre;

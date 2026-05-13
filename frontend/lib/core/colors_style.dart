@@ -1,3 +1,20 @@
+// ============================================================================
+// frontend/lib/core/colors_style.dart
+// ----------------------------------------------------------------------------
+// Paleta de colores corporativa de Grupo Bravo.
+//
+// Todos los colores que se usan en la app DEBEN salir de aquí (no hardcodear
+// `Color(0xFFXXXXXX)` en los widgets). Así, un rebrand consiste en tocar
+// solo este archivo.
+//
+// Reglas:
+//   - Cumple WCAG 2.1 nivel AA (contraste mínimo 4.5:1 para texto normal).
+//     Varios tokens llegan a AAA (7:1) — se anota cuando aplica.
+//   - Identidad: burdeos (#6E001B) + crema (#FFF8E1) + tonos pétreos.
+//   - Estados (success/error/warning/info) con sus variantes de fondo y texto.
+//   - Aliases legacy (button, panel, line, disp, noDisp…) se conservan para
+//     no romper los 1500+ usos repartidos por el proyecto.
+// ============================================================================
 import 'package:flutter/material.dart';
 
 /// Paleta GRUPO BRAVO — WCAG 2.1 nivel AA (varios tokens llegan a AAA).

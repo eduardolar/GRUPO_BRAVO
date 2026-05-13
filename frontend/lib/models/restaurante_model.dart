@@ -1,3 +1,10 @@
+// ============================================================================
+// frontend/lib/models/restaurante_model.dart
+// ----------------------------------------------------------------------------
+// Modelo de la sucursal. Incluye datos de contacto, fiscales y horarios.
+// El backend persiste todo en `restaurantes`; el `id` se usa como
+// `restaurante_id` en pedidos, productos, mesas, etc.
+// ============================================================================
 /// Modelo de sucursal / restaurante del Grupo Bravo.
 ///
 /// Incluye los campos del local más los nuevos campos añadidos para la

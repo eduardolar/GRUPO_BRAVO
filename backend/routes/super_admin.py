@@ -1,3 +1,16 @@
+# ============================================================================
+# backend/routes/super_admin.py
+# ----------------------------------------------------------------------------
+# Endpoints reservados al rol `super_admin` (dueño de la red de sucursales).
+#
+# Prefijo: /super-admin
+#
+# Vista típica: dashboards transversales, suspensión/reactivación de
+# sucursales, operaciones que NO debe poder hacer un admin local.
+#
+# Toda acción peligrosa pasa por `require_role(["super_admin"])` y queda
+# auditada en `audit_general` para trazar quién hizo qué.
+# ============================================================================
 """Endpoints exclusivos para el rol super_admin.
 
 Prefijo: /super-admin

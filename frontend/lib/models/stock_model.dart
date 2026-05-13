@@ -1,3 +1,9 @@
+// ============================================================================
+// frontend/lib/models/stock_model.dart
+// ----------------------------------------------------------------------------
+// Modelo simple de stock (heredado). Lo nuevo está en `ingrediente_model.dart`,
+// que cubre tanto stock como receta. Se conserva por compat.
+// ============================================================================
 class Stock {
   final String id;
   final String nombre;

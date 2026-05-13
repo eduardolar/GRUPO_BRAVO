@@ -1,3 +1,9 @@
+// ============================================================================
+// frontend/lib/services/restaurante_service.dart
+// ----------------------------------------------------------------------------
+// Cliente HTTP de sucursales. CRUD + subida de logo (multipart).
+// Solo el super_admin puede crear/eliminar; los admins editan SU sucursal.
+// ============================================================================
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;

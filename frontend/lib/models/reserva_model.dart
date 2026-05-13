@@ -1,3 +1,10 @@
+// ============================================================================
+// frontend/lib/models/reserva_model.dart
+// ----------------------------------------------------------------------------
+// Modelo de reserva de mesa. Los campos `telefonoCliente`/`correoCliente`
+// son opcionales y solo se rellenan en reservas "walk-in" (camarero/admin
+// las registra para alguien que no tiene cuenta).
+// ============================================================================
 import 'package:intl/intl.dart';
 
 class Reserva {

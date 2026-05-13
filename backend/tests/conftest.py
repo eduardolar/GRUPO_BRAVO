@@ -1,3 +1,28 @@
+# ============================================================================
+# backend/tests/conftest.py
+# ----------------------------------------------------------------------------
+# Setup global compartido por TODOS los tests del backend.
+#
+# Pytest carga este archivo automáticamente antes de cualquier test_*.py.
+# Aquí hacemos tres cosas críticas:
+#
+#   1) Añadir `backend/` al sys.path para que los tests puedan
+#      `from database import ...` aunque corran desde `backend/tests/`.
+#
+#   2) Definir variables de entorno DETERMINISTAS (MONGO_URI, JWT_SECRET_KEY,
+#      etc.) con valores seguros y fijos. Así dos máquinas distintas obtienen
+#      el mismo comportamiento.
+#
+#   3) ★ Lo más importante: sustituir `pymongo.MongoClient` por
+#      `mongomock.MongoClient` ANTES de que el código de producción importe
+#      `database.py`. mongomock es un Mongo en memoria con la misma API,
+#      así que `database.py` cree estar conectándose a un Atlas real pero
+#      todo queda en RAM y se descarta al terminar el test.
+#
+#      Esto blinda los tests: aunque alguien lance la suite con MONGO_URI
+#      apuntando a la BD de producción, no pasa nada porque MongoClient
+#      ya está pisado.
+# ============================================================================
 """Configuración compartida de los tests.
 
 Aísla por completo la base de datos: sustituye `pymongo.MongoClient` por

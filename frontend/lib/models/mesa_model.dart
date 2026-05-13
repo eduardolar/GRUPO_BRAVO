@@ -1,3 +1,10 @@
+// ============================================================================
+// frontend/lib/models/mesa_model.dart
+// ----------------------------------------------------------------------------
+// Modelo de mesa física. `estado` (string) es el campo nuevo; `disponible`
+// (bool) se mantiene por compatibilidad con la app antigua: true solo si la
+// mesa está libre.
+// ============================================================================
 class Mesa {
   final String id;
   final int numero;

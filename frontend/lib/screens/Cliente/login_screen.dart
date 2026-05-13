@@ -1,3 +1,16 @@
+// ============================================================================
+// frontend/lib/screens/cliente/login_screen.dart
+// ----------------------------------------------------------------------------
+// Formulario de login común para todos los roles.
+//
+// Tras validar credenciales con AuthProvider.iniciarSesion():
+//   - Si el backend exige 2FA → navega a verificacion_2fa_screen.
+//   - Si no → redirige según rol (cliente → carta/reservas según destino,
+//     trabajador → HomeTrabajador, cocinero → HomeCocinero, etc.).
+//
+// El `destino` (enum DestinoLogin) recuerda a qué quería ir el cliente
+// si se le forzó a loguearse (p. ej. "ver mi historial" o "reservar").
+// ============================================================================
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 

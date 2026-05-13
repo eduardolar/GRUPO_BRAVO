@@ -1,3 +1,27 @@
+# ============================================================================
+# backend/tickets.py
+# ----------------------------------------------------------------------------
+# Gestión del "ticket abierto" de una mesa.
+#
+# Distinción importante:
+#   - PEDIDO (`pedidos`): unidad de cocina. Cuando una mesa pide un plato,
+#     se crea un pedido para cocina con sus items.
+#   - TICKET (`tickets`): unidad de cobro de la mesa. Acumula todos los
+#     pedidos de una mesa durante el servicio y se cobra al final.
+#
+# Un ticket pasa por:
+#   "abierto" (acumulando items) → "cobrado" (cerrado al cobrar) →
+#   posibilidad de imprimir factura/ticket simplificado.
+#
+# Endpoints clave:
+#   POST /tickets/mesa/{mesa_id}        → añadir item al ticket abierto.
+#                                         Si no existe, lo crea.
+#   GET  /tickets/mesa/{mesa_id}        → consultar ticket abierto.
+#   POST /tickets/{ticket_id}/cobrar    → cerrar y marcar como cobrado.
+#
+# El total se recalcula sumando subtotales en cada inserción para que el
+# ticket sea siempre consistente.
+# ============================================================================
 from fastapi import APIRouter, HTTPException
 from datetime import datetime, timezone
 from database import db

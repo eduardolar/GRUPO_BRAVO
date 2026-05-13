@@ -1,3 +1,19 @@
+# ============================================================================
+# backend/routes/categorias.py
+# ----------------------------------------------------------------------------
+# CRUD de categorías de la carta (entrantes, principales, postres...).
+#
+# Endpoints:
+#   GET    /categorias        → listado ordenado (por campo `orden`).
+#   POST   /categorias        → crear (admin).
+#   PUT    /categorias/{id}   → renombrar (admin).
+#   DELETE /categorias/{id}   → eliminar (admin) — bloquea si hay productos.
+#   PATCH  /categorias/orden  → reordenar drag-and-drop.
+#
+# Detalle: el campo `orden` es un entero que sirve para ordenar las
+# categorías al pintar la carta. Cuando se crea una nueva, recibe el
+# siguiente número disponible (ver `_siguiente_orden`).
+# ============================================================================
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import List

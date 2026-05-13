@@ -1,8 +1,28 @@
+# ============================================================================
+# docker-compose.yml — entorno local de desarrollo de Grupo Bravo
+# ----------------------------------------------------------------------------
+# Levanta dos servicios:
+#   - backend: API FastAPI en localhost:8000 (con --reload, montando ./backend
+#              como volumen para hot-reload al guardar código).
+#   - mongo:   MongoDB 7 con persistencia en el volumen `mongo_data`.
+#              Bind a 127.0.0.1 para que NO esté expuesto en la red local.
+#
+# Cómo arrancar:
+#     docker compose up        # foreground (logs en consola)
+#     docker compose up -d     # background
+#     docker compose down      # para todo
+#     docker compose down -v   # para todo + BORRA el volumen (datos)
+#
+# Healthchecks:
+#   El backend solo arranca cuando mongo está "healthy" (depends_on).
+#   El healthcheck de mongo hace `db.adminCommand("ping")` cada 30s.
+#
 # NOTA SEGURIDAD:
 #   - Las credenciales de mongo se leen de variables de entorno (MONGO_INITDB_*).
 #     Defínelas en el .env raíz, NUNCA en este fichero versionado.
 #   - El puerto 27017 se enlaza a 127.0.0.1 para que MongoDB no quede expuesto
 #     fuera del host. Cámbialo sólo cuando lo necesites de forma explícita.
+# ============================================================================
 services:
   backend:
     build: ./backend

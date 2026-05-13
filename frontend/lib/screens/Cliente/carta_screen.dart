@@ -1,3 +1,21 @@
+// ============================================================================
+// frontend/lib/screens/cliente/carta_screen.dart
+// ----------------------------------------------------------------------------
+// Pantalla de la CARTA (menú) para el cliente.
+//
+// Muestra:
+//   - Selector de sucursal (multi-tenant: filtra productos por restauranteId).
+//   - Chips de categoría (Entrantes, Principales, Postres...).
+//   - Grid/lista de productos con foto, precio, ingredientes.
+//   - Pill flotante del pedido activo (si hay uno en curso).
+//
+// Al tocar un producto abre `producto_detalle_sheet.dart` (un BottomSheet
+// donde el cliente puede excluir ingredientes y añadir al carrito).
+//
+// Estado:
+//   - `_cargandoProductos` controla el skeleton.
+//   - El CartProvider acumula los items elegidos para todo el flujo.
+// ============================================================================
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';

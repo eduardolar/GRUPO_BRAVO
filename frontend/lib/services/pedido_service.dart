@@ -1,3 +1,22 @@
+// ============================================================================
+// frontend/lib/services/pedido_service.dart
+// ----------------------------------------------------------------------------
+// Cliente HTTP de pedidos.
+//
+// Funciones clave:
+//   - crearPedido: POST /pedidos (incluye soporte de Idempotency-Key para
+//     evitar duplicados si la red falla a mitad de un envío).
+//   - listarPedidos / pedidosActivos: GET con filtros (cocina, camarero).
+//   - actualizarEstadoPedido: PATCH para mover estado.
+//   - marcarItemHecho: el cocinero marca un plato como listo.
+//   - descargarTicketPdf: bytes del PDF para imprimir/compartir.
+//
+// Idempotencia (importante en pagos):
+//   El frontend genera un UUID por intento de pedido. Si la red falla a
+//   mitad, el reintento envía el mismo Idempotency-Key. El backend
+//   detecta el duplicado y devuelve el pedido anterior sin crear uno nuevo
+//   ni cobrar dos veces.
+// ============================================================================
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;

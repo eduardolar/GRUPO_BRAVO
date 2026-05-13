@@ -1,3 +1,9 @@
+// ============================================================================
+// frontend/lib/components/Cliente/primary_button.dart
+// ----------------------------------------------------------------------------
+// Botón principal del sistema de diseño. Encapsula el estado de "cargando"
+// (spinner inline) y unifica el look de todas las CTAs principales.
+// ============================================================================
 import 'package:flutter/material.dart';
 import '../../core/colors_style.dart';
 

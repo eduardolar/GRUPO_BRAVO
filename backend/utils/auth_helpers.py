@@ -1,3 +1,23 @@
+# ============================================================================
+# backend/utils/auth_helpers.py
+# ----------------------------------------------------------------------------
+# Helpers compartidos entre los endpoints de autenticación: utilidades para
+# generar/validar OTPs, normalizar correos, enviar plantillas HTML por
+# correo electrónico (verificación, 2FA, recuperación de contraseña) y
+# configurar la conexión SMTP.
+#
+# Diseño:
+#   - SHA-256 + comparación en tiempo constante (hmac.compare_digest) para
+#     los OTPs almacenados, en lugar de guardar el código en claro.
+#   - TTL configurable por código (15 min por defecto) → reduce ventana de
+#     ataque por fuerza bruta.
+#   - El pie RGPD se incluye en todos los correos automáticos por
+#     obligación legal de transparencia.
+#   - Funciones de envío son fail-soft: si el SMTP falla, logueamos y
+#     devolvemos False / pasamos en lugar de propagar la excepción
+#     (excepción: enviar_correo_recuperacion sí re-lanza porque ahí el
+#     usuario NO puede continuar sin haber recibido el código).
+# ============================================================================
 """Helpers compartidos de autenticación y correo.
 
 Usados por routes/auth.py, routes/clientes.py y routes/usuarios.py.
@@ -75,12 +95,25 @@ def normalizar_correo(correo: str) -> str:
 # ── Hash y comparación de OTPs ────────────────────────────────────────────────
 
 def hash_otp(codigo: str) -> str:
-    """SHA-256 del código OTP normalizado (strip + lower)."""
+    """SHA-256 del código OTP normalizado (strip + lower).
+
+    Por qué hashear OTPs si solo viven 15 minutos:
+        - Si alguien lee la BD (backup robado, leak), no puede usar OTPs
+          activos directamente.
+        - SHA-256 sin sal basta porque el espacio es pequeño (6 dígitos)
+          y la ventana corta: bcrypt sería overkill.
+    """
     return hashlib.sha256(codigo.strip().lower().encode()).hexdigest()
 
 
 def otp_coincide(recibido: str, hash_almacenado: str) -> bool:
-    """Comparación en tiempo constante del hash del OTP recibido con el almacenado."""
+    """Comparación en tiempo constante del hash del OTP recibido con el almacenado.
+
+    `hmac.compare_digest` impide timing attacks: tarda lo mismo aunque la
+    cadena difiera en el primer carácter o en el último. Importante en
+    web: un atacante puede medir tiempos de respuesta para deducir el
+    código si usáramos `==` simple.
+    """
     if not recibido or not hash_almacenado:
         return False
     return hmac.compare_digest(hash_otp(recibido), hash_almacenado)
@@ -89,7 +122,16 @@ def otp_coincide(recibido: str, hash_almacenado: str) -> bool:
 # ── Códigos de recuperación 2FA ───────────────────────────────────────────────
 
 def generar_codigos_recuperacion(n: int = 8) -> tuple[list[str], list[str]]:
-    """Devuelve (codigos_en_claro, hashes_sha256)."""
+    """Devuelve (codigos_en_claro, hashes_sha256).
+
+    Códigos de recuperación: el usuario los apunta en papel cuando activa
+    2FA TOTP. Si pierde el móvil con la app autenticadora, puede usar
+    uno de estos para volver a entrar.
+
+    En BD guardamos SOLO los hashes (igual que con contraseñas). Los
+    códigos en claro se devuelven UNA vez (al activar) y nunca más.
+    Formato `XXXXXXXX-XXXXXXXX` para que sea fácil de transcribir.
+    """
     codigos, hashes = [], []
     for _ in range(n):
         raw = secrets.token_hex(8)  # 16 hex chars → 64 bits de entropía

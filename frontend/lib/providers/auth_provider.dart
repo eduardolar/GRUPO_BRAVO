@@ -1,3 +1,23 @@
+// ============================================================================
+// frontend/lib/providers/auth_provider.dart
+// ----------------------------------------------------------------------------
+// Estado de la sesión expuesto al árbol de widgets (vía Provider).
+//
+// Mantiene:
+//   - _usuarioActual: objeto Usuario completo (id, nombre, rol, etc.).
+//   - _pendingUserId2fa: id "en tránsito" durante el flujo de 2FA.
+//
+// Persiste el objeto Usuario en SharedPreferences (clave `usuario_sesion`)
+// para sobrevivir a F5/reinicio. El token JWT se persiste en paralelo via
+// `AuthSession` (clave `auth_token`).
+//
+// Por qué dos almacenamientos:
+//   - AuthSession: token y datos mínimos para añadir Authorization en cada
+//     request HTTP (lo lee directamente http_client).
+//   - AuthProvider: objeto completo del usuario, expuesto a la UI con
+//     ChangeNotifier para que widgets como `_HomePorRol` se reconstruyan
+//     automáticamente al cambiar (login/logout).
+// ============================================================================
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';

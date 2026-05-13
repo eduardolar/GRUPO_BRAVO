@@ -1,3 +1,27 @@
+# ============================================================================
+# backend/routes/reservas.py
+# ----------------------------------------------------------------------------
+# Reservas de mesa.
+#
+# Modelo de estados:
+#   Pendiente  → recién creada, espera confirmación del local.
+#   Confirmada → aceptada por el restaurante.
+#   Llegado    → el cliente ya está sentado en la mesa.
+#   NoShow     → no se presentó (útil para penalizar reservas reincidentes).
+#   Cancelada  → cancelada por cliente o restaurante.
+#
+# Reglas de autorización:
+#   - El cliente solo puede reservar PARA SÍ MISMO: el backend pisa el
+#     `usuarioId` con el `sub` del JWT si el actor es cliente. Así nadie
+#     puede reservar suplantando a otro usuario.
+#   - Camarero/admin pueden crear reservas "walk-in" para alguien sin
+#     cuenta y por eso aceptan teléfono/correo del cliente real.
+#   - Cambios de estado: solo empleados; el cliente solo cancela.
+#
+# Cada reserva ocupa la mesa durante `DURACION_RESERVA_MIN` minutos (90).
+# Para evitar solape, los queries de disponibilidad buscan reservas en
+# ese rango de tiempo, no en horarios exactos.
+# ============================================================================
 import logging
 from datetime import date, datetime, timezone
 from typing import Optional
@@ -14,9 +38,11 @@ logger = logging.getLogger("uvicorn")
 
 router = APIRouter(prefix="/reservas", tags=["Reservas"])
 
+# Cuánto tiempo ocupa una reserva la mesa. Si crece, hay menos huecos
+# disponibles a lo largo del día. Ajustable por configuración futura.
 DURACION_RESERVA_MIN = 90
 
-# Estados válidos para una reserva
+# Estados válidos para una reserva. Se valida al cambiar de estado.
 _ESTADOS_VALIDOS = {"Confirmada", "Cancelada", "Pendiente", "Llegado", "NoShow"}
 
 

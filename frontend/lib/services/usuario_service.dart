@@ -1,3 +1,10 @@
+// ============================================================================
+// frontend/lib/services/usuario_service.dart
+// ----------------------------------------------------------------------------
+// Cliente HTTP para la gestión de usuarios (admin panel).
+// CRUD de empleados, cambios de rol y estado, envío masivo de correos, etc.
+// Las acciones se auditan en el backend; ver `audit_general`.
+// ============================================================================
 import 'dart:convert';
 
 import 'package:flutter/material.dart';

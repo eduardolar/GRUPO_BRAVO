@@ -1,3 +1,27 @@
+# ============================================================================
+# backend/routes/cupones.py
+# ----------------------------------------------------------------------------
+# Cupones de descuento.
+#
+# Un cupón tiene:
+#   - codigo: string que el cliente escribe en el checkout.
+#   - tipo:   "porcentaje" (10%) o "monto" (5€ fijos).
+#   - valor:  número (10 o 5 según el tipo).
+#   - usos_max / usos_actuales: límite de canjes total.
+#   - validez: fechas inicio/fin.
+#   - producto_id / categoria: aplica solo a algunos productos (opcional).
+#
+# Endpoints:
+#   GET    /cupones                       → listado (admin)
+#   POST   /cupones                       → crear (admin)
+#   PUT    /cupones/{id}                  → editar (admin)
+#   DELETE /cupones/{id}                  → eliminar (admin)
+#   POST   /cupones/validar               → cliente valida código en checkout
+#   POST   /cupones/{id}/enviar-masivo    → envía cupón por email a N clientes
+#
+# El BackgroundTasks de FastAPI se usa para mandar correos sin bloquear la
+# respuesta HTTP (el endpoint responde inmediato, el correo sale después).
+# ============================================================================
 import logging
 import re
 from datetime import date

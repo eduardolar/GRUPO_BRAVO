@@ -1,3 +1,34 @@
+# ============================================================================
+# backend/routes/pedidos.py
+# ----------------------------------------------------------------------------
+# Endpoints para crear, consultar y operar pedidos. Es el módulo MÁS
+# transversal del backend: toca productos (stock), ingredientes (descuento),
+# pagos (estadoPago), cocina (timeline de items) y usuarios (puntos).
+#
+# Flujos principales:
+#
+#   POST /pedidos
+#     1) Valida (Pydantic + reglas: stock disponible, mesa libre, etc.).
+#     2) Inicia una TRANSACCIÓN MongoDB (atomicidad: si falla algo a la
+#        mitad, NADA queda persistido — sin pedidos huérfanos ni stock
+#        descontado por error).
+#     3) Inserta el pedido con estado "pendiente" + descuenta stock.
+#     4) Si metodoPago=stripe → marca estado_pago="pendiente" y deja al
+#        endpoint de pagos crear el Checkout Session.
+#     5) Si metodoPago=efectivo → pedido aceptado y enviado a cocina.
+#
+#   GET /pedidos/server-time → sincronización de cronómetros con cliente.
+#
+#   GET /pedidos/activos → lista en tiempo real para cocina/camarero.
+#
+#   PATCH /pedidos/{id}/items/{idx}/hecho → cocina marca item como listo.
+#
+# Helpers clave:
+#   - _descontar_stock: resta ingredientes por sucursal (ver MEMORIA
+#     "BBDD de Grupo Bravo contiene datos de pruebas").
+#   - Idempotencia: header `Idempotency-Key` evita pedidos duplicados si
+#     el cliente reintenta la petición tras un timeout.
+# ============================================================================
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from exceptions import AppError, NotFoundError, ConflictError, ValidacionError

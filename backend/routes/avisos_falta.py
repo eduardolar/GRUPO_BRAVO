@@ -1,3 +1,20 @@
+# ============================================================================
+# backend/routes/avisos_falta.py
+# ----------------------------------------------------------------------------
+# Sistema de avisos de "falta de ingrediente".
+#
+# Flujo:
+#   1) El camarero, sirviendo en sala, detecta que se ha terminado un
+#      ingrediente (no figura todavía como agotado en stock o no había
+#      registro). Manda un aviso desde la app.
+#   2) El aviso queda pendiente en el dashboard del admin.
+#   3) El admin reabastece y marca el aviso como "atendido".
+#
+# Endpoints:
+#   POST   /avisos-falta            → crear aviso (camarero)
+#   GET    /avisos-falta            → listado (admin, filtros por estado)
+#   PATCH  /avisos-falta/{id}/atender → marcar atendido (admin)
+# ============================================================================
 """Avisos de falta de ingrediente creados por el trabajador.
 
 El trabajador (camarero) crea un aviso cuando detecta que falta un

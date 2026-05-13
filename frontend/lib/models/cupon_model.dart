@@ -1,3 +1,11 @@
+// ============================================================================
+// frontend/lib/models/cupon_model.dart
+// ----------------------------------------------------------------------------
+// Modelo del cupón de descuento. `tipo` controla cómo se aplica `valor`:
+//   "porcentaje" → resta `valor`% del total (p.ej. 10%).
+//   "fijo"       → resta `valor` euros del total (p.ej. 5€).
+// `restauranteId == null` → cupón global válido en todas las sucursales.
+// ============================================================================
 class Cupon {
   final String id;
   final String codigo;

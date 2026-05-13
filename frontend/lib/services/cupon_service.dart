@@ -1,3 +1,10 @@
+// ============================================================================
+// frontend/lib/services/cupon_service.dart
+// ----------------------------------------------------------------------------
+// Cliente HTTP de cupones (admin) + endpoint de validación (cliente en
+// checkout). El "sentinel" sirve para distinguir entre "no pasaste el
+// parámetro" y "pasaste null explícitamente" al editar (PATCH semántico).
+// ============================================================================
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 

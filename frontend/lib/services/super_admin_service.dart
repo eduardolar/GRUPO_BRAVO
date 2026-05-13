@@ -1,3 +1,9 @@
+// ============================================================================
+// frontend/lib/services/super_admin_service.dart
+// ----------------------------------------------------------------------------
+// Cliente HTTP de endpoints reservados a super_admin: KPIs de la red,
+// suspensión de sucursales, dashboards transversales.
+// ============================================================================
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'api_config.dart';

@@ -1,3 +1,9 @@
+// ============================================================================
+// frontend/lib/services/cierre_caja_service.dart
+// ----------------------------------------------------------------------------
+// Cliente HTTP de cierres de caja (Z report) por turno.
+// Operaciones: abrir, cerrar, reabrir (con motivo, auditado), listar.
+// ============================================================================
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'api_config.dart';

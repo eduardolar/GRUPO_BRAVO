@@ -1,3 +1,20 @@
+// ============================================================================
+// frontend/lib/screens/home_screen_trabajador.dart
+// ----------------------------------------------------------------------------
+// Home del rol "trabajador" (camarero).
+//
+// Es la pantalla a la que aterrizan los camareros tras el login. Desde
+// aquí navegan a sus áreas principales:
+//   - Servicio (tomar/atender comandas por mesa)
+//   - Gestión de pedidos (cocina, listos)
+//   - Gestión de reservas
+//   - Gestión de stock (avisos)
+//   - Mi turno (info del trabajador, fichaje)
+//
+// PopScope bloquea el botón "atrás" del sistema: la pila de navegación
+// quedó vacía tras `pushAndRemoveUntil` al hacer login, así que retroceder
+// llevaría a una pantalla negra. Mejor evitar el gesto.
+// ============================================================================
 import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 import 'package:frontend/core/app_routes.dart';

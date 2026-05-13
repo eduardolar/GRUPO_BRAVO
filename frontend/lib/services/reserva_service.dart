@@ -1,3 +1,9 @@
+// ============================================================================
+// frontend/lib/services/reserva_service.dart
+// ----------------------------------------------------------------------------
+// Cliente HTTP de reservas de mesa. CRUD + cambios de estado.
+// El backend filtra automáticamente por dueño cuando el rol es cliente.
+// ============================================================================
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/reserva_model.dart';

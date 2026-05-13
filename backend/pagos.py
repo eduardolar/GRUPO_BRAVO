@@ -1,3 +1,40 @@
+# ============================================================================
+# backend/pagos.py
+# ----------------------------------------------------------------------------
+# Pasarela de pagos: Stripe (principal) + PayPal (alternativa).
+#
+# Conceptos clave:
+#
+#   PaymentIntent (Stripe): objeto que representa la INTENCIÓN de cobrar
+#   un importe en una moneda concreta. Pasa por estados:
+#     requires_payment_method → requires_confirmation → succeeded / failed
+#   El cliente confirma el pago en su lado (Stripe Elements / Apple Pay
+#   / etc.) usando el `client_secret` del PaymentIntent.
+#
+#   Webhook: Stripe llama a nuestro endpoint /payments/webhook para
+#   notificarnos eventos asíncronos ("payment_intent.succeeded", etc.).
+#   La firma del webhook se verifica con `STRIPE_WEBHOOK_SECRET` para que
+#   nadie pueda falsificar un "pago exitoso" hacia nuestra API.
+#
+#   Idempotencia: en pagos, el cliente puede reintentar la misma petición
+#   (errores de red, reintentos automáticos del SDK). Stripe acepta
+#   `idempotency_key` para que dos llamadas con la misma clave nunca
+#   creen dos PaymentIntents distintos.
+#
+# Endpoints (prefijo /payments):
+#   POST /payments/create-intent     → crea PaymentIntent (pago en tarjeta)
+#   POST /payments/confirm-card      → confirma una tarjeta (server-side)
+#   POST /payments/webhook           → recibe eventos de Stripe (sin auth,
+#                                      validado por firma)
+#   POST /payments/paypal/create-order → PayPal: crea orden
+#   POST /payments/paypal/capture     → PayPal: captura la orden
+#
+# Toda transacción se registra en `auditoria_pagos` (ver `audit.py`) para
+# conciliación y cumplimiento PCI.
+#
+# Importante: NUNCA loggeamos el `client_secret`. El log_redactor cubre
+# los logs por si acaso, pero el código tampoco lo manda al logger.
+# ============================================================================
 import logging
 import os
 import uuid

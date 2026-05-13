@@ -1,3 +1,17 @@
+// ============================================================================
+// frontend/lib/screens/cliente/inicio_screen.dart
+// ----------------------------------------------------------------------------
+// Pantalla de entrada del CLIENTE (con o sin sesión).
+//
+// Es la primera que ve un cliente al abrir la app: invita a iniciar
+// sesión, registrarse, o saltar como invitado a la carta/reservas.
+//
+// También maneja el RETORNO de redirects externos (Stripe Checkout web):
+// al volver con `?stripe_session=...` en la URL, esta pantalla lo lee,
+// consulta el estado del pago en backend y navega a la pantalla de
+// "pedido confirmado". Tras procesarlo limpia los query params para que
+// un F5 no vuelva a disparar el flujo.
+// ============================================================================
 import 'dart:ui' show ImageFilter;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';

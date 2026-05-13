@@ -1,3 +1,23 @@
+// ============================================================================
+// frontend/lib/services/auth_session.dart
+// ----------------------------------------------------------------------------
+// Estado de la sesión activa (token JWT + datos del usuario) + persistencia.
+//
+// AuthSession es una clase con miembros estáticos: actúa como singleton
+// global. Cualquier servicio puede leer `AuthSession.token` para añadir
+// el header `Authorization: Bearer ...` a sus peticiones, sin tener que
+// inyectarlo por parámetro.
+//
+// Persistencia con SharedPreferences:
+//   - En móvil: NSUserDefaults (iOS) o SharedPreferences (Android).
+//   - En web: localStorage del navegador.
+//   - Sobrevive a F5 / reinicio de app.
+//
+// Hook onUnauthorized:
+//   - Se registra desde `main.dart` para cerrar sesión cuando el backend
+//     devuelve 401 con sesión activa (token caducado o revocado).
+//   - El interceptor está en http_client.dart, no en cada service.
+// ============================================================================
 /// Mantiene el token JWT emitido por el backend tras un login satisfactorio
 /// y lo persiste en SharedPreferences para sobrevivir recargas de página (web)
 /// o reinicios de la app.

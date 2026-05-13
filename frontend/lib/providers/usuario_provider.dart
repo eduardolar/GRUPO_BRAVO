@@ -1,3 +1,9 @@
+// ============================================================================
+// frontend/lib/providers/usuario_provider.dart
+// ----------------------------------------------------------------------------
+// Estado de la lista de usuarios usada por el panel del administrador.
+// Carga perezosa: solo se llama a `cargar()` cuando se abre la pantalla.
+// ============================================================================
 import 'package:flutter/foundation.dart';
 import '../models/usuario_model.dart';
 import '../services/usuario_service.dart';
