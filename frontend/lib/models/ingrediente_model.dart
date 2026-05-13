@@ -1,3 +1,11 @@
+// ============================================================================
+// frontend/lib/models/ingrediente_model.dart
+// ----------------------------------------------------------------------------
+// Modelo de ingrediente. Tiene doble vida:
+//   1) Como elemento de inventario (cantidadActual, unidad, stockMinimo).
+//   2) Como parte de una receta (cantidadReceta dentro de Producto.ingredientes).
+// El backend usa el mismo modelo con `cantidad_receta` para distinguir contexto.
+// ============================================================================
 class Ingrediente {
   final String id;
   final String nombre;

@@ -1,3 +1,23 @@
+# ============================================================================
+# backend/routes/cierres_caja.py
+# ----------------------------------------------------------------------------
+# Cierre de caja por turno (informe Z).
+#
+# Al final del turno (comida/cena/día), el admin "cierra" la caja: el
+# sistema calcula totales (ventas en efectivo, tarjeta, propinas...),
+# congela los datos y genera un documento de cierre que ya no se puede
+# modificar (salvo reapertura explícita auditada).
+#
+# Endpoints:
+#   GET    /cierres-caja                 → listado (admin/super_admin)
+#   POST   /cierres-caja/abrir           → abre un nuevo cierre (admin)
+#   POST   /cierres-caja/{id}/cerrar     → cierra el turno (admin)
+#   POST   /cierres-caja/{id}/reabrir    → reabre con motivo (admin) [auditado]
+#   GET    /cierres-caja/{id}            → detalle con totales y arqueos
+#
+# Reabrir un cierre es una acción crítica: queda registrada en auditoría
+# con el motivo, porque puede usarse para ajustar números mal contados.
+# ============================================================================
 """Módulo de cierre de caja por turno.
 
 Colección: cierres_caja

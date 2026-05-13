@@ -29,8 +29,9 @@ Map<String, dynamic> buildCrearBody({
   required int? numeroMesa,
   required String mesaId,
 }) {
+  // userId no se incluye: el backend deriva usuario_id del sub del JWT
+  // cuando el actor es staff y no se identifica un cliente concreto.
   return {
-    'userId': 'TRABAJADOR',
     'tipoEntrega': 'local',
     'metodoPago': 'efectivo',
     'mesaId': mesaId,

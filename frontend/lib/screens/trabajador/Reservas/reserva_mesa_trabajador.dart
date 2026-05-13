@@ -8,7 +8,7 @@ import 'package:frontend/models/usuario_model.dart';
 import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/providers/cart_provider.dart';
 import 'package:frontend/providers/restaurante_provider.dart';
-import 'package:frontend/screens/cliente/perfil_screen.dart';
+import 'package:frontend/screens/trabajador/info_usuario.dart';
 import 'package:frontend/services/api_service.dart';
 import 'package:provider/provider.dart';
 
@@ -407,7 +407,7 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
             ),
             onPressed: () => Navigator.push(
               context,
-              AppRoute.slideUp(const PerfilScreen()),
+              AppRoute.slideUp(const PerfilTrabajadorScreen()),
             ),
           ),
         ],

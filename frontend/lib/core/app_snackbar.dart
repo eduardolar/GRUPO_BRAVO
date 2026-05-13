@@ -1,3 +1,19 @@
+// ============================================================================
+// frontend/lib/core/app_snackbar.dart
+// ----------------------------------------------------------------------------
+// Helpers globales para mostrar SnackBars con estilo coherente.
+//
+// En lugar de construir `SnackBar(...)` a mano en cada pantalla, cualquier
+// widget llama a:
+//   showAppError(context, "Error de stock")
+//   showAppSuccess(context, "Pedido enviado")
+//   showAppInfo(context, "Mesa abierta")
+//   handleApiError(context, error)  ← convierte excepciones en texto humano
+//
+// `handleApiError` evita el patrón anti-UX `try { ... } catch (e) {
+// debugPrint(e) }` (el usuario se queda sin feedback). Detecta excepciones
+// comunes (red, timeout, formato) y traduce a mensajes en español.
+// ============================================================================
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../services/http_client.dart';

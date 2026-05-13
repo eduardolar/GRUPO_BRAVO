@@ -99,6 +99,10 @@ class _ModificarComandaState extends State<ModificarComanda> {
       return <Map<String, dynamic>>[];
     }();
     final total = (pedido?['total'] as num?)?.toDouble() ?? 0.0;
+    // Versión del pedido para concurrencia optimista al guardar cambios.
+    // Si dos camareros editan a la vez, el segundo recibe 409 y refresca.
+    final versionRaw = pedido?['version'];
+    final pedidoVersion = versionRaw is int ? versionRaw : null;
     final parentContext = context;
 
     // El sheet devuelve `true` cuando el camarero ha navegado a otra
@@ -112,6 +116,7 @@ class _ModificarComandaState extends State<ModificarComanda> {
       builder: (_) => _DetalleComandaSheet(
         mesa: mesa,
         pedidoId: pedidoId,
+        pedidoVersion: pedidoVersion,
         productos: productos,
         total: total,
         parentContext: parentContext,
@@ -344,6 +349,10 @@ class _ModificarComandaState extends State<ModificarComanda> {
 class _DetalleComandaSheet extends StatefulWidget {
   final Mesa mesa;
   final String? pedidoId;
+  /// Versión actual del pedido para concurrencia optimista al guardar.
+  /// Si dos camareros editan a la vez, el segundo recibe 409 del backend
+  /// y refresca antes de pisar cambios. Null = sin chequeo (fallback).
+  final int? pedidoVersion;
   final List<Map<String, dynamic>> productos;
   final double total;
   final BuildContext parentContext;
@@ -355,6 +364,7 @@ class _DetalleComandaSheet extends StatefulWidget {
   const _DetalleComandaSheet({
     required this.mesa,
     required this.pedidoId,
+    required this.pedidoVersion,
     required this.productos,
     required this.total,
     required this.parentContext,
@@ -369,10 +379,15 @@ class _DetalleComandaSheetState extends State<_DetalleComandaSheet> {
   late List<Map<String, dynamic>> _productos;
   bool _guardando = false;
   bool _modificado = false;
+  // Versión local mutable: parte de la del pedido y se actualiza con la
+  // respuesta del backend si el guardado tuviera éxito (no hay rondas
+  // múltiples por ahora pero queda preparado).
+  int? _version;
 
   @override
   void initState() {
     super.initState();
+    _version = widget.pedidoVersion;
     // Copia profunda mutable: cada item se clona para no compartir referencias
     // con la lista original (que pertenece al pedido cargado).
     _productos = widget.productos
@@ -418,11 +433,19 @@ class _DetalleComandaSheetState extends State<_DetalleComandaSheet> {
     final messenger = ScaffoldMessenger.of(widget.parentContext);
     setState(() => _guardando = true);
     try {
-      await ApiService.agregarItemsPedido(
+      // Pasamos `version` para que el backend rechace con 409 si otro
+      // camarero modificó el pedido entre tanto (concurrencia optimista).
+      // Antes este PATCH iba sin version → last-writer-wins.
+      final resultado = await ApiService.agregarItemsPedido(
         pedidoId: pedidoId,
         items: _productos,
         totalExtra: _totalActual,
+        version: _version,
       );
+      // Actualizamos la versión local con la devuelta por el backend
+      // para futuras ediciones encadenadas si el flujo lo necesitara.
+      final nuevaV = resultado['version'];
+      if (nuevaV is int) _version = nuevaV;
       if (!mounted) return;
       messenger.showSnackBar(
         const SnackBar(

@@ -1,3 +1,20 @@
+// ============================================================================
+// frontend/lib/screens/Administrador/admin_home_screen.dart
+// ----------------------------------------------------------------------------
+// Home del ADMINISTRADOR de sucursal (no super_admin).
+//
+// Es un menú de "azulejos" hacia las áreas que gestiona un admin:
+//   - Local (datos fiscales, horarios, logo)
+//   - Carta (productos + categorías)
+//   - Mesas y QR
+//   - Reservas
+//   - Cupones
+//   - Cierre de caja / Contabilidad
+//   - Empleados (usuarios con rol camarero/cocinero de su sucursal)
+//
+// El admin solo ve datos de SU `restaurante_id`; el backend lo fuerza con
+// el JWT del usuario logueado.
+// ============================================================================
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';

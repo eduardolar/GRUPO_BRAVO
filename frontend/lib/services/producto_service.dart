@@ -1,3 +1,11 @@
+// ============================================================================
+// frontend/lib/services/producto_service.dart
+// ----------------------------------------------------------------------------
+// Cliente HTTP para la carta (productos). CRUD + subida de imagen.
+//
+// La subida usa multipart/form-data (no JSON) porque viaja un archivo
+// binario. `http_parser.MediaType` ayuda a fijar el Content-Type correcto.
+// ============================================================================
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;

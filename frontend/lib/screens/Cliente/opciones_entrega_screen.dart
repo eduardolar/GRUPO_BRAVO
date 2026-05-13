@@ -1,3 +1,22 @@
+// ============================================================================
+// frontend/lib/screens/cliente/opciones_entrega_screen.dart
+// ----------------------------------------------------------------------------
+// CHECKOUT del cliente: dónde entregar + cómo pagar + confirmar.
+//
+// Esta es la pantalla más compleja del flujo de cliente. Maneja:
+//   1) Tipo de entrega (en mesa / recoger / domicilio) y, si es domicilio,
+//      elección de dirección (guardada en perfil o alternativa puntual).
+//   2) Método de pago (efectivo / tarjeta / Apple Pay / Google Pay / PayPal).
+//      - Tarjeta: en móvil usa flutter_stripe.CardField (PaymentSheet).
+//                 En web abre Stripe Checkout en una nueva pestaña.
+//   3) Idempotencia: genera un UUID por intento y lo manda como
+//      Idempotency-Key para que un reintento no cree dos pedidos.
+//   4) Tras pagar (o si es efectivo): crea el pedido en backend, vacía el
+//      carrito, marca el pedido activo y navega a "pedido_confirmado".
+//
+// Cuando el cliente vuelve de Stripe en web, NO aterriza aquí, sino en
+// `inicio_screen.dart` (que lee el query param y reactiva el flujo).
+// ============================================================================
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';

@@ -1,3 +1,10 @@
+// ============================================================================
+// frontend/lib/models/producto_model.dart
+// ----------------------------------------------------------------------------
+// Modelo de un producto de la carta (plato, bebida, postre).
+// `restauranteId` puede ser null para productos legacy sin sucursal asignada
+// (visibles a todas). El super admin debería migrarlos vía /asignar-sucursal.
+// ============================================================================
 import 'ingrediente_model.dart';
 
 class Producto {

@@ -1,3 +1,13 @@
+// ============================================================================
+// frontend/lib/models/pedido_model.dart
+// ----------------------------------------------------------------------------
+// Modelos del pedido: ProductoPedido (línea) y Pedido (cabecera).
+//
+// `itemId` (UUID estable asignado por el backend) permite a cocina marcar
+// items como hechos individualmente sin depender del índice (más robusto
+// si el pedido se modifica). Pedidos antiguos sin itemId caen al endpoint
+// legacy `/items/{idx}/hecho-por-indice`.
+// ============================================================================
 class ProductoPedido {
   final String? productoId;
   /// UUID estable del item dentro del pedido. Lo asigna el backend al crear.

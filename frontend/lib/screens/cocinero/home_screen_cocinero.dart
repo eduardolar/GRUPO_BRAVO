@@ -1,3 +1,12 @@
+// ============================================================================
+// frontend/lib/screens/cocinero/home_screen_cocinero.dart
+// ----------------------------------------------------------------------------
+// Home del rol "cocinero": directo al kanban de pedidos en cocina.
+//
+// El cocinero tiene UI minimalista: lo único que le interesa es la lista
+// de pedidos pendientes/en preparación y marcar items como hechos. Por eso
+// no hay menú lateral, solo un acceso inmediato a PedidosCocinaScreen.
+// ============================================================================
 import 'package:flutter/material.dart';
 import 'package:frontend/core/app_snackbar.dart';
 import 'package:frontend/core/colors_style.dart';

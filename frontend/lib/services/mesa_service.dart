@@ -1,3 +1,9 @@
+// ============================================================================
+// frontend/lib/services/mesa_service.dart
+// ----------------------------------------------------------------------------
+// Cliente HTTP de mesas físicas. CRUD + cambio de estado (libre/ocupada/etc.)
+// y validación de QR (cliente escanea → backend resuelve la mesa).
+// ============================================================================
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/mesa_model.dart';

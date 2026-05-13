@@ -1,3 +1,14 @@
+// ============================================================================
+// frontend/lib/components/Cliente/entrada_texto.dart
+// ----------------------------------------------------------------------------
+// Campo de texto unificado del design system. Soporta:
+//   - Modo contraseña con toggle "ver/ocultar".
+//   - Icono opcional a la izquierda.
+//   - Tipos de teclado y autofill hints (email, teléfono, etc.).
+//   - Validador personalizado.
+//   - Modo solo lectura.
+// Usado en todos los formularios para que la apariencia sea coherente.
+// ============================================================================
 import 'package:flutter/material.dart';
 import '../../core/colors_style.dart';
 

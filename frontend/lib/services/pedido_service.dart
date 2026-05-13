@@ -1,3 +1,22 @@
+// ============================================================================
+// frontend/lib/services/pedido_service.dart
+// ----------------------------------------------------------------------------
+// Cliente HTTP de pedidos.
+//
+// Funciones clave:
+//   - crearPedido: POST /pedidos (incluye soporte de Idempotency-Key para
+//     evitar duplicados si la red falla a mitad de un envío).
+//   - listarPedidos / pedidosActivos: GET con filtros (cocina, camarero).
+//   - actualizarEstadoPedido: PATCH para mover estado.
+//   - marcarItemHecho: el cocinero marca un plato como listo.
+//   - descargarTicketPdf: bytes del PDF para imprimir/compartir.
+//
+// Idempotencia (importante en pagos):
+//   El frontend genera un UUID por intento de pedido. Si la red falla a
+//   mitad, el reintento envía el mismo Idempotency-Key. El backend
+//   detecta el duplicado y devuelve el pedido anterior sin crear uno nuevo
+//   ni cobrar dos veces.
+// ============================================================================
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
@@ -9,7 +28,11 @@ import 'auth_session.dart';
 
 class PedidoService {
   static Future<Map<String, dynamic>> crearPedido({
-    required String userId,
+    // Opcional: el cliente identifica al destinatario del pedido. Cuando
+    // el camarero crea un pedido sin cliente registrado (sala/recoger/
+    // domicilio sin alta) se envía null y el backend persiste el sub del
+    // propio camarero para trazabilidad.
+    String? userId,
     required List<Map<String, dynamic>> items,
     required String tipoEntrega,
     required String metodoPago,
@@ -56,7 +79,7 @@ class PedidoService {
         Uri.parse('$baseUrl/pedidos'),
         headers: AuthSession.headers(extra: extraHeaders),
         body: jsonEncode({
-          'userId': userId,
+          'userId': ?userId,
           'items': items,
           'tipoEntrega': tipoEntrega,
           'metodoPago': metodoPago,

@@ -15,8 +15,15 @@ class _MiTurnoScreenState extends State<MiTurnoScreen> {
   Map<String, dynamic>? _stats;
   bool _cargando = true;
   String? _error;
+  // Rango en horario local del dispositivo. Al consultar al backend se
+  // envían convertidos a UTC (ver _cargar). Por defecto: hoy 00:00 local
+  // hasta el momento actual.
   late DateTime _desde;
   late DateTime _hasta;
+  // Indica si el rango es el "modo turno actual" (hasta = ahora) — en ese
+  // caso refrescamos `_hasta` automáticamente en cada `_cargar` para que
+  // las cifras incluyan los pedidos recientes sin reabrir la pantalla.
+  bool _modoTurnoActual = true;
 
   @override
   void initState() {
@@ -28,6 +35,9 @@ class _MiTurnoScreenState extends State<MiTurnoScreen> {
   }
 
   Future<void> _cargar() async {
+    if (_modoTurnoActual) {
+      _hasta = DateTime.now();
+    }
     setState(() {
       _cargando = true;
       _error = null;
@@ -49,6 +59,42 @@ class _MiTurnoScreenState extends State<MiTurnoScreen> {
         _error = e.toString().replaceFirst('Exception: ', '');
       });
     }
+  }
+
+  /// Selector de fecha para cambiar el inicio del turno.
+  /// Útil para revisar KPIs de días pasados (cierre, ajustes contables).
+  Future<void> _seleccionarRango() async {
+    final ahora = DateTime.now();
+    final rango = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(ahora.year - 1),
+      lastDate: ahora,
+      initialDateRange: DateTimeRange(
+        start: _desde,
+        end: DateTime(_hasta.year, _hasta.month, _hasta.day),
+      ),
+      helpText: 'Rango del turno',
+      saveText: 'APLICAR',
+    );
+    if (rango == null || !mounted) return;
+    setState(() {
+      _desde = DateTime(rango.start.year, rango.start.month, rango.start.day);
+      // El fin del día seleccionado: 23:59:59.999. Si el usuario escoge
+      // hoy como `end`, mantenemos el modo "turno actual" para que el
+      // refresh siga avanzando hasta DateTime.now().
+      final hoyMidnight = DateTime(ahora.year, ahora.month, ahora.day);
+      final endMidnight = DateTime(rango.end.year, rango.end.month, rango.end.day);
+      if (endMidnight.isAtSameMomentAs(hoyMidnight)) {
+        _modoTurnoActual = true;
+        _hasta = ahora;
+      } else {
+        _modoTurnoActual = false;
+        _hasta = DateTime(
+          rango.end.year, rango.end.month, rango.end.day, 23, 59, 59, 999,
+        );
+      }
+    });
+    _cargar();
   }
 
   String _formatoEuros(num? v) {
@@ -173,31 +219,44 @@ class _MiTurnoScreenState extends State<MiTurnoScreen> {
     String fmt(DateTime d) =>
         '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')} '
         '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppColors.panel,
+    return Semantics(
+      label: 'Cambiar rango del turno',
+      button: true,
+      child: InkWell(
+        onTap: _seleccionarRango,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.line),
-      ),
-      child: Row(
-        children: [
-          const Icon(
-            Icons.access_time,
-            color: AppColors.textSecondary,
-            size: 16,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: AppColors.panel,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppColors.line),
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              'Desde ${fmt(_desde)} · Hasta ${fmt(_hasta)}',
-              style: const TextStyle(
+          child: Row(
+            children: [
+              const Icon(
+                Icons.access_time,
                 color: AppColors.textSecondary,
-                fontSize: 12,
+                size: 16,
               ),
-            ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Desde ${fmt(_desde)} · Hasta ${fmt(_hasta)}',
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+              const Icon(
+                Icons.calendar_today_outlined,
+                color: AppColors.textSecondary,
+                size: 14,
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

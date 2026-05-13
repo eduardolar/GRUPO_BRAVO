@@ -1,3 +1,21 @@
+// ============================================================================
+// frontend/lib/core/app_theme.dart
+// ----------------------------------------------------------------------------
+// Tema visual global de la app.
+//
+// Define la tipografía (Playfair Display para títulos, Manrope para UI), el
+// ColorScheme (burdeos + crema), y los temas por defecto de los widgets
+// más usados (botones, inputs, AppBar). Material 3 está activado.
+//
+// Cómo se usa:
+//   En `main.dart`: `MaterialApp(theme: AppTheme.light, ...)`.
+//   Cualquier widget hereda automáticamente:
+//     - `Theme.of(context).textTheme.headlineMedium` para el estilo de cabecera.
+//     - `Theme.of(context).colorScheme.primary` para el burdeos corporativo.
+//
+// AppMotion: duraciones estandarizadas para que toda la app tenga la misma
+// "sensación" en transiciones (180ms, 260ms, 380ms con Curves.easeOutCubic).
+// ============================================================================
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'colors_style.dart';

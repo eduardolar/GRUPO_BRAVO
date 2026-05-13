@@ -1,3 +1,35 @@
+# ============================================================================
+# backend/routes/clientes.py
+# ----------------------------------------------------------------------------
+# Endpoints específicos del rol "cliente" final (el que pide comida).
+#
+# A diferencia de `routes/usuarios.py` (gestión por admin) y `routes/auth.py`
+# (login común a todos los roles), aquí están las acciones que el cliente
+# hace SOBRE SÍ MISMO: registrarse, recuperar contraseña, ver/editar su
+# perfil, exportar sus datos RGPD, darse de baja, etc.
+#
+# Endpoints públicos (sin auth):
+#   POST /clientes/registro              → auto-registro (rol forzado a "cliente")
+#   POST /clientes/verificar-email       → confirma código tras registro
+#   POST /clientes/reenviar-codigo       → reenvía código de verificación
+#   POST /clientes/recuperar-password    → envío de código de recuperación
+#   POST /clientes/restablecer-password  → confirma código y resetea contraseña
+#
+# Endpoints autenticados (JWT con rol "cliente"):
+#   GET    /clientes/me                  → perfil propio
+#   PUT    /clientes/me                  → editar perfil propio (subset seguro)
+#   PUT    /clientes/me/password         → cambiar contraseña propia
+#   GET    /clientes/me/datos            → exportar RGPD (incluye pedidos)
+#   DELETE /clientes/me                  → baja RGPD (anonimización)
+#
+# IMPORTANTE: Todas las acciones autenticadas usan el `sub` del JWT, NO el
+# id que mande el cliente. Así no se puede modificar datos de otra cuenta
+# pasando un id en el body.
+#
+# NOTA: Los endpoints de 2FA TOTP (setup, activar, desactivar, recuperación) se
+# mantienen en auth.py bajo /api/v1/usuarios/{user_id}/2fa/... porque los usan
+# TODOS los roles, no solo clientes.
+# ============================================================================
 """Router de clientes — endpoints del rol "cliente" final que pide comida.
 
 Prefijo: /api/v1/clientes

@@ -4,7 +4,7 @@ import 'package:frontend/components/Cliente/producto_card.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/models/producto_model.dart';
 import 'package:frontend/providers/auth_provider.dart';
-import 'package:frontend/screens/Cliente/perfil_screen.dart';
+import 'package:frontend/screens/trabajador/info_usuario.dart';
 import 'package:frontend/services/api_service.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -412,9 +412,10 @@ class _CrearPedidosState extends State<CrearComanda> {
         // Primer envío: crear pedido nuevo y guardar su id.
         // _idempotencyKey persiste entre reintentos fallidos; se renueva
         // solo tras éxito (ver abajo).
+        // userId se deja null: el backend persiste el sub del camarero
+        // como usuario_id para mantener trazabilidad de quién creó la mesa.
         final auth = Provider.of<AuthProvider>(context, listen: false);
         final resultado = await ApiService.crearPedido(
-          userId: "TRABAJADOR",
           items: allItems,
           tipoEntrega: "local",
           metodoPago: "efectivo",
@@ -739,7 +740,7 @@ class _CrearPedidosState extends State<CrearComanda> {
                         ),
                         onPressed: () => Navigator.push(
                           context,
-                          AppRoute.slideUp(const PerfilScreen()),
+                          AppRoute.slideUp(const PerfilTrabajadorScreen()),
                         ),
                       ),
                     ],

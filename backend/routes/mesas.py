@@ -1,3 +1,32 @@
+# ============================================================================
+# backend/routes/mesas.py
+# ----------------------------------------------------------------------------
+# Gestión de mesas físicas del restaurante.
+#
+# Una mesa tiene:
+#   - numero  → identificador humano (Mesa 12)
+#   - capacidad → comensales máximos
+#   - ubicacion → "interior" o "terraza"
+#   - codigoQr  → string único impreso en el QR (al escanear, el cliente
+#                 abre la carta ya asociada a esa mesa).
+#   - estado   → "libre" | "ocupada" | "reservada" | "limpiando" ...
+#
+# Endpoints clave:
+#   GET    /mesas                  → listado (cliente/empleado)
+#   POST   /mesas                  → crear (admin)
+#   PUT    /mesas/{id}             → editar (admin)
+#   DELETE /mesas/{id}             → eliminar (admin)
+#   PATCH  /mesas/{id}/estado      → cambiar estado (camarero)
+#   POST   /mesas/validar-qr       → endpoint que llama el frontend al
+#                                     escanear el QR para abrir la carta
+#                                     pre-asignada a esa mesa.
+#
+# Notas:
+#   - El campo `disponible` (bool) se mantiene por compatibilidad con la
+#     app antigua; el nuevo `estado` (string) lleva más detalle.
+#   - El `restaurante_id` lo rellena el backend con el JWT del admin si no
+#     es super_admin (evita que un admin cree mesas en otra sucursal).
+# ============================================================================
 import logging
 from datetime import datetime, timezone, timedelta
 from typing import Optional

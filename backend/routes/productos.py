@@ -1,3 +1,26 @@
+# ============================================================================
+# backend/routes/productos.py
+# ----------------------------------------------------------------------------
+# CRUD de productos de la carta + asignación de sucursal y orden.
+#
+# Endpoints clave:
+#   GET    /productos                   → listado (cliente/empleado)
+#   POST   /productos                   → crear (admin)
+#   PUT    /productos/{id}              → editar (admin)
+#   DELETE /productos/{id}              → eliminar (admin)
+#   PATCH  /productos/orden             → reordenar tarjetas en la carta
+#   POST   /productos/asignar-sucursal  → migración: pasar productos legacy
+#                                          a una sucursal (multi-tenant)
+#
+# Conceptos no obvios:
+#   - Un producto tiene una lista `ingredientes`, que puede ser:
+#       a) string (legacy: solo el nombre, sin cantidad)
+#       b) dict con {nombre, cantidad_receta} o {ingrediente_id, ...}
+#     `_normalizar_ingrediente_item` los reduce al esquema común que usa
+#     después `routes/pedidos.py` para descontar stock.
+#   - `restaurante_id` puede ser None en productos legacy. El endpoint
+#     `asignar-sucursal` permite migrar todos los huérfanos de golpe.
+# ============================================================================
 from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import List, Optional
 from pydantic import BaseModel

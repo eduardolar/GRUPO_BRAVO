@@ -15,6 +15,7 @@ import 'package:frontend/services/api_service.dart';
 import 'package:frontend/services/mesa_service.dart';
 import 'package:frontend/services/pedido_service.dart';
 import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
 
 // ─────────────────────────────────────────────────────────────
 // RAÍZ
@@ -104,16 +105,15 @@ class _GestionPedidosState extends State<GestionPedidos>
   List<Pedido> get _listos =>
       _pedidos.where((p) => p.estado == 'listo').toList();
 
-  // Cobrar solo aplica a pedidos en mesa pendientes de pago: domicilio y
-  // recoger se pagan online en el momento del checkout (Stripe/PayPal/wallet)
-  // y no necesitan cobro manual del camarero. Una vez pagado, el pedido sale
-  // de este tab (es histórico, ya no requiere acción).
+  // Cobrar aplica a cualquier pedido entregado que aún no esté pagado:
+  //   - Mesa: el camarero saca la cuenta y cobra (efectivo / tarjeta física).
+  //   - Recoger / domicilio: si el cliente eligió pago en local en lugar de
+  //     pasarela, el camarero también lo cobra aquí.
+  // Los pedidos que ya están "pagado" (pasarelas online via Stripe/PayPal/
+  // wallets) salen del tab automáticamente.
   List<Pedido> get _cobrar => _pedidos
       .where(
-        (p) =>
-            p.estado == 'entregado' &&
-            p.tipoEntrega == 'local' &&
-            p.estadoPago != 'pagado',
+        (p) => p.estado == 'entregado' && p.estadoPago != 'pagado',
       )
       .toList();
 
@@ -383,6 +383,125 @@ class _GestionPedidosState extends State<GestionPedidos>
     }
   }
 
+  /// Cobro rápido para pedidos sin mesa (recoger/domicilio).
+  /// Pide método de pago en un sheet, llama a cerrarPedido y refresca.
+  /// No marca mesa por_limpiar porque no hay mesa asociada.
+  Future<void> _cobrarRapido(Pedido pedido) async {
+    final metodo = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: AppColors.panel,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 3,
+                  decoration: BoxDecoration(
+                    color: AppColors.line,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                pedido.tipoEntrega == 'recoger'
+                    ? 'Cobrar pedido para recoger'
+                    : 'Cobrar pedido a domicilio',
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Total ${pedido.total.toStringAsFixed(2).replaceAll('.', ',')} €',
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => Navigator.pop(ctx, 'efectivo'),
+                      icon: const Icon(Icons.payments_outlined, size: 18),
+                      label: const Text(
+                        'EFECTIVO',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.button,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        elevation: 0,
+                        shape: const RoundedRectangleBorder(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => Navigator.pop(ctx, 'tarjeta_fisica'),
+                      icon: const Icon(Icons.credit_card, size: 18),
+                      label: const Text(
+                        'TARJETA',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.button,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        elevation: 0,
+                        shape: const RoundedRectangleBorder(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (metodo == null || !mounted) return;
+
+    try {
+      await ApiService.cerrarPedido(
+        pedidoId: pedido.id,
+        metodoPago: metodo,
+        idempotencyKey: const Uuid().v4(),
+      );
+      if (!mounted) return;
+      showAppSuccess(context, 'Pedido cobrado');
+      await _cargarPedidos();
+    } catch (e) {
+      if (!mounted) return;
+      showAppError(
+        context,
+        'Error al cobrar: ${e.toString().replaceFirst('Exception: ', '')}',
+      );
+    }
+  }
+
   Future<void> _iniciarCancelacion(Pedido pedido) async {
     final motivo = await showDialog<String>(
       context: context,
@@ -542,12 +661,24 @@ class _GestionPedidosState extends State<GestionPedidos>
                           cargando: _cargando,
                           error: _error,
                           onRefresh: _refrescar,
-                          onSacarCuenta: (p) => Navigator.push(
-                            context,
-                            AppRoute.slide(
-                              SacarCuenta(mesaIdInicial: p.mesaId),
-                            ),
-                          ),
+                          onSacarCuenta: (p) {
+                            // Pedidos de mesa pasan por la pantalla completa
+                            // (cuenta detallada + por_limpiar). Recoger/
+                            // domicilio no tienen mesa, así que abrimos un
+                            // sheet inline con efectivo/tarjeta_fisica.
+                            if (p.tipoEntrega == 'local' &&
+                                p.mesaId != null &&
+                                p.mesaId!.isNotEmpty) {
+                              Navigator.push(
+                                context,
+                                AppRoute.slide(
+                                  SacarCuenta(mesaIdInicial: p.mesaId),
+                                ),
+                              );
+                            } else {
+                              _cobrarRapido(p);
+                            }
+                          },
                         ),
                       ],
                     ),

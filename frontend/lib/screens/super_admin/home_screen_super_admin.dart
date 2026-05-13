@@ -1,3 +1,18 @@
+// ============================================================================
+// frontend/lib/screens/super_admin/home_screen_super_admin.dart
+// ----------------------------------------------------------------------------
+// Home del SUPER ADMIN (dueño de la red).
+//
+// A diferencia del admin local, el super_admin ve TODAS las sucursales y
+// puede:
+//   - Crear/editar/suspender sucursales.
+//   - Ver KPIs globales (ventas, pedidos, ocupación) a través de la red.
+//   - Gestionar usuarios de todos los roles, incluyendo otros admins.
+//   - Lanzar campañas masivas (cupones) a varios restaurantes.
+//   - Editar el catálogo de productos en masa.
+//
+// El backend solo permite estos endpoints a `require_role(["super_admin"])`.
+// ============================================================================
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';

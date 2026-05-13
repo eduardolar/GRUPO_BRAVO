@@ -1,3 +1,9 @@
+// ============================================================================
+// frontend/lib/services/auditoria_service.dart
+// ----------------------------------------------------------------------------
+// Cliente HTTP para consultar la auditoría de pagos.
+// `EventoAuditoria` modela cada entrada que devuelve el backend.
+// ============================================================================
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'api_config.dart';

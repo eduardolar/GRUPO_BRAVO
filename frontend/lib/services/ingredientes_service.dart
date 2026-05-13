@@ -1,3 +1,10 @@
+// ============================================================================
+// frontend/lib/services/ingredientes_service.dart
+// ----------------------------------------------------------------------------
+// Cliente HTTP de ingredientes y stock.
+// La lista de `categorias` se expone como constante para los selectores
+// del formulario (Carnes, Lácteos, Verduras, etc.).
+// ============================================================================
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/ingrediente_model.dart';

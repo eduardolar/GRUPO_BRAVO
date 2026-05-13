@@ -1,3 +1,9 @@
+// ============================================================================
+// frontend/lib/providers/restaurante_provider.dart
+// ----------------------------------------------------------------------------
+// Estado global de la lista de sucursales (multi-tenant).
+// Lo consulta la pantalla de selector y la carta del cliente.
+// ============================================================================
 import 'package:flutter/foundation.dart';
 import '../models/restaurante_model.dart';
 import '../services/restaurante_service.dart';

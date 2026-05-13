@@ -1,3 +1,23 @@
+# ============================================================================
+# backend/routes/uploads.py
+# ----------------------------------------------------------------------------
+# Subida y borrado de imágenes (productos y logos de sucursales).
+#
+# Usamos Cloudinary como almacenamiento externo (más rápido que servir
+# bytes desde nuestra API y con CDN automático). Si Cloudinary no está
+# configurado, los endpoints devuelven 503 en lugar de crashear (ver
+# `cloudinary_client._DISPONIBLE`).
+#
+# Endpoints registrados bajo el prefijo /api/v1 de main.py:
+#     POST   /productos/{producto_id}/imagen     — sube/reemplaza imagen de producto
+#     DELETE /productos/{producto_id}/imagen     — borra imagen de producto
+#     POST   /restaurantes/{id}/logo             — sube/reemplaza logo de sucursal (super_admin)
+#     DELETE /restaurantes/{id}/logo             — borra logo de sucursal (super_admin)
+#
+# Al subir guardamos en BD dos campos:
+#   - imagen_url        → URL pública para servir (CDN)
+#   - imagen_public_id  → ID interno en Cloudinary (necesario para borrar)
+# ============================================================================
 """Endpoints de subida y borrado de imágenes (productos y logos de restaurantes).
 
 Usa Cloudinary (tier gratuito) como almacenamiento externo.

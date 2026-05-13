@@ -1,3 +1,18 @@
+// ============================================================================
+// frontend/lib/services/api_service.dart
+// ----------------------------------------------------------------------------
+// Fachada legacy que reenvía a los services especializados.
+//
+// Históricamente había una sola clase `ApiService` con TODOS los endpoints.
+// Para evitar un mega-archivo, hemos ido extrayendo cada dominio a su
+// propio service (auth_service, producto_service, pedido_service, etc.).
+// Este archivo se mantiene como wrapper para no romper las pantallas que
+// todavía hacen `ApiService.iniciarSesion(...)`.
+//
+// En código nuevo, importa directamente el service específico:
+//   import '../services/pedido_service.dart';
+//   PedidoService.crearPedido(...);
+// ============================================================================
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -153,7 +168,7 @@ class ApiService {
   );
 
   static Future<Map<String, dynamic>> crearPedido({
-    required String userId,
+    String? userId,
     required List<Map<String, dynamic>> items,
     required String tipoEntrega,
     required String metodoPago,

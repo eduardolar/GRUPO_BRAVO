@@ -1,3 +1,17 @@
+// ============================================================================
+// frontend/lib/screens/cliente/pedido_confirmado_screen.dart
+// ----------------------------------------------------------------------------
+// "Pedido confirmado": tracker en tiempo real del pedido activo.
+//
+// Muestra el progreso del pedido (Recibido → Preparando → Listo) con un
+// stepper animado. Cada 15s (`_kPollInterval`) consulta el backend para
+// actualizar el estado.
+//
+// Cuando el estado pasa a "listo":
+//   - Se dispara una notificación local en el dispositivo del cliente.
+//   - La pantalla muestra el mensaje "Tu pedido está listo" con CTA para
+//     ir a recogerlo / atender al camarero.
+// ============================================================================
 import 'dart:async';
 
 import 'package:flutter/material.dart';

@@ -1,3 +1,19 @@
+// ============================================================================
+// frontend/lib/models/usuario_model.dart
+// ----------------------------------------------------------------------------
+// Modelo del usuario y enum de roles.
+//
+// IMPORTANTE: los nombres del enum NO coinciden con los del backend.
+//   Frontend (Dart)     Backend (canónico)
+//   --------------      ------------------
+//   trabajador          camarero
+//   administrador       admin
+//   superadministrador  super_admin
+//
+// El backend acepta ambas formas (ver `security.normalizar_rol`) por
+// compatibilidad histórica. En la app interna usamos los nombres "humanos"
+// porque son los que se mostraban originalmente al usuario.
+// ============================================================================
 enum RolUsuario {
   cliente,
   trabajador,

@@ -1,3 +1,23 @@
+// ============================================================================
+// frontend/lib/services/auth_service.dart
+// ----------------------------------------------------------------------------
+// Cliente HTTP del backend de autenticación.
+//
+// Cubre:
+//   - iniciarSesion: POST /auth/login (gestiona el caso requires_2fa).
+//   - registrarUsuario: POST /auth/registro.
+//   - verificarCodigo, reenviarCodigo: confirma alta.
+//   - recuperarPassword + restablecerPassword: flujo de "olvidé contraseña".
+//   - Métodos 2FA: setup, activar, desactivar, verificar.
+//
+// Tras un login exitoso, llama a `AuthSession.guardar(...)` para persistir
+// el token. Las siguientes peticiones llevarán `Authorization: Bearer ...`
+// automáticamente gracias a `AuthSession.headers()`.
+//
+// Modo mock: si `usarApiReal == false` (api_config.dart), las funciones
+// devuelven datos de `data/mock_users.dart` sin tocar la red. Útil para
+// desarrollar sin backend levantado.
+// ============================================================================
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../data/mock_data.dart';

@@ -1,3 +1,26 @@
+# ============================================================================
+# backend/routes/usuarios.py
+# ----------------------------------------------------------------------------
+# Gestión de usuarios desde el panel de administración.
+#
+# A diferencia de `routes/auth.py` (que cubre login/registro del cliente
+# final), aquí viven los endpoints que el ADMIN o el SUPER_ADMIN usan para
+# crear/listar/editar/suspender empleados:
+#
+#   POST   /usuarios            → alta de empleado (manda email de activación)
+#   GET    /usuarios            → lista (filtros por rol, sucursal, estado)
+#   PUT    /usuarios/{id}       → editar perfil
+#   PATCH  /usuarios/{id}/rol   → cambiar rol (con auditoría)
+#   PATCH  /usuarios/{id}/estado → activar/suspender
+#   DELETE /usuarios/{id}       → eliminar
+#
+# Conceptos clave:
+#   - El actor (quién hace la acción) se extrae del JWT, NO del body, para
+#     evitar suplantación. Ver `_actor_de(request)`.
+#   - Toda acción se registra en auditoría general (`audit_general`).
+#   - Para empleados creados por admin: se genera password temporal aleatoria
+#     + código de activación; el empleado lo cambia al primer login.
+# ============================================================================
 import random
 import string
 from datetime import datetime, timezone

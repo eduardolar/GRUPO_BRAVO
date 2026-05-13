@@ -1,3 +1,39 @@
+# ============================================================================
+# backend/routes/auth.py
+# ----------------------------------------------------------------------------
+# Endpoints de autenticación y 2FA.
+#
+# Visión global del flujo:
+#
+#   1) REGISTRO:
+#        POST /registro                → crea usuario inactivo + envía OTP por email
+#        POST /verificar-codigo        → marca is_verified=True
+#
+#   2) LOGIN normal:
+#        POST /login                   → valida password
+#                                        - Si rol=cliente y email_2fa_enabled=True
+#                                          → manda código a email y exige paso 2.
+#                                        - Si no → devuelve JWT directamente.
+#        POST /verificar-login-2fa     → valida código y devuelve JWT.
+#        POST /reenviar-login-2fa      → reenvía código si no llegó.
+#
+#   3) 2FA con app autenticadora (TOTP, ej. Google Authenticator):
+#        POST /usuarios/{id}/2fa/setup       → devuelve secret + URI para escanear
+#        POST /usuarios/{id}/2fa/activar     → confirma con primer código
+#        POST /usuarios/{id}/2fa/desactivar  → apaga TOTP
+#        POST /verificar-2fa                 → segundo factor TOTP en login
+#        POST /verificar-2fa-recovery        → segundo factor con código de recuperación
+#        POST /usuarios/{id}/2fa/regenerar-codigos
+#
+#   4) 2FA por email (alternativa más simple para clientes):
+#        POST /usuarios/{id}/2fa-email/solicitar
+#        POST /usuarios/{id}/2fa-email/activar
+#        POST /usuarios/{id}/2fa-email/desactivar
+#
+# Hashing de contraseñas: bcrypt con salt automático (`bcrypt.gensalt()`).
+# Rate limit: `@limiter.limit("N/minute")` en endpoints sensibles para
+# frenar fuerza bruta. La IP la determina slowapi (`get_remote_address`).
+# ============================================================================
 import logging
 import os
 import random
@@ -125,28 +161,42 @@ async def enviar_correo_verificacion(email_destino: str, codigo: str):
     return True
 
 # --- 3. ENDPOINT: REGISTRO ---
+# Flujo:
+#   1) Validamos consentimiento RGPD + unicidad de correo.
+#   2) Si el rol no es cliente, exige restaurante_id (un camarero existe
+#      siempre dentro de una sucursal).
+#   3) Generamos OTP de 6 dígitos, hasheamos password con bcrypt y guardamos
+#      el documento como is_verified=False.
+#   4) Enviamos el OTP por correo. El usuario debe llamar /verificar-codigo
+#      con ese código para activar su cuenta.
 @router.post("/registro")
 @limiter.limit("3/minute")
 async def registrar_usuario(request: Request, usuario: UsuarioRegistro):
     try:
         correo_normalizado = normalizar_correo(usuario.correo)
 
-        # RGPD: consentimiento explícito obligatorio
+        # RGPD: consentimiento explícito obligatorio (no se permite "implícito").
+        # Guardamos también fecha + IP + versión de la política como prueba.
         if not usuario.consentimiento_rgpd:
             raise ValidacionError("Debes aceptar la Política de Privacidad para registrarte")
 
-        # Validar si el correo ya existe
+        # Validar si el correo ya existe (correo es la clave única natural).
         if coleccion_usuarios.find_one({"correo": correo_normalizado}):
             raise ConflictError("El correo ya está registrado")
 
-        # Regla Senior: Validar restaurante_id para empleados
+        # Regla de negocio: solo los clientes pueden registrarse "huérfanos".
+        # Los empleados deben pertenecer a una sucursal específica para que
+        # las consultas multi-tenant funcionen.
         if usuario.rol != "cliente" and not usuario.restauranteId:
             raise ValidacionError("Los empleados deben estar vinculados a un restauranteId")
 
-        # Generar OTP de 6 dígitos
+        # Generar OTP de 6 dígitos. random.choices basta para OTPs de un solo
+        # uso con expiración corta; no se necesita secrets aquí (no es clave).
         codigo_otp = ''.join(random.choices(string.digits, k=6))
 
-        # Hashear contraseña
+        # Hashear contraseña con bcrypt. `gensalt()` produce un salt aleatorio
+        # único por usuario → dos usuarios con la misma password tienen hashes
+        # distintos. Bcrypt internamente codifica el salt dentro del hash.
         password_bytes = usuario.password.encode('utf-8')
         hashed_password = bcrypt.hashpw(password_bytes, bcrypt.gensalt())
 
@@ -266,7 +316,18 @@ async def enviar_correo_2fa(email_destino: str, codigo: str):
         logger.error(f"Error enviando 2FA a {email_destino}: {str(e)}")
 
 
-# --- 5. ENDPOINT: LOGIN (SOLO CLIENTES TENDRAN 2FA) ---
+# --- 5. ENDPOINT: LOGIN (SOLO CLIENTES TIENEN 2FA OPCIONAL) ---
+# Flujo:
+#   1) Buscamos por correo normalizado.
+#   2) Si la cuenta no está verificada o está suspendida → 403.
+#   3) bcrypt.checkpw compara la contraseña en tiempo constante (resistente
+#      a timing attacks).
+#   4) Si rol=cliente y email_2fa_enabled=True → mandamos OTP por email y
+#      el cliente DEBE completar /verificar-login-2fa para obtener el JWT.
+#   5) En cualquier otro caso devolvemos el JWT directamente.
+#
+# Rate limit 5/min/IP: balance entre proteger contra fuerza bruta y no
+# bloquear usuarios legítimos que se equivocan al teclear.
 @router.post("/login")
 @limiter.limit("5/minute")
 async def iniciar_sesion(request: Request, credenciales: UsuarioLogin):
@@ -411,6 +472,17 @@ async def reenviar_login_2fa(datos: Reenviar2FA):
 
 # ── TOTP 2FA — usados por TODOS los roles (cliente, admin, camarero, etc.) ────
 # Quedan en auth.py porque no son exclusivos del rol cliente.
+#
+# TOTP = Time-based One-Time Password. La app autenticadora (Google
+# Authenticator, Authy, 1Password...) genera códigos de 6 dígitos a partir
+# de un `secret` compartido y de la hora actual. El backend verifica
+# regenerando el código localmente y comparándolo.
+#
+# Flujo de alta:
+#   /setup → genera secret + URI provisional, NO se activa todavía.
+#   /activar → el usuario escanea el QR con el TOTP URI, prueba que
+#              funciona enviando su primer código, y SOLO entonces se
+#              persisten el secret y los códigos de recuperación.
 
 @router.post("/usuarios/{user_id}/2fa/setup")
 def setup_2fa(user_id: str):

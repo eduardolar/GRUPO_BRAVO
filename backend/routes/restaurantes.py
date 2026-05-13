@@ -1,3 +1,25 @@
+# ============================================================================
+# backend/routes/restaurantes.py
+# ----------------------------------------------------------------------------
+# CRUD de sucursales (multi-tenant a nivel de documento).
+#
+# En este proyecto, "restaurante" = sucursal/local físico. Cada producto,
+# mesa, pedido, etc. lleva un `restaurante_id` que apunta a su sucursal.
+# El super_admin gestiona la red completa; cada admin ve solo SU sucursal.
+#
+# Endpoints:
+#   GET    /restaurantes        → lista (super_admin) o sucursal propia (admin)
+#   POST   /restaurantes        → crear (super_admin)
+#   GET    /restaurantes/{id}   → detalle (filtra por permisos)
+#   PUT    /restaurantes/{id}   → editar (PATCH semántico: solo campos enviados)
+#   DELETE /restaurantes/{id}   → eliminar (super_admin)
+#
+# Campos relevantes en el modelo:
+#   - codigo: alias corto del local (ej. "MAD01") para mostrar al usuario.
+#   - horarios_dia: dict por día con apertura/cierre/abierto.
+#   - cif/razon_social/...: datos fiscales que van en los tickets.
+#   - metodos_pago: subset habilitado en la sucursal (no todas aceptan todo).
+# ============================================================================
 import re
 import random
 import string

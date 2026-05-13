@@ -1,3 +1,10 @@
+// ============================================================================
+// frontend/lib/services/aviso_falta_service.dart
+// ----------------------------------------------------------------------------
+// Cliente HTTP de avisos de falta de stock. Lo usa el camarero (POST)
+// cuando detecta que se acaba un ingrediente, y el admin (GET + atender)
+// desde su dashboard.
+// ============================================================================
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'api_config.dart';

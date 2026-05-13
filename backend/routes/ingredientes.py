@@ -1,3 +1,26 @@
+# ============================================================================
+# backend/routes/ingredientes.py
+# ----------------------------------------------------------------------------
+# Gestión del stock de ingredientes y su relación con los productos.
+#
+# Cada ingrediente tiene una cantidad actual (kg, L, ud...) que se descuenta
+# automáticamente cuando se crea un pedido que lo usa (ver
+# `routes/pedidos._descontar_stock`).
+#
+# Endpoints clave:
+#   GET    /ingredientes              → listado (filtros: bajo stock, sucursal)
+#   POST   /ingredientes              → crear (admin)
+#   PUT    /ingredientes/{id}         → editar (admin)
+#   DELETE /ingredientes/{id}         → eliminar (admin)
+#   PATCH  /ingredientes/{id}/cero    → poner a 0 (cuando se agota físicamente)
+#
+# El campo `stock_minimo` dispara un aviso al admin cuando la cantidad
+# cae por debajo (ver `routes/avisos_falta.py`).
+#
+# El nombre se persiste en snake_case en BD (cantidad_actual, stock_minimo,
+# restaurante_id) y se serializa a camelCase en la respuesta (cantidadActual,
+# stockMinimo, restauranteId) para mantener el contrato con el frontend.
+# ============================================================================
 from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import List, Optional
 from pydantic import BaseModel
