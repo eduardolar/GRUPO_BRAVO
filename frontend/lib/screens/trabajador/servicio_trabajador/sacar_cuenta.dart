@@ -136,23 +136,21 @@ class _SacarCuentaState extends State<SacarCuenta> {
     }
 
     try {
-      // Tras cobrar, la mesa NO va directa a libre: pasa a "por_limpiar"
-      // para que el equipo de sala sepa que hay que recogerla. Cuando
-      // alguien la marca limpia (desde el selector de mesas), pasa a libre.
-      await ApiService.marcarMesaPorLimpiar(mesa.id);
+      // Tras cobrar, la mesa pasa directamente a 'libre'.
+      await ApiService.marcarMesaLibre(mesa.id);
     } catch (e) {
       if (!mounted) return;
       setState(() => _procesando = false);
       final detalle = e.toString().replaceFirst(RegExp(r'^Exception:\s*'), '');
       _showSnack(
-        'Cobro OK pero la mesa no se marcó por limpiar: $detalle',
+        'Cobro OK pero la mesa no se liberó: $detalle',
         error: true,
       );
       return;
     }
 
     if (!mounted) return;
-    _showSnack('Mesa ${mesa.numero} cobrada · pendiente de limpiar');
+    _showSnack('Mesa ${mesa.numero} cobrada');
     setState(() {
       _mesasOcupadas.remove(mesa);
       _mesaSeleccionada = null;

@@ -5,9 +5,9 @@ Acciones (idempotentes):
      sin pagar. Mantiene los cancelados y entregados+pagados (históricos).
   2. Borra pedidos huérfanos: tipo_entrega='local' sin mesa_id o sin
      numero_mesa.
-  3. Libera mesas "zombie": mesas en estado `ocupada` o `por_limpiar` que
-     no tengan ningún pedido activo asignado. Se quedan así cuando un
-     pedido se canceló/limpió antes del fix que libera la mesa.
+  3. Libera mesas "zombie": mesas en estado `ocupada` que no tengan ningún
+     pedido activo asignado. Se quedan así cuando un pedido se canceló /
+     limpió antes del fix que libera la mesa.
 
 NO toca usuarios, restaurantes, productos, categorías ni reservas.
 
@@ -67,10 +67,8 @@ def main() -> None:
         ],
     })
 
-    # ── 3. Liberar mesas zombie (ocupadas/por_limpiar sin pedido activo) ─
-    no_libres = list(coleccion_mesas.find({
-        "estado": {"$in": ["ocupada", "por_limpiar"]},
-    }))
+    # ── 3. Liberar mesas zombie (ocupadas sin pedido activo) ─────────
+    no_libres = list(coleccion_mesas.find({"estado": "ocupada"}))
     mesas_con_pedido_activo: set[str] = set()
     for p in coleccion_pedidos.find({
         "estado": {"$in": ["pendiente", "preparando", "listo"]},

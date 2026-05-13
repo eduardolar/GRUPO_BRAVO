@@ -385,7 +385,6 @@ class _GestionPedidosState extends State<GestionPedidos>
 
   /// Cobro rápido para pedidos sin mesa (recoger/domicilio).
   /// Pide método de pago en un sheet, llama a cerrarPedido y refresca.
-  /// No marca mesa por_limpiar porque no hay mesa asociada.
   Future<void> _cobrarRapido(Pedido pedido) async {
     final metodo = await showModalBottomSheet<String>(
       context: context,
@@ -663,9 +662,9 @@ class _GestionPedidosState extends State<GestionPedidos>
                           onRefresh: _refrescar,
                           onSacarCuenta: (p) {
                             // Pedidos de mesa pasan por la pantalla completa
-                            // (cuenta detallada + por_limpiar). Recoger/
-                            // domicilio no tienen mesa, así que abrimos un
-                            // sheet inline con efectivo/tarjeta_fisica.
+                            // (cuenta detallada). Recoger/domicilio no tienen
+                            // mesa, así que abrimos un sheet inline con
+                            // efectivo / tarjeta_fisica.
                             if (p.tipoEntrega == 'local' &&
                                 p.mesaId != null &&
                                 p.mesaId!.isNotEmpty) {

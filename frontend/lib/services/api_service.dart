@@ -279,11 +279,6 @@ class ApiService {
     String? idempotencyKey,
   }) => MesaService.marcarMesaLibre(mesaId, idempotencyKey: idempotencyKey);
 
-  /// Marca la mesa como pendiente de limpiar (estado intermedio entre
-  /// ocupada y libre). Tras cobrar, la mesa NO debe quedar libre directa.
-  static Future<void> marcarMesaPorLimpiar(String mesaId) =>
-      MesaService.marcarMesaPorLimpiar(mesaId);
-
   static Future<void> marcarMesaOcupada(
     String mesaId, {
     String? idempotencyKey,

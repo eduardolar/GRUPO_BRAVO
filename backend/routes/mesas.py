@@ -237,42 +237,6 @@ def actualizar_estado_mesa(
     return {"ok": True, "estado": nuevo_estado}
 
 
-@router.post(
-    "/{mesa_id}/marcar-por-limpiar",
-    summary="Marcar una mesa como pendiente de limpieza tras cobrar",
-)
-def marcar_mesa_por_limpiar(
-    mesa_id: str,
-    usuario: dict = Depends(
-        require_role(["admin", "super_admin", "camarero", "trabajador"]),
-    ),
-):
-    """Estado intermedio entre 'ocupada' y 'libre' — el cliente se ha ido,
-    el camarero cobró, pero la mesa aún hay que limpiarla. Mientras, la
-    mesa NO se puede ocupar."""
-    try:
-        object_id = ObjectId(mesa_id)
-    except Exception:
-        raise HTTPException(status_code=400, detail="ID de mesa inválido")
-
-    mesa = coleccion_mesas.find_one({"_id": object_id})
-    if not mesa:
-        raise HTTPException(status_code=404, detail="Mesa no encontrada")
-    _exigir_misma_sucursal_mesa(mesa, usuario)
-
-    coleccion_mesas.update_one(
-        {"_id": object_id}, {"$set": {"estado": "por_limpiar"}},
-    )
-    ag.registrar(
-        ag.MESA_ESTADO_CAMBIADO,
-        actor=usuario.get("correo"),
-        objetivo=str(object_id),
-        detalle="estado=por_limpiar",
-        extra={"restaurante_id": mesa.get("restaurante_id")},
-    )
-    return {"ok": True, "estado": "por_limpiar"}
-
-
 def _exigir_misma_sucursal_mesa(mesa: dict, usuario: dict) -> None:
     """Un admin de sucursal X no puede editar mesas de la sucursal Y.
     Los super_admin sí pueden — el chequeo se salta para ellos.
