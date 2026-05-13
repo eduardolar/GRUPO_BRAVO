@@ -490,8 +490,18 @@ async def crear_pedido(
 
     # ── NUEVO: CANJE DE BRAVO COINS ───────────────────────
     if pedido.puntosUsados > 0:
-        # 1. Comprobar que el usuario tiene esos puntos realmente en la BD
-        uid_obj = ObjectId(current_user["sub"]) if normalizar_rol(current_user.get("rol", "")) == "cliente" else (ObjectId(pedido.userId) if ObjectId.is_valid(pedido.userId) else pedido.userId)
+        # 1. Comprobar que el usuario tiene esos puntos realmente en la BD.
+        # Para cliente usamos su sub; para staff aceptamos userId del payload
+        # solo si es un ObjectId válido (canje en nombre de un cliente concreto).
+        if normalizar_rol(current_user.get("rol", "")) == "cliente":
+            uid_obj = ObjectId(current_user["sub"])
+        else:
+            uid_payload_raw = pedido.userId or ""
+            if not uid_payload_raw or not ObjectId.is_valid(uid_payload_raw):
+                raise ValidacionError(
+                    "Para canjear puntos hay que identificar al cliente (userId)"
+                )
+            uid_obj = ObjectId(uid_payload_raw)
         usuario_db = coleccion_usuarios.find_one({"_id": uid_obj})
         
         if not usuario_db or usuario_db.get("puntos", 0) < pedido.puntosUsados:
@@ -512,11 +522,18 @@ async def crear_pedido(
     # ────────────────────────────────────────────────────────────────
     # Para clientes, ignorar userId del payload y usar el sub del JWT.
     # Admin y personal de sala/cocina pueden crear pedidos en nombre de cualquier usuario.
+    # Si el staff no identifica al cliente (pedido en sala / recoger / domicilio
+    # sin alta) aceptamos `userId` ausente o el literal histórico "TRABAJADOR"
+    # y persistimos el sub del propio actor para trazabilidad por trabajador.
     rol_actor = normalizar_rol(current_user.get("rol", ""))
     if rol_actor == "cliente":
         usuario_id_pedido = current_user["sub"]
     else:
-        usuario_id_pedido = pedido.userId
+        uid_payload = (pedido.userId or "").strip()
+        if not uid_payload or uid_payload.upper() == "TRABAJADOR":
+            usuario_id_pedido = current_user.get("sub", "")
+        else:
+            usuario_id_pedido = uid_payload
 
     # ── Idempotencia server-side ──────────────────────────────────────────────
     if idempotency_key:
@@ -1373,33 +1390,50 @@ def estadisticas_mi_turno(
     atendidas, propinas, descuentos aplicados y pedidos cancelados.
 
     Filtra por `cobrado_por_sub == actor.sub` (el que cobró) y rango
-    temporal opcional. Por defecto, "hoy desde medianoche".
+    temporal opcional. Por defecto, "hoy desde medianoche UTC".
+
+    Convención horaria: el filtro se hace en UTC. Si el cliente envía un
+    ISO con offset (`2026-05-13T00:00:00+02:00`), se normaliza a UTC antes
+    de comparar; sin offset asumimos UTC. Esto evita el desfase que tenía
+    el endpoint antes, cuando frontend mandaba horario local y el back lo
+    comparaba como UTC.
     """
-    # Rango temporal: aceptamos ISO; si no, usamos hoy local del servidor.
+    def _a_utc(valor: str, nombre: str) -> datetime:
+        try:
+            dt = datetime.fromisoformat(valor)
+        except ValueError:
+            raise ValidacionError(
+                f"Parámetro `{nombre}` con formato inválido (ISO 8601)"
+            )
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc)
+
     ahora = datetime.now(timezone.utc)
-    try:
-        dt_desde = (
-            datetime.fromisoformat(desde) if desde else
-            datetime(ahora.year, ahora.month, ahora.day, tzinfo=timezone.utc)
-        )
-    except ValueError:
-        raise ValidacionError("Parámetro `desde` con formato inválido (ISO 8601)")
-    try:
-        dt_hasta = datetime.fromisoformat(hasta) if hasta else ahora
-    except ValueError:
-        raise ValidacionError("Parámetro `hasta` con formato inválido (ISO 8601)")
+    dt_desde = _a_utc(desde, "desde") if desde else datetime(
+        ahora.year, ahora.month, ahora.day, tzinfo=timezone.utc
+    )
+    dt_hasta = _a_utc(hasta, "hasta") if hasta else ahora
+
+    if dt_hasta < dt_desde:
+        raise ValidacionError("`hasta` no puede ser anterior a `desde`")
 
     sub = current_user.get("sub", "")
     rid = current_user.get("restaurante_id")
 
-    # Pedidos cobrados por el actor en el rango. Aceptamos `cobrado_at`
-    # como string ISO (que es como lo persistimos en otros sitios).
+    # `cobrado_at` se persiste como ISO UTC con offset (`...+00:00`).
+    # Comparamos contra ese mismo formato para que `$gte/$lte` sea
+    # consistente en strings ISO ordenables.
+    desde_iso = dt_desde.isoformat()
+    hasta_iso = dt_hasta.isoformat()
+
+    # Pedidos cobrados por el actor en el rango.
     filtro_cobrados: dict = {
         "cobrado_por_sub": sub,
         "estado_pago": "pagado",
         "cobrado_at": {
-            "$gte": dt_desde.isoformat(),
-            "$lte": dt_hasta.isoformat(),
+            "$gte": desde_iso,
+            "$lte": hasta_iso,
         },
     }
     if rid:
@@ -1428,8 +1462,8 @@ def estadisticas_mi_turno(
         "creado_por_sub": sub,
         "estado": "cancelado",
         "cancelado_at": {
-            "$gte": dt_desde.isoformat(),
-            "$lte": dt_hasta.isoformat(),
+            "$gte": desde_iso,
+            "$lte": hasta_iso,
         },
     }
     if rid:

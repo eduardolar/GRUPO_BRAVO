@@ -168,7 +168,7 @@ class ApiService {
   );
 
   static Future<Map<String, dynamic>> crearPedido({
-    required String userId,
+    String? userId,
     required List<Map<String, dynamic>> items,
     required String tipoEntrega,
     required String metodoPago,

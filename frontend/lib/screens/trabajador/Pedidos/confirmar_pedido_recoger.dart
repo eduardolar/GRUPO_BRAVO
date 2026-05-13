@@ -28,9 +28,14 @@ class _ConfirmarPedidoRecogerState extends State<ConfirmarPedidoRecoger> {
   // ─── Formulario ────────────────────────────────────────────────────────────
   final TextEditingController _nombreController = TextEditingController();
 
-  String _metodoPago = 'efectivo'; // 'efectivo' | 'tarjeta'
+  // Métodos físicos coherentes con el cobro manual desde sala
+  // (sacar_cuenta). El backend solo acepta {efectivo, tarjeta_fisica}
+  // como métodos manuales — ver pedidos.py::_METODOS_COBRO_MANUAL.
+  String _metodoPago = 'efectivo'; // 'efectivo' | 'tarjeta_fisica'
   bool _enviando = false;
   bool _animando = false;
+  // Pedido urgente: el cocinero lo ve destacado en su pantalla.
+  bool _prioritario = false;
 
   @override
   void dispose() {
@@ -55,8 +60,9 @@ class _ConfirmarPedidoRecogerState extends State<ConfirmarPedidoRecoger> {
     try {
       final auth = context.read<AuthProvider>();
 
+      // userId null: el backend deriva el usuario_id al sub del camarero
+      // (trazabilidad de quién tomó el pedido cuando no hay cliente alta).
       await ApiService.crearPedido(
-        userId: 'TRABAJADOR',
         items: widget.items,
         tipoEntrega: 'recoger',
         metodoPago: _metodoPago,
@@ -69,11 +75,11 @@ class _ConfirmarPedidoRecogerState extends State<ConfirmarPedidoRecoger> {
         estadoPago: 'pendiente',
         restauranteId: auth.usuarioActual?.restauranteId,
         idempotencyKey: const Uuid().v4(),
-        prioritario: false,
+        prioritario: _prioritario,
       );
 
       if (!mounted) return;
-      _showMotoAnimacion();
+      _mostrarAnimacionEnvio();
     } catch (e) {
       if (!mounted) return;
       final detalle = e.toString().replaceFirst(RegExp(r'^Exception:\s*'), '');
@@ -90,8 +96,8 @@ class _ConfirmarPedidoRecogerState extends State<ConfirmarPedidoRecoger> {
     }
   }
 
-  // ─── Animación moto ────────────────────────────────────────────────────────
-  void _showMotoAnimacion() {
+  // ─── Animación de envío (sartén con ingredientes) ──────────────────────────
+  void _mostrarAnimacionEnvio() {
     setState(() => _animando = true);
   }
 
@@ -274,9 +280,13 @@ class _ConfirmarPedidoRecogerState extends State<ConfirmarPedidoRecoger> {
                         TextField(
                           controller: _nombreController,
                           style: const TextStyle(color: Colors.white),
+                          // Permitimos letras (incluyendo acentos y ñ),
+                          // espacios, apóstrofes (O'Connor) y guiones
+                          // (María-José). Antes el filtro era demasiado
+                          // estricto y rechazaba nombres legítimos.
                           inputFormatters: [
                             FilteringTextInputFormatter.allow(
-                              RegExp(r'[a-zA-ZáéíóúÁÉÍÓÚüÜñÑ\s]'),
+                              RegExp(r"[a-zA-ZáéíóúÁÉÍÓÚüÜñÑ\s'\-]"),
                             ),
                           ],
                           decoration: InputDecoration(
@@ -327,15 +337,56 @@ class _ConfirmarPedidoRecogerState extends State<ConfirmarPedidoRecoger> {
                               child: _PayMethodButton(
                                 label: 'Tarjeta',
                                 icon: Icons.credit_card,
-                                selected: _metodoPago == 'tarjeta',
-                                onTap: () =>
-                                    setState(() => _metodoPago = 'tarjeta'),
+                                selected: _metodoPago == 'tarjeta_fisica',
+                                onTap: () => setState(
+                                    () => _metodoPago = 'tarjeta_fisica'),
                               ),
                             ),
                           ],
                         ),
 
-                        const SizedBox(height: 28),
+                        const SizedBox(height: 20),
+
+                        // ── Toggle URGENTE ─────────────────────────────────
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.05),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.white12),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.priority_high,
+                                color: AppColors.error,
+                                size: 18,
+                              ),
+                              const SizedBox(width: 10),
+                              const Expanded(
+                                child: Text(
+                                  'Pedido urgente para cocina',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                              Switch(
+                                value: _prioritario,
+                                onChanged: (v) =>
+                                    setState(() => _prioritario = v),
+                                activeThumbColor: AppColors.error,
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 20),
 
                         // ── Botón confirmar ────────────────────────────────
                         SizedBox(

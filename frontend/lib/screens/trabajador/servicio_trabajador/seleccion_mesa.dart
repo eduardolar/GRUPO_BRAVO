@@ -4,6 +4,7 @@ import 'package:frontend/components/shared/estado_chip.dart';
 import 'package:frontend/core/app_routes.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/models/mesa_model.dart';
+import 'package:frontend/models/usuario_model.dart';
 import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/services/mesa_service.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -390,23 +391,33 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
       'terraza',
     ].where((k) => grupos.containsKey(k)).toList();
 
+    // El FAB "NUEVA MESA" llama a POST /mesas, que en backend exige
+    // require_role(["admin","super_admin"]). Si lo dejamos visible al
+    // camarero, recibe 403 garantizado al confirmar el form. Lo ocultamos
+    // para roles de sala y solo lo mostramos a administradores.
+    final rolActual = context.watch<AuthProvider>().usuarioActual?.rol;
+    final puedeCrearMesa = rolActual == RolUsuario.administrador ||
+        rolActual == RolUsuario.superadministrador;
+
     return Scaffold(
       backgroundColor: AppColors.shadow,
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _mostrarFormCrearMesa,
-        backgroundColor: AppColors.button,
-        foregroundColor: AppColors.background,
-        elevation: 4,
-        icon: const Icon(Icons.add, size: 20),
-        label: const Text(
-          'NUEVA MESA',
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.4,
-          ),
-        ),
-      ),
+      floatingActionButton: puedeCrearMesa
+          ? FloatingActionButton.extended(
+              onPressed: _mostrarFormCrearMesa,
+              backgroundColor: AppColors.button,
+              foregroundColor: AppColors.background,
+              elevation: 4,
+              icon: const Icon(Icons.add, size: 20),
+              label: const Text(
+                'NUEVA MESA',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.4,
+                ),
+              ),
+            )
+          : null,
       body: Stack(
         children: [
           Positioned.fill(
@@ -519,9 +530,17 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
                 const SizedBox(height: 18),
 
                 // ── Secciones por zona ────────────────────────────────────
+                // Pull-to-refresh para recargar el plano: si otro camarero
+                // libera/ocupa una mesa, basta con arrastrar hacia abajo.
                 Expanded(
-                  child: ListView(
-                    physics: const BouncingScrollPhysics(),
+                  child: RefreshIndicator(
+                    onRefresh: _cargarMesas,
+                    color: AppColors.button,
+                    backgroundColor: Colors.black,
+                    child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(
+                      parent: BouncingScrollPhysics(),
+                    ),
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
                     children: orderedKeys.map((ubicacion) {
                       final mesasGrupo = grupos[ubicacion]!;
@@ -585,6 +604,7 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
                         ],
                       );
                     }).toList(),
+                  ),
                   ),
                 ),
               ],

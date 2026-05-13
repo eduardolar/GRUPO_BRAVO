@@ -28,7 +28,11 @@ import 'auth_session.dart';
 
 class PedidoService {
   static Future<Map<String, dynamic>> crearPedido({
-    required String userId,
+    // Opcional: el cliente identifica al destinatario del pedido. Cuando
+    // el camarero crea un pedido sin cliente registrado (sala/recoger/
+    // domicilio sin alta) se envía null y el backend persiste el sub del
+    // propio camarero para trazabilidad.
+    String? userId,
     required List<Map<String, dynamic>> items,
     required String tipoEntrega,
     required String metodoPago,
@@ -75,7 +79,7 @@ class PedidoService {
         Uri.parse('$baseUrl/pedidos'),
         headers: AuthSession.headers(extra: extraHeaders),
         body: jsonEncode({
-          'userId': userId,
+          'userId': ?userId,
           'items': items,
           'tipoEntrega': tipoEntrega,
           'metodoPago': metodoPago,

@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/core/app_routes.dart';
 import 'package:frontend/screens/Cliente/totp_setup_screen.dart';
-import 'package:frontend/screens/cliente/login_screen.dart';
-import 'package:frontend/screens/home_screen_trabajador.dart';
+import 'package:frontend/screens/cliente/inicio_screen.dart';
 import 'package:frontend/screens/trabajador/mi_turno_screen.dart';
 import 'package:provider/provider.dart';
 import '../../core/colors_style.dart';
@@ -17,8 +16,9 @@ class PerfilTrabajadorScreen extends StatefulWidget {
 
 class _PerfilTrabajadorScreenState extends State<PerfilTrabajadorScreen> {
   final _formKey = GlobalKey<FormState>();
-  late TextEditingController _nombreController;
-  late TextEditingController _emailController;
+  // Nombre y email son sólo lectura en esta pantalla (los renderizamos
+  // con _buildCampoInfo, no como TextField editables). Sólo guardamos
+  // el controller del teléfono porque es el único campo editable.
   late TextEditingController _telefonoController;
   bool _hayCambios = false;
   bool _isLoading = false;
@@ -28,8 +28,6 @@ class _PerfilTrabajadorScreenState extends State<PerfilTrabajadorScreen> {
     super.initState();
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final usuario = auth.usuarioActual;
-    _nombreController = TextEditingController(text: usuario?.nombre ?? '');
-    _emailController = TextEditingController(text: usuario?.email ?? '');
     _telefonoController = TextEditingController(text: usuario?.telefono ?? '');
 
     _telefonoController.addListener(_detectarCambios);
@@ -47,8 +45,6 @@ class _PerfilTrabajadorScreenState extends State<PerfilTrabajadorScreen> {
   @override
   void dispose() {
     _telefonoController.removeListener(_detectarCambios);
-    _nombreController.dispose();
-    _emailController.dispose();
     _telefonoController.dispose();
     super.dispose();
   }
@@ -58,11 +54,15 @@ class _PerfilTrabajadorScreenState extends State<PerfilTrabajadorScreen> {
     setState(() => _isLoading = true);
     final auth = Provider.of<AuthProvider>(context, listen: false);
     try {
+      // Mantenemos nombre/email/direccion existentes — esta pantalla
+      // solo edita el teléfono. Antes pasábamos direccion='' y eso podía
+      // sobrescribir la dirección almacenada.
+      final usuario = auth.usuarioActual;
       await auth.actualizarPerfil(
-        nombre: _nombreController.text.trim(),
-        email: _emailController.text.trim(),
+        nombre: usuario?.nombre ?? '',
+        email: usuario?.email ?? '',
         telefono: _telefonoController.text.trim(),
-        direccion: ''
+        direccion: usuario?.direccion ?? '',
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -87,103 +87,10 @@ class _PerfilTrabajadorScreenState extends State<PerfilTrabajadorScreen> {
     }
   }
 
-  void _mostrarDialogoEliminarCuenta() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.backgroundDark,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
-          children: [
-            Icon(Icons.warning_amber_rounded, color: AppColors.error, size: 26),
-            SizedBox(width: 10),
-            Text(
-              'Eliminar cuenta',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-        content: const Text(
-          '¿Estás seguro? Esta acción no se puede deshacer y perderás todos tus datos.',
-          style: TextStyle(color: Colors.white60, fontSize: 14, height: 1.5),
-        ),
-        actions: [
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.white60,
-                    side: const BorderSide(color: Colors.white24),
-                    padding: const EdgeInsets.symmetric(vertical: 13),
-                    shape: const RoundedRectangleBorder(
-                      borderRadius: BorderRadius.zero,
-                    ),
-                  ),
-                  child: const Text(
-                    'CANCELAR',
-                    style: TextStyle(fontSize: 13, letterSpacing: 1),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () async {
-                    Navigator.pop(ctx);
-                    await _eliminarCuenta();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.error,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 13),
-                    shape: const RoundedRectangleBorder(
-                      borderRadius: BorderRadius.zero,
-                    ),
-                    elevation: 0,
-                  ),
-                  child: const Text(
-                    'ELIMINAR',
-                    style: TextStyle(
-                      fontSize: 13,
-                      letterSpacing: 1,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _eliminarCuenta() async {
-    final auth = Provider.of<AuthProvider>(context, listen: false);
-    try {
-      await auth.eliminarCuenta();
-      if (!mounted) return;
-      Navigator.of(context).pushAndRemoveUntil(
-        AppRoute.reveal(const LoginScreen()),
-        (route) => false,
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al eliminar cuenta: ${e.toString()}'),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-  }
+  // Auto-eliminación de cuenta deshabilitada para personal (camarero/admin):
+  // un empleado no puede borrar su propia cuenta porque dejaría sin
+  // trazabilidad pedidos/cobros previos. El borrado lo realiza un admin
+  // desde el panel de gestión de usuarios. (Fix #6 auditoría rol trabajador)
 
   Future<void> _mostrarActivar2FA() async {
     final activado = await Navigator.push<bool>(
@@ -595,13 +502,13 @@ class _PerfilTrabajadorScreenState extends State<PerfilTrabajadorScreen> {
                           const SizedBox(height: 14),
                           _buildCampoInfo(
                             'Nombre completo',
-                            _nombreController.text,
+                            usuario?.nombre ?? '',
                             Icons.person_outline,
                           ),
                           const SizedBox(height: 12),
                           _buildCampoInfo(
                             'Correo electrónico',
-                            _emailController.text,
+                            usuario?.email ?? '',
                             Icons.email_outlined,
                           ),
                           const SizedBox(height: 12),
@@ -686,22 +593,24 @@ class _PerfilTrabajadorScreenState extends State<PerfilTrabajadorScreen> {
                             icono: Icons.logout,
                             label: 'Cerrar sesión',
                             onTap: () async {
+                              // Tras cerrar sesión vamos a InicioScreen.
+                              // HomeTrabajador asume usuario autenticado y
+                              // dejaba la app en estado inconsistente.
                               await Provider.of<AuthProvider>(context, listen: false)
                                   .cerrarSesion();
                               if (!context.mounted) return;
                               Navigator.of(context).pushAndRemoveUntil(
-                                AppRoute.reveal(const HomeTrabajador()),
+                                AppRoute.reveal(const InicioScreen()),
                                 (route) => false,
                               );
                             },
                           ),
-                          const SizedBox(height: 10),
-                          _buildAccion(
-                            icono: Icons.delete_outline,
-                            label: 'Eliminar cuenta',
-                            color: AppColors.error,
-                            onTap: _mostrarDialogoEliminarCuenta,
-                          ),
+                          // "Eliminar cuenta" sólo lo permitimos para el rol
+                          // cliente. Para personal (camarero/admin/super_admin)
+                          // el borrado lo realiza el admin desde su panel; un
+                          // empleado no debería poder auto-eliminarse y dejar
+                          // sus pedidos / cobros sin trazabilidad.
+                          // (Fix #6 de la auditoría)
                           const SizedBox(height: 40),
                         ],
                       ),

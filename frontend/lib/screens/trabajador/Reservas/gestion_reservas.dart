@@ -56,8 +56,9 @@ class _GestionReservasState extends State<GestionReservas>
       // Usamos `obtenerReservasAdmin` (endpoint /reservas/admin) que devuelve
       // TODAS las reservas (pasadas + futuras) y aplica aislamiento por
       // sucursal automáticamente desde el JWT. Lo necesitamos así para que
-      // el tab "Historial" pueda mostrar reservas pasadas — el endpoint
-      // /reservas/futuras solo trae las de fecha >= hoy.
+      // el tab "Historial" muestre tanto canceladas como reservas con
+      // fecha anterior a hoy. /reservas/futuras se reserva para el portal
+      // del cliente, que solo quiere las próximas.
       final raw = await ReservaService.obtenerReservasAdmin();
       final lista = raw.map((m) => Reserva.fromMap(m)).toList();
       if (!mounted) return;
@@ -100,12 +101,10 @@ class _GestionReservasState extends State<GestionReservas>
     return f.isAfter(_hoy);
   }
 
-  /// Historial: reservas canceladas (pueden venir de futuras/pasadas) que el
-  /// mock o el backend devuelve. Las reservas pasadas con fecha < hoy no llegan
-  /// porque el endpoint /reservas/futuras solo devuelve fecha >= hoy.
-  /// DEUDA: hace falta un endpoint /reservas/pasadas o /reservas/historial
-  /// para mostrar reservas con fecha anterior a hoy. Por ahora el tab Historial
-  /// muestra únicamente las canceladas presentes en la carga actual.
+  /// Historial: reservas con fecha anterior a hoy, sumadas a cualquier
+  /// reserva en estado `Cancelada` aunque sea futura. /reservas/admin
+  /// devuelve también las pasadas, así que el tab refleja el historial
+  /// completo de la sucursal.
   bool _esHistorial(Reserva r) {
     final f = DateTime(r.fecha.year, r.fecha.month, r.fecha.day);
     return f.isBefore(_hoy) || r.estado.toLowerCase() == 'cancelada';

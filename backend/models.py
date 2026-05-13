@@ -168,7 +168,11 @@ class PedidoCrear(BaseModel):
     necesario para crear un pedido, validar stock, calcular total y derivar
     el flujo de pago. Ver `routes/pedidos.py` para el ciclo de vida completo.
     """
-    userId: str
+    # Opcional: cuando el actor es cliente, el back fuerza su `sub`. Cuando
+    # es staff (camarero/admin) y crea un pedido de recoger/domicilio/sala
+    # sin cliente identificado, lo aceptamos como null — la ruta derivará el
+    # usuario_id al sub del propio camarero para mantener trazabilidad.
+    userId: Optional[str] = None
     items: list[ItemPedido] = Field(min_length=1)  # un pedido vacío no tiene sentido
     tipoEntrega: TipoEntrega
     metodoPago: MetodoPago

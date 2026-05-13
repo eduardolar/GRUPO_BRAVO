@@ -42,9 +42,14 @@ class _ConfirmarPedidoDomicilioState extends State<ConfirmarPedidoDomicilio> {
   final TextEditingController _direccionController = TextEditingController();
   Timer? _debounceDir;
 
-  String _metodoPago = 'efectivo'; // 'efectivo' | 'tarjeta'
+  // Métodos físicos coherentes con el cobro manual desde sala.
+  // El backend solo acepta {efectivo, tarjeta_fisica} como métodos
+  // manuales — ver pedidos.py::_METODOS_COBRO_MANUAL.
+  String _metodoPago = 'efectivo'; // 'efectivo' | 'tarjeta_fisica'
   bool _enviando = false;
   bool _animando = false;
+  // Pedido urgente: el cocinero lo ve destacado en su pantalla.
+  bool _prioritario = false;
 
   @override
   void dispose() {
@@ -63,7 +68,12 @@ class _ConfirmarPedidoDomicilioState extends State<ConfirmarPedidoDomicilio> {
       '&lat=${coords.latitude}&lon=${coords.longitude}',
     );
     try {
-      final res = await http.get(url, headers: {'User-Agent': 'BravoApp'});
+      final res = await http.get(url, headers: const {
+        // Nominatim exige un User-Agent identificable y limita a ~1 req/s.
+        // El debounce de _direccionController evita ráfagas; este header
+        // cumple con su política de uso.
+        'User-Agent': 'GrupoBravoApp/1.0 (soporte@grupobravo.example)',
+      });
       if (res.statusCode == 200) {
         final data = json.decode(res.body);
         final addr = data['address'];
@@ -97,7 +107,12 @@ class _ConfirmarPedidoDomicilioState extends State<ConfirmarPedidoDomicilio> {
       'https://nominatim.openstreetmap.org/search?format=json&q=${Uri.encodeComponent(texto)}&limit=1',
     );
     try {
-      final res = await http.get(url, headers: {'User-Agent': 'BravoApp'});
+      final res = await http.get(url, headers: const {
+        // Nominatim exige un User-Agent identificable y limita a ~1 req/s.
+        // El debounce de _direccionController evita ráfagas; este header
+        // cumple con su política de uso.
+        'User-Agent': 'GrupoBravoApp/1.0 (soporte@grupobravo.example)',
+      });
       if (res.statusCode == 200) {
         final lista = json.decode(res.body) as List<dynamic>;
         if (lista.isNotEmpty) {
@@ -161,8 +176,9 @@ class _ConfirmarPedidoDomicilioState extends State<ConfirmarPedidoDomicilio> {
           : _direccionTexto;
       final direccionFinal = extra.isNotEmpty ? '$dirBase, $extra' : dirBase;
 
+      // userId null: el backend deriva el usuario_id al sub del camarero
+      // (trazabilidad de quién tomó el pedido cuando no hay cliente alta).
       await ApiService.crearPedido(
-        userId: 'TRABAJADOR',
         items: widget.items,
         tipoEntrega: 'domicilio',
         metodoPago: _metodoPago,
@@ -175,11 +191,11 @@ class _ConfirmarPedidoDomicilioState extends State<ConfirmarPedidoDomicilio> {
         estadoPago: 'pendiente',
         restauranteId: auth.usuarioActual?.restauranteId,
         idempotencyKey: const Uuid().v4(),
-        prioritario: false,
+        prioritario: _prioritario,
       );
 
       if (!mounted) return;
-      _showMotoAnimacion();
+      _mostrarAnimacionEnvio();
     } catch (e) {
       if (!mounted) return;
       final detalle = e.toString().replaceFirst(RegExp(r'^Exception:\s*'), '');
@@ -196,8 +212,8 @@ class _ConfirmarPedidoDomicilioState extends State<ConfirmarPedidoDomicilio> {
     }
   }
 
-  // ─── Animación moto ────────────────────────────────────────────────────────
-  void _showMotoAnimacion() {
+  // ─── Animación de envío (sartén con ingredientes) ──────────────────────────
+  void _mostrarAnimacionEnvio() {
     setState(() => _animando = true);
   }
 
@@ -346,9 +362,12 @@ class _ConfirmarPedidoDomicilioState extends State<ConfirmarPedidoDomicilio> {
                     TextField(
                       controller: _nombreController,
                       style: const TextStyle(color: Colors.white),
+                      // Permitimos letras (incluyendo acentos y ñ),
+                      // espacios, apóstrofes y guiones para nombres
+                      // compuestos. (Fix #10 auditoría rol trabajador)
                       inputFormatters: [
                         FilteringTextInputFormatter.allow(
-                          RegExp(r'[a-zA-ZáéíóúÁÉÍÓÚüÜñÑ\s]'),
+                          RegExp(r"[a-zA-ZáéíóúÁÉÍÓÚüÜñÑ\s'\-]"),
                         ),
                       ],
                       decoration: InputDecoration(
@@ -392,11 +411,53 @@ class _ConfirmarPedidoDomicilioState extends State<ConfirmarPedidoDomicilio> {
                           child: _PayMethodButton(
                             label: 'Tarjeta',
                             icon: Icons.credit_card,
-                            selected: _metodoPago == 'tarjeta',
-                            onTap: () => setState(() => _metodoPago = 'tarjeta'),
+                            selected: _metodoPago == 'tarjeta_fisica',
+                            onTap: () => setState(
+                                () => _metodoPago = 'tarjeta_fisica'),
                           ),
                         ),
                       ],
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // ── Toggle URGENTE ───────────────────────────────────────
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.white12),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.priority_high,
+                            color: AppColors.error,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 10),
+                          const Expanded(
+                            child: Text(
+                              'Pedido urgente para cocina',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                          Switch(
+                            value: _prioritario,
+                            onChanged: (v) =>
+                                setState(() => _prioritario = v),
+                            activeThumbColor: AppColors.error,
+                          ),
+                        ],
+                      ),
                     ),
 
                     const SizedBox(height: 20),
