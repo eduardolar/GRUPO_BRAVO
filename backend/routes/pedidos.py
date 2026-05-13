@@ -2108,8 +2108,7 @@ def mover_pedido_a_otra_mesa(
             detail="La mesa destino pertenece a otra sucursal",
         )
 
-    # Mesa destino debe estar libre. Aceptamos `por_limpiar` también: el
-    # camarero podría reasignar a una mesa que acaba de cobrar otra mesa.
+    # Mesa destino debe estar libre.
     estado_dest = nueva_mesa.get("estado", "libre")
     if estado_dest == "ocupada":
         raise ConflictError("La mesa destino ya está ocupada")

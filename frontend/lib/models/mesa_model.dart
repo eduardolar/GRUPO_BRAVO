@@ -11,7 +11,7 @@ class Mesa {
   final int capacidad;
   final String ubicacion; // 'interior', 'terraza', 'privado'
   final bool disponible;
-  /// Estado real de la mesa: 'libre', 'ocupada' o 'por_limpiar'.
+  /// Estado real de la mesa: 'libre' u 'ocupada'.
   /// `disponible` se mantiene como bool retrocompatible (true solo si libre).
   final String estado;
   final String codigoQr;

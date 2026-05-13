@@ -256,77 +256,6 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
     );
   }
 
-  /// Mesa en estado `por_limpiar`: el cliente ya pagó pero la mesa aún
-  /// está sucia. Al pulsar, el camarero confirma que la ha limpiado y
-  /// pasa a libre — solo entonces se puede ocupar de nuevo.
-  Future<void> _confirmarLimpia(Mesa mesa) async {
-    final confirmado = await showDialog<bool>(
-      context: context,
-      barrierDismissible: true,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.background,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        title: Text(
-          'Mesa ${mesa.numero}',
-          style: const TextStyle(
-            color: AppColors.textPrimary,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        content: const Text(
-          '¿Confirmas que la mesa está limpia y lista para nuevos clientes?',
-          style: TextStyle(color: AppColors.textSecondary),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text(
-              'AÚN NO',
-              style: TextStyle(color: AppColors.textSecondary),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.button,
-              foregroundColor: Colors.white,
-              shape: const RoundedRectangleBorder(),
-            ),
-            child: const Text(
-              'LIMPIA',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.2,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-    if (confirmado != true || !mounted) return;
-    try {
-      await MesaService.marcarMesaLibre(mesa.id);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Mesa ${mesa.numero} liberada'),
-          backgroundColor: AppColors.button,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      _cargarMesas();
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No se pudo liberar la mesa'),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-  }
-
   Map<String, List<Mesa>> _agruparPorUbicacion() {
     final Map<String, List<Mesa>> grupos = {};
     for (final mesa in _mesas) {
@@ -518,11 +447,6 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
                         label: 'Ocupada',
                         icon: Icons.cancel_outlined,
                       ),
-                      _LegendaDot(
-                        color: AppColors.info,
-                        label: 'Por limpiar',
-                        icon: Icons.cleaning_services_outlined,
-                      ),
                     ],
                   ),
                 ),
@@ -584,13 +508,9 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
                                     mesa: mesa,
                                     // libre → tomar comanda directa.
                                     // ocupada → menú con acciones contextuales.
-                                    // por_limpiar → confirmar limpia.
                                     onTap: mesa.estado == 'libre'
                                         ? () => _confirmarMesa(mesa)
-                                        : mesa.estado == 'por_limpiar'
-                                            ? () => _confirmarLimpia(mesa)
-                                            : () =>
-                                                _accionesOcupada(mesa),
+                                        : () => _accionesOcupada(mesa),
                                   ),
                                 )
                                 .toList(),
@@ -662,63 +582,16 @@ class _MesaCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final estado = mesa.estado;
-    final disponible = estado == 'libre';
-    final porLimpiar = estado == 'por_limpiar';
-    final label = disponible
-        ? 'LIBRE'
-        : porLimpiar
-            ? 'POR LIMPIAR'
-            : 'OCUPADA';
+    final disponible = mesa.estado == 'libre';
+    final label = disponible ? 'LIBRE' : 'OCUPADA';
 
-    // Chip de estado: EstadoChip para libre/ocupada; badge manual para
-    // por_limpiar (no existe como EstadoMesa y romper el enum seria incorrecto).
-    Widget chipEstado;
-    if (disponible) {
-      chipEstado = EstadoChip(
-        estado: EstadoMesa.disponible,
-        label: label,
-        iconSize: 10,
-        fontSize: 11,
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-      );
-    } else if (porLimpiar) {
-      chipEstado = Semantics(
-        label: 'Por limpiar',
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-          decoration: BoxDecoration(
-            color: AppColors.info,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.cleaning_services_outlined,
-                  color: AppColors.textOnPrimary, size: 10),
-              SizedBox(width: 4),
-              Text(
-                'POR LIMPIAR',
-                style: TextStyle(
-                  color: AppColors.textOnPrimary,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.8,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    } else {
-      chipEstado = EstadoChip(
-        estado: EstadoMesa.ocupada,
-        label: label,
-        iconSize: 10,
-        fontSize: 11,
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-      );
-    }
+    final chipEstado = EstadoChip(
+      estado: disponible ? EstadoMesa.disponible : EstadoMesa.ocupada,
+      label: label,
+      iconSize: 10,
+      fontSize: 11,
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+    );
 
     return Semantics(
       label: 'Mesa ${mesa.numero}, $label',
@@ -726,11 +599,7 @@ class _MesaCard extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         child: Opacity(
-          opacity: disponible
-              ? 1.0
-              : porLimpiar
-                  ? 0.85
-                  : 0.45,
+          opacity: disponible ? 1.0 : 0.45,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -741,8 +610,6 @@ class _MesaCard extends StatelessWidget {
                   painter: _MesaPainter(
                     numero: mesa.numero,
                     capacidad: mesa.capacidad,
-                    // El painter solo distingue libre/no-libre. Para por_limpiar
-                    // usamos el chip de label como indicador visual primario.
                     disponible: disponible,
                   ),
                 ),
