@@ -458,125 +458,92 @@ async def crear_pedido(
     current_user: dict = Depends(get_current_user),
     idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
 ):
-    # ── 1. RESOLUCIÓN SEGURA DEL ID DEL CLIENTE (Bugs #8 y #9) ──
-    rol_actor = normalizar_rol(current_user.get("rol", ""))
-    uid_cliente = None
-    
-    if rol_actor == "cliente":
-        uid_cliente = ObjectId(current_user["sub"])
-    else:
-        # Si es staff (camarero/admin), el cliente es el indicado en el body
-        if pedido.userId and ObjectId.is_valid(pedido.userId):
-            uid_temp = ObjectId(pedido.userId)
-            # Validamos que el destinatario sea realmente un cliente
-            target = coleccion_usuarios.find_one({"_id": uid_temp})
-            if target and normalizar_rol(target.get("rol", "")) == "cliente":
-                uid_cliente = uid_temp
-
-    # ── 2. PREPARACIÓN DE ITEMS Y CÁLCULO BASE (Bug #5) ──
     items_dict = [item.model_dump() for item in pedido.items]
-    total_articulos = 0.0
 
+    # Asignar un item_id estable a cada item (UUID v4) si no lo trae ya.
+    # Esto permite identificar items por id y evitar bugs de índice posicional
+    # cuando dos camareros editan un pedido concurrentemente.
     for item in items_dict:
         if not item.get("item_id"):
             item["item_id"] = str(uuid.uuid4())
-        
+
+    # Compute total from authoritative DB prices — never trust client-supplied totals
+    total_calculado = 0.0
+    for item in items_dict:
         pid = item.get("producto_id", "")
         try:
             producto_db = coleccion_productos.find_one({"_id": ObjectId(pid)}) if pid else None
-        except:
+        except Exception:
             producto_db = None
-            
         if not producto_db:
             raise NotFoundError(f"Producto no encontrado: {pid}")
-            
         precio_real = float(producto_db.get("precio", 0))
         item["precio"] = precio_real
-        total_articulos += precio_real * item["cantidad"]
-
-        # Marcar bebidas como hechas (no pasan por cocina)
-        if str(producto_db.get("categoria", "")).lower().strip() == "bebidas":
+        total_calculado += precio_real * item["cantidad"]
+        # Las bebidas no pasan por cocina: el camarero las sirve directamente.
+        # Las marcamos `hecho=True` al crear el pedido para que el tablero del
+        # cocinero no las muestre como pendientes y, si un pedido es solo de
+        # bebidas, vaya directo a 'listo' sin intervención de cocina.
+        categoria = str(producto_db.get("categoria", "")).strip().lower()
+        if categoria == "bebidas":
             item["hecho"] = True
 
-    # Calcular total incluyendo envío (Bug #5)
-    # Nota: Asegúrate de que este valor coincida con el del frontend (_kCosteEnvio)
-    coste_envio = 2.50 if pedido.tipoEntrega == TipoEntrega.domicilio else 0.0
-    total_antes_de_puntos = total_articulos + coste_envio
-    # (Si implementas cupones en el futuro, se restarían aquí antes de los puntos)
+    # ── DESCUENTO POR CUPÓN ───────────────────────────────
+    # Se revalida el cupón en backend y se descuenta del total calculado
+    # con precios reales (no se confía en el total que envía el cliente).
+    # Esto antes solo se mostraba en el front: el pedido se guardaba con
+    # el total SIN descuento de cupón → descuadre con lo cobrado.
+    descuento_cupon = 0.0
+    if pedido.cuponCodigo:
+        from routes.cupones import evaluar_cupon
 
-    # ── 3. CANJE ATÓMICO DE PUNTOS (Bugs #2, #3 y #6) ──
-    puntos_usados = getattr(pedido, "puntosUsados", 0)
-    descuento_por_puntos = 0.0
-
-    if puntos_usados > 0:
-        if not uid_cliente:
-            raise ValidacionError("Se requieren puntos pero no se identificó un cliente válido")
-
-        # Operación ATÓMICA: Filtramos por ID y por tener puntos suficientes
-        # Esto evita que dos pedidos descuenten puntos al mismo tiempo (Race Condition)
-        resultado_resta = coleccion_usuarios.update_one(
-            {"_id": uid_cliente, "puntos": {"$gte": puntos_usados}},
-            {"$inc": {"puntos": -puntos_usados}}
+        rid_para_cupon = pedido.restauranteId or current_user.get("restaurante_id")
+        ok_cupon, descuento_cupon, msg_cupon = evaluar_cupon(
+            codigo=pedido.cuponCodigo,
+            subtotal=total_calculado,
+            coste_envio=0.0,
+            restaurante_id=rid_para_cupon,
         )
-        
+        if not ok_cupon:
+            raise ValidacionError(f"Cupón no válido: {msg_cupon}")
+        total_calculado = max(0.0, total_calculado - descuento_cupon)
+        logger.info(
+            f"Cupón {pedido.cuponCodigo} aplicado: -{descuento_cupon:.2f} EUR"
+        )
+
+    # ── CANJE DE BRAVO COINS (resta ATÓMICA — fix race condition de main) ──
+    if pedido.puntosUsados > 0:
+        # Resolución del cliente: cliente usa su sub; staff debe
+        # identificar al cliente con un userId ObjectId válido.
+        if normalizar_rol(current_user.get("rol", "")) == "cliente":
+            uid_obj = ObjectId(current_user["sub"])
+        else:
+            uid_payload_raw = pedido.userId or ""
+            if not uid_payload_raw or not ObjectId.is_valid(uid_payload_raw):
+                raise ValidacionError(
+                    "Para canjear puntos hay que identificar al cliente (userId)"
+                )
+            uid_obj = ObjectId(uid_payload_raw)
+
+        # Resta condicional y atómica: solo descuenta si el documento aún
+        # tiene puntos suficientes. Dos pedidos concurrentes ya no pueden
+        # gastar los mismos puntos (antes era find_one + check + update
+        # por separado → race condition).
+        resultado_resta = coleccion_usuarios.update_one(
+            {"_id": uid_obj, "puntos": {"$gte": pedido.puntosUsados}},
+            {"$inc": {"puntos": -pedido.puntosUsados}},
+        )
         if resultado_resta.modified_count == 0:
-            raise ValidacionError("Puntos insuficientes o error en la cuenta de fidelización")
-            
-        descuento_por_puntos = puntos_usados / 10.0
-        logger.info(f"Usuario {uid_cliente} canjeó {puntos_usados} puntos (-{descuento_por_puntos}€)")
-
-    # Total final que se guardará en el pedido
-    total_final_pedido = max(0.0, total_antes_de_puntos - descuento_por_puntos)
-
-    # ── 4. CREACIÓN DEL PEDIDO EN BASE DE DATOS ──
-    nuevo_pedido = {
-        "userId": str(uid_cliente) if uid_cliente else pedido.userId,
-        "items": items_dict,
-        "total": total_final_pedido,
-        "tipoEntrega": pedido.tipoEntrega,
-        "metodoPago": pedido.metodoPago,
-        "direccionEntrega": pedido.direccionEntrega,
-        "mesaId": pedido.mesaId,
-        "numeroMesa": pedido.numeroMesa,
-        "notas": pedido.notas,
-        "estado": "recibido",
-        "estadoPago": pedido.estadoPago,
-        "referenciaPago": pedido.referenciaPago,
-        "restauranteId": pedido.restauranteId,
-        "createdAt": datetime.now(timezone.utc).isoformat(),
-        "puntosUsados": puntos_usados,
-        "descuentoAplicado": descuento_por_puntos
-    }
-
-    try:
-        resultado = coleccion_pedidos.insert_one(nuevo_pedido)
-        nuevo_pedido_id = str(resultado.inserted_id)
-    except Exception as e:
-        # Si falla la creación del pedido, deberíamos devolver los puntos (Rollback manual)
-        if puntos_usados > 0 and uid_cliente:
-            coleccion_usuarios.update_one({"_id": uid_cliente}, {"$inc": {"puntos": puntos_usados}})
-        raise HTTPException(status_code=500, detail=f"Error al crear el pedido: {e}")
-
-    # ── 5. SUMA DE PUNTOS POR COMPRA (Bugs #4 y #10) ──
-    # Solo sumamos puntos si el pago NO es un "pendiente" de pasarela externa (Stripe/PayPal)
-    estado_pago_lower = str(pedido.estadoPago or "").lower()
-    es_pago_pendiente_externo = "stripe" in estado_pago_lower or "paypal" in estado_pago_lower
-    
-    if uid_cliente and not es_pago_pendiente_externo:
-        # Bug #10: Usamos round() para redondear al entero más cercano (9.99€ -> 10 puntos)
-        puntos_ganados = int(round(total_final_pedido))
-        if puntos_ganados > 0:
-            coleccion_usuarios.update_one(
-                {"_id": uid_cliente},
-                {"$inc": {"puntos": puntos_ganados}}
+            raise ValidacionError(
+                "No tienes suficientes Bravo Coins para este descuento."
             )
-            logger.info(f"Usuario {uid_cliente} ganó {puntos_ganados} puntos por su compra")
 
-    return {
-        "id": nuevo_pedido_id,
-        "mensaje": "Pedido creado con éxito",
-        "total": total_final_pedido
-    }
+        descuento_coins = pedido.puntosUsados / 10.0
+        total_calculado = max(0.0, total_calculado - descuento_coins)
+        logger.info(
+            f"Se han canjeado {pedido.puntosUsados} puntos "
+            f"por un descuento de {descuento_coins}€"
+        )
     # ────────────────────────────────────────────────────────────────
     # Para clientes, ignorar userId del payload y usar el sub del JWT.
     # Admin y personal de sala/cocina pueden crear pedidos en nombre de cualquier usuario.
@@ -639,6 +606,11 @@ async def crear_pedido(
 
     if idempotency_key and idempotency_key.strip():
         pedido_dict["idempotency_key"] = idempotency_key.strip()
+
+    # Trazabilidad del cupón aplicado (para contabilidad / soporte).
+    if pedido.cuponCodigo and descuento_cupon > 0:
+        pedido_dict["cupon_codigo"] = pedido.cuponCodigo.strip().upper()
+        pedido_dict["descuento_cupon"] = round(descuento_cupon, 2)
 
     if pedido.direccionEntrega:
         pedido_dict["direccion_entrega"] = pedido.direccionEntrega

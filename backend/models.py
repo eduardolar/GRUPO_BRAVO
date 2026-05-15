@@ -187,6 +187,9 @@ class PedidoCrear(BaseModel):
     # se destacan en la pantalla del cocinero con un banner rojo.
     prioritario: bool = False
     puntosUsados: int = 0                   # canje de puntos de fidelidad
+    # Código de cupón aplicado en el checkout. El backend lo revalida y
+    # descuenta del total del pedido (no se confía en el total del cliente).
+    cuponCodigo: Optional[str] = None
 
     # --- Normalizadores: aceptamos variantes del frontend ----------------
     # `mode="before"` corre ANTES de validar el tipo Enum, así podemos

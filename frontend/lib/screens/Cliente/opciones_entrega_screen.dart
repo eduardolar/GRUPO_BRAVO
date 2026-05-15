@@ -119,10 +119,13 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
   double _costeEnvio() =>
       _entregaSeleccionada == OpcionEntrega.domicilio ? _kCosteEnvio : 0.0;
 
+  /// Descuento del cupón aplicado (lo que ve el cliente en el total).
+  double _descuentoTotal() => _descuentoCuponAplicado;
+
   // 1. Calcula el total base (Items + Envío - Cupones) SIN PUNTOS
   double _calcularTotalBase(CartProvider cart) {
     final bruto = cart.totalPrice + _costeEnvio();
-    final total = bruto - _descuentoCuponAplicado;
+    final total = bruto - _descuentoTotal();
     return total < 0 ? 0.0 : total;
   }
 
@@ -385,6 +388,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
                     paso: _paso,
                     cargando: _estaCargando,
                     costeEnvio: _costeEnvio(),
+                    descuento: _descuentoTotal(),
                     onSiguiente: switch (_paso) {
                       _Paso.confirmar => () => setState(
                         () => _paso = _Paso.entrega,
@@ -432,11 +436,12 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
             return ListView.separated(
               physics: const BouncingScrollPhysics(),
               padding: EdgeInsets.fromLTRB(pad, 16, pad, 24),
-              itemCount: cart.items.length + 2,
+              // El cupón se introduce en el paso de pago, no aquí (evita
+              // duplicar el campo en el flujo).
+              itemCount: cart.items.length + 1,
               separatorBuilder: (_, _) => const SizedBox(height: 10),
               itemBuilder: (context, i) {
                 if (i == 0) return _subtituloPaso('Revisa tu pedido');
-                if (i == cart.items.length + 1) return _seccionCupon(cart);
                 final item = cart.items.values.elementAt(i - 1);
                 return Dismissible(
                   key: ValueKey('cart-${item.key}'),
@@ -705,6 +710,7 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
         // Obtenemos al usuario para leer sus puntos
         final usuario = context.watch<AuthProvider>().usuarioActual;
         final puntos = usuario?.puntos ?? 0;
+        final cart = context.watch<CartProvider>();
 
         return SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
@@ -765,6 +771,11 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
                   ),
                 ),
               // ─────────────────────────────────
+
+              // Cupón también en el paso de pago: el cliente puede aplicarlo
+              // aquí sin tener que volver atrás a la pantalla de revisión.
+              _seccionCupon(cart),
+              const SizedBox(height: 20),
 
               PagoCard(
                 icono: Icons.payments_outlined,
@@ -1279,6 +1290,8 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
         restauranteId: cart.restauranteId,
         idempotencyKey: idempKey,
         puntosUsados: puntosAUsar, // <--- AÑADIMOS LOS PUNTOS AQUÍ
+        // El backend revalida el cupón y lo descuenta del total real.
+        cuponCodigo: _cuponAplicado,
       );
 
       final pedidoId =
