@@ -1,3 +1,9 @@
+// ============================================================================
+// frontend/lib/services/mesa_service.dart
+// ----------------------------------------------------------------------------
+// Cliente HTTP de mesas físicas. CRUD + cambio de estado (libre/ocupada/etc.)
+// y validación de QR (cliente escanea → backend resuelve la mesa).
+// ============================================================================
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/mesa_model.dart';
@@ -137,7 +143,10 @@ class MesaService {
     }
   }
 
-  static Future<void> marcarMesaOcupada(String mesaId) async {
+  static Future<void> marcarMesaOcupada(
+    String mesaId, {
+    String? idempotencyKey,
+  }) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 200));
       final index = MockData.mesas.indexWhere((m) => m.id == mesaId);
@@ -149,10 +158,14 @@ class MesaService {
       return;
     }
 
+    final extra = <String, String>{};
+    if (idempotencyKey != null && idempotencyKey.isNotEmpty) {
+      extra['Idempotency-Key'] = idempotencyKey;
+    }
     final response = await httpWithRetry(
       () => http.patch(
         Uri.parse('$baseUrl/mesas/$mesaId'),
-        headers: AuthSession.headers(),
+        headers: AuthSession.headers(extra: extra),
         body: jsonEncode({'disponible': false}),
       ),
       retry: false,
@@ -163,7 +176,59 @@ class MesaService {
     }
   }
 
-  static Future<void> marcarMesaLibre(String mesaId) async {
+  /// Edita una mesa existente. Solo se envían los campos que no sean null.
+  static Future<Mesa> editarMesa(
+    String id, {
+    int? numero,
+    int? capacidad,
+    String? ubicacion,
+    String? codigoQr,
+  }) async {
+    if (!usarApiReal) {
+      await Future.delayed(const Duration(milliseconds: 200));
+      final index = MockData.mesas.indexWhere((m) => m.id == id);
+      if (index == -1) throw const ApiException(404, 'Mesa no encontrada');
+      final actualizada = Mesa(
+        id: id,
+        numero: numero ?? MockData.mesas[index].numero,
+        capacidad: capacidad ?? MockData.mesas[index].capacidad,
+        ubicacion: ubicacion ?? MockData.mesas[index].ubicacion,
+        disponible: MockData.mesas[index].disponible,
+        codigoQr: codigoQr ?? MockData.mesas[index].codigoQr,
+        restauranteId: MockData.mesas[index].restauranteId,
+      );
+      MockData.mesas[index] = actualizada;
+      return actualizada;
+    }
+
+    // Construimos el body solo con los campos que el usuario cambió,
+    // para no pisar valores que el backend considere inmutables.
+    final body = <String, dynamic>{
+      'numero': ?numero,
+      'capacidad': ?capacidad,
+      'ubicacion': ?ubicacion,
+      'codigoQr': ?codigoQr,
+    };
+
+    final response = await httpWithRetry(
+      () => http.put(
+        Uri.parse('$baseUrl/mesas/$id'),
+        headers: AuthSession.headers(),
+        body: jsonEncode(body),
+      ),
+      retry: false,
+    );
+
+    if (response.statusCode == 200) {
+      return Mesa.fromMap(jsonDecode(response.body) as Map<String, dynamic>);
+    }
+    throw toApiException(response.statusCode, decodeBody(response));
+  }
+
+  static Future<void> marcarMesaLibre(
+    String mesaId, {
+    String? idempotencyKey,
+  }) async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 200));
       final index = MockData.mesas.indexWhere((m) => m.id == mesaId);
@@ -175,10 +240,14 @@ class MesaService {
       return;
     }
 
+    final extra = <String, String>{};
+    if (idempotencyKey != null && idempotencyKey.isNotEmpty) {
+      extra['Idempotency-Key'] = idempotencyKey;
+    }
     final response = await httpWithRetry(
       () => http.patch(
         Uri.parse('$baseUrl/mesas/$mesaId'),
-        headers: AuthSession.headers(),
+        headers: AuthSession.headers(extra: extra),
         body: jsonEncode({'disponible': true}),
       ),
       retry: false,
@@ -188,4 +257,5 @@ class MesaService {
       throw toApiException(response.statusCode, decodeBody(response));
     }
   }
+
 }

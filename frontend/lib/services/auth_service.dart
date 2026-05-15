@@ -1,3 +1,23 @@
+// ============================================================================
+// frontend/lib/services/auth_service.dart
+// ----------------------------------------------------------------------------
+// Cliente HTTP del backend de autenticación.
+//
+// Cubre:
+//   - iniciarSesion: POST /auth/login (gestiona el caso requires_2fa).
+//   - registrarUsuario: POST /auth/registro.
+//   - verificarCodigo, reenviarCodigo: confirma alta.
+//   - recuperarPassword + restablecerPassword: flujo de "olvidé contraseña".
+//   - Métodos 2FA: setup, activar, desactivar, verificar.
+//
+// Tras un login exitoso, llama a `AuthSession.guardar(...)` para persistir
+// el token. Las siguientes peticiones llevarán `Authorization: Bearer ...`
+// automáticamente gracias a `AuthSession.headers()`.
+//
+// Modo mock: si `usarApiReal == false` (api_config.dart), las funciones
+// devuelven datos de `data/mock_users.dart` sin tocar la red. Útil para
+// desarrollar sin backend levantado.
+// ============================================================================
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../data/mock_data.dart';
@@ -5,8 +25,8 @@ import 'api_config.dart';
 import 'auth_session.dart';
 import 'http_client.dart';
 
-void _guardarSesionDesde(Map<String, dynamic> data) {
-  AuthSession.guardar(
+Future<void> _guardarSesionDesde(Map<String, dynamic> data) async {
+  await AuthSession.guardar(
     token: data['access_token'] as String?,
     userId: data['id'] as String?,
     correo: data['correo'] as String?,
@@ -43,7 +63,7 @@ class AuthService {
       final data = jsonDecode(response.body) as Map<String, dynamic>;
       // Guardamos la sesión sólo si el backend devolvió un access_token
       // (cuando hay 2FA pendiente, no llega token hasta verificar el código).
-      if (data['access_token'] != null) _guardarSesionDesde(data);
+      if (data['access_token'] != null) await _guardarSesionDesde(data);
       return data;
     }
 
@@ -68,7 +88,7 @@ class AuthService {
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body) as Map<String, dynamic>;
-      _guardarSesionDesde(data);
+      await _guardarSesionDesde(data);
       return data;
     } else {
       final error = jsonDecode(response.body);
@@ -82,6 +102,7 @@ class AuthService {
     required String contrasena,
     required String telefono,
     required String direccion,
+    String? restauranteId,
     required bool consentimientoRgpd,
   }) async {
     if (!usarApiReal) {
@@ -101,7 +122,7 @@ class AuthService {
 
     final response = await httpWithRetry(
       () => http.post(
-        Uri.parse('$baseUrl/registro'),
+        Uri.parse('$baseUrl/clientes/registro'),
         headers: AuthSession.headers(),
         body: jsonEncode({
           'nombre': nombre,
@@ -109,6 +130,7 @@ class AuthService {
           'password': contrasena,
           'telefono': telefono,
           'direccion': direccion,
+          'restaurante_id': restauranteId,
           'rol': 'cliente',
           'consentimiento_rgpd': consentimientoRgpd,
         }),
@@ -131,7 +153,7 @@ class AuthService {
 
     final response = await httpWithRetry(
       () => http.post(
-        Uri.parse('$baseUrl/verificar-codigo'),
+        Uri.parse('$baseUrl/clientes/verificar-email'),
         headers: AuthSession.headers(),
         body: jsonEncode({'correo': correo, 'codigo': codigo}),
       ),
@@ -150,7 +172,7 @@ class AuthService {
 
     final response = await httpWithRetry(
       () => http.post(
-        Uri.parse('$baseUrl/recuperar-password'),
+        Uri.parse('$baseUrl/clientes/recuperar-password'),
         headers: AuthSession.headers(),
         body: jsonEncode({'correo': correo}),
       ),
@@ -174,7 +196,7 @@ class AuthService {
 
     final response = await httpWithRetry(
       () => http.post(
-        Uri.parse('$baseUrl/reset-password'),
+        Uri.parse('$baseUrl/clientes/restablecer-password'),
         headers: AuthSession.headers(),
         body: jsonEncode({
           'correo': correo,
@@ -198,7 +220,7 @@ class AuthService {
 
     final response = await httpWithRetry(
       () => http.post(
-        Uri.parse('$baseUrl/reenviar-codigo'),
+        Uri.parse('$baseUrl/clientes/reenviar-codigo'),
         headers: AuthSession.headers(),
         body: jsonEncode({'correo': correo}),
       ),
@@ -234,7 +256,6 @@ class AuthService {
   }
 
   static Future<bool> actualizarPerfil({
-    required String userId,
     required String nombre,
     required String email,
     required String telefono,
@@ -247,7 +268,7 @@ class AuthService {
 
     final response = await httpWithRetry(
       () => http.put(
-        Uri.parse('$baseUrl/usuarios/$userId'),
+        Uri.parse('$baseUrl/clientes/me'),
         headers: AuthSession.headers(),
         body: jsonEncode({
           'nombre': nombre,
@@ -261,21 +282,17 @@ class AuthService {
     return response.statusCode == 200;
   }
 
-  static Future<Map<String, dynamic>> verPerfil({
-    required String userId,
-  }) async {
+  static Future<Map<String, dynamic>> verPerfil() async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 300));
-      final usuario = MockData.usuarios.firstWhere(
-        (u) => u.id == userId,
-        orElse: () => throw const ApiException(404, 'Usuario no encontrado'),
-      );
+      final usuario = MockData.usuarios.firstOrNull;
+      if (usuario == null) throw const ApiException(404, 'Usuario no encontrado');
       return usuario.toJson();
     }
 
     final response = await httpWithRetry(
       () => http.get(
-        Uri.parse('$baseUrl/usuarios/$userId'),
+        Uri.parse('$baseUrl/clientes/me'),
         headers: AuthSession.headers(),
       ),
     );
@@ -286,7 +303,7 @@ class AuthService {
     throw toApiException(response.statusCode, decodeBody(response));
   }
 
-  static Future<bool> eliminarPerfil({required String userId}) async {
+  static Future<bool> eliminarPerfil() async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 300));
       return true;
@@ -294,7 +311,7 @@ class AuthService {
 
     final response = await httpWithRetry(
       () => http.delete(
-        Uri.parse('$baseUrl/usuarios/$userId'),
+        Uri.parse('$baseUrl/clientes/me'),
         headers: AuthSession.headers(),
       ),
       retry: false,
@@ -303,7 +320,6 @@ class AuthService {
   }
 
   static Future<void> cambiarContrasena({
-    required String userId,
     required String passwordActual,
     required String nuevaPassword,
   }) async {
@@ -314,7 +330,7 @@ class AuthService {
 
     final response = await httpWithRetry(
       () => http.put(
-        Uri.parse('$baseUrl/usuarios/$userId/cambiar-password'),
+        Uri.parse('$baseUrl/clientes/me/password'),
         headers: AuthSession.headers(),
         body: jsonEncode({
           'password_actual': passwordActual,
@@ -329,7 +345,7 @@ class AuthService {
     }
   }
 
-  static Future<bool> eliminarCuenta({required String userId}) async {
+  static Future<bool> eliminarCuenta() async {
     if (!usarApiReal) {
       await Future.delayed(const Duration(milliseconds: 500));
       return true;
@@ -338,7 +354,7 @@ class AuthService {
     // RGPD art. 17: llama al endpoint de anonimización, no de borrado total.
     final response = await httpWithRetry(
       () => http.delete(
-        Uri.parse('$baseUrl/usuarios/$userId/mi-cuenta'),
+        Uri.parse('$baseUrl/clientes/me'),
         headers: AuthSession.headers(),
       ),
       retry: false,

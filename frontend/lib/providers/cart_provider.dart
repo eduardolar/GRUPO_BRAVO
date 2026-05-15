@@ -1,3 +1,18 @@
+// ============================================================================
+// frontend/lib/providers/cart_provider.dart
+// ----------------------------------------------------------------------------
+// Carrito de la compra del cliente. Vive en memoria mientras la app está
+// abierta (no persistido).
+//
+// `CartItem.key` distingue items "iguales pero distintos": una hamburguesa
+// sin pepinillo es diferente de una con pepinillo aunque sean el mismo
+// `producto_id`. Por eso la clave incluye los `ingredientesExcluidos`
+// ordenados.
+//
+// Cualquier widget puede:
+//   - context.watch<CartProvider>()  → reconstruir cuando cambia
+//   - context.read<CartProvider>().agregar(producto)  → mutar
+// ============================================================================
 import 'package:flutter/material.dart';
 import '../models/producto_model.dart';
 
@@ -78,7 +93,13 @@ class CartProvider with ChangeNotifier {
   }
 
   void removeProduct(String productId) {
-    _items.remove(productId);
+    final keysToRemove = _items.keys
+        .where((k) => k == productId || k.startsWith('${productId}_sin_'))
+        .toList();
+    if (keysToRemove.isEmpty) return;
+    for (final k in keysToRemove) {
+      _items.remove(k);
+    }
     notifyListeners();
   }
 

@@ -1,7 +1,24 @@
-from fastapi import APIRouter, HTTPException
+# ============================================================================
+# backend/routes/categorias.py
+# ----------------------------------------------------------------------------
+# CRUD de categorías de la carta (entrantes, principales, postres...).
+#
+# Endpoints:
+#   GET    /categorias        → listado ordenado (por campo `orden`).
+#   POST   /categorias        → crear (admin).
+#   PUT    /categorias/{id}   → renombrar (admin).
+#   DELETE /categorias/{id}   → eliminar (admin) — bloquea si hay productos.
+#   PATCH  /categorias/orden  → reordenar drag-and-drop.
+#
+# Detalle: el campo `orden` es un entero que sirve para ordenar las
+# categorías al pintar la carta. Cuando se crea una nueva, recibe el
+# siguiente número disponible (ver `_siguiente_orden`).
+# ============================================================================
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import List
 from database import coleccion_categorias, coleccion_productos
+from security import require_role
 
 router = APIRouter(prefix="/categorias", tags=["Categorías"])
 
@@ -40,7 +57,10 @@ def obtener_categorias():
 
 
 @router.post("", status_code=201)
-def crear_categoria(payload: CategoriaCrear):
+def crear_categoria(
+    payload: CategoriaCrear,
+    _actor: dict = Depends(require_role(["admin", "super_admin"])),
+):
     nombre = payload.nombre.strip()
     if not nombre:
         raise HTTPException(status_code=400, detail="El nombre no puede estar vacío")
@@ -53,7 +73,10 @@ def crear_categoria(payload: CategoriaCrear):
 
 
 @router.put("/orden")
-def reordenar_categorias(payload: CategoriaOrden):
+def reordenar_categorias(
+    payload: CategoriaOrden,
+    _actor: dict = Depends(require_role(["admin", "super_admin"])),
+):
     # Reasigna el campo `orden` siguiendo la lista recibida. Las categorías que
     # no aparezcan en la lista quedan al final, en su orden original.
     nombres_recibidos = [n.strip() for n in payload.orden if n and n.strip()]
@@ -85,7 +108,11 @@ def reordenar_categorias(payload: CategoriaOrden):
 
 
 @router.put("/{nombre}")
-def renombrar_categoria(nombre: str, payload: CategoriaRenombrar):
+def renombrar_categoria(
+    nombre: str,
+    payload: CategoriaRenombrar,
+    _actor: dict = Depends(require_role(["admin", "super_admin"])),
+):
     nuevo = payload.nombre.strip()
     if not nuevo:
         raise HTTPException(status_code=400, detail="El nombre no puede estar vacío")
@@ -107,7 +134,10 @@ def renombrar_categoria(nombre: str, payload: CategoriaRenombrar):
 
 
 @router.delete("/{nombre}")
-def eliminar_categoria(nombre: str):
+def eliminar_categoria(
+    nombre: str,
+    _actor: dict = Depends(require_role(["admin", "super_admin"])),
+):
     cat = coleccion_categorias.find_one({"nombre": nombre})
     if not cat:
         raise HTTPException(status_code=404, detail="Categoría no encontrada")

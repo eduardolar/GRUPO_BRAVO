@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 
 // TUS COMPONENTES Y SERVICIOS
+import '../../core/app_snackbar.dart';
 import '../../core/colors_style.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/usuario_service.dart';
@@ -80,6 +81,7 @@ class _DireccionScreenState extends State<DireccionScreen> {
       }
     } catch (e) {
       _setDireccionError();
+      if (mounted) handleApiError(context, e, prefix: 'Error de geocodificación');
     }
   }
 
@@ -136,32 +138,33 @@ class _DireccionScreenState extends State<DireccionScreen> {
         return;
       }
 
-      final userId = auth.usuarioActual?.id;
-      if (userId == null) throw "Sesión no válida";
-
-      bool exito = await usuarioService.actualizarDireccion(
-        userId: userId,
+      await usuarioService.actualizarDireccion(
         direccion: direccionFinal,
         latitud: _puntoActual.latitude,
         longitud: _puntoActual.longitude,
       );
 
-      if (exito && mounted) {
-        auth.actualizarDireccionLocal(
-          nuevaDir: direccionFinal,
-          nuevaLat: _puntoActual.latitude,
-          nuevaLon: _puntoActual.longitude,
-        );
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("¡Dirección guardada!"),
-            backgroundColor: Colors.green,
-          ),
-        );
-        Navigator.pop(context);
-      }
+      if (!mounted) return;
+      auth.actualizarDireccionLocal(
+        nuevaDir: direccionFinal,
+        nuevaLat: _puntoActual.latitude,
+        nuevaLon: _puntoActual.longitude,
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("¡Dirección guardada!"),
+          backgroundColor: AppColors.success,
+        ),
+      );
+      Navigator.pop(context);
     } catch (e) {
-      _mostrarError("Error: $e");
+      // Mostramos el detail del backend (ApiException.toString() ya devuelve
+      // el mensaje crudo, sin el prefijo "Exception:"). Antes el catch era
+      // silencioso y la pantalla se quedaba colgada sin feedback.
+      final detalle = e.toString().replaceFirst(RegExp(r'^Exception:\s*'), '');
+      _mostrarError(
+        detalle.isEmpty ? 'No se pudo guardar la dirección' : detalle,
+      );
     } finally {
       if (mounted) setState(() => _cargando = false);
     }
@@ -169,7 +172,7 @@ class _DireccionScreenState extends State<DireccionScreen> {
 
   void _mostrarError(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: Colors.redAccent),
+      SnackBar(content: Text(msg), backgroundColor: AppColors.error),
     );
   }
 
@@ -219,7 +222,7 @@ class _DireccionScreenState extends State<DireccionScreen> {
                           height: 50,
                           child: const Icon(
                             Icons.location_on,
-                            color: Colors.red,
+                            color: AppColors.error,
                             size: 45,
                           ),
                         ),

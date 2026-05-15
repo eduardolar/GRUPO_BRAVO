@@ -1,3 +1,15 @@
+// ============================================================================
+// frontend/test/widget_test.dart
+// ----------------------------------------------------------------------------
+// Smoke tests rápidos sobre los modelos básicos.
+//
+// Estos tests no abren la app entera (sería caro y frágil); solo
+// comprueban que los modelos se pueden instanciar con los valores mínimos
+// y que sus métodos básicos (fromJson, subtotal, etc.) funcionan.
+//
+// `flutter test` ejecuta este archivo + todos los `*_test.dart` que hay
+// debajo de `test/`. Para correrlo: `flutter test` desde `frontend/`.
+// ============================================================================
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/models/usuario_model.dart';
 import 'package:frontend/models/pedido_model.dart';

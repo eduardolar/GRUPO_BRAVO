@@ -1,14 +1,32 @@
+// ============================================================================
+// frontend/lib/screens/cliente/inicio_screen.dart
+// ----------------------------------------------------------------------------
+// Pantalla de entrada del CLIENTE (con o sin sesión).
+//
+// Es la primera que ve un cliente al abrir la app: invita a iniciar
+// sesión, registrarse, o saltar como invitado a la carta/reservas.
+//
+// También maneja el RETORNO de redirects externos (Stripe Checkout web):
+// al volver con `?stripe_session=...` en la URL, esta pantalla lo lee,
+// consulta el estado del pago en backend y navega a la pantalla de
+// "pedido confirmado". Tras procesarlo limpia los query params para que
+// un F5 no vuelva a disparar el flujo.
+// ============================================================================
+import 'dart:ui' show ImageFilter;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-
 import 'package:frontend/components/bravo_app_bar.dart';
 import 'package:frontend/core/app_routes.dart';
+import 'package:frontend/core/app_snackbar.dart';
 import 'package:frontend/core/colors_style.dart';
+import 'package:frontend/core/url_helper.dart';
 import 'package:frontend/models/destino_login.dart';
 import 'package:frontend/providers/auth_provider.dart';
+import 'package:frontend/components/Cliente/pedido_activo_pill.dart';
 import 'package:frontend/providers/cart_provider.dart';
+import 'package:frontend/providers/pedido_activo_provider.dart';
 import 'package:frontend/screens/cliente/carta_screen.dart';
 import 'package:frontend/screens/cliente/login_screen.dart';
 import 'package:frontend/screens/cliente/pedido_confirmado_screen.dart';
@@ -17,12 +35,23 @@ import 'package:frontend/screens/cliente/scanner_qr.dart';
 import 'package:frontend/screens/cliente/seleccionar_restaurante_screen.dart';
 import 'package:frontend/services/api_service.dart';
 
+// Duración del splash inicial (animación del logo BRAVO antes de mostrar la app).
 const Duration _kSplashDuration = Duration(milliseconds: 2600);
+// Duración del fade entre splash y contenido principal.
 const Duration _kSwitchDuration = Duration(milliseconds: 850);
 const BorderRadius _kRadius = BorderRadius.all(Radius.circular(12));
 const double _kHeroMaxContentWidth = 500;
 const String _kBackgroundAsset = 'assets/images/Bravo restaurante.jpg';
 
+/// Pantalla raíz de la app de cliente.
+///
+/// Responsable de:
+/// 1. Mostrar el splash animado al arrancar.
+/// 2. Capturar el redirect de Stripe (solo web) cuando el cliente vuelve
+///    desde la página de pago externo, verificar que el pago fue confirmado
+///    y abrir [PedidoConfirmadoScreen].
+/// 3. Mostrar el hero con los tres CTA principales del cliente: escanear QR
+///    de mesa, pedido a domicilio y reservar mesa.
 class InicioScreen extends StatefulWidget {
   const InicioScreen({super.key});
 
@@ -31,9 +60,12 @@ class InicioScreen extends StatefulWidget {
 }
 
 class _InicioScreenState extends State<InicioScreen> {
+  // `true` cuando el splash terminó y se muestra el contenido principal.
   bool _appReady = false;
 
-  // Datos del redirect de Stripe (solo web)
+  // Datos del redirect de Stripe (solo web). `_stripeSessionId` viene como
+  // query param `?stripe_session=...` cuando Stripe Checkout redirige de vuelta
+  // a la app tras un pago exitoso.
   String? _stripeSessionId;
   String _stripeEntrega = '';
   double _stripeTotal = 0;
@@ -44,6 +76,8 @@ class _InicioScreenState extends State<InicioScreen> {
     _capturarRedirectStripe();
   }
 
+  /// Lee los query params del navegador para detectar si venimos de Stripe.
+  /// En móvil/desktop no aplica: el flujo de pago vuelve por callback nativo.
   void _capturarRedirectStripe() {
     if (!kIsWeb) return;
     final params = Uri.base.queryParameters;
@@ -52,6 +86,11 @@ class _InicioScreenState extends State<InicioScreen> {
     _stripeSessionId = sessionId;
     _stripeEntrega = Uri.decodeQueryComponent(params['entrega'] ?? 'Tu pedido');
     _stripeTotal = double.tryParse(params['total'] ?? '0') ?? 0;
+    // Limpiamos la URL del navegador (`?stripe_session=…`) en cuanto la
+    // hemos leído. Sin esto, cada F5 / re-entrada al inicio_screen vuelve
+    // a parsear la sesión y vuelve a abrir PedidoConfirmadoScreen, aunque
+    // el cliente no haya hecho ningún pedido nuevo.
+    limpiarQueryParams();
   }
 
   void _onSplashFinished() {
@@ -64,17 +103,26 @@ class _InicioScreenState extends State<InicioScreen> {
     }
   }
 
+  /// Verifica contra el backend que la sesión de Stripe que viene en el URL
+  /// fue realmente pagada. Si lo fue, marca el pedido como pagado en nuestra
+  /// BBDD y abre la pantalla de confirmación. Si falla la verificación, muestra
+  /// snackbar de error en lugar de avanzar — protege contra URLs manipuladas.
   Future<void> _verificarStripeRedirect() async {
     final sessionId = _stripeSessionId!;
     _stripeSessionId = null;
     final navigator = Navigator.of(context);
-    final messenger = ScaffoldMessenger.of(context);
     try {
       final pagado = await ApiService.verificarCheckoutSession(
         sessionId: sessionId,
       );
       if (!mounted || !pagado) return;
-      await ApiService.actualizarEstadoPago(referenciaPago: sessionId);
+      // El backend resuelve el ObjectId real del pedido a partir de la
+      // referencia_pago (session_id de Stripe) y nos lo devuelve. Lo usamos
+      // como pedidoId para que la pantalla de confirmación pueda hacer
+      // polling de estado y mostrar el código real `#XXXXXX`.
+      final pedidoIdReal = await ApiService.actualizarEstadoPago(
+        referenciaPago: sessionId,
+      );
       if (!mounted) return;
       navigator.push(
         AppRoute.reveal(
@@ -82,23 +130,16 @@ class _InicioScreenState extends State<InicioScreen> {
             tipoEntrega: _stripeEntrega,
             tipoPago: 'Tarjeta',
             total: _stripeTotal,
-            pedidoId: sessionId,
+            pedidoId: pedidoIdReal,
           ),
         ),
       );
     } catch (e) {
-      debugPrint('Error verificando Stripe: $e');
       if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(
-          content: const Text(
-            'No pudimos verificar el pago. Inténtalo de nuevo.',
-          ),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-          shape: const RoundedRectangleBorder(borderRadius: _kRadius),
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-        ),
+      handleApiError(
+        context,
+        e,
+        prefix: 'No pudimos verificar el pago',
       );
     }
   }
@@ -266,13 +307,22 @@ class _SplashState extends State<_Splash> with SingleTickerProviderStateMixin {
               animation: _ctrl,
               builder: (_, _) => Opacity(
                 opacity: _subtitleOpacity.value,
-                child: Text(
-                  'EST. 2024  ·  RESTAURANTE',
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: _subtitleSpacing.value,
+                // FittedBox con scaleDown protege contra desbordamiento
+                // horizontal cuando el SO usa "tamaño de texto grande" o
+                // cuando la pantalla es muy estrecha: el `letterSpacing`
+                // animado va hasta 12, y a fontSize 10 puede pasarse del ancho
+                // disponible. scaleDown solo actúa si hace falta, por lo que
+                // el caso normal queda intacto.
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    'EST. 2024  ·  RESTAURANTE',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: _subtitleSpacing.value,
+                    ),
                   ),
                 ),
               ),
@@ -345,15 +395,31 @@ class _ContenidoInicio extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cart = context.watch<CartProvider>();
+    final pillVisible = context.watch<PedidoActivoProvider>().pillVisible;
     final tituloRestaurante =
         cart.restauranteNombre?.toUpperCase() ?? 'RESTAURANTE BRAVO';
     return Scaffold(
       backgroundColor: AppColors.background,
       extendBodyBehindAppBar: true,
       appBar: BravoAppBar(title: tituloRestaurante, isRoot: true),
-      body: const SingleChildScrollView(
-        physics: BouncingScrollPhysics(),
-        child: Column(children: [_HeroSection(), _FooterQuote()]),
+      body: Stack(
+        children: [
+          SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Column(
+              children: [
+                const _HeroSection(),
+                _FooterQuote(extraBottomPadding: pillVisible ? 76.0 : 0.0),
+              ],
+            ),
+          ),
+          const Positioned(
+            bottom: 16,
+            left: 16,
+            right: 16,
+            child: PedidoActivoPill(),
+          ),
+        ],
       ),
     );
   }
@@ -453,7 +519,7 @@ class _BadgeAnio extends StatelessWidget {
         'EST. 2024',
         style: TextStyle(
           color: AppColors.line,
-          fontSize: 10,
+          fontSize: 12,
           letterSpacing: 4,
           fontWeight: FontWeight.w600,
         ),
@@ -464,6 +530,11 @@ class _BadgeAnio extends StatelessWidget {
 
 // ── BOTONES PRINCIPALES ──────────────────────────────────────────────────
 
+/// Tres CTAs principales del cliente: escanear QR, domicilio y reservar.
+///
+/// Para los flujos que requieren autenticación (carta y reserva), si el
+/// usuario no está logueado se le redirige al login con el destino guardado,
+/// para volver al flujo correcto tras autenticarse.
 class _BotonesPrincipales extends StatelessWidget {
   const _BotonesPrincipales();
 
@@ -535,10 +606,13 @@ class _BotonesPrincipales extends StatelessWidget {
     );
   }
 
+  /// Abre el escáner QR y, con el código leído, valida contra el backend que
+  /// sea un QR de mesa válido. Solo si el backend lo autoriza guardamos la
+  /// mesa en el carrito — esto evita que un QR pegado falsamente o de otro
+  /// restaurante asigne mesa al cliente.
   Future<void> _escanearQr(BuildContext context) async {
     final cart = context.read<CartProvider>();
     final navigator = Navigator.of(context);
-    final messenger = ScaffoldMessenger.of(context);
 
     final codigoQr = await navigator.push<String>(
       AppRoute.slideUp(const QRScanner()),
@@ -560,17 +634,8 @@ class _BotonesPrincipales extends StatelessWidget {
             : AppRoute.slideUp(const LoginScreen(destino: DestinoLogin.menu)),
       );
     } catch (e) {
-      messenger
-        ..clearSnackBars()
-        ..showSnackBar(
-          SnackBar(
-            content: Text('Error al validar el QR: $e'),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-            shape: const RoundedRectangleBorder(borderRadius: _kRadius),
-            margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-          ),
-        );
+      if (!context.mounted) return;
+      handleApiError(context, e, prefix: 'Error al validar el QR');
     }
   }
 }
@@ -590,50 +655,68 @@ class _BotonAccion extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Para botones secundarios bajamos el alpha del fondo (0.25 vs 0.55) para
+    // que el blur del BackdropFilter sea visible. Si dejásemos 0.55, el negro
+    // semi-opaco taparía el efecto cristal y el blur no se notaría.
     final fondo = isPrimary
         ? AppColors.button
-        : Colors.black.withValues(alpha: 0.55);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: Material(
-        color: fondo,
+        : Colors.black.withValues(alpha: 0.25);
+
+    final boton = Material(
+      color: fondo,
+      borderRadius: _kRadius,
+      elevation: isPrimary ? 4 : 0,
+      shadowColor: Colors.black54,
+      child: InkWell(
+        onTap: onPressed,
         borderRadius: _kRadius,
-        elevation: isPrimary ? 4 : 0,
-        shadowColor: Colors.black54,
-        child: InkWell(
-          onTap: onPressed,
-          borderRadius: _kRadius,
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 24),
-            decoration: BoxDecoration(
-              borderRadius: _kRadius,
-              border: isPrimary ? null : Border.all(color: Colors.white24),
-            ),
-            child: Row(
-              children: [
-                Icon(icon, color: Colors.white, size: 20),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Text(
-                    label.toUpperCase(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                      letterSpacing: 1.0,
-                    ),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 24),
+          decoration: BoxDecoration(
+            borderRadius: _kRadius,
+            border: isPrimary ? null : Border.all(color: Colors.white24),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, color: Colors.white, size: 20),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  label.toUpperCase(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    letterSpacing: 1.0,
                   ),
                 ),
-                const Icon(
-                  Icons.chevron_right,
-                  color: Colors.white54,
-                  size: 18,
-                ),
-              ],
-            ),
+              ),
+              const Icon(
+                Icons.chevron_right,
+                color: Colors.white54,
+                size: 18,
+              ),
+            ],
           ),
         ),
       ),
+    );
+
+    // Solo aplicamos blur en los botones secundarios. El primario destaca por
+    // su color de marca y no necesita el efecto. El ClipRRect alrededor del
+    // BackdropFilter es obligatorio: sin él, el blur se extendería más allá
+    // del border radius y se vería borroso por fuera de las esquinas.
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: isPrimary
+          ? boton
+          : ClipRRect(
+              borderRadius: _kRadius,
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                child: boton,
+              ),
+            ),
     );
   }
 }
@@ -641,7 +724,8 @@ class _BotonAccion extends StatelessWidget {
 // ── FOOTER ───────────────────────────────────────────────────────────────
 
 class _FooterQuote extends StatelessWidget {
-  const _FooterQuote();
+  const _FooterQuote({this.extraBottomPadding = 0.0});
+  final double extraBottomPadding;
 
   @override
   Widget build(BuildContext context) {
@@ -650,7 +734,7 @@ class _FooterQuote extends StatelessWidget {
       child: Center(
         child: Container(
           constraints: const BoxConstraints(maxWidth: 600),
-          margin: const EdgeInsets.fromLTRB(24, 20, 24, 60),
+          margin: EdgeInsets.fromLTRB(24, 20, 24, 60 + extraBottomPadding),
           padding: const EdgeInsets.all(30),
           decoration: BoxDecoration(
             color: AppColors.panel,

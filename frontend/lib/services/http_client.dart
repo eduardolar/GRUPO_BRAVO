@@ -1,9 +1,42 @@
-﻿import 'dart:async';
+﻿// ============================================================================
+// frontend/lib/services/http_client.dart
+// ----------------------------------------------------------------------------
+// Cliente HTTP compartido por todos los `*_service.dart` del frontend.
+//
+// Responsabilidades:
+//   1) `ApiException` tipada: en lugar de `throw "error"`, los servicios
+//      lanzan ApiException con statusCode + mensaje legible. Las pantallas
+//      lo capturan con `try { ... } on ApiException catch (e) { ... }`.
+//
+//   2) `toApiException`: traduce un response de error (status + body) en
+//      una ApiException con mensaje en español. Conoce los códigos típicos
+//      del backend (401, 403, 422, 429, 5xx).
+//
+//   3) `httpWithRetry`: envoltorio sobre `http.get/post/etc` que:
+//        - timeout de 20s,
+//        - reintentos automáticos en 5xx y fallos de red (backoff lineal),
+//        - intercepta 401 con sesión activa y dispara `AuthSession.onUnauthorized`
+//          (logout automático configurado en main.dart),
+//        - traduce SocketException/TimeoutException/ClientException a
+//          ApiException(0, "Sin conexión...") para que las pantallas
+//          muestren un mensaje uniforme.
+//
+//   4) `decodeBody`: decodifica JSON tolerando texto/HTML en errores 500
+//      del backend o PayPal (que a veces no responden JSON).
+//
+// Uso típico desde un service:
+//   final resp = await httpWithRetry(() => http.get(url, headers: ...));
+//   if (resp.statusCode != 200) throw toApiException(resp.statusCode, decodeBody(resp));
+//   return Producto.fromJson(decodeBody(resp));
+// ============================================================================
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io' show SocketException;
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+
+import 'auth_session.dart';
 
 /// Typed HTTP error. [statusCode] == 0 means a network-level failure
 /// (no connection or request timeout).
@@ -96,6 +129,21 @@ Future<http.Response> httpWithRetry(
     attempt++;
     try {
       final response = await request().timeout(const Duration(seconds: 20));
+
+      // Interceptor 401: si había sesión activa antes de la llamada y el
+      // backend la rechaza, disparamos el hook para cerrar sesión en la UI.
+      // No se dispara en login fallido porque en ese momento autenticado==false.
+      if (response.statusCode == 401 && AuthSession.autenticado) {
+        final cb = AuthSession.onUnauthorized;
+        if (cb != null) {
+          try {
+            await cb();
+          } catch (e) {
+            debugPrint('onUnauthorized callback failed: $e');
+          }
+        }
+      }
+
       if (!retry || response.statusCode < 500 || attempt >= maxAttempts) {
         return response;
       }

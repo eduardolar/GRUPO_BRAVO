@@ -1,3 +1,21 @@
+// ============================================================================
+// frontend/lib/core/app_routes.dart
+// ----------------------------------------------------------------------------
+// Transiciones de pantalla centralizadas.
+//
+// En lugar de usar el `MaterialPageRoute` por defecto (que usa una sola
+// transición para todo), aquí elegimos la animación según la INTENCIÓN
+// narrativa del cambio de pantalla. Esto le da a la app una "sensación"
+// más cuidada y coherente.
+//
+// Uso típico:
+//   Navigator.push(context, AppRoute.slide(SiguienteScreen()));
+//   Navigator.push(context, AppRoute.slideUp(LoginScreen()));
+//
+// Cada método encapsula `PageRouteBuilder` con su propia curva, duración y
+// transform. Al estar centralizadas, cambiar el "tempo" de toda la app es
+// editar solo este archivo.
+// ============================================================================
 import 'package:flutter/material.dart';
 
 /// Transiciones de pantalla centralizadas.
@@ -97,4 +115,44 @@ class AppRoute {
       );
     },
   );
+}
+
+/// Entrada suave del contenido de una pantalla: fade + ligero deslizamiento
+/// hacia arriba. Pensado para envolver el body de Scaffold y darle al
+/// trabajador (y otras zonas) una aparición elegante sin animaciones largas
+/// estilo splash.
+class FadeSlideIn extends StatelessWidget {
+  final Widget child;
+  final Duration duration;
+  final Duration delay;
+  final double offset;
+
+  const FadeSlideIn({
+    super.key,
+    required this.child,
+    this.duration = const Duration(milliseconds: 380),
+    this.delay = Duration.zero,
+    this.offset = 18,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: duration + delay,
+      curve: Interval(
+        delay.inMilliseconds / (duration.inMilliseconds + delay.inMilliseconds + 1),
+        1.0,
+        curve: Curves.easeOutCubic,
+      ),
+      builder: (_, t, c) => Opacity(
+        opacity: t,
+        child: Transform.translate(
+          offset: Offset(0, (1 - t) * offset),
+          child: c,
+        ),
+      ),
+      child: child,
+    );
+  }
 }

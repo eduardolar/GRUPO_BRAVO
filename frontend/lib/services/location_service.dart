@@ -1,3 +1,15 @@
+// ============================================================================
+// frontend/lib/services/location_service.dart
+// ----------------------------------------------------------------------------
+// Geolocalización del dispositivo (paquete geolocator).
+//
+// Pasos típicos: comprobar permisos del sistema → pedirlos si faltan →
+// leer posición. Si el usuario deniega, la pantalla cae a flujo manual
+// (escribir la dirección a mano).
+//
+// También expone helpers para geocodificar direcciones (consulta a APIs
+// externas para obtener lat/long a partir de un string).
+// ============================================================================
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'dart:convert';

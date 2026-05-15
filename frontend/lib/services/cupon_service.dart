@@ -1,9 +1,21 @@
+// ============================================================================
+// frontend/lib/services/cupon_service.dart
+// ----------------------------------------------------------------------------
+// Cliente HTTP de cupones (admin) + endpoint de validación (cliente en
+// checkout). El "sentinel" sirve para distinguir entre "no pasaste el
+// parámetro" y "pasaste null explícitamente" al editar (PATCH semántico).
+// ============================================================================
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+
 import '../models/cupon_model.dart';
 import 'api_config.dart';
 import 'http_client.dart';
 import 'auth_session.dart';
+
+/// Valor centinela para distinguir "parámetro no pasado" de "null explícito"
+/// en [CuponService.crear].
+const Object _noProvidedSentinel = Object();
 
 class CuponService {
   static Map<String, String> get _headers => AuthSession.headers();
@@ -12,7 +24,7 @@ class CuponService {
     final uri = Uri.parse(
       '$baseUrl/cupones${soloActivos ? '?solo_activos=true' : ''}',
     );
-    // GET necesita Authorization Bearer porque el endpoint exige sesión.
+
     final res = await httpWithRetry(() => http.get(uri, headers: _headers));
     if (res.statusCode == 200) {
       return (jsonDecode(res.body) as List)
@@ -30,6 +42,7 @@ class CuponService {
     int? usosMaximos,
     String? fechaInicio,
     String? fechaFin,
+    Object? restauranteId = _noProvidedSentinel,
   }) async {
     final body = <String, dynamic>{
       'codigo': codigo,
@@ -41,6 +54,11 @@ class CuponService {
         'fecha_inicio': fechaInicio,
       if (fechaFin != null && fechaFin.isNotEmpty) 'fecha_fin': fechaFin,
     };
+
+    if (restauranteId != _noProvidedSentinel) {
+      body['restaurante_id'] = restauranteId;
+    }
+
     final res = await httpWithRetry(
       () => http.post(
         Uri.parse('$baseUrl/cupones'),
@@ -49,6 +67,7 @@ class CuponService {
       ),
       retry: false,
     );
+
     if (res.statusCode == 200 || res.statusCode == 201) {
       return Cupon.fromJson(jsonDecode(res.body));
     }
@@ -72,6 +91,7 @@ class CuponService {
       'fecha_inicio': ?fechaInicio,
       'fecha_fin': ?fechaFin,
     };
+
     final res = await httpWithRetry(
       () => http.put(
         Uri.parse('$baseUrl/cupones/$id'),
@@ -80,6 +100,7 @@ class CuponService {
       ),
       retry: false,
     );
+
     if (res.statusCode == 200) return Cupon.fromJson(jsonDecode(res.body));
     throw toApiException(res.statusCode, decodeBody(res));
   }
@@ -92,6 +113,7 @@ class CuponService {
       ),
       retry: false,
     );
+
     if (res.statusCode != 200) {
       throw toApiException(res.statusCode, decodeBody(res));
     }
@@ -102,7 +124,83 @@ class CuponService {
       () => http.delete(Uri.parse('$baseUrl/cupones/$id'), headers: _headers),
       retry: false,
     );
+
     if (res.statusCode != 200 && res.statusCode != 204) {
+      throw toApiException(res.statusCode, decodeBody(res));
+    }
+  }
+
+  static Future<Map<String, dynamic>> validar({
+    required String codigo,
+    required double subtotal,
+    double costeEnvio = 0.0,
+    String? restauranteId,
+  }) async {
+    final body = <String, dynamic>{
+      'codigo': codigo.trim().toUpperCase(),
+      'subtotal': subtotal,
+      'coste_envio': costeEnvio,
+      'restaurante_id': ?restauranteId,
+    };
+
+    final res = await httpWithRetry(
+      () => http.post(
+        Uri.parse('$baseUrl/cupones/validar'),
+        headers: _headers,
+        body: jsonEncode(body),
+      ),
+      retry: false,
+    );
+
+    if (res.statusCode == 200) {
+      return Map<String, dynamic>.from(jsonDecode(res.body));
+    }
+    throw toApiException(res.statusCode, decodeBody(res));
+  }
+
+  static Future<void> registrarUso(
+    String cuponId, {
+    String? restauranteId,
+  }) async {
+    final uri = Uri.parse('$baseUrl/cupones/$cuponId/usar');
+
+    final body = <String, dynamic>{'restaurante_id': ?restauranteId};
+
+    final res = await httpWithRetry(
+      () => http.post(
+        uri,
+        headers: {..._headers, 'Content-Type': 'application/json'},
+        body: jsonEncode(body),
+      ),
+      retry: false,
+    );
+
+    if (res.statusCode != 200) {
+      throw toApiException(res.statusCode, decodeBody(res));
+    }
+  }
+
+  static Future<void> enviarNotificacionMasiva({
+    required String cuponId,
+    required String tipoFiltro,
+    String? restauranteId,
+  }) async {
+    final body = <String, dynamic>{
+      'cuponId': cuponId,
+      'filtro': tipoFiltro,
+      'restauranteId': ?restauranteId,
+    };
+
+    final res = await httpWithRetry(
+      () => http.post(
+        Uri.parse('$baseUrl/cupones/enviar-masivo'),
+        headers: _headers,
+        body: jsonEncode(body),
+      ),
+      retry: false,
+    );
+
+    if (res.statusCode != 200) {
       throw toApiException(res.statusCode, decodeBody(res));
     }
   }

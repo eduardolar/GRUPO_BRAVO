@@ -1,3 +1,10 @@
+// ============================================================================
+// frontend/lib/services/ingredientes_service.dart
+// ----------------------------------------------------------------------------
+// Cliente HTTP de ingredientes y stock.
+// La lista de `categorias` se expone como constante para los selectores
+// del formulario (Carnes, Lácteos, Verduras, etc.).
+// ============================================================================
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/ingrediente_model.dart';
@@ -17,6 +24,7 @@ class IngredienteService {
     'Almidones y Cereales',
     'Huevos',
     'Frutas',
+    'Bebidas',
     'Otros',
   ];
 
@@ -199,6 +207,71 @@ class IngredienteService {
       retry: false,
     );
     if (response.statusCode != 200) {
+      throw toApiException(response.statusCode, decodeBody(response));
+    }
+  }
+
+  /// Devuelve grupos de ingredientes duplicados (mismo nombre normalizado en
+  /// la misma sucursal). Cada grupo incluye la lista completa y el `principal`
+  /// sugerido por el backend (el de mayor stock).
+  static Future<List<Map<String, dynamic>>> obtenerDuplicados({
+    String? restauranteId,
+  }) async {
+    final uri = Uri.parse('$baseUrl/ingredientes/duplicados').replace(
+      queryParameters: restauranteId != null
+          ? {'restaurante_id': restauranteId}
+          : null,
+    );
+    final response = await httpWithRetry(
+      () => http.get(uri, headers: AuthSession.headers()),
+    );
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
+      return List<Map<String, dynamic>>.from(data);
+    }
+    throw toApiException(response.statusCode, decodeBody(response));
+  }
+
+  /// Fusiona varios ingredientes en uno: suma stock al `principal` y borra los
+  /// `absorber`. También reescribe el `ingrediente_id` en los productos que
+  /// referenciaban a los absorbidos.
+  /// Devuelve `{fusionados: int, stock_total_principal: float}`.
+  static Future<Map<String, dynamic>> fusionarIngredientes({
+    required String principalId,
+    required List<String> absorberIds,
+  }) async {
+    final response = await httpWithRetry(
+      () => http.post(
+        Uri.parse('$baseUrl/ingredientes/fusionar'),
+        headers: AuthSession.headers(),
+        body: jsonEncode({
+          'principal_id': principalId,
+          'absorber_ids': absorberIds,
+        }),
+      ),
+      retry: false,
+    );
+    if (response.statusCode == 200) {
+      return Map<String, dynamic>.from(decodeBody(response));
+    }
+    throw toApiException(response.statusCode, decodeBody(response));
+  }
+
+  /// Pone el stock del ingrediente a 0 (marca como agotado).
+  /// Endpoint: POST /ingredientes/{id}/poner-a-cero
+  static Future<void> ponerStockACero(String ingredienteId) async {
+    if (!usarApiReal) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      return;
+    }
+    final response = await httpWithRetry(
+      () => http.post(
+        Uri.parse('$baseUrl/ingredientes/$ingredienteId/poner-a-cero'),
+        headers: AuthSession.headers(),
+      ),
+      retry: false,
+    );
+    if (response.statusCode >= 400) {
       throw toApiException(response.statusCode, decodeBody(response));
     }
   }

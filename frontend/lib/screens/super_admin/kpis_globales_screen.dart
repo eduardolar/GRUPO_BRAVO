@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -8,6 +10,7 @@ import '../../models/pedido_model.dart';
 import '../../models/restaurante_model.dart';
 import '../../providers/restaurante_provider.dart';
 import '../../providers/usuario_provider.dart';
+import '../../services/download_helper.dart';
 import '../../services/pedido_service.dart';
 
 class KpisGlobalesScreen extends StatefulWidget {
@@ -23,6 +26,9 @@ class _KpisGlobalesScreenState extends State<KpisGlobalesScreen> {
   String? _error;
   String _periodo = 'hoy';
   String _ordenarPor = 'ingresos'; // ingresos | pedidos | ticket
+
+  // Estado del export de KPIs
+  bool _exportandoKpis = false;
 
   static const _periodos = ['hoy', 'semana', 'mes', 'todo'];
   static const _etiquetasPeriodo = {
@@ -44,14 +50,42 @@ class _KpisGlobalesScreenState extends State<KpisGlobalesScreen> {
     });
   }
 
+  /// Calcula el rango de fechas para el período seleccionado.
+  /// Devuelve `(fechaDesde, fechaHasta)` donde `null` significa sin límite.
+  (DateTime?, DateTime?) _rangoDelPeriodo() {
+    final ahora = DateTime.now();
+    switch (_periodo) {
+      case 'hoy':
+        final inicio = DateTime(ahora.year, ahora.month, ahora.day);
+        final fin = DateTime(ahora.year, ahora.month, ahora.day, 23, 59, 59);
+        return (inicio, fin);
+      case 'semana':
+        final inicioSemana = ahora.subtract(Duration(days: ahora.weekday - 1));
+        return (
+          DateTime(inicioSemana.year, inicioSemana.month, inicioSemana.day),
+          ahora,
+        );
+      case 'mes':
+        return (DateTime(ahora.year, ahora.month, 1), ahora);
+      default:
+        // 'todo': sin filtro de fecha; el limit actúa como salvaguarda.
+        return (null, null);
+    }
+  }
+
   Future<void> _cargar() async {
     setState(() {
       _cargando = true;
       _error = null;
     });
     try {
-      // Sin restauranteId → todos los pedidos del sistema
-      final datos = await PedidoService.obtenerTodosLosPedidos();
+      // Sin restauranteId → todos los pedidos del sistema.
+      final (fechaDesde, fechaHasta) = _rangoDelPeriodo();
+      final datos = await PedidoService.obtenerTodosLosPedidos(
+        fechaDesde: fechaDesde,
+        fechaHasta: fechaHasta,
+        limit: 1000,
+      );
       if (!mounted) return;
       setState(() {
         _pedidos = datos;
@@ -66,33 +100,8 @@ class _KpisGlobalesScreenState extends State<KpisGlobalesScreen> {
     }
   }
 
-  // ── Filtro por período ────────────────────────────────────────────
-  List<Pedido> _filtrarPeriodo(List<Pedido> todos) {
-    final ahora = DateTime.now();
-    return todos.where((p) {
-      final f = DateTime.tryParse(p.fecha);
-      if (f == null) return false;
-      switch (_periodo) {
-        case 'hoy':
-          return f.year == ahora.year &&
-              f.month == ahora.month &&
-              f.day == ahora.day;
-        case 'semana':
-          final ini = DateTime(
-            ahora.year,
-            ahora.month,
-            ahora.day,
-          ).subtract(Duration(days: ahora.weekday - 1));
-          return !f.isBefore(ini);
-        case 'mes':
-          return f.year == ahora.year && f.month == ahora.month;
-        default:
-          return true;
-      }
-    }).toList();
-  }
+  // ── Métricas por sucursal ─────────────────────────────────────────────────
 
-  // ── Métricas por sucursal ─────────────────────────────────────────
   List<_SucursalKpi> _calcularKpis(
     List<Restaurante> restaurantes,
     List<Pedido> pedidosFiltrados,
@@ -112,6 +121,10 @@ class _KpisGlobalesScreenState extends State<KpisGlobalesScreen> {
       final ticket = pedidosSucursal.isEmpty
           ? 0.0
           : ingresos / pedidosSucursal.length;
+      final items = pedidosSucursal.fold(
+        0,
+        (s, p) => s + p.productos.fold(0, (si, pr) => si + pr.cantidad),
+      );
       final personal = usuarios.where((u) {
         final uid = (u.restauranteId ?? '').toString().trim().toLowerCase();
         return uid == idR &&
@@ -124,6 +137,7 @@ class _KpisGlobalesScreenState extends State<KpisGlobalesScreen> {
         pedidos: pedidosSucursal.length,
         cancelados: cancelados,
         ticketMedio: ticket,
+        itemsVendidos: items,
         personal: personal,
       );
     }).toList();
@@ -141,15 +155,84 @@ class _KpisGlobalesScreenState extends State<KpisGlobalesScreen> {
     return kpis;
   }
 
+  // ── Export CSV de KPIs por sucursal ──────────────────────────────────────
+
+  Future<void> _exportarKpisCsv(List<_SucursalKpi> kpis) async {
+    setState(() => _exportandoKpis = true);
+    try {
+      // CSV en convención es-ES (Excel español):
+      //   • Delimitador `;` (coma se reserva al decimal)
+      //   • Decimal con coma en importes
+      //   • BOM UTF-8 para tildes/eñes
+      // RFC 4180: si un campo contiene `;`, `"` o salto de línea se escapa
+      // entre comillas dobles.
+      String escapar(String s) {
+        if (s.contains(';') || s.contains('"') || s.contains('\n')) {
+          return '"${s.replaceAll('"', '""')}"';
+        }
+        return s;
+      }
+
+      String num2(double v) => v.toStringAsFixed(2).replaceAll('.', ',');
+
+      final lines = <String>[
+        // Cabecera
+        [
+          'nombre_sucursal',
+          'ingresos_periodo',
+          'pedidos_periodo',
+          'ticket_medio',
+          'items_vendidos',
+        ].map(escapar).join(';'),
+        // Filas
+        ...kpis.map(
+          (k) => [
+            k.restaurante.nombre,
+            num2(k.ingresos),
+            k.pedidos.toString(),
+            num2(k.ticketMedio),
+            k.itemsVendidos.toString(),
+          ].map(escapar).join(';'),
+        ),
+      ];
+
+      // Prepende BOM UTF-8 (﻿) para que Excel detecte la codificación.
+      final csv = '﻿${lines.join('\r\n')}';
+      final bytes = utf8.encode(csv);
+
+      final ahora = DateTime.now();
+      final nombre =
+          'kpis_sucursales_${ahora.toIso8601String().substring(0, 10)}_$_periodo.csv';
+
+      final ruta = await descargarBytes(bytes, nombre);
+      if (!mounted) return;
+      _snack('CSV guardado: $ruta', color: AppColors.disp);
+    } catch (e) {
+      if (!mounted) return;
+      _snack('Error al exportar: $e', color: AppColors.error);
+    } finally {
+      if (mounted) setState(() => _exportandoKpis = false);
+    }
+  }
+
+  void _snack(String msg, {Color color = Colors.white}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg, style: const TextStyle(color: Colors.white)),
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 4),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
       extendBodyBehindAppBar: true,
-      appBar: BravoAppBar(
-        title: 'KPIS GLOBALES',
-        // El BravoAppBar no acepta acciones extra; mantenemos refresh dentro del cuerpo.
-      ),
+      appBar: BravoAppBar(title: 'KPIS GLOBALES'),
       body: Container(
         width: double.infinity,
         height: double.infinity,
@@ -163,50 +246,64 @@ class _KpisGlobalesScreenState extends State<KpisGlobalesScreen> {
           width: double.infinity,
           height: double.infinity,
           decoration: BoxDecoration(
+            // Más oscuro que antes (0.55→0.78) para que los textos rojos no
+            // se confundan con la imagen Bravo de fondo (papel beige + bigote
+            // rojizo) que filtraba colores cálidos a través.
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                Colors.black.withValues(alpha: 0.55),
-                Colors.black.withValues(alpha: 0.88),
+                Colors.black.withValues(alpha: 0.78),
+                Colors.black.withValues(alpha: 0.94),
               ],
             ),
           ),
           child: SafeArea(
             child: Consumer2<RestauranteProvider, UsuarioProvider>(
               builder: (context, rp, up, _) {
-                final pedidosFiltrados = _filtrarPeriodo(_pedidos);
                 final kpis = _calcularKpis(
                   rp.restaurantes,
-                  pedidosFiltrados,
+                  _pedidos,
                   up.usuarios,
                 );
                 final totalIngresos = kpis.fold(0.0, (s, k) => s + k.ingresos);
                 final totalPedidos = kpis.fold(0, (s, k) => s + k.pedidos);
 
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildHeader(),
-                    _buildSelectorPeriodo(),
-                    const SizedBox(height: 12),
-                    _buildGlobalKpis(
-                      totalIngresos,
-                      totalPedidos,
-                      rp.restaurantes.length,
-                      up.usuarios
-                          .where(
-                            (u) =>
-                                u.rolRaw != 'cliente' &&
-                                u.rolRaw != 'superadministrador',
-                          )
-                          .length,
+                // En pantallas anchas (desktop) limitamos el ancho del
+                // contenido a 1100 px y lo centramos para que todo quede
+                // alineado y legible. En móvil/tablet llena el viewport.
+                return Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1100),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildHeader(kpis),
+                        _buildSelectorPeriodo(),
+                        const SizedBox(height: 12),
+                        _buildGlobalKpis(
+                          totalIngresos,
+                          totalPedidos,
+                          rp.restaurantes.length,
+                          up.usuarios
+                              .where(
+                                (u) =>
+                                    u.rolRaw != 'cliente' &&
+                                    u.rolRaw != 'superadministrador',
+                              )
+                              .length,
+                        ),
+                        const SizedBox(height: 16),
+                        // Carrusel KPI por sucursal (top 6 como tarjetas)
+                        if (!_cargando && _error == null && kpis.isNotEmpty)
+                          _buildCarruselKpis(kpis),
+                        const SizedBox(height: 8),
+                        _buildOrdenSelector(),
+                        const SizedBox(height: 8),
+                        Expanded(child: _buildCuerpo(kpis, totalIngresos)),
+                      ],
                     ),
-                    const SizedBox(height: 16),
-                    _buildOrdenSelector(),
-                    const SizedBox(height: 8),
-                    Expanded(child: _buildCuerpo(kpis, totalIngresos)),
-                  ],
+                  ),
                 );
               },
             ),
@@ -216,53 +313,81 @@ class _KpisGlobalesScreenState extends State<KpisGlobalesScreen> {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(List<_SucursalKpi> kpis) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      // Mismo padding lateral (20) que el resto del contenido para que todo
+      // quede alineado en la misma línea vertical.
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+      child: Row(
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: const Text(
-                  'KPIs Globales',
-                  style: TextStyle(
-                    fontFamily: 'Playfair Display',
-                    color: Colors.white,
-                    fontSize: 30,
-                    fontWeight: FontWeight.bold,
+          // El título "KPIS GLOBALES" ya lo da BravoAppBar arriba; aquí solo
+          // dejamos el subtítulo + barra granate para no duplicar.
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(height: 2, width: 32, color: AppColors.button),
+                const SizedBox(height: 6),
+                Text(
+                  'Comparativa entre sucursales',
+                  style: GoogleFonts.manrope(
+                    color: Colors.white.withValues(alpha: 0.7),
+                    fontSize: 12,
+                    letterSpacing: 0.3,
                   ),
                 ),
-              ),
-              IconButton(
-                icon: _cargando
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 1.8,
-                          color: AppColors.button,
-                        ),
-                      )
-                    : Icon(
-                        Icons.refresh_rounded,
-                        color: Colors.white.withValues(alpha: 0.7),
-                        size: 22,
-                      ),
-                onPressed: _cargando ? null : _cargar,
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Container(height: 2, width: 40, color: AppColors.button),
-          const SizedBox(height: 8),
-          Text(
-            'Comparativa entre sucursales',
-            style: GoogleFonts.manrope(
-              color: Colors.white.withValues(alpha: 0.65),
-              fontSize: 13,
+              ],
             ),
+          ),
+          // Botón export CSV de KPIs
+          Semantics(
+            label: 'Exportar KPIs por sucursal en CSV',
+            button: true,
+            child: TextButton.icon(
+              onPressed: (_exportandoKpis || kpis.isEmpty)
+                  ? null
+                  : () => _exportarKpisCsv(kpis),
+              icon: _exportandoKpis
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 1.8,
+                        color: AppColors.button,
+                      ),
+                    )
+                  : const Icon(
+                      Icons.download_outlined,
+                      size: 16,
+                      color: AppColors.button,
+                    ),
+              label: Text(
+                _exportandoKpis ? 'EXPORTANDO…' : 'EXPORTAR CSV',
+                style: GoogleFonts.manrope(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.button,
+                ),
+              ),
+            ),
+          ),
+          IconButton(
+            icon: _cargando
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 1.8,
+                      color: AppColors.button,
+                    ),
+                  )
+                : Icon(
+                    Icons.refresh_rounded,
+                    color: Colors.white.withValues(alpha: 0.7),
+                    size: 22,
+                  ),
+            tooltip: 'Recargar',
+            onPressed: _cargando ? null : _cargar,
           ),
         ],
       ),
@@ -278,7 +403,10 @@ class _KpisGlobalesScreenState extends State<KpisGlobalesScreen> {
         children: _periodos.map((p) {
           final sel = _periodo == p;
           return GestureDetector(
-            onTap: () => setState(() => _periodo = p),
+            onTap: () {
+              setState(() => _periodo = p);
+              _cargar();
+            },
             child: Container(
               margin: const EdgeInsets.only(right: 8),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
@@ -312,34 +440,88 @@ class _KpisGlobalesScreenState extends State<KpisGlobalesScreen> {
     int personal,
   ) {
     return Padding(
+      // Padding lateral 20 = mismo que header y resto, para alineación
+      // vertical perfecta. Antes estaba centrado con maxWidth=640 que en
+      // pantallas anchas dejaba el bloque "flotando" en el medio.
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 640),
-          child: Row(
+      child: Row(
+        children: [
+          Expanded(
+            child: _MiniKpi(
+              label: 'INGRESOS',
+              value: '${ingresos.toStringAsFixed(0)} €',
+              highlight: true,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _MiniKpi(label: 'PEDIDOS', value: '$pedidos'),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _MiniKpi(label: 'SUCURSALES', value: '$sucursales'),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _MiniKpi(label: 'PERSONAL', value: '$personal'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Carrusel de tarjetas KPI por sucursal ─────────────────────────────────
+  // Copiado del patrón _SeccionKpis de admin_home_screen para mantener independencia entre roles.
+
+  Widget _buildCarruselKpis(List<_SucursalKpi> kpis) {
+    // Tomamos las 6 mejores sucursales (según el orden activo) para el carrusel.
+    final top = kpis.take(6).toList();
+
+    final tarjetas = top.map((k) {
+      final abierto = k.restaurante.estaAbierto();
+      return _SuperAdminKpiCard(
+        nombre: k.restaurante.nombre,
+        ingresos: k.ingresos,
+        pedidos: k.pedidos,
+        ticket: k.ticketMedio,
+        abierto: abierto,
+        esLider: kpis.indexOf(k) == 0,
+      );
+    }).toList();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Expanded(
-                child: _MiniKpi(
-                  label: 'INGRESOS',
-                  value: '${ingresos.toStringAsFixed(0)} €',
-                  highlight: true,
+              Container(width: 3, height: 14, color: AppColors.button),
+              const SizedBox(width: 8),
+              Text(
+                'SUCURSALES DESTACADAS',
+                style: GoogleFonts.manrope(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white70,
+                  letterSpacing: 2,
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _MiniKpi(label: 'PEDIDOS', value: '$pedidos'),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _MiniKpi(label: 'SUCURSALES', value: '$sucursales'),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _MiniKpi(label: 'PERSONAL', value: '$personal'),
               ),
             ],
           ),
-        ),
+          const SizedBox(height: 10),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final perPage = constraints.maxWidth < 600
+                  ? 1
+                  : (constraints.maxWidth < 900 ? 2 : 3);
+              return _CarruselWidget(
+                tarjetas: tarjetas,
+                perPage: perPage,
+              );
+            },
+          ),
+        ],
       ),
     );
   }
@@ -347,55 +529,50 @@ class _KpisGlobalesScreenState extends State<KpisGlobalesScreen> {
   Widget _buildOrdenSelector() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 640),
-          child: Row(
-            children: [
-              Text(
-                'Ordenar:',
-                style: GoogleFonts.manrope(
-                  fontSize: 11,
-                  color: Colors.white.withValues(alpha: 0.65),
+      child: Row(
+        children: [
+          Text(
+            'Ordenar:',
+            style: GoogleFonts.manrope(
+              fontSize: 11,
+              color: Colors.white.withValues(alpha: 0.65),
+            ),
+          ),
+          const SizedBox(width: 10),
+          ...[
+            ('ingresos', 'Ingresos'),
+            ('pedidos', 'Pedidos'),
+            ('ticket', 'Ticket medio'),
+          ].map((item) {
+            final sel = _ordenarPor == item.$1;
+            return GestureDetector(
+              onTap: () => setState(() => _ordenarPor = item.$1),
+              child: Container(
+                margin: const EdgeInsets.only(right: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: sel ? AppColors.button : Colors.white24,
+                  ),
+                  color: sel
+                      ? AppColors.button.withValues(alpha: 0.15)
+                      : Colors.transparent,
+                ),
+                child: Text(
+                  item.$2,
+                  style: GoogleFonts.manrope(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: sel ? AppColors.button : Colors.white70,
+                  ),
                 ),
               ),
-              const SizedBox(width: 10),
-              ...[
-                ('ingresos', 'Ingresos'),
-                ('pedidos', 'Pedidos'),
-                ('ticket', 'Ticket medio'),
-              ].map((item) {
-                final sel = _ordenarPor == item.$1;
-                return GestureDetector(
-                  onTap: () => setState(() => _ordenarPor = item.$1),
-                  child: Container(
-                    margin: const EdgeInsets.only(right: 8),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: sel ? AppColors.button : Colors.white24,
-                      ),
-                      color: sel
-                          ? AppColors.button.withValues(alpha: 0.15)
-                          : Colors.transparent,
-                    ),
-                    child: Text(
-                      item.$2,
-                      style: GoogleFonts.manrope(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: sel ? AppColors.button : Colors.white70,
-                      ),
-                    ),
-                  ),
-                );
-              }),
-            ],
-          ),
-        ),
+            );
+          }),
+        ],
       ),
     );
   }
@@ -449,14 +626,315 @@ class _KpisGlobalesScreenState extends State<KpisGlobalesScreen> {
       child: ListView.builder(
         padding: const EdgeInsets.fromLTRB(20, 4, 20, 60),
         itemCount: kpis.length,
-        itemBuilder: (_, i) => Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 640),
-            child: _SucursalCard(
-              kpi: kpis[i],
-              posicion: i + 1,
-              totalIngresos: totalIngresos,
-              esLider: i == 0,
+        // Sin Center+ConstrainedBox por item: el max-width global de 1100
+        // ya está aplicado al Column padre, así las cards llenan el ancho
+        // disponible y todo queda alineado en una sola columna.
+        itemBuilder: (_, i) => _SucursalCard(
+          kpi: kpis[i],
+          posicion: i + 1,
+          totalIngresos: totalIngresos,
+          esLider: i == 0,
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Carrusel reutilizable ────────────────────────────────────────────────────
+// Copiado del patrón _SeccionKpis/_carrusel de admin_home_screen para mantener independencia entre roles.
+
+class _CarruselWidget extends StatefulWidget {
+  final List<Widget> tarjetas;
+  final int perPage;
+
+  const _CarruselWidget({
+    required this.tarjetas,
+    required this.perPage,
+  });
+
+  @override
+  State<_CarruselWidget> createState() => _CarruselWidgetState();
+}
+
+class _CarruselWidgetState extends State<_CarruselWidget> {
+  static const Duration _kAutoRotateInterval = Duration(seconds: 4);
+  static const Duration _kAutoRotateAnim = Duration(milliseconds: 600);
+
+  final PageController _pageCtrl = PageController();
+  Timer? _autoRotateTimer;
+  int _paginaActual = 0;
+  bool _userInteracted = false;
+  // Mientras el usuario mantiene pulsada una tarjeta, el auto-rotate se pausa.
+  bool _pausado = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _iniciarAutoRotacion();
+  }
+
+  @override
+  void dispose() {
+    _autoRotateTimer?.cancel();
+    _pageCtrl.dispose();
+    super.dispose();
+  }
+
+  void _iniciarAutoRotacion() {
+    _autoRotateTimer?.cancel();
+    if (_pausado) return;
+    _autoRotateTimer = Timer.periodic(_kAutoRotateInterval, (_) {
+      if (!mounted || !_pageCtrl.hasClients) return;
+      final totalPaginas =
+          (widget.tarjetas.length / widget.perPage).ceil().clamp(1, 999);
+      if (totalPaginas <= 1) return;
+      final siguiente = (_paginaActual + 1) % totalPaginas;
+      _pageCtrl.animateToPage(
+        siguiente,
+        duration: _kAutoRotateAnim,
+        curve: Curves.easeInOut,
+      );
+    });
+  }
+
+  void _avanzarSiguiente() {
+    if (!_pageCtrl.hasClients) return;
+    final totalPaginas =
+        (widget.tarjetas.length / widget.perPage).ceil().clamp(1, 999);
+    if (totalPaginas <= 1) return;
+    final siguiente = (_paginaActual + 1) % totalPaginas;
+    _userInteracted = true;
+    _pageCtrl.animateToPage(
+      siguiente,
+      duration: _kAutoRotateAnim,
+      curve: Curves.easeInOut,
+    );
+  }
+
+  void _pausarRotacion() {
+    _pausado = true;
+    _autoRotateTimer?.cancel();
+  }
+
+  void _retomarRotacion() {
+    if (!_pausado) return;
+    _pausado = false;
+    _iniciarAutoRotacion();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tarjetas = widget.tarjetas;
+    final perPage = widget.perPage;
+
+    // Agrupamos las tarjetas en páginas.
+    final paginas = <List<Widget>>[];
+    for (int i = 0; i < tarjetas.length; i += perPage) {
+      paginas.add(
+        tarjetas.sublist(
+          i,
+          (i + perPage).clamp(0, tarjetas.length),
+        ),
+      );
+    }
+
+    if (paginas.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      children: [
+        SizedBox(
+          height: 130,
+          child: PageView.builder(
+            controller: _pageCtrl,
+            itemCount: paginas.length,
+            onPageChanged: (i) {
+              setState(() => _paginaActual = i);
+              if (_userInteracted) {
+                _userInteracted = false;
+                _iniciarAutoRotacion();
+              }
+            },
+            itemBuilder: (_, idxPagina) {
+              final grupo = paginas[idxPagina];
+              return Row(
+                children: [
+                  for (int j = 0; j < grupo.length; j++) ...[
+                    if (j > 0) const SizedBox(width: 12),
+                    // Tap simple → avanza al siguiente. Long-press → pausa
+                    // mientras se mantenga; al soltar retoma el auto-rotate.
+                    Expanded(
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: _avanzarSiguiente,
+                        onLongPressStart: (_) => _pausarRotacion(),
+                        onLongPressEnd: (_) => _retomarRotacion(),
+                        onLongPressCancel: _retomarRotacion,
+                        child: grupo[j],
+                      ),
+                    ),
+                  ],
+                  // Huecos vacíos si la última página no llena perPage.
+                  for (int k = grupo.length; k < perPage; k++) ...[
+                    const SizedBox(width: 12),
+                    const Expanded(child: SizedBox.shrink()),
+                  ],
+                ],
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 10),
+        if (paginas.length > 1) _dots(paginas.length),
+      ],
+    );
+  }
+
+  Widget _dots(int total) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        for (int i = 0; i < total; i++)
+          Semantics(
+            label: 'Ir a diapositiva ${i + 1} de $total',
+            button: true,
+            child: GestureDetector(
+              onTap: () {
+                _userInteracted = true;
+                _pageCtrl.animateToPage(
+                  i,
+                  duration: _kAutoRotateAnim,
+                  curve: Curves.easeInOut,
+                );
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                width: i == _paginaActual ? 18 : 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: i == _paginaActual
+                      ? AppColors.button
+                      : Colors.white.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+// ─── Tarjeta KPI por sucursal (para el carrusel) ──────────────────────────────
+// Copiado del patrón _AdminKpiCard de admin_home_screen para mantener independencia entre roles.
+
+class _SuperAdminKpiCard extends StatelessWidget {
+  final String nombre;
+  final double ingresos;
+  final int pedidos;
+  final double ticket;
+  final bool abierto;
+  final bool esLider;
+
+  const _SuperAdminKpiCard({
+    required this.nombre,
+    required this.ingresos,
+    required this.pedidos,
+    required this.ticket,
+    required this.abierto,
+    required this.esLider,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: '$nombre: ${ingresos.toStringAsFixed(2)} €, $pedidos pedidos',
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.45),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: esLider
+                    ? AppColors.button.withValues(alpha: 0.6)
+                    : Colors.white12,
+                width: esLider ? 1.5 : 1,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Nombre + estado
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        nombre,
+                        style: GoogleFonts.manrope(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 5,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: abierto
+                            ? AppColors.successVibrant.withValues(alpha: 0.15)
+                            : AppColors.error.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(3),
+                        border: Border.all(
+                          color: abierto
+                              ? AppColors.successVibrant.withValues(alpha: 0.5)
+                              : AppColors.error.withValues(alpha: 0.5),
+                        ),
+                      ),
+                      child: Text(
+                        abierto ? 'AB' : 'CE',
+                        style: GoogleFonts.manrope(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: abierto ? AppColors.successVibrant : AppColors.error,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                // Ingresos
+                Text(
+                  '${ingresos.toStringAsFixed(0)} €',
+                  style: GoogleFonts.manrope(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: esLider ? AppColors.button : Colors.white,
+                    height: 1.1,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                // Pedidos y ticket medio
+                Text(
+                  '$pedidos ped · ${ticket.toStringAsFixed(2)} €/ud',
+                  style: GoogleFonts.manrope(
+                    fontSize: 12,
+                    color: Colors.white54,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
           ),
         ),
@@ -465,7 +943,8 @@ class _KpisGlobalesScreenState extends State<KpisGlobalesScreen> {
   }
 }
 
-// ── Mini KPI global ──────────────────────────────────────────────────
+// ── Mini KPI global ──────────────────────────────────────────────────────────
+
 class _MiniKpi extends StatelessWidget {
   final String label;
   final String value;
@@ -503,7 +982,7 @@ class _MiniKpi extends StatelessWidget {
               Text(
                 label,
                 style: GoogleFonts.manrope(
-                  fontSize: 8,
+                  fontSize: 11,
                   fontWeight: FontWeight.w800,
                   color: Colors.white.withValues(alpha: 0.7),
                   letterSpacing: 1.2,
@@ -527,7 +1006,8 @@ class _MiniKpi extends StatelessWidget {
   }
 }
 
-// ── Card por sucursal ────────────────────────────────────────────────
+// ── Card por sucursal ─────────────────────────────────────────────────────────
+
 class _SucursalCard extends StatelessWidget {
   final _SucursalKpi kpi;
   final int posicion;
@@ -565,12 +1045,10 @@ class _SucursalCard extends StatelessWidget {
             ),
             child: Column(
               children: [
-                // Cabecera
                 Padding(
                   padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
                   child: Row(
                     children: [
-                      // Número de posición
                       Container(
                         width: 28,
                         height: 28,
@@ -581,7 +1059,6 @@ class _SucursalCard extends StatelessWidget {
                           shape: BoxShape.circle,
                           border: Border.all(
                             color: Colors.white.withValues(alpha: 0.25),
-                            width: 1,
                           ),
                         ),
                         alignment: Alignment.center,
@@ -620,7 +1097,6 @@ class _SucursalCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      // Badge abierto/cerrado
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 7,
@@ -628,23 +1104,22 @@ class _SucursalCard extends StatelessWidget {
                         ),
                         decoration: BoxDecoration(
                           color: abierto
-                              ? Colors.greenAccent.withValues(alpha: 0.15)
-                              : Colors.redAccent.withValues(alpha: 0.15),
+                              ? AppColors.successVibrant.withValues(alpha: 0.15)
+                              : AppColors.error.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(4),
                           border: Border.all(
                             color: abierto
-                                ? Colors.greenAccent.withValues(alpha: 0.5)
-                                : Colors.redAccent.withValues(alpha: 0.5),
+                                ? AppColors.successVibrant.withValues(alpha: 0.5)
+                                : AppColors.error.withValues(alpha: 0.5),
                           ),
                         ),
                         child: Text(
                           abierto ? 'ABIERTO' : 'CERRADO',
                           style: GoogleFonts.manrope(
-                            fontSize: 9,
+                            fontSize: 11,
                             fontWeight: FontWeight.w800,
-                            color: abierto
-                                ? Colors.greenAccent
-                                : Colors.redAccent,
+                            color:
+                                abierto ? AppColors.successVibrant : AppColors.error,
                             letterSpacing: 0.8,
                           ),
                         ),
@@ -652,8 +1127,6 @@ class _SucursalCard extends StatelessWidget {
                     ],
                   ),
                 ),
-
-                // Barra de ingresos proporcional
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 14),
                   child: LayoutBuilder(
@@ -677,9 +1150,7 @@ class _SucursalCard extends StatelessWidget {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 10),
-                // Métricas
                 Padding(
                   padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
                   child: Row(
@@ -757,7 +1228,7 @@ class _MetricaItem extends StatelessWidget {
             Text(
               label,
               style: GoogleFonts.manrope(
-                fontSize: 9,
+                fontSize: 11,
                 fontWeight: FontWeight.w700,
                 color: c,
                 letterSpacing: 1,
@@ -779,13 +1250,15 @@ class _MetricaItem extends StatelessWidget {
   }
 }
 
-// ── Modelo local ─────────────────────────────────────────────────────
+// ── Modelo local ──────────────────────────────────────────────────────────────
+
 class _SucursalKpi {
   final Restaurante restaurante;
   final double ingresos;
   final int pedidos;
   final int cancelados;
   final double ticketMedio;
+  final int itemsVendidos;
   final int personal;
 
   const _SucursalKpi({
@@ -794,6 +1267,7 @@ class _SucursalKpi {
     required this.pedidos,
     required this.cancelados,
     required this.ticketMedio,
+    required this.itemsVendidos,
     required this.personal,
   });
 }

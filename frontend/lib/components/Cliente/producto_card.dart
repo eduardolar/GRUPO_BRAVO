@@ -191,17 +191,23 @@ class ProductoCard extends StatelessWidget {
                               message: quantity == 1
                                   ? 'Eliminar del carrito'
                                   : 'Quitar uno',
-                              child: GestureDetector(
-                                onTap: onRemove,
-                                child: Container(
-                                  height: 48,
-                                  color: AppColors.backgroundButton,
-                                  child: Icon(
-                                    quantity == 1
-                                        ? Icons.delete_outline
-                                        : Icons.remove,
-                                    color: AppColors.panel,
-                                    size: 20,
+                              child: Semantics(
+                                label: quantity == 1
+                                    ? 'Eliminar ${product.nombre} del carrito'
+                                    : 'Quitar una unidad de ${product.nombre}',
+                                button: true,
+                                child: GestureDetector(
+                                  onTap: onRemove,
+                                  child: Container(
+                                    height: 48,
+                                    color: AppColors.backgroundButton,
+                                    child: Icon(
+                                      quantity == 1
+                                          ? Icons.delete_outline
+                                          : Icons.remove,
+                                      color: AppColors.panel,
+                                      size: 20,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -227,23 +233,27 @@ class ProductoCard extends StatelessWidget {
                         Expanded(
                           child: Tooltip(
                             message: 'Añadir uno',
-                            child: GestureDetector(
-                              onTap: () {
-                                final now = DateTime.now();
-                                if (now.difference(_lastTap).inMilliseconds <
-                                    300) {
-                                  return;
-                                }
-                                _lastTap = now;
-                                onAdd();
-                              },
-                              child: Container(
-                                height: 48,
-                                color: AppColors.button,
-                                child: const Icon(
-                                  Icons.add,
-                                  color: AppColors.background,
-                                  size: 22,
+                            child: Semantics(
+                              label: 'Añadir una unidad de ${product.nombre}',
+                              button: true,
+                              child: GestureDetector(
+                                onTap: () {
+                                  final now = DateTime.now();
+                                  if (now.difference(_lastTap).inMilliseconds <
+                                      300) {
+                                    return;
+                                  }
+                                  _lastTap = now;
+                                  onAdd();
+                                },
+                                child: Container(
+                                  height: 48,
+                                  color: AppColors.button,
+                                  child: const Icon(
+                                    Icons.add,
+                                    color: AppColors.background,
+                                    size: 22,
+                                  ),
                                 ),
                               ),
                             ),
@@ -264,7 +274,7 @@ class ProductoCard extends StatelessWidget {
           location: BannerLocation.topEnd,
           color: AppColors.error,
           textStyle: const TextStyle(
-            fontSize: 9,
+            fontSize: 11,
             fontWeight: FontWeight.w800,
             letterSpacing: 0.8,
           ),
@@ -300,14 +310,18 @@ class _AddButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        width: 44,
-        height: 44,
-        color: disabled ? AppColors.line : AppColors.button,
-        child: const Icon(Icons.add, color: Colors.white, size: 22),
+    return Semantics(
+      label: 'Añadir al pedido',
+      button: true,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          width: 44,
+          height: 44,
+          color: disabled ? AppColors.line : AppColors.button,
+          child: const Icon(Icons.add, color: Colors.white, size: 22),
+        ),
       ),
     );
   }

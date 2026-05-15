@@ -1,9 +1,25 @@
+// ============================================================================
+// frontend/lib/screens/cliente/pedido_confirmado_screen.dart
+// ----------------------------------------------------------------------------
+// "Pedido confirmado": tracker en tiempo real del pedido activo.
+//
+// Muestra el progreso del pedido (Recibido → Preparando → Listo) con un
+// stepper animado. Cada 15s (`_kPollInterval`) consulta el backend para
+// actualizar el estado.
+//
+// Cuando el estado pasa a "listo":
+//   - Se dispara una notificación local en el dispositivo del cliente.
+//   - La pantalla muestra el mensaje "Tu pedido está listo" con CTA para
+//     ir a recogerlo / atender al camarero.
+// ============================================================================
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 
 import '../../core/colors_style.dart';
+import '../../providers/pedido_activo_provider.dart';
 import '../../services/api_service.dart';
 
 const BorderRadius _kRadius = BorderRadius.all(Radius.circular(12));
@@ -110,37 +126,87 @@ class _PedidoConfirmadoScreenState extends State<PedidoConfirmadoScreen>
   String _estadoActual = 'pendiente';
   Timer? _pollTimer;
 
-  late final _TipoEntregaInfo _entregaInfo;
+  late _TipoEntregaInfo _entregaInfo;
+  // Datos mutables: arrancan con lo que pasó el llamante (puede venir vacío
+  // desde la pill de seguimiento) y se completan en cada poll con la
+  // respuesta del backend.
+  late String _tipoEntrega = widget.tipoEntrega;
+  late String _tipoPago = widget.tipoPago;
+  late double _total = widget.total;
+  late List<Map<String, dynamic>> _items = List.of(widget.items);
+  // Referencia capturada para usar en dispose() sin tocar context.
+  PedidoActivoProvider? _pedidoActivoProvider;
 
   @override
   void initState() {
     super.initState();
-    _entregaInfo = _TipoEntregaInfo.from(widget.tipoEntrega);
+    _entregaInfo = _TipoEntregaInfo.from(_tipoEntrega);
 
     _ctrl = AnimationController(vsync: this, duration: _kEntradaDuration);
     _scaleAnim = CurvedAnimation(parent: _ctrl, curve: Curves.elasticOut);
     _fadeAnim = CurvedAnimation(parent: _ctrl, curve: Curves.easeIn);
     _ctrl.forward();
 
-    if (widget.pedidoId != null) {
+    if (_pedidoIdEsValido) {
       _pollEstado();
       _pollTimer = Timer.periodic(_kPollInterval, (_) => _pollEstado());
     }
+
+    // Pausamos el polling del PedidoActivoProvider para no duplicar tráfico
+    // mientras esta pantalla muestra el detalle del mismo pedido.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _pedidoActivoProvider = context.read<PedidoActivoProvider>();
+      _pedidoActivoProvider?.pausarPolling();
+    });
   }
 
   @override
   void dispose() {
     _pollTimer?.cancel();
     _ctrl.dispose();
+    _pedidoActivoProvider?.reanudarPolling();
     super.dispose();
   }
 
+  /// Acepta polling solo si el pedidoId tiene forma de ObjectId Mongo
+  /// (24 caracteres hexadecimales). Antes recibíamos también session_id de
+  /// Stripe (`cs_test_…`) y el backend respondía 422 cuatro veces tras pagar.
+  bool get _pedidoIdEsValido {
+    final id = widget.pedidoId;
+    if (id == null || id.isEmpty) return false;
+    return RegExp(r'^[a-fA-F0-9]{24}$').hasMatch(id);
+  }
+
   Future<void> _pollEstado() async {
-    if (widget.pedidoId == null) return;
+    if (!_pedidoIdEsValido) return;
     try {
       final pedido = await ApiService.obtenerPedido(widget.pedidoId!);
       if (!mounted) return;
-      setState(() => _estadoActual = pedido.estado);
+      setState(() {
+        _estadoActual = pedido.estado;
+        // Rellenar/actualizar con los datos reales del backend. Si la
+        // pantalla se abrió desde la pill (sin total/items), aquí los
+        // recibimos por primera vez.
+        if (pedido.total > 0) _total = pedido.total;
+        if (pedido.metodoPago.isNotEmpty) _tipoPago = pedido.metodoPago;
+        if (pedido.tipoEntrega.isNotEmpty) {
+          _tipoEntrega = pedido.tipoEntrega;
+          _entregaInfo = _TipoEntregaInfo.from(_tipoEntrega);
+        }
+        if (pedido.productos.isNotEmpty) {
+          _items = pedido.productos
+              .map(
+                (p) => <String, dynamic>{
+                  'nombre': p.nombre,
+                  'cantidad': p.cantidad,
+                  'precio': p.precio,
+                  'sin': p.sin,
+                },
+              )
+              .toList();
+        }
+      });
       if (pedido.estado == 'entregado' || pedido.estado == 'cancelado') {
         _pollTimer?.cancel();
       }
@@ -223,7 +289,10 @@ class _PedidoConfirmadoScreenState extends State<PedidoConfirmadoScreen>
             SafeArea(
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  final maxW = constraints.maxWidth.clamp(0.0, 520.0);
+                  // 640 da más respiración en escritorio sin que el resumen
+                  // (con sus filas etiqueta + valor) se quede comprimido.
+                  // En móvil el clamp deja que ocupe todo el ancho.
+                  final maxW = constraints.maxWidth.clamp(0.0, 640.0);
                   final hPad = (constraints.maxWidth - maxW) / 2 + 24.0;
 
                   return FadeTransition(
@@ -259,13 +328,13 @@ class _PedidoConfirmadoScreenState extends State<PedidoConfirmadoScreen>
                           ],
                           _PanelDetalles(
                             iconoEntrega: _entregaInfo.icono,
-                            tipoEntrega: widget.tipoEntrega,
-                            tipoPago: widget.tipoPago,
-                            total: widget.total,
+                            tipoEntrega: _tipoEntrega,
+                            tipoPago: _tipoPago,
+                            total: _total,
                           ),
-                          if (widget.items.isNotEmpty) ...[
+                          if (_items.isNotEmpty) ...[
                             const SizedBox(height: 16),
-                            _ResumenArticulos(items: widget.items),
+                            _ResumenArticulos(items: _items),
                           ],
                           const SizedBox(height: 40),
                           _CtaVolverInicio(onTap: _volverAlInicio),
@@ -290,6 +359,10 @@ class _FondoConVelado extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Subimos el alpha (0.92 → 0.97) para que el logo no compita con el
+    // contenido translúcido. En móvil casi no se nota; en escritorio,
+    // donde la imagen se zoomea con BoxFit.cover, el logo grande dejaba
+    // de funcionar como fondo y empezaba a leerse como contenido.
     return Positioned.fill(
       child: RepaintBoundary(
         child: Stack(
@@ -305,8 +378,8 @@ class _FondoConVelado extends StatelessWidget {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Colors.black.withValues(alpha: 0.78),
-                    Colors.black.withValues(alpha: 0.90),
+                    Colors.black.withValues(alpha: 0.92),
+                    Colors.black.withValues(alpha: 0.97),
                   ],
                 ),
               ),
@@ -466,22 +539,22 @@ class _PanelDetalles extends StatelessWidget {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
+        color: Colors.white.withValues(alpha: 0.07),
         borderRadius: _kRadius,
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
       ),
       child: Column(
         children: [
           _FilaDetalle(
             icono: iconoEntrega,
             etiqueta: 'ENTREGA',
-            valor: tipoEntrega,
+            valor: tipoEntrega.isNotEmpty ? tipoEntrega : '—',
           ),
           _Separador(),
           _FilaDetalle(
             icono: Icons.credit_card_outlined,
             etiqueta: 'PAGO',
-            valor: tipoPago,
+            valor: tipoPago.isNotEmpty ? tipoPago : '—',
           ),
           _Separador(),
           Padding(
@@ -492,14 +565,16 @@ class _PanelDetalles extends StatelessWidget {
                   'TOTAL',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.45),
-                    fontSize: 10,
+                    fontSize: 12,
                     letterSpacing: 2.0,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 const Spacer(),
                 Text(
-                  '${total.toStringAsFixed(2).replaceAll('.', ',')} €',
+                  total > 0
+                      ? '${total.toStringAsFixed(2).replaceAll('.', ',')} €'
+                      : '—',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 20,
@@ -620,9 +695,9 @@ class _SeguimientoWidget extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 18),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
+        color: Colors.white.withValues(alpha: 0.07),
         borderRadius: _kRadius,
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -631,7 +706,7 @@ class _SeguimientoWidget extends StatelessWidget {
             'SEGUIMIENTO',
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.45),
-              fontSize: 10,
+              fontSize: 12,
               letterSpacing: 2.0,
               fontWeight: FontWeight.w600,
             ),
@@ -667,7 +742,7 @@ class _SeguimientoWidget extends StatelessWidget {
                         color: p.hecho || p.actual
                             ? Colors.white.withValues(alpha: 0.85)
                             : Colors.white.withValues(alpha: 0.30),
-                        fontSize: 9,
+                        fontSize: 12,
                         fontWeight: p.actual
                             ? FontWeight.w700
                             : FontWeight.w400,
@@ -733,9 +808,9 @@ class _ResumenArticulos extends StatelessWidget {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
+        color: Colors.white.withValues(alpha: 0.07),
         borderRadius: _kRadius,
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -746,7 +821,7 @@ class _ResumenArticulos extends StatelessWidget {
               'RESUMEN DEL PEDIDO',
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.45),
-                fontSize: 10,
+                fontSize: 12,
                 letterSpacing: 2.0,
                 fontWeight: FontWeight.w600,
               ),
@@ -814,7 +889,7 @@ class _FilaItem extends StatelessWidget {
                     'Sin: ${sin.join(', ')}',
                     style: const TextStyle(
                       color: AppColors.excludedIngredient,
-                      fontSize: 10,
+                      fontSize: 12,
                       fontStyle: FontStyle.italic,
                     ),
                   ),
@@ -860,7 +935,7 @@ class _FilaDetalle extends StatelessWidget {
             etiqueta,
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.45),
-              fontSize: 10,
+              fontSize: 12,
               letterSpacing: 1.8,
               fontWeight: FontWeight.w600,
             ),

@@ -1,3 +1,9 @@
+// ============================================================================
+// frontend/lib/providers/usuario_provider.dart
+// ----------------------------------------------------------------------------
+// Estado de la lista de usuarios usada por el panel del administrador.
+// Carga perezosa: solo se llama a `cargar()` cuando se abre la pantalla.
+// ============================================================================
 import 'package:flutter/foundation.dart';
 import '../models/usuario_model.dart';
 import '../services/usuario_service.dart';
@@ -58,20 +64,46 @@ class UsuarioProvider with ChangeNotifier {
     required String nombre,
     required String correo,
   }) async {
-    final ok = await _service.editarUsuario(id, nombre: nombre, correo: correo);
-    if (ok) await cargar();
-    return ok;
+    _error = null;
+    try {
+      await _service.editarUsuario(id, nombre: nombre, correo: correo);
+      await cargar();
+      return true;
+    } catch (e) {
+      _error = _extraerDetail(e);
+      notifyListeners();
+      return false;
+    }
   }
 
   Future<bool> toggleActivo(String id, bool nuevoEstado) async {
-    final ok = await _service.editarUsuario(id, activo: nuevoEstado);
-    if (ok) {
+    _error = null;
+    try {
+      await _service.editarUsuario(id, activo: nuevoEstado);
       _usuarios = _usuarios
           .map((u) => u.id == id ? u.copyWith(activo: nuevoEstado) : u)
           .toList();
       notifyListeners();
+      return true;
+    } catch (e) {
+      _error = _extraerDetail(e);
+      notifyListeners();
+      return false;
     }
-    return ok;
+  }
+
+  /// Extrae el `detail` del backend de la excepción para mostrarlo limpio.
+  /// `ApiException.toString()` ya devuelve el `message` directamente, así
+  /// que basta con `e.toString()` y un fallback si quedase vacío.
+  String _extraerDetail(Object e) {
+    final s = e.toString().trim();
+    if (s.isEmpty) return 'Error desconocido (sin detalle)';
+    // Por si el toString viene como `Exception: foo` o `ApiException(...)`.
+    final cleaned = s
+        .replaceFirst(RegExp(r'^Exception:\s*'), '')
+        .replaceFirst(RegExp(r'^ApiException\(\d+,\s*"?'), '')
+        .replaceFirst(RegExp(r'"?\)$'), '');
+    return cleaned.isEmpty ? s : cleaned;
   }
 
   Future<bool> cambiarRol(String id, String nuevoRol) async {

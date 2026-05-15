@@ -1,3 +1,23 @@
+// ============================================================================
+// frontend/lib/providers/auth_provider.dart
+// ----------------------------------------------------------------------------
+// Estado de la sesión expuesto al árbol de widgets (vía Provider).
+//
+// Mantiene:
+//   - _usuarioActual: objeto Usuario completo (id, nombre, rol, etc.).
+//   - _pendingUserId2fa: id "en tránsito" durante el flujo de 2FA.
+//
+// Persiste el objeto Usuario en SharedPreferences (clave `usuario_sesion`)
+// para sobrevivir a F5/reinicio. El token JWT se persiste en paralelo via
+// `AuthSession` (clave `auth_token`).
+//
+// Por qué dos almacenamientos:
+//   - AuthSession: token y datos mínimos para añadir Authorization en cada
+//     request HTTP (lo lee directamente http_client).
+//   - AuthProvider: objeto completo del usuario, expuesto a la UI con
+//     ChangeNotifier para que widgets como `_HomePorRol` se reconstruyan
+//     automáticamente al cambiar (login/logout).
+// ============================================================================
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -17,6 +37,9 @@ class AuthProvider with ChangeNotifier {
   String? get pendingUserId2fa => _pendingUserId2fa;
 
   Future<void> cargarSesion() async {
+    // Primero restaurar el token JWT; si no hay token, la UI no intentará
+    // llamadas autenticadas aunque sí haya objeto Usuario guardado.
+    await AuthSession.cargar();
     try {
       final prefs = await SharedPreferences.getInstance();
       final json = prefs.getString(_kSesionKey);
@@ -100,6 +123,7 @@ class AuthProvider with ChangeNotifier {
     required String contrasena,
     required String telefono,
     required String direccion,
+    String? restauranteId,
     required bool consentimientoRgpd,
   }) async {
     try {
@@ -109,6 +133,7 @@ class AuthProvider with ChangeNotifier {
         contrasena: contrasena,
         telefono: telefono,
         direccion: direccion,
+        restauranteId: restauranteId,
         consentimientoRgpd: consentimientoRgpd,
       );
       _usuarioActual = Usuario(
@@ -154,7 +179,6 @@ class AuthProvider with ChangeNotifier {
   }) async {
     if (_usuarioActual == null) throw Exception('No hay usuario autenticado');
     final success = await AuthService.actualizarPerfil(
-      userId: _usuarioActual!.id,
       nombre: nombre,
       email: email,
       telefono: telefono,
@@ -177,7 +201,6 @@ class AuthProvider with ChangeNotifier {
   }) async {
     if (_usuarioActual == null) throw Exception('No hay usuario autenticado');
     await AuthService.cambiarContrasena(
-      userId: _usuarioActual!.id,
       passwordActual: passwordActual,
       nuevaPassword: nuevaPassword,
     );
@@ -185,12 +208,10 @@ class AuthProvider with ChangeNotifier {
 
   Future<void> eliminarCuenta() async {
     if (_usuarioActual == null) throw Exception('No hay usuario autenticado');
-    final success = await AuthService.eliminarCuenta(
-      userId: _usuarioActual!.id,
-    );
+    final success = await AuthService.eliminarCuenta();
     if (!success) throw Exception('Error al eliminar la cuenta');
     _usuarioActual = null;
-    AuthSession.limpiar();
+    await AuthSession.limpiar();
     notifyListeners();
     await _limpiarSesion();
   }
@@ -198,7 +219,7 @@ class AuthProvider with ChangeNotifier {
   Future<void> cerrarSesion() async {
     _usuarioActual = null;
     _pendingUserId2fa = null;
-    AuthSession.limpiar();
+    await AuthSession.limpiar();
     notifyListeners();
     await _limpiarSesion();
   }
@@ -309,6 +330,20 @@ class AuthProvider with ChangeNotifier {
       await AuthService.reenviarLogin2FA(correo: correo);
     } catch (e) {
       rethrow;
+    }
+  }
+  // --- ACTUALIZAR PUNTOS TRAS COMPRA ---
+  void descontarPuntosLocales(int puntosUsados) {
+    if (_usuarioActual != null && puntosUsados > 0) {
+      final puntosActuales = _usuarioActual!.puntos;
+      final nuevosPuntos = puntosActuales - puntosUsados;
+      
+      _usuarioActual = _usuarioActual!.copyWith(
+        puntos: nuevosPuntos < 0 ? 0 : nuevosPuntos,
+      );
+      
+      notifyListeners();
+      _guardarSesion(); // Guardamos el nuevo saldo en la memoria del móvil
     }
   }
 }

@@ -1,3 +1,16 @@
+// ============================================================================
+// frontend/lib/screens/cliente/login_screen.dart
+// ----------------------------------------------------------------------------
+// Formulario de login común para todos los roles.
+//
+// Tras validar credenciales con AuthProvider.iniciarSesion():
+//   - Si el backend exige 2FA → navega a verificacion_2fa_screen.
+//   - Si no → redirige según rol (cliente → carta/reservas según destino,
+//     trabajador → HomeTrabajador, cocinero → HomeCocinero, etc.).
+//
+// El `destino` (enum DestinoLogin) recuerda a qué quería ir el cliente
+// si se le forzó a loguearse (p. ej. "ver mi historial" o "reservar").
+// ============================================================================
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:frontend/services/auth_session.dart';
@@ -12,6 +25,7 @@ import 'package:frontend/models/destino_login.dart';
 
 import 'package:frontend/screens/cliente/recuperar_contrasena_screen.dart';
 import 'package:frontend/screens/cliente/carta_screen.dart';
+import 'package:frontend/screens/cliente/inicio_screen.dart';
 import 'package:frontend/screens/cliente/registro_screen.dart';
 import 'package:frontend/screens/cliente/reservar_mesa_screen.dart';
 import 'package:frontend/screens/cocinero/home_screen_cocinero.dart';
@@ -31,8 +45,21 @@ import 'package:frontend/components/Cliente/primary_button.dart';
 import 'package:frontend/screens/cliente/verificacion_screen.dart';
 
 
+/// Pantalla de inicio de sesión común a todos los roles (cliente, trabajador,
+/// cocinero, administrador y superadministrador).
+///
+/// El backend decide si la cuenta requiere verificación 2FA por correo. Si la
+/// requiere, esta pantalla redirige a [VerificacionScreen] en modo 2FA. En caso
+/// contrario navega directamente al home propio del rol del usuario mediante
+/// [_navigateToRoleHome].
 class LoginScreen extends StatefulWidget {
+  /// Destino post-login para clientes (carta o reservar mesa).
+  /// Se ignora para empleados porque ellos tienen su propio home por rol.
   final DestinoLogin destino;
+
+  /// Si es `true`, muestra el enlace "¿Eres nuevo empleado? Activa tu cuenta",
+  /// que abre el flujo de canje de código de invitación enviado por el
+  /// superadmin al dar de alta a un trabajador.
   final bool mostrarActivarCuenta;
 
   const LoginScreen({
@@ -46,9 +73,12 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  // Controla si el campo de contraseña enmascara el texto (ojito de "ver/ocultar").
   bool _oscurecerContrasena = true;
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  // Bloquea el botón ENTRAR mientras hay una petición en curso para evitar
+  // doble submit y enviar dos veces las credenciales al backend.
   bool _isLoading = false;
 
   @override
@@ -180,7 +210,13 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // --- FUNCIÓN DE LOGICA DE INICIO DE SESIÓN CON 2FA ---
+  /// Lanza el login contra el backend y maneja las dos posibles ramas:
+  /// éxito directo (sesión creada) o requerimiento de 2FA por correo.
+  ///
+  /// La lógica de detección de 2FA vive en el backend: si la respuesta trae
+  /// `requires_2fa: true`, no hay sesión todavía y debemos mandar al usuario
+  /// a [VerificacionScreen] en modo 2FA para introducir el código que recibió
+  /// por email.
   Future<void> _iniciarSesion() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
@@ -198,6 +234,8 @@ class _LoginScreenState extends State<LoginScreen> {
       // 1. Intentamos el login
       final respuesta = await authProvider.iniciarSesion(email, password);
 
+      // Tras un await el widget puede haber sido removido del árbol; sin esta
+      // guarda, usar `context` provoca una excepción en runtime.
       if (!mounted) return;
 
       // 2. CASO 2FA: Si la respuesta indica que requiere verificación por correo
@@ -238,6 +276,11 @@ class _LoginScreenState extends State<LoginScreen> {
     await storage.write(key: "auth_token", value: AuthSession.token); 
   }
 
+  /// Reemplaza la pila de navegación por el home correspondiente al rol.
+  ///
+  /// Usa `pushAndRemoveUntil` con predicado `(_) => false` para que el botón
+  /// "atrás" no devuelva al usuario a la pantalla de login después de haber
+  /// autenticado correctamente.
   void _navigateToRoleHome(Usuario usuario) {
     Widget destino;
     switch (usuario.rol) {
@@ -251,12 +294,25 @@ class _LoginScreenState extends State<LoginScreen> {
         destino = const HomeScreenSuperAdmin();
         break;
       case RolUsuario.cliente:
-        destino = sel_rest_cliente.SeleccionarRestauranteScreen(
-          siguiente: widget.destino == DestinoLogin.reservar
-              ? const ReservarMesaScreen()
-              : const CartaScreen(),
+        // Reset de pila a InicioScreen (cliente home) y empujar encima el
+        // flujo de selección de restaurante. Así el botón atrás desde
+        // Carta/Reservar vuelve a Inicio en lugar de pantalla en blanco.
+        Navigator.pushAndRemoveUntil(
+          context,
+          AppRoute.reveal(const InicioScreen()),
+          (route) => false,
         );
-        break;
+        Navigator.push(
+          context,
+          AppRoute.slide(
+            sel_rest_cliente.SeleccionarRestauranteScreen(
+              siguiente: widget.destino == DestinoLogin.reservar
+                  ? const ReservarMesaScreen()
+                  : const CartaScreen(),
+            ),
+          ),
+        );
+        return;
       case RolUsuario.cocinero:
         destino = const HomeCocinero();
         break;

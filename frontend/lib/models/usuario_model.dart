@@ -1,3 +1,19 @@
+// ============================================================================
+// frontend/lib/models/usuario_model.dart
+// ----------------------------------------------------------------------------
+// Modelo del usuario y enum de roles.
+//
+// IMPORTANTE: los nombres del enum NO coinciden con los del backend.
+//   Frontend (Dart)     Backend (canónico)
+//   --------------      ------------------
+//   trabajador          camarero
+//   administrador       admin
+//   superadministrador  super_admin
+//
+// El backend acepta ambas formas (ver `security.normalizar_rol`) por
+// compatibilidad histórica. En la app interna usamos los nombres "humanos"
+// porque son los que se mostraban originalmente al usuario.
+// ============================================================================
 enum RolUsuario {
   cliente,
   trabajador,
@@ -20,10 +36,13 @@ class Usuario {
   final bool totpEnabled;
   final bool emailDosFactoresEnabled;
   final bool activo;
+  // Fecha en que el usuario fue suspendido (null si está activo o nunca fue suspendido)
+  final String? suspendidoAt;
+  final int puntos; // Para programa de fidelidad.
 
   String get rolRaw => rol.name;
 
-  Usuario copyWith({
+Usuario copyWith({
     String? id,
     String? nombre,
     String? email,
@@ -34,10 +53,11 @@ class Usuario {
     double? longitud,
     RolUsuario? rol,
     String? restauranteId,
-    String? rolRaw,
     bool? totpEnabled,
     bool? emailDosFactoresEnabled,
     bool? activo,
+    String? suspendidoAt,
+    int? puntos, // 1. Añadimos puntos como parámetro opcional
   }) {
     return Usuario(
       id: id ?? this.id,
@@ -54,6 +74,8 @@ class Usuario {
       emailDosFactoresEnabled:
           emailDosFactoresEnabled ?? this.emailDosFactoresEnabled,
       activo: activo ?? this.activo,
+      suspendidoAt: suspendidoAt ?? this.suspendidoAt,
+      puntos: puntos ?? this.puntos, // 2. Si puntos es nulo, mantenemos los que ya tenía
     );
   }
 
@@ -71,6 +93,8 @@ class Usuario {
     this.totpEnabled = false,
     this.emailDosFactoresEnabled = false,
     this.activo = true,
+    this.suspendidoAt,
+    this.puntos = 0, 
   });
 
   factory Usuario.fromJson(Map<String, dynamic> json) {
@@ -93,6 +117,8 @@ class Usuario {
       totpEnabled: json['totp_enabled'] == true,
       emailDosFactoresEnabled: json['email_2fa_enabled'] == true,
       activo: json['activo'] != false,
+      suspendidoAt: json['suspendido_at'] as String?,
+      puntos: json['puntos'] ?? 0,
     );
   }
 
@@ -130,6 +156,8 @@ class Usuario {
       'email_2fa_enabled': emailDosFactoresEnabled,
       'activo': activo,
       if (restauranteId != null) 'restaurante_id': restauranteId,
+      if (suspendidoAt != null) 'suspendido_at': suspendidoAt,
+      'puntos': puntos,
     };
   }
 }

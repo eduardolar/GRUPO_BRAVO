@@ -1,3 +1,11 @@
+// ============================================================================
+// frontend/lib/components/Cliente/auth_scaffold.dart
+// ----------------------------------------------------------------------------
+// Scaffold reutilizado por TODAS las pantallas de auth (login, registro,
+// recuperación, verificación, etc.). Garantiza fondo, padding, ancho
+// máximo y botón "volver" coherentes para no repetir layout en cada
+// pantalla.
+// ============================================================================
 import 'package:flutter/material.dart';
 import '../../core/colors_style.dart';
 

@@ -18,9 +18,26 @@ import '../Administrador/admin_home_screen.dart';
 import '../super_admin/home_screen_super_admin.dart';
 import '../cocinero/home_screen_cocinero.dart';
 
+/// Pantalla de introducción del código OTP de 6 dígitos.
+///
+/// Se reutiliza para dos flujos distintos según el flag [esModo2FA]:
+/// - **Registro** ([esModo2FA] = false): el cliente acaba de registrarse y
+///   verifica que el correo es suyo. Tras éxito se navega a la selección de
+///   restaurante + carta.
+/// - **Login 2FA** ([esModo2FA] = true): la cuenta tiene 2FA activado y debe
+///   confirmar el código antes de que el backend cree la sesión. Tras éxito se
+///   navega al home propio del rol del usuario.
+///
+/// El temporizador de reenvío arranca en 60s y se reinicia cada vez que se
+/// solicita un nuevo código para evitar abusar del envío de correos.
 class VerificacionScreen extends StatefulWidget {
+  /// Email destinatario del código (mostrado en pantalla y usado al verificar).
   final String email;
-  final bool esModo2FA; // NUEVO: Bandera para saber de dónde venimos
+
+  /// `true` si venimos del flujo de login con 2FA; `false` si venimos del
+  /// registro de cuenta. Decide a qué endpoint llamar y a dónde navegar
+  /// después.
+  final bool esModo2FA;
 
   const VerificacionScreen({
     super.key,
@@ -33,12 +50,15 @@ class VerificacionScreen extends StatefulWidget {
 }
 
 class _VerificacionScreenState extends State<VerificacionScreen> {
+  // Un controller y un FocusNode por cada uno de los 6 dígitos del OTP.
   final List<TextEditingController> _controllers = List.generate(
     6,
     (_) => TextEditingController(),
   );
   final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
   bool _isLoading = false;
+  // Cooldown del botón "Reenviar código". Se reinicia tras cada reenvío
+  // exitoso para proteger al backend de spam de correos.
   int _secondsRemaining = 60;
   Timer? _timer;
 
@@ -75,6 +95,11 @@ class _VerificacionScreenState extends State<VerificacionScreen> {
     super.dispose();
   }
 
+  /// Concatena los 6 dígitos y los manda al backend según el modo.
+  ///
+  /// En modo 2FA se llama a `verificarLogin2FA` (el backend crea la sesión
+  /// solo si el código es correcto). En modo registro se llama a
+  /// `verificarCodigo` y el cliente todavía no está logueado.
   Future<void> _verifyCode() async {
     final code = _controllers.map((c) => c.text).join();
     if (code.length < 6) {
@@ -157,6 +182,9 @@ class _VerificacionScreenState extends State<VerificacionScreen> {
     );
   }
 
+  /// Pide al backend que reemita el código. La API que se invoca cambia según
+  /// el modo (login 2FA o verificación de registro) porque viven en endpoints
+  /// distintos.
   Future<void> _reenviarCodigo() async {
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);

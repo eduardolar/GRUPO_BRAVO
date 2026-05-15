@@ -1,3 +1,14 @@
+// ============================================================================
+// frontend/lib/providers/pedido_provider.dart
+// ----------------------------------------------------------------------------
+// Estado del pedido EN CONSTRUCCIÓN (antes de enviar a backend).
+//
+// Diferencia con `pedido_activo_provider.dart`:
+//   - PedidoProvider:        pedido que el cliente está armando (mesa
+//                            elegida, opciones, en proceso de pago).
+//   - PedidoActivoProvider:  pedido YA confirmado en backend, en curso
+//                            (estado pendiente/preparando/listo).
+// ============================================================================
 import 'package:flutter/material.dart';
 
 import '../services/api_service.dart';

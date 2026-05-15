@@ -1,12 +1,17 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:frontend/components/shared/estado_chip.dart';
+import 'package:frontend/core/app_routes.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/models/mesa_model.dart';
+import 'package:frontend/models/usuario_model.dart';
 import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/services/mesa_service.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'crear_comanda.dart';
+import 'modificar_comanda.dart';
+import 'sacar_cuenta.dart';
 
 class SeleccionMesa extends StatefulWidget {
   const SeleccionMesa({super.key});
@@ -116,7 +121,7 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => CrearComanda(mesaId: mesa.id)),
+        AppRoute.slide(CrearComanda(mesaId: mesa.id, numeroMesa: mesa.numero)),
       );
     } catch (_) {
       if (!mounted) return;
@@ -128,6 +133,127 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
         ),
       );
     }
+  }
+
+  /// Mesa ocupada: ofrece acciones contextuales típicas del camarero
+  /// (modificar comanda activa, sacar cuenta). Se evita un cuarto botón
+  /// "MOVER" / "TRANSFERIR" aquí — esas viven en Gestión de Pedidos.
+  Future<void> _accionesOcupada(Mesa mesa) async {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.background,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            Container(
+              width: 36,
+              height: 3,
+              decoration: BoxDecoration(
+                color: AppColors.line,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.table_restaurant_outlined,
+                    color: AppColors.button,
+                    size: 22,
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Mesa ${mesa.numero}',
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Semantics(
+                    label: 'Ocupada',
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.iconPrimary.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.cancel_outlined,
+                            color: AppColors.iconPrimary,
+                            size: 11,
+                          ),
+                          SizedBox(width: 4),
+                          Text(
+                            'OCUPADA',
+                            style: TextStyle(
+                              color: AppColors.iconPrimary,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 1.0,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(
+                Icons.edit_outlined,
+                color: AppColors.button,
+              ),
+              title: const Text('Modificar comanda'),
+              subtitle: const Text(
+                'Añadir o quitar platos del pedido en curso',
+              ),
+              onTap: () {
+                Navigator.pop(ctx);
+                Navigator.push(
+                  context,
+                  AppRoute.slide(
+                    ModificarComanda(mesaIdInicial: mesa.id),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(
+                Icons.calculate_outlined,
+                color: AppColors.button,
+              ),
+              title: const Text('Sacar la cuenta'),
+              subtitle: const Text('Cobrar y cerrar la mesa'),
+              onTap: () {
+                Navigator.pop(ctx);
+                Navigator.push(
+                  context,
+                  AppRoute.slide(SacarCuenta(mesaIdInicial: mesa.id)),
+                );
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
   }
 
   Map<String, List<Mesa>> _agruparPorUbicacion() {
@@ -175,7 +301,7 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
                     'CARGANDO MESAS',
                     style: TextStyle(
                       color: AppColors.panel,
-                      fontSize: 10,
+                      fontSize: 12,
                       letterSpacing: 3.0,
                       fontWeight: FontWeight.w600,
                     ),
@@ -194,23 +320,33 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
       'terraza',
     ].where((k) => grupos.containsKey(k)).toList();
 
+    // El FAB "NUEVA MESA" llama a POST /mesas, que en backend exige
+    // require_role(["admin","super_admin"]). Si lo dejamos visible al
+    // camarero, recibe 403 garantizado al confirmar el form. Lo ocultamos
+    // para roles de sala y solo lo mostramos a administradores.
+    final rolActual = context.watch<AuthProvider>().usuarioActual?.rol;
+    final puedeCrearMesa = rolActual == RolUsuario.administrador ||
+        rolActual == RolUsuario.superadministrador;
+
     return Scaffold(
       backgroundColor: AppColors.shadow,
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _mostrarFormCrearMesa,
-        backgroundColor: AppColors.button,
-        foregroundColor: AppColors.background,
-        elevation: 4,
-        icon: const Icon(Icons.add, size: 20),
-        label: const Text(
-          'NUEVA MESA',
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.4,
-          ),
-        ),
-      ),
+      floatingActionButton: puedeCrearMesa
+          ? FloatingActionButton.extended(
+              onPressed: _mostrarFormCrearMesa,
+              backgroundColor: AppColors.button,
+              foregroundColor: AppColors.background,
+              elevation: 4,
+              icon: const Icon(Icons.add, size: 20),
+              label: const Text(
+                'NUEVA MESA',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.4,
+                ),
+              ),
+            )
+          : null,
       body: Stack(
         children: [
           Positioned.fill(
@@ -242,12 +378,18 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
                   padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
                   child: Row(
                     children: [
-                      GestureDetector(
-                        onTap: () => Navigator.pop(context),
-                        child: const Icon(
+                      IconButton(
+                        tooltip: 'Volver',
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(
                           Icons.arrow_back_ios_new,
                           color: AppColors.background,
-                          size: 18,
+                        ),
+                        iconSize: 18,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(
+                          minWidth: 48,
+                          minHeight: 48,
                         ),
                       ),
                       const SizedBox(width: 14),
@@ -291,13 +433,19 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
                 // ── Leyenda ───────────────────────────────────────────────
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Row(
+                  child: Wrap(
+                    spacing: 16,
+                    runSpacing: 6,
                     children: [
-                      _LegendaDot(color: AppColors.button, label: 'Disponible'),
-                      const SizedBox(width: 20),
+                      _LegendaDot(
+                        color: AppColors.button,
+                        label: 'Disponible',
+                        icon: Icons.check_circle_outline,
+                      ),
                       _LegendaDot(
                         color: AppColors.iconPrimary,
                         label: 'Ocupada',
+                        icon: Icons.cancel_outlined,
                       ),
                     ],
                   ),
@@ -306,9 +454,17 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
                 const SizedBox(height: 18),
 
                 // ── Secciones por zona ────────────────────────────────────
+                // Pull-to-refresh para recargar el plano: si otro camarero
+                // libera/ocupa una mesa, basta con arrastrar hacia abajo.
                 Expanded(
-                  child: ListView(
-                    physics: const BouncingScrollPhysics(),
+                  child: RefreshIndicator(
+                    onRefresh: _cargarMesas,
+                    color: AppColors.button,
+                    backgroundColor: Colors.black,
+                    child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(
+                      parent: BouncingScrollPhysics(),
+                    ),
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
                     children: orderedKeys.map((ubicacion) {
                       final mesasGrupo = grupos[ubicacion]!;
@@ -350,9 +506,11 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
                                 .map(
                                   (mesa) => _MesaCard(
                                     mesa: mesa,
-                                    onTap: mesa.disponible
+                                    // libre → tomar comanda directa.
+                                    // ocupada → menú con acciones contextuales.
+                                    onTap: mesa.estado == 'libre'
                                         ? () => _confirmarMesa(mesa)
-                                        : null,
+                                        : () => _accionesOcupada(mesa),
                                   ),
                                 )
                                 .toList(),
@@ -366,6 +524,7 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
                         ],
                       );
                     }).toList(),
+                  ),
                   ),
                 ),
               ],
@@ -382,29 +541,33 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
 class _LegendaDot extends StatelessWidget {
   final Color color;
   final String label;
+  final IconData icon;
 
-  const _LegendaDot({required this.color, required this.label});
+  const _LegendaDot({
+    required this.color,
+    required this.label,
+    required this.icon,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 10,
-          height: 10,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 6),
-        Text(
-          label,
-          style: const TextStyle(
-            color: AppColors.panel,
-            fontSize: 11,
-            letterSpacing: 0.5,
+    return Semantics(
+      label: label,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 13),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: const TextStyle(
+              color: AppColors.panel,
+              fontSize: 11,
+              letterSpacing: 0.5,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -419,38 +582,42 @@ class _MesaCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final disponible = mesa.disponible;
-    return GestureDetector(
-      onTap: onTap,
-      child: Opacity(
-        opacity: disponible ? 1.0 : 0.45,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              width: 90,
-              height: 90,
-              child: CustomPaint(
-                painter: _MesaPainter(
-                  numero: mesa.numero,
-                  capacidad: mesa.capacidad,
-                  disponible: disponible,
+    final disponible = mesa.estado == 'libre';
+    final label = disponible ? 'LIBRE' : 'OCUPADA';
+
+    final chipEstado = EstadoChip(
+      estado: disponible ? EstadoMesa.disponible : EstadoMesa.ocupada,
+      label: label,
+      iconSize: 10,
+      fontSize: 11,
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+    );
+
+    return Semantics(
+      label: 'Mesa ${mesa.numero}, $label',
+      button: true,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Opacity(
+          opacity: disponible ? 1.0 : 0.45,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 90,
+                height: 90,
+                child: CustomPaint(
+                  painter: _MesaPainter(
+                    numero: mesa.numero,
+                    capacidad: mesa.capacidad,
+                    disponible: disponible,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              disponible ? 'LIBRE' : 'OCUPADA',
-              style: TextStyle(
-                color: disponible
-                    ? AppColors.background
-                    : AppColors.iconPrimary,
-                fontSize: 9,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 1.5,
-              ),
-            ),
-          ],
+              const SizedBox(height: 6),
+              chipEstado,
+            ],
+          ),
         ),
       ),
     );
@@ -579,7 +746,16 @@ class _DialogConfirmacion extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
+    // Envolvemos en Semantics para que el a11y tree exponga "Iniciar pedido
+    // en Mesa N · ubicación · capacidad". Antes, lectores de pantalla y
+    // herramientas E2E solo veían los botones CANCELAR/CONFIRMAR sin contexto.
+    return Semantics(
+      container: true,
+      label:
+          'Confirmar inicio de pedido en Mesa ${mesa.numero}. '
+          '$_ubicacionLabel, capacidad para ${mesa.capacidad} personas. '
+          'Al confirmar, la mesa quedará marcada como ocupada.',
+      child: Dialog(
       backgroundColor: AppColors.panel,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: Padding(
@@ -683,6 +859,7 @@ class _DialogConfirmacion extends StatelessWidget {
           ],
         ),
       ),
+    ),
     );
   }
 }
@@ -806,7 +983,7 @@ class _DialogCrearMesaState extends State<_DialogCrearMesa> {
                 'ZONA',
                 style: TextStyle(
                   color: AppColors.textSecondary,
-                  fontSize: 10,
+                  fontSize: 12,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 1.5,
                 ),
@@ -928,7 +1105,7 @@ class _Campo extends StatelessWidget {
           label.toUpperCase(),
           style: const TextStyle(
             color: AppColors.textSecondary,
-            fontSize: 10,
+            fontSize: 12,
             fontWeight: FontWeight.w600,
             letterSpacing: 1.5,
           ),

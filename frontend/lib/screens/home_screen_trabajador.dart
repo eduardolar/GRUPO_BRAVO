@@ -1,333 +1,342 @@
+// ============================================================================
+// frontend/lib/screens/home_screen_trabajador.dart
+// ----------------------------------------------------------------------------
+// Home del rol "trabajador" (camarero).
+//
+// Es la pantalla a la que aterrizan los camareros tras el login. Desde
+// aquí navegan a sus áreas principales:
+//   - Servicio (tomar/atender comandas por mesa)
+//   - Gestión de pedidos (cocina, listos)
+//   - Gestión de reservas
+//   - Gestión de stock (avisos)
+//   - Mi turno (info del trabajador, fichaje)
+//
+// PopScope bloquea el botón "atrás" del sistema: la pila de navegación
+// quedó vacía tras `pushAndRemoveUntil` al hacer login, así que retroceder
+// llevaría a una pantalla negra. Mejor evitar el gesto.
+// ============================================================================
+import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
-import 'package:frontend/components/bravo_app_bar.dart';
+import 'package:frontend/core/app_routes.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/screens/trabajador/Pedidos/gestion_pedidos.dart';
 import 'package:frontend/screens/trabajador/Reservas/gestion_reservas.dart';
 import 'package:frontend/screens/trabajador/Stock/gestion_stock.dart';
-import 'package:frontend/screens/trabajador/servicio_trabajador/servicio.dart';
+import 'package:frontend/screens/trabajador/appbar_trabajador.dart';
+import 'package:frontend/screens/trabajador/mi_turno_screen.dart';
+import 'package:frontend/screens/trabajador/servicio_trabajador/seleccion_mesa.dart';
 
-class HomeTrabajador extends StatefulWidget {
+const String _kBackgroundAsset = 'assets/images/Bravo restaurante.jpg';
+
+class HomeTrabajador extends StatelessWidget {
   const HomeTrabajador({super.key});
 
   @override
-  State<HomeTrabajador> createState() => _HomeTrabajadorState();
-}
-
-class _HomeTrabajadorState extends State<HomeTrabajador> {
-  bool _isAppReady = false;
-
-  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 600),
-        child: _isAppReady
-            ? const _HomeContent()
-            : _SimpleSplash(
-                onFinished: () => setState(() => _isAppReady = true),
-              ),
-      ),
+    // PopScope bloquea el gesto "atrás" del sistema (Android/web).
+    // La pila de navegación queda vacía tras pushAndRemoveUntil en login,
+    // así que permitir pop dejaría pantalla en blanco. El trabajador sale
+    // únicamente a través del botón de cerrar sesión en el AppBar.
+    return const PopScope(
+      canPop: false,
+      child: _ContenidoHome(),
     );
   }
 }
 
-// ── SPLASH INICIAL ──────────────────────────────────────────────
-class _SimpleSplash extends StatefulWidget {
-  final VoidCallback onFinished;
-  const _SimpleSplash({required this.onFinished});
+// ── CONTENIDO PRINCIPAL ──────────────────────────────────────────────────
 
-  @override
-  State<_SimpleSplash> createState() => _SimpleSplashState();
-}
-
-class _SimpleSplashState extends State<_SimpleSplash> {
-  @override
-  void initState() {
-    super.initState();
-    Future.delayed(const Duration(seconds: 2), widget.onFinished);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: AppColors.background,
-      child: Center(
-        child: TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0.8, end: 1.0),
-          duration: const Duration(milliseconds: 800),
-          builder: (context, value, child) =>
-              Transform.scale(scale: value, child: child),
-          child: Image.asset('assets/images/Bravo restaurante.jpg', width: 220),
-        ),
-      ),
-    );
-  }
-}
-
-// ── CONTENIDO PRINCIPAL ──────────────────────────────────────────
-class _HomeContent extends StatelessWidget {
-  const _HomeContent();
+class _ContenidoHome extends StatelessWidget {
+  const _ContenidoHome();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.black,
       extendBodyBehindAppBar: true,
-      appBar: const BravoAppBar(title: "RESTAURANTE BRAVO"),
-      body: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        child: Column(children: [const _HeroSection(), const _FooterQuote()]),
-      ),
-    );
-  }
-}
-
-// ── SECCIÓN HERO (CENTRADA Y RESPONSIVA) ──────────────────────────
-class _HeroSection extends StatelessWidget {
-  const _HeroSection();
-
-  @override
-  Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
-    final isWeb = screenWidth > 600;
-
-    return Stack(
-      alignment: Alignment.bottomCenter,
-      children: [
-        // 1. Imagen de Fondo Inmersiva
-        SizedBox(
-          width: screenWidth,
-          height: isWeb ? screenHeight * 0.85 : screenHeight * 0.75,
-          child: Image.asset(
-            'assets/images/Bravo restaurante.jpg',
+      appBar: const TrabajadorAppBar(title: "RESTAURANTE BRAVO"),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage(_kBackgroundAsset),
             fit: BoxFit.cover,
           ),
         ),
-
-        // 2. Overlay Gradiente de Alto Contraste
-        Positioned.fill(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                stops: const [0.0, 0.3, 0.7, 1.0],
-                colors: [
-                  Colors.black.withValues(alpha: 0.3),
-                  Colors.transparent,
-                  Colors.black.withValues(alpha: 0.75),
-                  AppColors.background,
-                ],
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.black.withValues(alpha: 0.5),
+                Colors.black.withValues(alpha: 0.85),
+              ],
+            ),
+          ),
+          child: SafeArea(
+            child: FadeSlideIn(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
+                ),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _HeaderSaludo(),
+                    SizedBox(height: 28),
+                    _GridOpciones(),
+                    SizedBox(height: 24),
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-
-        // 3. Contenido Centrado
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 500),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  _buildBadge(),
-                  const SizedBox(height: 24),
-                  const Text(
-                    "Panel de control\ndel trabajador",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontFamily: 'Playfair Display',
-                      color: Colors.white,
-                      fontSize: 38,
-                      height: 1.1,
-                      fontWeight: FontWeight.bold,
-                      shadows: [Shadow(color: Colors.black87, blurRadius: 15)],
-                    ),
-                  ),
-                  const SizedBox(height: 35),
-                  const _ActionButtonsGroup(),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildBadge() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppColors.backgroundButton,
-        border: Border.all(color: AppColors.background, width: 1.5),
-      ),
-      child: const Text(
-        "GESTIÓN RESTAURANTE",
-        style: TextStyle(
-          color: AppColors.background,
-          fontSize: 10,
-          letterSpacing: 4,
-          fontWeight: FontWeight.w600,
         ),
       ),
     );
   }
 }
 
-// ── GRUPO DE BOTONES ─────────────────────────────────────────────
-class _ActionButtonsGroup extends StatelessWidget {
-  const _ActionButtonsGroup();
+// ── Header con saludo (mismo patrón que admin_home_screen) ──────────────
+class _HeaderSaludo extends StatelessWidget {
+  const _HeaderSaludo();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '¡Hola, Trabajador!',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              shadows: [
+                Shadow(
+                  color: Colors.black.withValues(alpha: 0.5),
+                  blurRadius: 8,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '¿Qué te gustaría gestionar hoy?',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.75),
+              fontSize: 16,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Grid 2x2 de tarjetas de gestión (estilo admin) ────────────────────────
+class _GridOpciones extends StatelessWidget {
+  const _GridOpciones();
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _MainButton(
-          icon: Icons.event_available_outlined,
-          label: "Gestión de reservas",
-          isPrimary: true,
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const GestionReservas()),
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: _TrabajadorCard(
+                title: 'Reservas',
+                subtitle: 'Gestión del día',
+                icon: Icons.event_available_outlined,
+                destination: const GestionReservas(),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _TrabajadorCard(
+                title: 'Pedidos',
+                subtitle: 'Activos, listos y cobro',
+                icon: Icons.receipt_long_outlined,
+                destination: const GestionPedidos(),
+              ),
+            ),
+          ],
         ),
-        _MainButton(
-          icon: Icons.receipt_long_outlined,
-          label: "Gestión de pedidos",
-          isPrimary: true,
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const GestionPedidos()),
-          ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: _TrabajadorCard(
+                title: 'Mesas',
+                subtitle: 'Plano del local',
+                icon: Icons.table_restaurant_outlined,
+                destination: const SeleccionMesa(),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _TrabajadorCard(
+                title: 'Stock',
+                subtitle: 'Avisar y agotar',
+                icon: Icons.inventory_2_outlined,
+                destination: const GestionStock(),
+              ),
+            ),
+          ],
         ),
-        _MainButton(
-          icon: Icons.room_service_outlined,
-          label: "Servicio",
-          isPrimary: true,
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const ServicioTrabajador()),
-          ),
-        ),
-        _MainButton(
-          icon: Icons.inventory_2_outlined,
-          label: "Gestión de stock",
-          isPrimary: true,
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const GestionStock()),
-          ),
+        const SizedBox(height: 16),
+        // Tarjeta full-width para acceso rápido a las stats personales del
+        // turno actual (cuánto cobré hoy, cuántas mesas atendí, propinas).
+        // Antes solo era accesible desde el icono de perfil.
+        _TrabajadorCard(
+          title: 'Mi turno',
+          subtitle: 'Cobros, propinas y mesas atendidas hoy',
+          icon: Icons.bar_chart_outlined,
+          destination: const MiTurnoScreen(),
+          isFullWidth: true,
         ),
       ],
     );
   }
 }
 
-// ── BOTÓN MODULAR ────────────────────────────────────────────────
-class _MainButton extends StatelessWidget {
+// ── Tarjeta de menú con icono circular burdeos (mismo estilo admin) ──────
+class _TrabajadorCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
   final IconData icon;
-  final String label;
-  final VoidCallback onPressed;
-  final bool isPrimary;
+  final Widget destination;
+  /// Layout horizontal con icono a la izquierda + título/subtítulo + arrow.
+  /// Mismo formato que las cards full-width del admin (Mi local, Cierre,
+  /// Contabilidad). Altura menor que las del grid.
+  final bool isFullWidth;
 
-  const _MainButton({
+  const _TrabajadorCard({
+    required this.title,
+    required this.subtitle,
     required this.icon,
-    required this.label,
-    required this.onPressed,
-    this.isPrimary = false,
+    required this.destination,
+    this.isFullWidth = false,
   });
 
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: Material(
-        color: isPrimary
-            ? AppColors.button
-            : Colors.black.withValues(alpha: 0.55),
-        child: InkWell(
-          onTap: onPressed,
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 24),
-            decoration: BoxDecoration(
-              border: isPrimary ? null : Border.all(color: Colors.white24),
-            ),
-            child: Row(
-              children: [
-                Icon(icon, color: Colors.white, size: 20),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Text(
-                    label.toUpperCase(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                      letterSpacing: 1.0,
-                    ),
-                  ),
-                ),
-                const Icon(
-                  Icons.chevron_right,
-                  color: Colors.white54,
-                  size: 18,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── FOOTER ───────────────────────────────────────────────────────
-class _FooterQuote extends StatelessWidget {
-  const _FooterQuote();
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _iconCircular() {
     return Container(
-      width: double.infinity,
-      color: AppColors.background,
-      child: Center(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.button.withValues(alpha: 0.2),
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: AppColors.button.withValues(alpha: 0.5),
+          width: 1,
+        ),
+      ),
+      child: Icon(icon, color: AppColors.button, size: 30),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
         child: Container(
-          constraints: const BoxConstraints(maxWidth: 600),
-          margin: const EdgeInsets.fromLTRB(24, 20, 24, 60),
-          padding: const EdgeInsets.all(30),
+          height: isFullWidth ? 120 : 180,
           decoration: BoxDecoration(
-            color: AppColors.panel,
-            border: Border.all(color: AppColors.line),
+            color: Colors.black.withValues(alpha: 0.45),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.15),
+              width: 1.5,
+            ),
           ),
-          child: Column(
-            children: [
-              Icon(
-                Icons.format_quote,
-                color: AppColors.button.withValues(alpha: 0.4),
-                size: 30,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(20),
+              highlightColor: AppColors.button.withValues(alpha: 0.1),
+              splashColor: AppColors.button.withValues(alpha: 0.2),
+              onTap: () => Navigator.push(
+                context,
+                AppRoute.slide(destination),
               ),
-              const SizedBox(height: 16),
-              const Text(
-                "Excelencia en cada servicio.",
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: 'Playfair Display',
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  height: 1.4,
-                ),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: isFullWidth
+                    ? Row(
+                        children: [
+                          _iconCircular(),
+                          const SizedBox(width: 20),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  title,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  subtitle,
+                                  style: TextStyle(
+                                    color:
+                                        Colors.white.withValues(alpha: 0.6),
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(
+                            Icons.arrow_forward_ios,
+                            color: Colors.white.withValues(alpha: 0.3),
+                            size: 20,
+                          ),
+                        ],
+                      )
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _iconCircular(),
+                          const Spacer(),
+                          Text(
+                            title,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            subtitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.6),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
               ),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
 }
+

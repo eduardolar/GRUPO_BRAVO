@@ -21,9 +21,14 @@ class _CodigoQrState extends State<CodigoQr> {
   Widget build(BuildContext context) {
     final cart = Provider.of<CartProvider>(context);
 
-    return GestureDetector(
-      onTap: () async {
-        final messenger = ScaffoldMessenger.of(context);
+    return Semantics(
+      label: cart.tienemesa
+          ? 'Mesa ${cart.numeroMesa} asignada, toca para cambiar de mesa'
+          : 'Escanear código QR para acceder a la mesa',
+      button: true,
+      child: GestureDetector(
+        onTap: () async {
+          final messenger = ScaffoldMessenger.of(context);
         final navigator = Navigator.of(context);
         final auth = Provider.of<AuthProvider>(context, listen: false);
 
@@ -76,7 +81,7 @@ class _CodigoQrState extends State<CodigoQr> {
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: AppColors.button,
-          border: Border.all(color: const Color(0xFFA6405A)),
+          border: Border.all(color: AppColors.primaryAccent),
           borderRadius: BorderRadius.circular(14),
         ),
         child: Row(
@@ -86,7 +91,7 @@ class _CodigoQrState extends State<CodigoQr> {
               width: 3,
               height: 56,
               decoration: BoxDecoration(
-                color: AppColors.gold,
+                color: AppColors.bottomSheetBg,
                 borderRadius: BorderRadius.circular(3),
               ),
             ),
@@ -98,7 +103,7 @@ class _CodigoQrState extends State<CodigoQr> {
               decoration: BoxDecoration(
                 color: AppColors.sombra,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFA6405A)),
+                border: Border.all(color: AppColors.primaryAccent),
               ),
               child: const Icon(
                 Icons.qr_code_sharp,
@@ -128,7 +133,7 @@ class _CodigoQrState extends State<CodigoQr> {
                         ? "Toca para cambiar de mesa"
                         : "Acceder a la mesa con código",
                     style: const TextStyle(
-                      color: Color(0xFFEFEBE9),
+                      color: AppColors.textCream,
                       fontSize: 12,
                       fontWeight: FontWeight.w300,
                       letterSpacing: 0.3,
@@ -146,6 +151,7 @@ class _CodigoQrState extends State<CodigoQr> {
           ],
         ),
       ),
+    ),
     );
   }
 }

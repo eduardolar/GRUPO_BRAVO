@@ -1,3 +1,28 @@
+# ============================================================================
+# backend/tests/conftest.py
+# ----------------------------------------------------------------------------
+# Setup global compartido por TODOS los tests del backend.
+#
+# Pytest carga este archivo automáticamente antes de cualquier test_*.py.
+# Aquí hacemos tres cosas críticas:
+#
+#   1) Añadir `backend/` al sys.path para que los tests puedan
+#      `from database import ...` aunque corran desde `backend/tests/`.
+#
+#   2) Definir variables de entorno DETERMINISTAS (MONGO_URI, JWT_SECRET_KEY,
+#      etc.) con valores seguros y fijos. Así dos máquinas distintas obtienen
+#      el mismo comportamiento.
+#
+#   3) ★ Lo más importante: sustituir `pymongo.MongoClient` por
+#      `mongomock.MongoClient` ANTES de que el código de producción importe
+#      `database.py`. mongomock es un Mongo en memoria con la misma API,
+#      así que `database.py` cree estar conectándose a un Atlas real pero
+#      todo queda en RAM y se descarta al terminar el test.
+#
+#      Esto blinda los tests: aunque alguien lance la suite con MONGO_URI
+#      apuntando a la BD de producción, no pasa nada porque MongoClient
+#      ya está pisado.
+# ============================================================================
 """Configuración compartida de los tests.
 
 Aísla por completo la base de datos: sustituye `pymongo.MongoClient` por
@@ -39,6 +64,23 @@ except ImportError:
         "Instala con: pip install mongomock"
     )
 
+# 4) Stub de cloudinary para entornos sin la lib instalada.
+# Tiene que instalarse antes que cualquier test importe `routes.uploads`
+# (el TestClient lo carga vía main.app). Sin esto, los tests fuera de
+# test_uploads.py revientan con AttributeError al cargar uploads.py.
+import types
+from unittest.mock import MagicMock
+
+if "cloudinary" not in sys.modules:
+    cloudinary_mod = types.ModuleType("cloudinary")
+    cloudinary_mod.config = MagicMock()  # cloudinary_client.py llama a esto
+    uploader_mod = types.ModuleType("cloudinary.uploader")
+    uploader_mod.upload = MagicMock()
+    uploader_mod.destroy = MagicMock()
+    cloudinary_mod.uploader = uploader_mod
+    sys.modules["cloudinary"] = cloudinary_mod
+    sys.modules["cloudinary.uploader"] = uploader_mod
+
 
 @pytest.fixture(scope="session")
 def client():
@@ -57,3 +99,18 @@ def _limpiar_colecciones():
     from database import db
     for nombre in db.list_collection_names():
         db[nombre].delete_many({})
+
+
+# ── Re-export de helpers de tokens ───────────────────────────────────────────
+# Los helpers de tokens viven en tok_helpers.py para que los test files
+# puedan importarlos directamente sin depender del conftest (que no es
+# importable como módulo normal desde dentro de los tests).
+from tests.tok_helpers import (  # noqa: F401  (re-export para compatibilidad)
+    tok,
+    insertar_usuario_test,
+    TEST_OID_SUPER,
+    TEST_OID_ADMIN,
+    TEST_OID_CAMARERO,
+    TEST_OID_COCINERO,
+    TEST_OID_CLIENTE,
+)

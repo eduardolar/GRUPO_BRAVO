@@ -92,7 +92,7 @@ class _AdminCategoriasTabState extends State<AdminCategoriasTab> {
     final confirmar = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A1A),
+        backgroundColor: AppColors.bottomSheetBg,
         titleTextStyle: const TextStyle(
           color: Colors.white,
           fontSize: 18,
@@ -139,7 +139,7 @@ class _AdminCategoriasTabState extends State<AdminCategoriasTab> {
     return showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A1A),
+        backgroundColor: AppColors.bottomSheetBg,
         titleTextStyle: const TextStyle(
           color: Colors.white,
           fontSize: 18,
@@ -154,7 +154,7 @@ class _AdminCategoriasTabState extends State<AdminCategoriasTab> {
           style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(
             hintText: 'Nombre',
-            hintStyle: const TextStyle(color: Colors.white38),
+            hintStyle: const TextStyle(color: Colors.white70),
             filled: true,
             fillColor: Colors.white.withValues(alpha: 0.07),
             enabledBorder: OutlineInputBorder(
@@ -324,7 +324,7 @@ class _AdminCategoriasTabState extends State<AdminCategoriasTab> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
-              color: const Color(0xFF1C1C1E),
+              color: AppColors.surfaceDark,
               onSelected: (v) {
                 if (v == 'rename') _renombrar(nombre);
                 if (v == 'delete') _eliminar(nombre);

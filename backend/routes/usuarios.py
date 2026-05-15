@@ -1,42 +1,55 @@
+# ============================================================================
+# backend/routes/usuarios.py
+# ----------------------------------------------------------------------------
+# Gestión de usuarios desde el panel de administración.
+#
+# A diferencia de `routes/auth.py` (que cubre login/registro del cliente
+# final), aquí viven los endpoints que el ADMIN o el SUPER_ADMIN usan para
+# crear/listar/editar/suspender empleados:
+#
+#   POST   /usuarios            → alta de empleado (manda email de activación)
+#   GET    /usuarios            → lista (filtros por rol, sucursal, estado)
+#   PUT    /usuarios/{id}       → editar perfil
+#   PATCH  /usuarios/{id}/rol   → cambiar rol (con auditoría)
+#   PATCH  /usuarios/{id}/estado → activar/suspender
+#   DELETE /usuarios/{id}       → eliminar
+#
+# Conceptos clave:
+#   - El actor (quién hace la acción) se extrae del JWT, NO del body, para
+#     evitar suplantación. Ver `_actor_de(request)`.
+#   - Toda acción se registra en auditoría general (`audit_general`).
+#   - Para empleados creados por admin: se genera password temporal aleatoria
+#     + código de activación; el empleado lo cambia al primer login.
+# ============================================================================
 import random
 import string
 from datetime import datetime, timezone
 import bcrypt
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from typing import Optional
-from database import coleccion_usuarios, coleccion_auditoria
-from exceptions import NotFoundError, ConflictError, ValidacionError, AutenticacionError
+from database import coleccion_usuarios, coleccion_auditoria, coleccion_restaurantes
+from exceptions import NotFoundError, ConflictError, ValidacionError, AutenticacionError, AutorizacionError
 from bson import ObjectId
-from database import coleccion_usuarios
 import audit_general as ag
-from models import UsuarioActualizar
 from security import require_role, normalizar_rol, ROLES_CANONICOS
 from limiter import limiter
 
-_FOOTER_RGPD = """
-<div style="color:#9B9B9B;font-size:11px;margin-top:20px;padding-top:12px;
-            border-top:1px solid #E0DBD3;text-align:center;line-height:1.6;">
-  <strong>Restaurante Bravo</strong> — Responsable del tratamiento.<br>
-  Tus datos son tratados conforme al RGPD (UE) 2016/679 y la LOPDGDD 3/2018.<br>
-  <a href="https://grupobravo.com/privacidad" style="color:#800020;">
-    Política de Privacidad</a> &nbsp;·&nbsp;
-  <a href="mailto:privacidad@grupobravo.com" style="color:#800020;">
-    Ejercer derechos ARSULIPO</a>
-</div>
-"""
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 from fastapi_mail import FastMail, MessageSchema, MessageType
+from models import CorreoStr
 
-# Importar la configuración de correo desde auth
-from routes.auth import conf
+# Importar helpers compartidos
+from utils.auth_helpers import (
+    conf,
+    FOOTER_RGPD as _FOOTER_RGPD,
+    hash_otp as _hash_otp_util,
+    expiry_iso as _expiry_iso_util,
+)
 
 def _actor_de(request: Request) -> Optional[str]:
-    """Devuelve el correo del usuario que ejecuta la acción.
-
-    Prioriza el JWT firmado (`Authorization: Bearer …`) — fuente de verdad
-    inmutable por el cliente. Solo cae al header legacy `X-Actor` cuando no
-    hay token (compatibilidad con flujos públicos como el registro inicial).
-    """
+    """Devuelve el correo del usuario que ejecuta la acción, exclusivamente
+    desde el JWT firmado (`Authorization: Bearer …`). Fuente de verdad
+    inmutable por el cliente."""
     auth = request.headers.get("Authorization") or ""
     if auth.lower().startswith("bearer "):
         token = auth[7:].strip()
@@ -48,11 +61,9 @@ def _actor_de(request: Request) -> Optional[str]:
             if isinstance(correo, str) and correo.strip():
                 return correo.strip()
         except (JWTError, Exception):
-            # Token corrupto/expirado: caemos al header legacy.
             pass
 
-    valor = request.headers.get("X-Actor")
-    return valor.strip() if valor and valor.strip() else None
+    return None
 
 
 async def _enviar_correo_activacion(email: str, nombre: str, codigo: str):
@@ -95,7 +106,9 @@ class CambiarPassword(BaseModel):
     password_actual: str
     nueva_password: str
 
-# NUEVO: Agregamos latitud y longitud
+# Modelo que admin/super_admin usa para editar empleados.
+# Incluye correo, activo y rol porque son exclusivos de admins
+# (los clientes usan PUT /clientes/me que tiene su propio modelo restringido).
 class UsuarioActualizar(BaseModel):
     nombre: str | None = None
     correo: str | None = None
@@ -103,12 +116,13 @@ class UsuarioActualizar(BaseModel):
     direccion: str | None = ""
     latitud: float | None = None
     longitud: float | None = None
-    activo: bool | None = None    
+    activo: bool | None = None
+    rol: str | None = None
 
 # Modelo para crear usuarios desde el panel de Admin
 class UsuarioCrear(BaseModel):
     nombre: str
-    correo: EmailStr
+    correo: CorreoStr
     password: str = ''  # Opcional: si vacío, el backend genera una contraseña aleatoria
     rol: str
     restaurante_id: str
@@ -121,15 +135,32 @@ def listar_usuarios(
     rol: str | None = None,
     limite: int = Query(200, ge=1, le=500, description="Máx. usuarios por página"),
     offset: int = Query(0, ge=0, description="Desplazamiento para paginar"),
-    _admin: dict = Depends(require_role(["admin", "super_admin"])),
+    incluir_suspendidos: bool = Query(True, description="Incluir usuarios con activo=false"),
+    actor: dict = Depends(require_role(["admin", "super_admin"])),
 ):
     """Devuelve una lista de usuarios. La cabecera `X-Total-Count` indica el
     total de documentos que cumplen el filtro (útil para construir paginadores
     en el frontend sin romper la forma actual del JSON).
+
+    Un admin solo ve usuarios de su propia sucursal. super_admin ve todos.
+    El campo `activo` y `suspendido_at` se incluyen en la respuesta.
     """
+    from security import normalizar_rol
+    rol_actor = normalizar_rol(actor.get("rol", ""))
+
     filtro: dict = {}
     if rol:
         filtro["rol"] = rol
+
+    # Aislamiento por sucursal: admin solo ve su restaurante
+    if rol_actor != "super_admin":
+        rid = actor.get("restaurante_id")
+        if rid:
+            filtro["restaurante_id"] = rid
+
+    # Filtrar suspendidos si se solicita
+    if not incluir_suspendidos:
+        filtro["activo"] = {"$ne": False}
 
     response.headers["X-Total-Count"] = str(coleccion_usuarios.count_documents(filtro))
     usuarios = list(
@@ -152,6 +183,7 @@ def listar_usuarios(
             "rol": u.get("rol", "cliente"),
             "restaurante_id": str(res_id) if res_id else None,
             "activo": u.get("activo", True),
+            "suspendido_at": u.get("suspendido_at"),
             "totp_enabled": u.get("totp_enabled", False),
             "email_2fa_enabled": u.get("email_2fa_enabled", False),
         })
@@ -179,7 +211,9 @@ def obtener_auditoria_usuarios(
 
 
 @router.get("/{user_id}")
-def ver_perfil(user_id: str):
+def ver_perfil(user_id: str, _actor: dict = Depends(require_role(["admin", "super_admin"]))):
+    """Obtiene el perfil de un usuario. Solo accesible por admin/super_admin.
+    Los clientes usan GET /clientes/me para su propio perfil."""
     usuario = coleccion_usuarios.find_one({"_id": ObjectId(user_id)})
     if not usuario:
         raise NotFoundError("Usuario no encontrado")
@@ -192,21 +226,29 @@ def ver_perfil(user_id: str):
         "latitud": usuario.get("latitud"),
         "longitud": usuario.get("longitud"),
         "rol": usuario.get("rol", "cliente"),
+        "puntos": usuario.get("puntos", 0), # Ahora el Administrador puede ver los puntos de fidelidad acumulados por el cliente.
     }
-@router.put("/{user_id}")
-def actualizar_perfil(user_id: str, datos: UsuarioActualizar, request: Request):
-    # 1. Convertimos el modelo Pydantic a un diccionario de Python
-    datos_dict = datos.dict()
 
-    # Creamos un nuevo diccionario solo con los campos
-    # que NO son None. Así no intentamos sobrescribir nombre/correo con nulos.
+@router.put("/{user_id}")
+def actualizar_perfil(user_id: str, datos: UsuarioActualizar, request: Request,
+                      actor: dict = Depends(require_role(["admin", "super_admin"]))):
+    """Edita los datos de un empleado. Solo accesible por admin/super_admin.
+    Los clientes usan PUT /clientes/me para su propio perfil."""
+    # Convertimos el modelo Pydantic a un diccionario de Python sin valores None.
+    datos_dict = datos.dict()
     actualizacion = {k: v for k, v in datos_dict.items() if v is not None}
 
     # Si por algún motivo el diccionario queda vacío, avisamos
     if not actualizacion:
         raise ValidacionError("No se enviaron datos válidos para actualizar")
 
-    # 3. Ejecutamos la actualización en MongoDB usando solo los campos filtrados
+    # Normalizar rol si se envía
+    if "rol" in actualizacion:
+        rol_limpio = normalizar_rol(actualizacion["rol"])
+        if rol_limpio not in ROLES_CANONICOS:
+            raise ValidacionError(f"Rol '{rol_limpio}' no válido")
+        actualizacion["rol"] = rol_limpio
+
     resultado = coleccion_usuarios.update_one(
         {"_id": ObjectId(user_id)},
         {"$set": actualizacion}
@@ -223,7 +265,10 @@ def actualizar_perfil(user_id: str, datos: UsuarioActualizar, request: Request):
     return {"mensaje": "Perfil actualizado correctamente"}
 
 @router.put("/{user_id}/cambiar-password")
-def cambiar_password(user_id: str, datos: CambiarPassword):
+def cambiar_password(user_id: str, datos: CambiarPassword,
+                     _actor: dict = Depends(require_role(["admin", "super_admin"]))):
+    """Cambia la contraseña de un empleado. Solo accesible por admin/super_admin.
+    Los clientes usan PUT /clientes/me/password para su propia contraseña."""
     usuario = coleccion_usuarios.find_one({"_id": ObjectId(user_id)})
     if not usuario:
         raise NotFoundError("Usuario no encontrado")
@@ -267,23 +312,78 @@ def actualizar_rol(
         detalle=f"Nuevo rol: {rol_limpio}")
     return {"mensaje": f"Rol actualizado exitosamente a {rol_limpio}"}
 
-# Ruta para eliminar un usuario, es buena tenerla para administración futura.
+# Ruta para eliminar (super_admin) o suspender (admin) un usuario.
 @router.delete("/{user_id}")
 def eliminar_usuario(
     user_id: str,
     request: Request,
-    _admin: dict = Depends(require_role(["admin", "super_admin"])),
+    actor: dict = Depends(require_role(["admin", "super_admin"])),
 ):
-    usuario = coleccion_usuarios.find_one({"_id": ObjectId(user_id)})
-    resultado = coleccion_usuarios.delete_one({"_id": ObjectId(user_id)})
-    if resultado.deleted_count == 0:
+    from security import normalizar_rol
+    rol_actor = normalizar_rol(actor.get("rol", ""))
+
+    try:
+        oid = ObjectId(user_id)
+    except Exception:
+        raise ValidacionError("ID de usuario inválido")
+
+    usuario = coleccion_usuarios.find_one({"_id": oid})
+    if not usuario:
         raise NotFoundError("Usuario no encontrado")
-    if usuario:
-        ag.registrar(ag.USUARIO_ELIMINADO,
+
+    if rol_actor != "super_admin":
+        # Admin no puede tocarse a sí mismo
+        if actor.get("sub") == user_id or actor.get("correo") == usuario.get("correo"):
+            raise ValidacionError("No puedes suspender tu propia cuenta")
+
+        # Aislamiento: admin solo puede tocar usuarios de su sucursal
+        rid_actor = actor.get("restaurante_id")
+        if not rid_actor:
+            raise HTTPException(status_code=403, detail="Falta restaurante asignado en tu sesión")
+        if usuario.get("restaurante_id") != rid_actor:
+            raise HTTPException(status_code=403, detail="No puedes gestionar usuarios de otra sucursal")
+
+        # Si el usuario YA está suspendido, el admin puede borrarlo
+        # definitivamente (segundo DELETE = hard-delete). Esto permite hacer
+        # limpieza de cuentas dadas de baja sin necesidad del super_admin.
+        if usuario.get("activo", True) is False:
+            coleccion_usuarios.delete_one({"_id": oid})
+            ag.registrar(
+                ag.USUARIO_ELIMINADO,
+                actor=_actor_de(request),
+                objetivo=usuario.get("correo", user_id),
+                detalle=f"Rol: {usuario.get('rol', '?')} | Hard-delete por admin de sucursal {rid_actor} (ya estaba suspendido)",
+            )
+            return {"mensaje": "Usuario eliminado", "activo": False}
+
+        # Soft-delete: marcar como suspendido (primer DELETE)
+        ahora = datetime.now(timezone.utc).isoformat()
+        coleccion_usuarios.update_one(
+            {"_id": oid},
+            {"$set": {"activo": False, "suspendido_at": ahora}},
+        )
+        ag.registrar(
+            ag.USUARIO_SUSPENDIDO,
             actor=_actor_de(request),
             objetivo=usuario.get("correo", user_id),
-            detalle=f"Rol: {usuario.get('rol', '?')}")
-    return {"mensaje": "Usuario eliminado"}
+            detalle=f"Rol: {usuario.get('rol', '?')} | Sucursal: {rid_actor}",
+        )
+        return {"mensaje": "Usuario suspendido", "activo": False}
+    else:
+        # super_admin: borrado físico siempre
+        coleccion_usuarios.delete_one({"_id": oid})
+        ag.registrar(
+            ag.USUARIO_ELIMINADO,
+            actor=_actor_de(request),
+            objetivo=usuario.get("correo", user_id),
+            detalle=f"Rol: {usuario.get('rol', '?')}",
+        )
+        return {"mensaje": "Usuario eliminado"}
+
+# Roles que un admin puede asignar al crear empleados
+_ROLES_ADMIN_PUEDE_CREAR = {"camarero", "cocinero"}
+# Roles que super_admin puede crear (excluye super_admin; nadie lo crea desde la app)
+_ROLES_SUPER_PUEDE_CREAR = {"camarero", "cocinero", "admin"}
 
 # --- NUEVA RUTA PARA QUE EL ADMIN CREE USUARIOS ---
 @router.post("/")
@@ -291,8 +391,39 @@ def eliminar_usuario(
 async def crear_usuario(
     request: Request,
     datos: UsuarioCrear,
-    _admin: dict = Depends(require_role(["admin", "super_admin"])),
+    actor: dict = Depends(require_role(["admin", "super_admin"])),
 ):
+    from security import normalizar_rol
+    rol_actor = normalizar_rol(actor.get("rol", ""))
+    rol_nuevo = normalizar_rol(datos.rol)
+
+    # Whitelist de roles según quién crea
+    if rol_actor == "super_admin":
+        if rol_nuevo not in _ROLES_SUPER_PUEDE_CREAR:
+            raise AutorizacionError(
+                f"No puedes crear usuarios con rol '{rol_nuevo}'. "
+                "Los super_admin solo pueden crear: camarero, cocinero, admin."
+            )
+        # super_admin debe indicar siempre la sucursal destino
+        restaurante_id_final = datos.restaurante_id
+        if not restaurante_id_final or not str(restaurante_id_final).strip():
+            raise ValidacionError("Falta restaurante_id. El super_admin debe indicar la sucursal destino.")
+        # Verificar que la sucursal existe en la BD
+        if not coleccion_restaurantes.find_one({"_id": ObjectId(restaurante_id_final)}):
+            raise NotFoundError("Sucursal no encontrada")
+    else:
+        # admin: solo puede crear camarero/cocinero
+        if rol_nuevo not in _ROLES_ADMIN_PUEDE_CREAR:
+            raise AutorizacionError(
+                f"No puedes crear usuarios con rol '{rol_nuevo}'. "
+                "Los admin solo pueden crear: camarero, cocinero."
+            )
+        # Forzar restaurante_id del JWT, ignorar el del body
+        rid_jwt = actor.get("restaurante_id")
+        if not rid_jwt:
+            raise AutorizacionError("Falta restaurante asignado en tu sesión")
+        restaurante_id_final = rid_jwt
+
     correo_limpio = datos.correo.lower().strip()
 
     if coleccion_usuarios.find_one({"correo": correo_limpio}):
@@ -305,21 +436,22 @@ async def crear_usuario(
 
     # Código para que el empleado active su cuenta y establezca su contraseña
     reset_code = ''.join(random.choices(string.digits, k=6))
+    reset_code_hash = _hash_otp_util(reset_code)
 
     nuevo_usuario = {
         "nombre": datos.nombre,
         "correo": correo_limpio,
         "password_hash": hash_password,
-        "rol": datos.rol.lower().strip(),
-        "restaurante_id": datos.restaurante_id,
+        "rol": rol_nuevo,
+        "restaurante_id": restaurante_id_final,
         "is_verified": False,  # Debe activar su cuenta vía email
+        "activo": True,
         "telefono": "",
         "direccion": "",
-        # AGREGADO: Inicializamos coordenadas en None
         "latitud": None,
         "longitud": None,
         "verification_code": None,
-        "reset_code": reset_code,
+        "reset_code": reset_code_hash,
     }
 
     resultado = coleccion_usuarios.insert_one(nuevo_usuario)
@@ -329,7 +461,7 @@ async def crear_usuario(
         ag.registrar(ag.USUARIO_CREADO,
             actor=_actor_de(request),
             objetivo=correo_limpio,
-            detalle=f"Rol: {datos.rol} | Sucursal: {datos.restaurante_id}")
+            detalle=f"Rol: {rol_nuevo} | Sucursal: {restaurante_id_final}")
         return {
             "mensaje": "Usuario creado exitosamente. Se envió un correo de activación.",
             "id": str(resultado.inserted_id)
@@ -338,12 +470,17 @@ async def crear_usuario(
     raise RuntimeError("No se pudo crear el usuario")
 
 
-# ── RGPD: derechos ARSULIPO ────────────────────────────────────────────────────
+@router.post("/{user_id}/reactivar", summary="Reactivar un usuario suspendido (admin/super_admin)")
+def reactivar_usuario(
+    user_id: str,
+    request: Request,
+    actor: dict = Depends(require_role(["admin", "super_admin"])),
+):
+    """Revierte una suspensión: pone activo=true y elimina suspendido_at.
+    El admin solo puede reactivar usuarios de su misma sucursal."""
+    from security import normalizar_rol
+    rol_actor = normalizar_rol(actor.get("rol", ""))
 
-@router.get("/{user_id}/mis-datos")
-def exportar_mis_datos(user_id: str):
-    """RGPD art. 15/20 — Derecho de acceso y portabilidad. Devuelve los datos
-    personales del usuario en formato JSON descargable."""
     try:
         oid = ObjectId(user_id)
     except Exception:
@@ -353,67 +490,26 @@ def exportar_mis_datos(user_id: str):
     if not usuario:
         raise NotFoundError("Usuario no encontrado")
 
-    return {
-        "id": str(usuario["_id"]),
-        "nombre": usuario.get("nombre", ""),
-        "correo": usuario.get("correo", ""),
-        "telefono": usuario.get("telefono", ""),
-        "direccion": usuario.get("direccion", ""),
-        "rol": usuario.get("rol", ""),
-        "is_verified": usuario.get("is_verified", False),
-        "consentimiento_rgpd": usuario.get("consentimiento_rgpd", False),
-        "consentimiento_fecha": usuario.get("consentimiento_fecha"),
-        "fecha_registro": str(oid.generation_time.isoformat()),
-        "totp_enabled": usuario.get("totp_enabled", False),
-        "email_2fa_enabled": usuario.get("email_2fa_enabled", False),
-    }
-
-
-@router.delete("/{user_id}/mi-cuenta")
-def solicitar_baja(user_id: str, request: Request):
-    """RGPD art. 17 — Derecho de supresión. Anonimiza los datos personales del
-    usuario conservando el documento para integridad contable de pedidos."""
-    try:
-        oid = ObjectId(user_id)
-    except Exception:
-        raise ValidacionError("ID de usuario inválido")
-
-    usuario = coleccion_usuarios.find_one({"_id": oid})
-    if not usuario:
-        raise NotFoundError("Usuario no encontrado")
-
-    correo_original = usuario.get("correo", user_id)
-    correo_anonimo = f"baja_{user_id}@bravo.eliminado"
+    if rol_actor != "super_admin":
+        rid_actor = actor.get("restaurante_id")
+        if not rid_actor:
+            raise HTTPException(status_code=403, detail="Falta restaurante asignado en tu sesión")
+        if usuario.get("restaurante_id") != rid_actor:
+            raise HTTPException(status_code=403, detail="No puedes gestionar usuarios de otra sucursal")
 
     coleccion_usuarios.update_one(
         {"_id": oid},
-        {"$set": {
-            "nombre": "Usuario eliminado",
-            "correo": correo_anonimo,
-            "telefono": "",
-            "direccion": "",
-            "latitud": None,
-            "longitud": None,
-            "password_hash": "",
-            "is_verified": False,
-            "activo": False,
-            "rgpd_baja": True,
-            "rgpd_baja_fecha": datetime.now(timezone.utc).isoformat(),
-            "totp_enabled": False,
-            "totp_secret": None,
-            "email_2fa_enabled": False,
-            "verification_code": None,
-            "reset_code": None,
-            "login_code_2fa": None,
-            "recovery_codes": [],
-        }}
+        {"$set": {"activo": True}, "$unset": {"suspendido_at": ""}},
     )
-
     ag.registrar(
-        ag.USUARIO_ELIMINADO,
-        actor=correo_original,
-        objetivo=correo_original,
-        detalle="Baja RGPD — datos anonimizados",
+        ag.USUARIO_REACTIVADO,
+        actor=_actor_de(request),
+        objetivo=usuario.get("correo", user_id),
+        detalle=f"Rol: {usuario.get('rol', '?')}",
     )
-    return {"mensaje": "Cuenta eliminada. Tus datos personales han sido anonimizados conforme al RGPD."}
+    return {"mensaje": "Usuario reactivado", "activo": True}
+
+
+# NOTE: GET /{user_id}/mis-datos y DELETE /{user_id}/mi-cuenta han sido
+# eliminados. Los clientes usan GET /clientes/me/datos y DELETE /clientes/me.
 

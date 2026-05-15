@@ -24,7 +24,7 @@ class _DomicilioButtonState extends State<DomicilioButton> {
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: AppColors.button,
-          border: Border.all(color: const Color(0xFFA6405A)),
+          border: Border.all(color: AppColors.primaryAccent),
           borderRadius: BorderRadius.circular(14),
         ),
         child: Row(
@@ -35,7 +35,7 @@ class _DomicilioButtonState extends State<DomicilioButton> {
               width: 3,
               height: 56,
               decoration: BoxDecoration(
-                color: AppColors.gold,
+                color: AppColors.bottomSheetBg,
                 borderRadius: BorderRadius.circular(3),
               ),
             ),
@@ -47,7 +47,7 @@ class _DomicilioButtonState extends State<DomicilioButton> {
               decoration: BoxDecoration(
                 color: AppColors.sombra,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFA6405A)),
+                border: Border.all(color: AppColors.primaryAccent),
               ),
               child: const Icon(
                 Icons.motorcycle,
@@ -75,7 +75,7 @@ class _DomicilioButtonState extends State<DomicilioButton> {
                   Text(
                     "Pedir a domicilio",
                     style: TextStyle(
-                      color: Color(0xFFEFEBE9),
+                      color: AppColors.textCream,
                       fontSize: 12,
                       fontWeight: FontWeight.w300,
                       letterSpacing: 0.3,

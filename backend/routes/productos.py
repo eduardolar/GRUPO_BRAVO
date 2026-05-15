@@ -1,3 +1,26 @@
+# ============================================================================
+# backend/routes/productos.py
+# ----------------------------------------------------------------------------
+# CRUD de productos de la carta + asignación de sucursal y orden.
+#
+# Endpoints clave:
+#   GET    /productos                   → listado (cliente/empleado)
+#   POST   /productos                   → crear (admin)
+#   PUT    /productos/{id}              → editar (admin)
+#   DELETE /productos/{id}              → eliminar (admin)
+#   PATCH  /productos/orden             → reordenar tarjetas en la carta
+#   POST   /productos/asignar-sucursal  → migración: pasar productos legacy
+#                                          a una sucursal (multi-tenant)
+#
+# Conceptos no obvios:
+#   - Un producto tiene una lista `ingredientes`, que puede ser:
+#       a) string (legacy: solo el nombre, sin cantidad)
+#       b) dict con {nombre, cantidad_receta} o {ingrediente_id, ...}
+#     `_normalizar_ingrediente_item` los reduce al esquema común que usa
+#     después `routes/pedidos.py` para descontar stock.
+#   - `restaurante_id` puede ser None en productos legacy. El endpoint
+#     `asignar-sucursal` permite migrar todos los huérfanos de golpe.
+# ============================================================================
 from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import List, Optional
 from pydantic import BaseModel
@@ -6,6 +29,9 @@ from bson.errors import InvalidId
 from database import coleccion_productos, coleccion_ingredientes
 from models import ProductoCrear
 from security import require_role
+import logging
+
+_log = logging.getLogger("uvicorn")
 
 router = APIRouter(prefix="/productos", tags=["Productos"])
 
@@ -23,15 +49,87 @@ class AsignarSucursalRequest(BaseModel):
     solo_huerfanos: bool = False
 
 
+def _normalizar_ingrediente_item(item) -> Optional[dict]:
+    """Reduce un item del array `ingredientes` al esquema mínimo:
+    `{ingrediente_id?, nombre, cantidad_receta}`.
+
+    Acepta: string suelto (legacy), dict con cualquier convención de claves,
+    o items con campos extra del frontend (cantidadActual, unidad, etc.)
+    que se descartan deliberadamente para evitar datos congelados en BD.
+
+    Devuelve None si el item no tiene nombre (no se puede descontar stock).
+    """
+    if isinstance(item, str):
+        nombre = item.strip()
+        if not nombre:
+            return None
+        return {"nombre": nombre, "cantidad_receta": 1.0}
+
+    if not isinstance(item, dict):
+        return None
+
+    # Nombre: obligatorio para poder descontar stock
+    nombre = item.get("nombre") or item.get("ingrediente", "")
+    if not nombre:
+        return None
+    nombre = str(nombre).strip()
+    if not nombre:
+        return None
+
+    # cantidad_receta: acepta snake_case y camelCase
+    cr = item.get("cantidad_receta")
+    if cr is None:
+        cr = item.get("cantidadReceta")
+    try:
+        cantidad_receta = float(cr) if cr is not None else 1.0
+    except (TypeError, ValueError):
+        cantidad_receta = 1.0
+    if cantidad_receta <= 0:
+        cantidad_receta = 1.0
+
+    # ingrediente_id: acepta todas las convenciones que manda el frontend
+    id_raw = (
+        item.get("ingrediente_id")
+        or item.get("ingredienteId")
+        or item.get("id")
+        or item.get("_id")
+    )
+    resultado: dict = {"nombre": nombre, "cantidad_receta": cantidad_receta}
+    if id_raw:
+        resultado["ingrediente_id"] = str(id_raw)
+
+    return resultado
+
+
 def _normalizar_payload(producto: ProductoCrear) -> dict:
     """Convierte el modelo Pydantic a un dict listo para Mongo.
 
-    `restaurante_id=None` se omite del `$set` para que un PUT que no envíe
-    ese campo NO borre el restaurante asignado al producto.
+    - `restaurante_id=None` se omite del `$set` para que un PUT que no envíe
+      ese campo NO borre el restaurante asignado al producto.
+    - `imagen=None` se omite también: el schema validator de la colección
+      exige `string` en este campo y mandar null lo rompe. Si el admin quiere
+      borrar la imagen, lo hace con DELETE /productos/{id}/imagen, no aquí.
+    - El array `ingredientes` se reduce al esquema mínimo para que no queden
+      datos congelados (cantidadActual, unidad, etc.) que se desactualizan.
+      Solo se hace al guardar (POST/PUT), nunca en lecturas masivas.
     """
     datos = producto.dict()
     if datos.get("restaurante_id") is None:
         datos.pop("restaurante_id", None)
+    if datos.get("imagen") is None:
+        datos.pop("imagen", None)
+
+    # Bug 3 fix: sanear el array de ingredientes en cada escritura
+    items_raw = datos.get("ingredientes") or []
+    items_normalizados = []
+    for item in items_raw:
+        normalizado = _normalizar_ingrediente_item(item)
+        if normalizado is None:
+            _log.warning("Ingrediente sin nombre descartado al guardar producto: %r", item)
+            continue
+        items_normalizados.append(normalizado)
+    datos["ingredientes"] = items_normalizados
+
     return datos
 
 
@@ -106,7 +204,30 @@ def obtener_productos(
                 else:
                     ingredientes.append({"id": "", "nombre": ing})
             elif isinstance(ing, dict):
-                ingredientes.append(ing)
+                # Hidratamos con el stock real del ingrediente. Si el dict ya
+                # trae 'cantidad_actual' lo usamos; si no, lo buscamos por
+                # ingrediente_id (caso típico cuando el producto se creó con
+                # `_normalizar_ingrediente_item`). Sin esta hidratación, el
+                # check de disponibilidad por stock se quedaba siempre en True
+                # porque el dict no tenía cantidad_actual.
+                ing_hidratado = dict(ing)
+                if "cantidad_actual" not in ing_hidratado:
+                    ing_id = ing.get("ingrediente_id") or ing.get("id")
+                    if ing_id and ObjectId.is_valid(str(ing_id)):
+                        ing_db = coleccion_ingredientes.find_one(
+                            {"_id": ObjectId(str(ing_id))}
+                        )
+                        if ing_db:
+                            ing_hidratado["cantidad_actual"] = ing_db.get(
+                                "cantidad_actual", 0
+                            )
+                            ing_hidratado.setdefault(
+                                "unidad", ing_db.get("unidad", "kg")
+                            )
+                            ing_hidratado.setdefault(
+                                "stock_minimo", ing_db.get("stock_minimo", 0)
+                            )
+                ingredientes.append(ing_hidratado)
         # Determinar disponibilidad: si algún ingrediente tiene stock <= 0, producto no disponible
         disponible_por_stock = True
         for ing_info in ingredientes:
@@ -134,14 +255,35 @@ def obtener_productos(
         })
     return resultado
 
-@router.post("/asignar-sucursal", summary="Asignar sucursal a productos en masa (super admin)")
+@router.post("/asignar-sucursal", summary="Asignar sucursal a productos en masa (admin/super_admin)")
 def asignar_sucursal(
     payload: AsignarSucursalRequest,
-    _admin: dict = Depends(require_role(["admin", "super_admin"])),
+    current_user: dict = Depends(require_role(["admin", "super_admin"])),
 ):
     """Reasigna `restaurante_id` en bloque. Útil para migrar productos
-    legacy (sin sucursal) a una sucursal concreta."""
-    rid = payload.restaurante_id.strip()
+    legacy (sin sucursal) a una sucursal concreta.
+
+    Aislamiento multi-tenant:
+    - super_admin puede operar sobre cualquier sucursal (usa el payload tal cual).
+    - admin solo puede reasignar a SU propia sucursal del JWT; el campo
+      restaurante_id del payload se ignora silenciosamente para evitar IDOR.
+    """
+    from security import normalizar_rol
+    rol = normalizar_rol(current_user.get("rol", "") or "")
+
+    if rol == "super_admin":
+        # super_admin puede operar sobre cualquier sucursal
+        rid = payload.restaurante_id.strip()
+    else:
+        # admin: se fuerza la sucursal del JWT, se ignora lo que llegue en payload
+        rid = current_user.get("restaurante_id") or ""
+        if not rid:
+            raise HTTPException(
+                status_code=400,
+                detail="Tu cuenta no está asignada a una sucursal, contacta con super admin",
+            )
+        rid = rid.strip()
+
     if not rid:
         raise HTTPException(status_code=400, detail="restaurante_id requerido")
 

@@ -1,3 +1,10 @@
+// ============================================================================
+// frontend/lib/models/reserva_model.dart
+// ----------------------------------------------------------------------------
+// Modelo de reserva de mesa. Los campos `telefonoCliente`/`correoCliente`
+// son opcionales y solo se rellenan en reservas "walk-in" (camarero/admin
+// las registra para alguien que no tiene cuenta).
+// ============================================================================
 import 'package:intl/intl.dart';
 
 class Reserva {
@@ -12,6 +19,8 @@ class Reserva {
   final String? mesaId;
   final int? numeroMesa;
   final String? notas;
+  final String? telefonoCliente;
+  final String? correoCliente;
 
   Reserva({
     required this.id,
@@ -25,6 +34,8 @@ class Reserva {
     this.mesaId,
     this.numeroMesa,
     this.notas,
+    this.telefonoCliente,
+    this.correoCliente,
   });
 
   /// Detecta automáticamente el formato de fecha
@@ -55,6 +66,8 @@ class Reserva {
       mesaId: mapa['mesaId'] ?? mapa['mesa_id'],
       numeroMesa: mapa['numeroMesa'] ?? mapa['numero_mesa'],
       notas: mapa['notas'],
+      telefonoCliente: mapa['telefono_cliente'],
+      correoCliente: mapa['correo_cliente'],
     );
   }
 
@@ -71,6 +84,8 @@ class Reserva {
       'mesaId': mesaId,
       'numeroMesa': numeroMesa,
       'notas': notas,
+      if (telefonoCliente != null) 'telefono_cliente': telefonoCliente,
+      if (correoCliente != null) 'correo_cliente': correoCliente,
     };
   }
 
@@ -86,6 +101,8 @@ class Reserva {
     String? mesaId,
     int? numeroMesa,
     String? notas,
+    String? telefonoCliente,
+    String? correoCliente,
   }) {
     return Reserva(
       id: id ?? this.id,
@@ -99,6 +116,8 @@ class Reserva {
       mesaId: mesaId ?? this.mesaId,
       numeroMesa: numeroMesa ?? this.numeroMesa,
       notas: notas ?? this.notas,
+      telefonoCliente: telefonoCliente ?? this.telefonoCliente,
+      correoCliente: correoCliente ?? this.correoCliente,
     );
   }
 }
