@@ -181,6 +181,51 @@ class EnvioMasivoRequest(BaseModel):
 
 # ─── Endpoints ─────────────────────────────────────────────────────────────────
 
+def evaluar_cupon(
+    codigo: str,
+    subtotal: float,
+    coste_envio: float = 0.0,
+    restaurante_id: Optional[str] = None,
+) -> tuple[bool, float, str]:
+    """Valida un cupón por código y calcula su descuento.
+
+    Lógica central reutilizable: la usa tanto el endpoint público /validar
+    como `crear_pedido` (para que el total persistido lleve el descuento
+    del cupón y no solo se muestre en el front).
+
+    Devuelve (es_valido, descuento, mensaje). Si no es válido, descuento=0.
+    """
+    codigo_limpio = (codigo or "").strip().upper()
+    if not codigo_limpio:
+        return False, 0.0, "Cupón vacío"
+
+    cupon = coleccion_cupones.find_one({"codigo": codigo_limpio})
+    if not cupon:
+        return False, 0.0, "Cupón no encontrado"
+
+    error = _cupon_vigente(cupon)
+    if error:
+        return False, 0.0, error
+
+    rid_cupon = cupon.get("restaurante_id")
+    if rid_cupon and restaurante_id and str(rid_cupon) != str(restaurante_id):
+        return False, 0.0, "Este cupón no es válido para este restaurante"
+
+    tipo = cupon.get("tipo")
+    valor = float(cupon.get("valor", 0))
+    sub = round(subtotal, 2)
+
+    if tipo == "porcentaje":
+        descuento = round(sub * (valor / 100), 2)
+    elif tipo == "fijo":
+        total_max = round(sub + coste_envio, 2)
+        descuento = round(min(valor, total_max), 2)
+    else:
+        return False, 0.0, "Tipo de cupón desconocido"
+
+    return True, descuento, "Cupón aplicado correctamente"
+
+
 @router.post("/validar", summary="Validar un cupón y calcular descuento")
 def validar_cupon(datos: CuponValidar):
     """Valida un cupón por código y devuelve el descuento aplicable.

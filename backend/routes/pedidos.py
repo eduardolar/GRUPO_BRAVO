@@ -488,6 +488,29 @@ async def crear_pedido(
         if categoria == "bebidas":
             item["hecho"] = True
 
+    # ── DESCUENTO POR CUPÓN ───────────────────────────────
+    # Se revalida el cupón en backend y se descuenta del total calculado
+    # con precios reales (no se confía en el total que envía el cliente).
+    # Esto antes solo se mostraba en el front: el pedido se guardaba con
+    # el total SIN descuento de cupón → descuadre con lo cobrado.
+    descuento_cupon = 0.0
+    if pedido.cuponCodigo:
+        from routes.cupones import evaluar_cupon
+
+        rid_para_cupon = pedido.restauranteId or current_user.get("restaurante_id")
+        ok_cupon, descuento_cupon, msg_cupon = evaluar_cupon(
+            codigo=pedido.cuponCodigo,
+            subtotal=total_calculado,
+            coste_envio=0.0,
+            restaurante_id=rid_para_cupon,
+        )
+        if not ok_cupon:
+            raise ValidacionError(f"Cupón no válido: {msg_cupon}")
+        total_calculado = max(0.0, total_calculado - descuento_cupon)
+        logger.info(
+            f"Cupón {pedido.cuponCodigo} aplicado: -{descuento_cupon:.2f} EUR"
+        )
+
     # ── NUEVO: CANJE DE BRAVO COINS ───────────────────────
     if pedido.puntosUsados > 0:
         # 1. Comprobar que el usuario tiene esos puntos realmente en la BD.
@@ -581,6 +604,11 @@ async def crear_pedido(
 
     if idempotency_key and idempotency_key.strip():
         pedido_dict["idempotency_key"] = idempotency_key.strip()
+
+    # Trazabilidad del cupón aplicado (para contabilidad / soporte).
+    if pedido.cuponCodigo and descuento_cupon > 0:
+        pedido_dict["cupon_codigo"] = pedido.cuponCodigo.strip().upper()
+        pedido_dict["descuento_cupon"] = round(descuento_cupon, 2)
 
     if pedido.direccionEntrega:
         pedido_dict["direccion_entrega"] = pedido.direccionEntrega

@@ -9,6 +9,9 @@ class BottomBarEntrega extends StatelessWidget {
   final EntregaPaso paso;
   final bool cargando;
   final double costeEnvio;
+  /// Descuento total ya aplicado (cupón + Bravo Coins). Se resta del total
+  /// que se muestra para que el cliente vea SIEMPRE lo que va a pagar.
+  final double descuento;
   final VoidCallback onSiguiente;
   final VoidCallback? onAtras;
 
@@ -17,6 +20,7 @@ class BottomBarEntrega extends StatelessWidget {
     required this.paso,
     required this.cargando,
     required this.costeEnvio,
+    this.descuento = 0.0,
     required this.onSiguiente,
     this.onAtras,
   });
@@ -26,7 +30,8 @@ class BottomBarEntrega extends StatelessWidget {
     return Consumer<CartProvider>(
       builder: (context, cart, _) {
         final envio = paso == EntregaPaso.confirmar ? 0.0 : costeEnvio;
-        final total = cart.totalPrice + envio;
+        final bruto = cart.totalPrice + envio;
+        final total = (bruto - descuento) < 0 ? 0.0 : (bruto - descuento);
         final bottom = MediaQuery.of(context).padding.bottom;
 
         return Container(
@@ -53,15 +58,40 @@ class BottomBarEntrega extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      '${total.toStringAsFixed(2).replaceAll('.', ',')} €',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.5,
-                      ),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        if (descuento > 0) ...[
+                          Text(
+                            '${bruto.toStringAsFixed(2).replaceAll('.', ',')} €',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.40),
+                              fontSize: 13,
+                              decoration: TextDecoration.lineThrough,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                        Text(
+                          '${total.toStringAsFixed(2).replaceAll('.', ',')} €',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                      ],
                     ),
+                    if (descuento > 0)
+                      Text(
+                        'Ahorro -${descuento.toStringAsFixed(2).replaceAll('.', ',')} €',
+                        style: const TextStyle(
+                          color: Colors.greenAccent,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     if (envio > 0)
                       Text(
                         'incl. ${envio.toStringAsFixed(2).replaceAll('.', ',')} € envío',

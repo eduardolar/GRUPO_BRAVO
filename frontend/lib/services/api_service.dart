@@ -183,6 +183,7 @@ class ApiService {
     String? idempotencyKey,
     int puntosUsados = 0,
     bool prioritario = false,
+    String? cuponCodigo,
   }) => PedidoService.crearPedido(
     userId: userId,
     items: items,
@@ -199,6 +200,7 @@ class ApiService {
     idempotencyKey: idempotencyKey,
     puntosUsados: puntosUsados,
     prioritario: prioritario,
+    cuponCodigo: cuponCodigo,
   );
 
   static Future<Map<String, dynamic>> agregarItemsPedido({
