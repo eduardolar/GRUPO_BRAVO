@@ -10,8 +10,7 @@ class ProductoCard extends StatelessWidget {
   final VoidCallback? onRemove;
   final int quantity;
   final bool compactAdd;
-
-  bool iconoEditar = false;
+  final bool iconoEditar;
 
   static DateTime _lastTap = DateTime(2000);
 

@@ -11,6 +11,9 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
+  
+  # Dependencia para guardado de token de sesión seguro
+  flutter_secure_storage: ^9.0.0
 
   # Dependencia del lector QR
   mobile_scanner: ^3.5.0
@@ -36,6 +39,7 @@ dependencies:
 
   # Notificaciones locales (cliente: aviso de "pedido listo")
   flutter_local_notifications: ^17.2.3
+  local_auth: ^3.0.1
 
 dev_dependencies:
   flutter_test:

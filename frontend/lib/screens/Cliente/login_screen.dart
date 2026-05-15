@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:frontend/services/auth_session.dart';
 import 'package:provider/provider.dart';
 
 import 'package:frontend/core/app_routes.dart';
@@ -27,6 +29,7 @@ import 'package:frontend/components/Cliente/primary_button.dart';
 
 // Import para la verificación del 2FA
 import 'package:frontend/screens/cliente/verificacion_screen.dart';
+
 
 class LoginScreen extends StatefulWidget {
   final DestinoLogin destino;
@@ -229,6 +232,10 @@ class _LoginScreenState extends State<LoginScreen> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+
+    final storage = FlutterSecureStorage();// Guardar el token de autenticación de forma segura
+
+    await storage.write(key: "auth_token", value: AuthSession.token); 
   }
 
   void _navigateToRoleHome(Usuario usuario) {
