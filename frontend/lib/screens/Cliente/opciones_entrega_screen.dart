@@ -37,6 +37,7 @@ import 'direccion_screen.dart';
 import 'opciones_entrega/components/components.dart';
 import 'pedido_confirmado_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'dart:math';
 
 export '../../models/opciones_pedido.dart';
 
@@ -121,10 +122,34 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
   /// Descuento del cupón aplicado (lo que ve el cliente en el total).
   double _descuentoTotal() => _descuentoCuponAplicado;
 
-  double _calcularTotal(CartProvider cart) {
+  // 1. Calcula el total base (Items + Envío - Cupones) SIN PUNTOS
+  double _calcularTotalBase(CartProvider cart) {
     final bruto = cart.totalPrice + _costeEnvio();
     final total = bruto - _descuentoTotal();
     return total < 0 ? 0.0 : total;
+  }
+
+  // 2. Calcula cuántos puntos se pueden usar como máximo (Arregla BUG #6)
+  int _calcularPuntosAUsar(double totalBase) {
+    if (!_usarPuntos) return 0;
+    final usuario = context.read<AuthProvider>().usuarioActual;
+    final puntosDisponibles = usuario?.puntos ?? 0;
+    
+    // Máximo de puntos que tiene sentido usar (totalBase * 10)
+    final maxPuntosNecesarios = (totalBase * 10).toInt();
+    
+    return min(puntosDisponibles, maxPuntosNecesarios);
+  }
+
+  // 3. Calcula el total REAL que se va a cobrar (Arregla BUG #1 y #7)
+  // Mantenemos el nombre _calcularTotal para no romper Stripe, PayPal, etc.
+  double _calcularTotal(CartProvider cart) {
+    final totalBase = _calcularTotalBase(cart);
+    final puntosAUsar = _calcularPuntosAUsar(totalBase);
+    final descuento = puntosAUsar / 10.0;
+    
+    final totalFinal = totalBase - descuento;
+    return totalFinal < 0 ? 0.0 : totalFinal;
   }
 
   Future<void> _aplicarCupon() async {
@@ -1210,8 +1235,9 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
 
     final idempKey = _obtenerOGenerarIdempotencyKey();
 
-    // ── NUEVO: Calcular los puntos que vamos a usar ──
-    final puntosAUsar = _usarPuntos ? (auth.usuarioActual?.puntos ?? 0) : 0;
+// ── NUEVO: Calcular los puntos que vamos a usar de forma segura ──
+    final totalBase = _calcularTotalBase(cart);
+    final puntosAUsar = _calcularPuntosAUsar(totalBase);
 
     try {
       final items = cart.items.values

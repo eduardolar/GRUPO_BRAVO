@@ -511,11 +511,10 @@ async def crear_pedido(
             f"Cupón {pedido.cuponCodigo} aplicado: -{descuento_cupon:.2f} EUR"
         )
 
-    # ── NUEVO: CANJE DE BRAVO COINS ───────────────────────
+    # ── CANJE DE BRAVO COINS (resta ATÓMICA — fix race condition de main) ──
     if pedido.puntosUsados > 0:
-        # 1. Comprobar que el usuario tiene esos puntos realmente en la BD.
-        # Para cliente usamos su sub; para staff aceptamos userId del payload
-        # solo si es un ObjectId válido (canje en nombre de un cliente concreto).
+        # Resolución del cliente: cliente usa su sub; staff debe
+        # identificar al cliente con un userId ObjectId válido.
         if normalizar_rol(current_user.get("rol", "")) == "cliente":
             uid_obj = ObjectId(current_user["sub"])
         else:
@@ -525,23 +524,26 @@ async def crear_pedido(
                     "Para canjear puntos hay que identificar al cliente (userId)"
                 )
             uid_obj = ObjectId(uid_payload_raw)
-        usuario_db = coleccion_usuarios.find_one({"_id": uid_obj})
-        
-        if not usuario_db or usuario_db.get("puntos", 0) < pedido.puntosUsados:
-            raise ValidacionError("No tienes suficientes Bravo Coins para este descuento.")
-        
-        # 2. Calcular el descuento (10 puntos = 1€)
-        descuento_coins = pedido.puntosUsados / 10.0
-        
-        # 3. Aplicar descuento sin que el total baje de 0
-        total_calculado = max(0.0, total_calculado - descuento_coins)
-        
-        # 4. Restar los puntos de la base de datos
-        coleccion_usuarios.update_one(
-            {"_id": uid_obj},
-            {"$inc": {"puntos": -pedido.puntosUsados}}  # El menos (-) los resta
+
+        # Resta condicional y atómica: solo descuenta si el documento aún
+        # tiene puntos suficientes. Dos pedidos concurrentes ya no pueden
+        # gastar los mismos puntos (antes era find_one + check + update
+        # por separado → race condition).
+        resultado_resta = coleccion_usuarios.update_one(
+            {"_id": uid_obj, "puntos": {"$gte": pedido.puntosUsados}},
+            {"$inc": {"puntos": -pedido.puntosUsados}},
         )
-        logger.info(f"Se han canjeado {pedido.puntosUsados} puntos por un descuento de {descuento_coins}€")
+        if resultado_resta.modified_count == 0:
+            raise ValidacionError(
+                "No tienes suficientes Bravo Coins para este descuento."
+            )
+
+        descuento_coins = pedido.puntosUsados / 10.0
+        total_calculado = max(0.0, total_calculado - descuento_coins)
+        logger.info(
+            f"Se han canjeado {pedido.puntosUsados} puntos "
+            f"por un descuento de {descuento_coins}€"
+        )
     # ────────────────────────────────────────────────────────────────
     # Para clientes, ignorar userId del payload y usar el sub del JWT.
     # Admin y personal de sala/cocina pueden crear pedidos en nombre de cualquier usuario.
