@@ -188,7 +188,7 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
               onPressed: () => Navigator.pop(context, true),
               child: const Text(
                 'Cambiar',
-                style: TextStyle(color: AppColors.button),
+                style: TextStyle(color: AppColors.primary),
               ),
             ),
           ],
@@ -519,7 +519,7 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
               child: const Text(
                 'GUARDAR',
                 style: TextStyle(
-                  color: AppColors.button,
+                  color: AppColors.primary,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -744,7 +744,7 @@ class _ReservarMesaScreenState extends State<ReservarMesaScreen>
 
     return RefreshIndicator(
       onRefresh: _cargarReservas,
-      color: AppColors.button,
+      color: AppColors.primary,
       backgroundColor: AppColors.panel,
       child: CustomScrollView(
         physics: const BouncingScrollPhysics(),

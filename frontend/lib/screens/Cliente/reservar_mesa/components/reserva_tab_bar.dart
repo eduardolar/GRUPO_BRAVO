@@ -74,7 +74,7 @@ class _SegmentoTab extends StatelessWidget {
           height: 38,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: activo ? AppColors.button : Colors.transparent,
+            color: activo ? AppColors.primaryAccent : Colors.transparent,
             borderRadius: BorderRadius.circular(24),
           ),
           child: Text(

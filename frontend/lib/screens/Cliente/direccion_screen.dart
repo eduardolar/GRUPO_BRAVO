@@ -276,7 +276,7 @@ class _DireccionScreenState extends State<DireccionScreen> {
                   onPressed: _cargando ? null : _obtenerUbicacionGPS,
                   icon: const Icon(
                     Icons.my_location,
-                    color: AppColors.button,
+                    color: AppColors.detailOnDark,
                     size: 18,
                   ),
                   label: const Text(

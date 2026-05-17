@@ -205,7 +205,7 @@ class _TotpLoginScreenState extends State<TotpLoginScreen> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: AppColors.button),
+                      borderSide: const BorderSide(color: AppColors.detailOnDark),
                     ),
                   ),
                   onSubmitted: (_) => verificar(),
@@ -276,7 +276,7 @@ class _TotpLoginScreenState extends State<TotpLoginScreen> {
               children: [
                 const Icon(
                   Icons.shield_outlined,
-                  color: AppColors.button,
+                  color: AppColors.detailOnDark,
                   size: 36,
                 ),
                 const SizedBox(height: 12),

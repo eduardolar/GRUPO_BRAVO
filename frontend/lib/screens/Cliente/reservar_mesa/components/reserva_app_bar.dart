@@ -67,7 +67,7 @@ class ReservaAppBar extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 8),
-              Container(width: 28, height: 2, color: AppColors.button),
+              Container(width: 28, height: 2, color: AppColors.detailOnDark),
             ],
           ),
         ),

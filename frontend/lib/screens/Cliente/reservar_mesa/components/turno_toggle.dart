@@ -74,12 +74,12 @@ class _TurnoSegmento extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
           decoration: BoxDecoration(
             color: sel
-                ? AppColors.button.withValues(alpha: 0.18)
+                ? AppColors.primaryAccent.withValues(alpha: 0.18)
                 : Colors.white.withValues(alpha: 0.04),
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: sel
-                  ? AppColors.button
+                  ? AppColors.primaryAccent
                   : Colors.white.withValues(alpha: 0.12),
               width: sel ? 1.4 : 1,
             ),
@@ -94,7 +94,7 @@ class _TurnoSegmento extends StatelessWidget {
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: sel
-                      ? AppColors.button
+                      ? AppColors.primaryAccent
                       : Colors.white.withValues(alpha: 0.08),
                   shape: BoxShape.circle,
                 ),

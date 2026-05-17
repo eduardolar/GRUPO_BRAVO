@@ -270,7 +270,7 @@ class _VerificacionScreenState extends State<VerificacionScreen> {
               ? 'Reenviar en ${_secondsRemaining}s'
               : 'REENVIAR CÓDIGO',
           style: TextStyle(
-            color: _secondsRemaining == 0 ? AppColors.button : Colors.white38,
+            color: _secondsRemaining == 0 ? AppColors.linkOnDark : Colors.white38,
             fontWeight: FontWeight.bold,
           ),
         ),

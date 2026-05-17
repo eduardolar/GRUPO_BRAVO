@@ -107,11 +107,11 @@ class _BotonComensales extends StatelessWidget {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: activo
-                ? AppColors.button
+                ? AppColors.primaryAccent
                 : Colors.white.withValues(alpha: 0.04),
             border: Border.all(
               color: activo
-                  ? AppColors.button
+                  ? AppColors.primaryAccent
                   : Colors.white.withValues(alpha: 0.15),
             ),
           ),

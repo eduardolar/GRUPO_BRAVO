@@ -50,7 +50,7 @@ class _StripeCheckoutDialogState extends State<StripeCheckoutDialog> {
       shape: const RoundedRectangleBorder(borderRadius: kRadiusEntrega),
       title: const Row(
         children: [
-          Icon(Icons.open_in_new, color: AppColors.button, size: 20),
+          Icon(Icons.open_in_new, color: AppColors.primary, size: 20),
           SizedBox(width: 10),
           Text(
             'Completa el pago',
@@ -86,7 +86,7 @@ class _StripeCheckoutDialogState extends State<StripeCheckoutDialog> {
         ),
         ElevatedButton(
           style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.button,
+            backgroundColor: AppColors.primary,
             foregroundColor: Colors.white,
             shape: const RoundedRectangleBorder(
               borderRadius: kRadiusEntrega,

@@ -402,7 +402,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                   if (!codigoEnviado)
                     _SheetButton(
                       label: 'Enviar código a mi correo',
-                      color: AppColors.button,
+                      color: AppColors.primaryAccent,
                       cargando: cargando,
                       icon: Icons.email_outlined,
                       onPressed: () async {
@@ -437,7 +437,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       label: activar
                           ? 'ACTIVAR VERIFICACIÓN'
                           : 'DESACTIVAR VERIFICACIÓN',
-                      color: activar ? AppColors.button : AppColors.error,
+                      color: activar ? AppColors.primaryAccent : AppColors.error,
                       cargando: cargando,
                       onPressed: () async {
                         if (!formKey.currentState!.validate()) return;
@@ -557,7 +557,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                   const SizedBox(height: 24),
                   _SheetButton(
                     label: 'CAMBIAR CONTRASEÑA',
-                    color: AppColors.button,
+                    color: AppColors.primaryAccent,
                     cargando: cargando,
                     onPressed: () async {
                       if (!formKey.currentState!.validate()) return;
@@ -626,7 +626,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                 Expanded(
                   child: RefreshIndicator(
                     onRefresh: _recargarPerfil,
-                    color: AppColors.button,
+                    color: AppColors.primaryOnDark,
                     child: SingleChildScrollView(
                       physics: const AlwaysScrollableScrollPhysics(
                         parent: BouncingScrollPhysics(),
@@ -744,7 +744,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
               readOnly: true,
               suffixIcon: const Icon(
                 Icons.chevron_right,
-                color: AppColors.button,
+                color: AppColors.detailOnDark,
                 size: 20,
               ),
               validator: (v) => (v == null || v.trim().isEmpty)
@@ -764,7 +764,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
       child: ElevatedButton(
         onPressed: (_hayCambios && !_isLoading) ? _guardarCambios : null,
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.button,
+          backgroundColor: AppColors.primaryAccent,
           disabledBackgroundColor: Colors.white.withValues(alpha: 0.08),
           foregroundColor: Colors.white,
           disabledForegroundColor: Colors.white38,
@@ -891,8 +891,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
           height: 88,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: AppColors.button.withValues(alpha: 0.15),
-            border: Border.all(color: AppColors.button, width: 2),
+            color: AppColors.detailOnDark.withValues(alpha: 0.15),
+            border: Border.all(color: AppColors.detailOnDark, width: 2),
           ),
           child: Center(
             child: Text(
@@ -979,12 +979,12 @@ class _PerfilScreenState extends State<PerfilScreen> {
           color: Colors.white.withValues(alpha: 0.5),
           fontSize: 14,
         ),
-        prefixIcon: Icon(icono, color: AppColors.button, size: 20),
+        prefixIcon: Icon(icono, color: AppColors.detailOnDark, size: 20),
         suffixIcon: suffixIcon,
         filled: true,
         fillColor: Colors.white.withValues(alpha: 0.07),
         enabledBorder: _fieldBorder(Colors.white24),
-        focusedBorder: _fieldBorder(AppColors.button, width: 2),
+        focusedBorder: _fieldBorder(AppColors.detailOnDark, width: 2),
         errorBorder: _fieldBorder(AppColors.error),
         focusedErrorBorder: _fieldBorder(AppColors.error, width: 2),
         errorStyle: const TextStyle(color: AppColors.error),
@@ -1016,7 +1016,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
         ),
         prefixIcon: const Icon(
           Icons.lock_outline,
-          color: AppColors.button,
+          color: AppColors.detailOnDark,
           size: 20,
         ),
         suffixIcon: IconButton(
@@ -1031,7 +1031,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
         filled: true,
         fillColor: Colors.white.withValues(alpha: 0.07),
         enabledBorder: _fieldBorder(Colors.white24),
-        focusedBorder: _fieldBorder(AppColors.button, width: 2),
+        focusedBorder: _fieldBorder(AppColors.detailOnDark, width: 2),
         errorBorder: _fieldBorder(AppColors.error),
         focusedErrorBorder: _fieldBorder(AppColors.error, width: 2),
         errorStyle: const TextStyle(color: AppColors.error),

@@ -23,7 +23,7 @@ class SeccionLabel extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 5),
-        Container(height: 2, width: 24, color: AppColors.button),
+        Container(height: 2, width: 24, color: AppColors.detailOnDark),
         const SizedBox(height: 14),
       ],
     );

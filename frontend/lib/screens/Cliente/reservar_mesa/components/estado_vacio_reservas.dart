@@ -52,12 +52,12 @@ class EstadoVacioReservas extends StatelessWidget {
             child: const Text(
               'RESERVAR AHORA',
               style: TextStyle(
-                color: AppColors.button,
+                color: AppColors.linkOnDark,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 2,
                 fontSize: 13,
                 decoration: TextDecoration.underline,
-                decorationColor: AppColors.button,
+                decorationColor: AppColors.linkOnDark,
               ),
             ),
           ),

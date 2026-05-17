@@ -133,10 +133,10 @@ class BottomBarEntrega extends StatelessWidget {
                 child: ElevatedButton(
                   onPressed: cargando ? null : onSiguiente,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.button,
+                    backgroundColor: AppColors.primaryAccent,
                     foregroundColor: Colors.white,
                     disabledBackgroundColor:
-                        AppColors.button.withValues(alpha: 0.5),
+                        AppColors.primaryAccent.withValues(alpha: 0.5),
                     minimumSize: const Size.fromHeight(50),
                     shape: const RoundedRectangleBorder(
                       borderRadius: kRadiusEntrega,

@@ -33,13 +33,13 @@ class EncabezadoGrupo extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
-                color: AppColors.button.withValues(alpha: 0.25),
+                color: AppColors.detailOnDark.withValues(alpha: 0.25),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text(
                 '$count',
                 style: const TextStyle(
-                  color: AppColors.button,
+                  color: AppColors.linkOnDark,
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
                 ),

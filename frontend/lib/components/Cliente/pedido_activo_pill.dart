@@ -129,7 +129,7 @@ class _PillContentState extends State<_PillContent>
 
   Color get _colorBorde => switch (widget.estado) {
         'pendiente' => AppColors.warning,
-        'preparando' => AppColors.button,
+        'preparando' => AppColors.primaryOnDark,
         'listo' => AppColors.success,
         _ => AppColors.textSecondary,
       };

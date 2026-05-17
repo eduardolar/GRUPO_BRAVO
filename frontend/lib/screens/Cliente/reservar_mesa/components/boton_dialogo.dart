@@ -34,15 +34,15 @@ class BotonDialogo extends StatelessWidget {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: activo
-                ? AppColors.button.withValues(alpha: 0.1)
+                ? AppColors.detailOnDark.withValues(alpha: 0.1)
                 : Colors.transparent,
             border: Border.all(
-              color: activo ? AppColors.button : AppColors.line,
+              color: activo ? AppColors.detailOnDark : AppColors.line,
             ),
           ),
           child: Icon(
             icono,
-            color: activo ? AppColors.button : AppColors.line,
+            color: activo ? AppColors.detailOnDark : AppColors.line,
             size: 20,
           ),
         ),

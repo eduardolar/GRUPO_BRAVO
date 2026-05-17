@@ -21,7 +21,7 @@ class _RecoveryCodesDialog extends StatelessWidget {
         children: [
           Icon(
             Icons.health_and_safety_outlined,
-            color: AppColors.button,
+            color: AppColors.detailOnDark,
             size: 22,
           ),
           SizedBox(width: 10),
@@ -112,7 +112,7 @@ class _RecoveryCodesDialog extends StatelessWidget {
           child: const Text(
             'HE GUARDADO MIS CÓDIGOS',
             style: TextStyle(
-              color: AppColors.button,
+              color: AppColors.linkOnDark,
               fontWeight: FontWeight.bold,
               letterSpacing: 0.5,
             ),
@@ -249,7 +249,7 @@ class _TotpSetupScreenState extends State<TotpSetupScreen> {
                   child: _cargandoSetup
                       ? const Center(
                           child: CircularProgressIndicator(
-                            color: AppColors.button,
+                            color: AppColors.primaryOnDark,
                           ),
                         )
                       : _buildContenido(),
@@ -310,7 +310,7 @@ class _TotpSetupScreenState extends State<TotpSetupScreen> {
             ),
             child: Column(
               children: [
-                const Icon(Icons.security, color: AppColors.button, size: 32),
+                const Icon(Icons.security, color: AppColors.detailOnDark, size: 32),
                 const SizedBox(height: 12),
                 const Text(
                   'Configura Google Authenticator',
@@ -366,7 +366,7 @@ class _TotpSetupScreenState extends State<TotpSetupScreen> {
                 children: [
                   const Icon(
                     Icons.vpn_key_outlined,
-                    color: AppColors.button,
+                    color: AppColors.detailOnDark,
                     size: 18,
                   ),
                   const SizedBox(width: 10),
@@ -454,7 +454,7 @@ class _TotpSetupScreenState extends State<TotpSetupScreen> {
             child: ElevatedButton(
               onPressed: _activando ? null : _activar,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.button,
+                backgroundColor: AppColors.primaryAccent,
                 foregroundColor: Colors.white,
                 disabledBackgroundColor: Colors.white12,
                 shape: const RoundedRectangleBorder(
