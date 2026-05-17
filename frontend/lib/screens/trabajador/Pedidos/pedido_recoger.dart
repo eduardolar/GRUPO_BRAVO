@@ -193,7 +193,7 @@ class _PedidoRecogerState extends State<PedidoRecoger> {
                         ),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.button,
+                        backgroundColor: AppColors.primaryAccent,
                         foregroundColor: Colors.white,
                         elevation: 0,
                         shape: const RoundedRectangleBorder(),
@@ -354,7 +354,7 @@ class _PedidoRecogerState extends State<PedidoRecoger> {
                     onTap: _irAConfirmar,
                     child: Container(
                       width: double.infinity,
-                      color: AppColors.button,
+                      color: AppColors.primaryAccent,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -442,11 +442,11 @@ class _RecogerCategoryBarState extends State<_RecogerCategoryBar> {
                   const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
               decoration: BoxDecoration(
                 color: selected
-                    ? AppColors.button
+                    ? AppColors.primaryAccent
                     : Colors.white.withValues(alpha: 0.10),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: selected ? AppColors.button : Colors.white24,
+                  color: selected ? AppColors.primaryAccent : Colors.white24,
                   width: 1,
                 ),
               ),

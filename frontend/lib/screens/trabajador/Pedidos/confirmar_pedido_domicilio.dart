@@ -287,7 +287,7 @@ class _ConfirmarPedidoDomicilioState extends State<ConfirmarPedidoDomicilio> {
                                   Text(
                                     '× ${item['cantidad']}',
                                     style: TextStyle(
-                                      color: AppColors.button,
+                                      color: AppColors.linkOnDark,
                                       fontWeight: FontWeight.w700,
                                       fontSize: 13,
                                     ),
@@ -330,7 +330,7 @@ class _ConfirmarPedidoDomicilioState extends State<ConfirmarPedidoDomicilio> {
                               Text(
                                 '${widget.total.toStringAsFixed(2).replaceAll('.', ',')} €',
                                 style: TextStyle(
-                                  color: AppColors.button,
+                                  color: AppColors.linkOnDark,
                                   fontSize: 16,
                                   fontWeight: FontWeight.w800,
                                 ),
@@ -386,7 +386,7 @@ class _ConfirmarPedidoDomicilioState extends State<ConfirmarPedidoDomicilio> {
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(color: AppColors.button),
+                          borderSide: BorderSide(color: AppColors.detailOnDark),
                         ),
                       ),
                     ),
@@ -574,7 +574,7 @@ class _ConfirmarPedidoDomicilioState extends State<ConfirmarPedidoDomicilio> {
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(color: AppColors.button),
+                          borderSide: BorderSide(color: AppColors.detailOnDark),
                         ),
                       ),
                     ),
@@ -601,7 +601,7 @@ class _ConfirmarPedidoDomicilioState extends State<ConfirmarPedidoDomicilio> {
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(color: AppColors.button),
+                          borderSide: BorderSide(color: AppColors.detailOnDark),
                         ),
                       ),
                     ),
@@ -633,7 +633,7 @@ class _ConfirmarPedidoDomicilioState extends State<ConfirmarPedidoDomicilio> {
                           ),
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.button,
+                          backgroundColor: AppColors.primaryAccent,
                           foregroundColor: Colors.white,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
@@ -861,7 +861,7 @@ class _MotoPainter extends CustomPainter {
       ..lineTo(w * 0.72, h * 0.60)
       ..lineTo(w * 0.28, h * 0.60)
       ..close();
-    canvas.drawPath(body, Paint()..color = const Color(0xFF800020));
+    canvas.drawPath(body, Paint()..color = AppColors.primary);
 
     // Asiento
     final seat = Path()
@@ -971,11 +971,11 @@ class _PayMethodButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
           color: selected
-              ? AppColors.button.withValues(alpha: 0.18)
+              ? AppColors.primaryAccent.withValues(alpha: 0.18)
               : Colors.white.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: selected ? AppColors.button : Colors.white12,
+            color: selected ? AppColors.primaryAccent : Colors.white12,
             width: selected ? 1.5 : 1,
           ),
         ),
@@ -984,7 +984,7 @@ class _PayMethodButton extends StatelessWidget {
           children: [
             Icon(
               icon,
-              color: selected ? AppColors.button : Colors.white38,
+              color: selected ? AppColors.detailOnDark : Colors.white38,
               size: 18,
             ),
             const SizedBox(width: 8),

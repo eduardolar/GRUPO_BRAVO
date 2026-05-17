@@ -218,7 +218,7 @@ class _StockBodyState extends State<_StockBody> {
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.button,
+              backgroundColor: AppColors.primary,
               shape: const RoundedRectangleBorder(),
               padding: const EdgeInsets.symmetric(
                 horizontal: 18,
@@ -296,14 +296,14 @@ class _StockBodyState extends State<_StockBody> {
                     child: _cargando
                         ? const Center(
                             child: CircularProgressIndicator(
-                              color: AppColors.button,
+                              color: AppColors.primaryOnDark,
                             ),
                           )
                         : _filtrados.isEmpty
                         ? _buildEmpty()
                         : RefreshIndicator(
                             onRefresh: _cargar,
-                            color: AppColors.button,
+                            color: AppColors.primaryOnDark,
                             child: ListView.separated(
                               padding: const EdgeInsets.fromLTRB(
                                 16,
@@ -375,7 +375,7 @@ class _StockBodyState extends State<_StockBody> {
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide(
-              color: AppColors.button.withValues(alpha: 0.7),
+              color: AppColors.detailOnDark.withValues(alpha: 0.7),
               width: 1.5,
             ),
           ),
@@ -439,7 +439,7 @@ class _IngredienteRow extends StatelessWidget {
   Color get _colorChip {
     if (_agotado) return AppColors.error;
     if (_bajoMinimo) return AppColors.warningLight;
-    return AppColors.button;
+    return AppColors.primaryAccent;
   }
 
   String get _labelChip {
@@ -508,7 +508,7 @@ class _IngredienteRow extends StatelessWidget {
                       children: [
                         Icon(
                           _iconChip,
-                          color: _colorChip == AppColors.button
+                          color: _colorChip == AppColors.primaryAccent
                               ? Colors.white
                               : _colorChip,
                           size: 10,
@@ -517,7 +517,7 @@ class _IngredienteRow extends StatelessWidget {
                         Text(
                           _labelChip,
                           style: TextStyle(
-                            color: _colorChip == AppColors.button
+                            color: _colorChip == AppColors.primaryAccent
                                 ? Colors.white
                                 : _colorChip,
                             fontSize: 11,
@@ -549,7 +549,7 @@ class _IngredienteRow extends StatelessWidget {
                     height: 18,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: AppColors.button,
+                      color: AppColors.primaryOnDark,
                     ),
                   ),
                 if (procesando) const Spacer(),
@@ -568,11 +568,11 @@ class _IngredienteRow extends StatelessWidget {
                       ),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.white,
-                        backgroundColor: AppColors.button.withValues(
+                        backgroundColor: AppColors.primaryAccent.withValues(
                           alpha: 0.25,
                         ),
                         side: BorderSide(
-                          color: AppColors.button.withValues(alpha: 0.7),
+                          color: AppColors.primaryAccent.withValues(alpha: 0.7),
                           width: 1,
                         ),
                         shape: RoundedRectangleBorder(

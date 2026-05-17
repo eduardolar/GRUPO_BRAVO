@@ -132,13 +132,13 @@ class _MiTurnoScreenState extends State<MiTurnoScreen> {
             child: FadeSlideIn(
               child: _cargando
                   ? const Center(
-                      child: CircularProgressIndicator(color: AppColors.button),
+                      child: CircularProgressIndicator(color: AppColors.primaryOnDark),
                     )
                   : _error != null
                   ? _buildError()
                   : RefreshIndicator(
                       onRefresh: _cargar,
-                      color: AppColors.button,
+                      color: AppColors.primaryOnDark,
                       backgroundColor: Colors.black87,
                       child: ListView(
                         padding: const EdgeInsets.fromLTRB(
@@ -154,7 +154,7 @@ class _MiTurnoScreenState extends State<MiTurnoScreen> {
                       label: 'Total cobrado',
                       valor: _formatoEuros(_stats?['totalCobrado']),
                       icono: Icons.euro,
-                      colorFondo: AppColors.button,
+                      colorFondo: AppColors.primaryAccent,
                     ),
                     const SizedBox(height: 12),
                     Row(
@@ -320,7 +320,7 @@ class _MiTurnoScreenState extends State<MiTurnoScreen> {
     required IconData icono,
     Color? color,
   }) {
-    final c = color ?? AppColors.button;
+    final c = color ?? AppColors.primaryAccent;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -387,7 +387,7 @@ class _MiTurnoScreenState extends State<MiTurnoScreen> {
               icon: const Icon(Icons.refresh),
               label: const Text('REINTENTAR'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.button,
+                backgroundColor: AppColors.primaryAccent,
                 foregroundColor: Colors.white,
                 shape: const RoundedRectangleBorder(),
               ),

@@ -173,7 +173,7 @@ class _ConfirmarPedidoRecogerState extends State<ConfirmarPedidoRecoger> {
                                       Text(
                                         '× ${item['cantidad']}',
                                         style: TextStyle(
-                                          color: AppColors.button,
+                                          color: AppColors.linkOnDark,
                                           fontWeight: FontWeight.w700,
                                           fontSize: 13,
                                         ),
@@ -217,7 +217,7 @@ class _ConfirmarPedidoRecogerState extends State<ConfirmarPedidoRecoger> {
                                   Text(
                                     '${widget.total.toStringAsFixed(2).replaceAll('.', ',')} €',
                                     style: TextStyle(
-                                      color: AppColors.button,
+                                      color: AppColors.linkOnDark,
                                       fontSize: 16,
                                       fontWeight: FontWeight.w800,
                                     ),
@@ -236,15 +236,15 @@ class _ConfirmarPedidoRecogerState extends State<ConfirmarPedidoRecoger> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 14, vertical: 12),
                           decoration: BoxDecoration(
-                            color: AppColors.button.withValues(alpha: 0.10),
+                            color: AppColors.detailOnDark.withValues(alpha: 0.10),
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(
-                                color: AppColors.button.withValues(alpha: 0.35)),
+                                color: AppColors.detailOnDark.withValues(alpha: 0.35)),
                           ),
                           child: Row(
                             children: [
                               Icon(Icons.storefront,
-                                  color: AppColors.button, size: 18),
+                                  color: AppColors.detailOnDark, size: 18),
                               const SizedBox(width: 10),
                               const Expanded(
                                 child: Text(
@@ -311,7 +311,7 @@ class _ConfirmarPedidoRecogerState extends State<ConfirmarPedidoRecoger> {
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(10),
                               borderSide:
-                                  BorderSide(color: AppColors.button),
+                                  BorderSide(color: AppColors.detailOnDark),
                             ),
                           ),
                         ),
@@ -416,7 +416,7 @@ class _ConfirmarPedidoRecogerState extends State<ConfirmarPedidoRecoger> {
                               ),
                             ),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.button,
+                              backgroundColor: AppColors.primaryAccent,
                               foregroundColor: Colors.white,
                               elevation: 0,
                               shape: RoundedRectangleBorder(
@@ -783,11 +783,11 @@ class _PayMethodButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
           color: selected
-              ? AppColors.button.withValues(alpha: 0.18)
+              ? AppColors.primaryAccent.withValues(alpha: 0.18)
               : Colors.white.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: selected ? AppColors.button : Colors.white12,
+            color: selected ? AppColors.primaryAccent : Colors.white12,
             width: selected ? 1.5 : 1,
           ),
         ),
@@ -796,7 +796,7 @@ class _PayMethodButton extends StatelessWidget {
           children: [
             Icon(
               icon,
-              color: selected ? AppColors.button : Colors.white38,
+              color: selected ? AppColors.detailOnDark : Colors.white38,
               size: 18,
             ),
             const SizedBox(width: 8),

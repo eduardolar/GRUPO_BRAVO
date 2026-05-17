@@ -184,7 +184,7 @@ class _CrearPedidosState extends State<CrearComanda> {
                       Text(
                         '× ${e.value}',
                         style: TextStyle(
-                          color: AppColors.button,
+                          color: AppColors.linkOnDark,
                           fontWeight: FontWeight.w700,
                           fontSize: 13,
                         ),
@@ -228,7 +228,7 @@ class _CrearPedidosState extends State<CrearComanda> {
                   Text(
                     '${_totalPrecio.toStringAsFixed(2).replaceAll(".", ",")} €',
                     style: TextStyle(
-                      color: AppColors.button,
+                      color: AppColors.linkOnDark,
                       fontSize: 16,
                       fontWeight: FontWeight.w800,
                     ),
@@ -255,7 +255,7 @@ class _CrearPedidosState extends State<CrearComanda> {
                   Expanded(
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.button,
+                        backgroundColor: AppColors.primaryAccent,
                         shape: const RoundedRectangleBorder(),
                         padding: const EdgeInsets.symmetric(
                           horizontal: 20,
@@ -505,7 +505,7 @@ class _CrearPedidosState extends State<CrearComanda> {
           ],
         ),
         duration: const Duration(seconds: 3),
-        backgroundColor: error ? AppColors.errorText : AppColors.button,
+        backgroundColor: error ? AppColors.errorText : AppColors.primary,
         behavior: SnackBarBehavior.floating,
         shape: const RoundedRectangleBorder(),
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 32),
@@ -627,7 +627,7 @@ class _CrearPedidosState extends State<CrearComanda> {
                         ),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.button,
+                        backgroundColor: AppColors.primaryAccent,
                         foregroundColor: Colors.white,
                         elevation: 0,
                         shape: const RoundedRectangleBorder(),
@@ -856,7 +856,7 @@ class _CrearPedidosState extends State<CrearComanda> {
                     onTap: () => _mostrarConfirmacion(context),
                     child: Container(
                       width: double.infinity,
-                      color: AppColors.button,
+                      color: AppColors.primaryAccent,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -967,9 +967,9 @@ class _CategoryBarState extends State<_CategoryBar> {
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: isSelected ? AppColors.button : Colors.black45,
+                      color: isSelected ? AppColors.primaryAccent : Colors.black45,
                       border: Border.all(
-                        color: isSelected ? AppColors.button : Colors.white24,
+                        color: isSelected ? AppColors.primaryAccent : Colors.white24,
                         width: 1,
                       ),
                     ),
@@ -1128,7 +1128,7 @@ class _PlateAnimationState extends State<_PlateAnimation>
                   angle: 0.15,
                   child: Icon(
                     Icons.restaurant,
-                    color: AppColors.button,
+                    color: AppColors.detailOnDark,
                     size: 32,
                   ),
                 ),

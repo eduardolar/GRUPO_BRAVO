@@ -332,7 +332,7 @@ class _PerfilTrabajadorScreenState extends State<PerfilTrabajadorScreen> {
                     height: 52,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.button,
+                        backgroundColor: AppColors.primaryAccent,
                         foregroundColor: Colors.white,
                         disabledBackgroundColor: Colors.white12,
                         shape: const RoundedRectangleBorder(
@@ -425,7 +425,7 @@ class _PerfilTrabajadorScreenState extends State<PerfilTrabajadorScreen> {
           color: Colors.white.withValues(alpha: 0.5),
           fontSize: 14,
         ),
-        prefixIcon: const Icon(Icons.lock_outline, color: AppColors.button, size: 20),
+        prefixIcon: const Icon(Icons.lock_outline, color: AppColors.detailOnDark, size: 20),
         suffixIcon: IconButton(
           tooltip: oculto ? 'Mostrar contraseña' : 'Ocultar contraseña',
           icon: Icon(
@@ -443,7 +443,7 @@ class _PerfilTrabajadorScreenState extends State<PerfilTrabajadorScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.button, width: 2),
+          borderSide: const BorderSide(color: AppColors.detailOnDark, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -534,7 +534,7 @@ class _PerfilTrabajadorScreenState extends State<PerfilTrabajadorScreen> {
                             child: ElevatedButton(
                               onPressed: (_hayCambios && !_isLoading) ? _guardarCambios : null,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.button,
+                                backgroundColor: AppColors.primaryAccent,
                                 disabledBackgroundColor: Colors.white.withValues(alpha: 0.08),
                                 foregroundColor: Colors.white,
                                 disabledForegroundColor: Colors.white38,
@@ -661,8 +661,8 @@ class _PerfilTrabajadorScreenState extends State<PerfilTrabajadorScreen> {
           height: 88,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: AppColors.button.withValues(alpha: 0.15),
-            border: Border.all(color: AppColors.button, width: 2),
+            color: AppColors.detailOnDark.withValues(alpha: 0.15),
+            border: Border.all(color: AppColors.detailOnDark, width: 2),
           ),
           child: Center(
             child: Text(
@@ -732,7 +732,7 @@ class _PerfilTrabajadorScreenState extends State<PerfilTrabajadorScreen> {
       ),
       child: Row(
         children: [
-          Icon(icono, color: AppColors.button, size: 20),
+          Icon(icono, color: AppColors.detailOnDark, size: 20),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -779,7 +779,7 @@ class _PerfilTrabajadorScreenState extends State<PerfilTrabajadorScreen> {
           color: Colors.white.withValues(alpha: 0.5),
           fontSize: 14,
         ),
-        prefixIcon: Icon(icono, color: AppColors.button, size: 20),
+        prefixIcon: Icon(icono, color: AppColors.detailOnDark, size: 20),
         suffixIcon: suffixIcon,
         filled: true,
         fillColor: Colors.white.withValues(alpha: 0.07),
@@ -789,7 +789,7 @@ class _PerfilTrabajadorScreenState extends State<PerfilTrabajadorScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.button, width: 2),
+          borderSide: const BorderSide(color: AppColors.detailOnDark, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),

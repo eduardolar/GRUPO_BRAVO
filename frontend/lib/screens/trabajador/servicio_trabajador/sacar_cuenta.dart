@@ -178,7 +178,7 @@ class _SacarCuentaState extends State<SacarCuenta> {
             fontWeight: FontWeight.w600,
           ),
         ),
-        backgroundColor: error ? AppColors.error : AppColors.button,
+        backgroundColor: error ? AppColors.error : AppColors.primary,
         behavior: SnackBarBehavior.floating,
         shape: const RoundedRectangleBorder(),
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 32),
@@ -292,7 +292,7 @@ class _SacarCuentaState extends State<SacarCuenta> {
                                           onPressed: () =>
                                               Navigator.of(context).pop(),
                                           style: ElevatedButton.styleFrom(
-                                            backgroundColor: AppColors.button,
+                                            backgroundColor: AppColors.primaryAccent,
                                             foregroundColor: Colors.white,
                                             elevation: 0,
                                             shape: const RoundedRectangleBorder(),
@@ -653,7 +653,7 @@ class _PanelCuentaState extends State<_PanelCuenta> {
               Navigator.pop(ctx, v);
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.button,
+              backgroundColor: AppColors.primaryAccent,
               shape: const RoundedRectangleBorder(),
             ),
             child: const Text(
@@ -747,7 +747,7 @@ class _PanelCuentaState extends State<_PanelCuenta> {
               Navigator.pop(ctx, v);
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.button,
+              backgroundColor: AppColors.primaryAccent,
               shape: const RoundedRectangleBorder(),
             ),
             child: const Text(
@@ -928,7 +928,7 @@ class _PanelCuentaState extends State<_PanelCuenta> {
                                   Text(
                                     '× ${item['cantidad']}',
                                     style: TextStyle(
-                                      color: AppColors.button,
+                                      color: AppColors.linkOnDark,
                                       fontWeight: FontWeight.w700,
                                       fontSize: 17,
                                     ),
@@ -1028,9 +1028,9 @@ class _PanelCuentaState extends State<_PanelCuenta> {
                                   vertical: 8,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: AppColors.button.withValues(alpha: 0.12),
+                                  color: AppColors.detailOnDark.withValues(alpha: 0.12),
                                   border: Border.all(
-                                    color: AppColors.button.withValues(alpha: 0.4),
+                                    color: AppColors.detailOnDark.withValues(alpha: 0.4),
                                   ),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
@@ -1040,7 +1040,7 @@ class _PanelCuentaState extends State<_PanelCuenta> {
                                   'por persona',
                                   textAlign: TextAlign.center,
                                   style: const TextStyle(
-                                    color: AppColors.button,
+                                    color: AppColors.linkOnDark,
                                     fontSize: 12,
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -1149,7 +1149,7 @@ class _BotonMetodoPago extends StatelessWidget {
   Widget build(BuildContext context) {
     return Expanded(
       child: Material(
-        color: AppColors.button,
+        color: AppColors.primaryAccent,
         child: InkWell(
           onTap: procesando ? null : onTap,
           child: Container(
@@ -1205,10 +1205,10 @@ class _BotonAjuste extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = activo ? AppColors.button : AppColors.textSecondary;
+    final color = activo ? AppColors.primary : AppColors.textSecondary;
     return Material(
       color: activo
-          ? AppColors.button.withValues(alpha: 0.15)
+          ? AppColors.primary.withValues(alpha: 0.15)
           : AppColors.background,
       borderRadius: BorderRadius.circular(8),
       child: InkWell(
@@ -1218,7 +1218,7 @@ class _BotonAjuste extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
           decoration: BoxDecoration(
             border: Border.all(
-              color: activo ? AppColors.button : AppColors.line,
+              color: activo ? AppColors.primary : AppColors.line,
               width: activo ? 1.5 : 0.8,
             ),
             borderRadius: BorderRadius.circular(8),
@@ -1255,15 +1255,15 @@ class _SelectorDividir extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final activo = valor > 1;
-    final color = activo ? AppColors.button : AppColors.textSecondary;
+    final color = activo ? AppColors.primary : AppColors.textSecondary;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
       decoration: BoxDecoration(
         color: activo
-            ? AppColors.button.withValues(alpha: 0.15)
+            ? AppColors.primary.withValues(alpha: 0.15)
             : AppColors.background,
         border: Border.all(
-          color: activo ? AppColors.button : AppColors.line,
+          color: activo ? AppColors.primary : AppColors.line,
           width: activo ? 1.5 : 0.8,
         ),
         borderRadius: BorderRadius.circular(8),
