@@ -67,7 +67,7 @@ Color _colorAccion(String accion) {
     return AppColors.successVibrant;
   }
   if (accion.contains('rol') || accion.contains('estado')) return AppColors.warningLight;
-  return AppColors.button;
+  return AppColors.primaryOnDark;
 }
 
 IconData _iconoAccion(String accion) {
@@ -302,7 +302,7 @@ class _ActividadScreenState extends State<ActividadScreen>
   Widget _buildListaUsuarios() {
     if (_cargandoUsuarios) {
       return const Center(
-        child: CircularProgressIndicator(color: AppColors.button),
+        child: CircularProgressIndicator(color: AppColors.primaryOnDark),
       );
     }
     if (_errorUsuarios != null) {
@@ -318,7 +318,7 @@ class _ActividadScreenState extends State<ActividadScreen>
     }
     return RefreshIndicator(
       onRefresh: _cargarUsuarios,
-      color: AppColors.button,
+      color: AppColors.primary,
       backgroundColor: AppColors.background,
       child: ListView.builder(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
@@ -354,7 +354,7 @@ class _ActividadScreenState extends State<ActividadScreen>
   Widget _buildListaPagos() {
     if (_cargandoPagos) {
       return const Center(
-        child: CircularProgressIndicator(color: AppColors.button),
+        child: CircularProgressIndicator(color: AppColors.primaryOnDark),
       );
     }
     if (_errorPagos != null) {
@@ -366,7 +366,7 @@ class _ActividadScreenState extends State<ActividadScreen>
     }
     return RefreshIndicator(
       onRefresh: _cargarPagos,
-      color: AppColors.button,
+      color: AppColors.primary,
       backgroundColor: AppColors.background,
       child: ListView.builder(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
@@ -494,7 +494,7 @@ class _Header extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 6),
-          Container(height: 2, width: 40, color: AppColors.button),
+          Container(height: 2, width: 40, color: AppColors.detailOnDark),
         ],
       ),
     );
@@ -559,9 +559,9 @@ class _BarraTabs extends StatelessWidget {
       child: TabBar(
         controller: controller,
         indicator: BoxDecoration(
-          color: AppColors.button.withValues(alpha: 0.15),
+          color: AppColors.detailOnDark.withValues(alpha: 0.15),
           borderRadius: _kRadiusSm,
-          border: Border.all(color: AppColors.button.withValues(alpha: 0.6)),
+          border: Border.all(color: AppColors.detailOnDark.withValues(alpha: 0.6)),
         ),
         indicatorSize: TabBarIndicatorSize.tab,
         labelColor: Colors.white,
@@ -727,11 +727,11 @@ class _ChipFiltro extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           decoration: BoxDecoration(
             color: seleccionado
-                ? AppColors.button
+                ? AppColors.primaryAccent
                 : Colors.white.withValues(alpha: 0.07),
             borderRadius: _kRadiusSm,
             border: Border.all(
-              color: seleccionado ? AppColors.button : Colors.white12,
+              color: seleccionado ? AppColors.primaryAccent : Colors.white12,
             ),
           ),
           alignment: Alignment.center,
@@ -795,7 +795,7 @@ class _EstadoError extends StatelessWidget {
             icon: const Icon(Icons.refresh, size: 16),
             label: const Text('REINTENTAR'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.button,
+              backgroundColor: AppColors.primaryAccent,
               foregroundColor: Colors.white,
               shape: const RoundedRectangleBorder(borderRadius: _kRadius),
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -1069,7 +1069,7 @@ class _EventoPagoTile extends StatelessWidget {
                                     fontWeight: FontWeight.w800,
                                     color: esError
                                         ? AppColors.error
-                                        : AppColors.button,
+                                        : AppColors.linkOnDark,
                                     fontFeatures: const [
                                       FontFeature.tabularFigures(),
                                     ],

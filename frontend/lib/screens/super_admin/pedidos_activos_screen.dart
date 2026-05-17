@@ -242,7 +242,7 @@ class _PedidosActivosScreenState extends State<PedidosActivosScreen> {
                           Icons.sync_rounded,
                           size: 11,
                           color: _cargando
-                              ? AppColors.button
+                              ? AppColors.detailOnDark
                               : Colors.white.withValues(alpha: 0.4),
                         ),
                         const SizedBox(width: 5),
@@ -270,7 +270,7 @@ class _PedidosActivosScreenState extends State<PedidosActivosScreen> {
   Widget _buildCuerpo(List<Pedido> lista) {
     if (_cargando && _pedidos.isEmpty) {
       return const Center(
-        child: CircularProgressIndicator(color: AppColors.button),
+        child: CircularProgressIndicator(color: AppColors.primaryOnDark),
       );
     }
     if (_error != null && _pedidos.isEmpty) {
@@ -293,7 +293,7 @@ class _PedidosActivosScreenState extends State<PedidosActivosScreen> {
               onPressed: _cargar,
               child: Text(
                 'Reintentar',
-                style: GoogleFonts.manrope(color: AppColors.button),
+                style: GoogleFonts.manrope(color: AppColors.linkOnDark),
               ),
             ),
           ],
@@ -332,7 +332,7 @@ class _PedidosActivosScreenState extends State<PedidosActivosScreen> {
 
     return RefreshIndicator(
       onRefresh: () => _cargar(),
-      color: AppColors.button,
+      color: AppColors.primaryOnDark,
       backgroundColor: Colors.black,
       child: ListView.builder(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
@@ -429,7 +429,7 @@ class _PedidosActivosScreenState extends State<PedidosActivosScreen> {
                         height: 18,
                         child: CircularProgressIndicator(
                           strokeWidth: 1.8,
-                          color: AppColors.button,
+                          color: AppColors.primaryOnDark,
                         ),
                       )
                     : Icon(
@@ -443,7 +443,7 @@ class _PedidosActivosScreenState extends State<PedidosActivosScreen> {
             ],
           ),
           const SizedBox(height: 6),
-          Container(height: 2, width: 40, color: AppColors.button),
+          Container(height: 2, width: 40, color: AppColors.detailOnDark),
           const SizedBox(height: 8),
           Text(
             widget.restauranteNombre,
@@ -473,10 +473,10 @@ class _PedidosActivosScreenState extends State<PedidosActivosScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
                 color: selected
-                    ? AppColors.button
+                    ? AppColors.primaryAccent
                     : Colors.white.withValues(alpha: 0.07),
                 border: Border.all(
-                  color: selected ? AppColors.button : Colors.white24,
+                  color: selected ? AppColors.primaryAccent : Colors.white24,
                 ),
               ),
               child: Row(
@@ -626,7 +626,7 @@ class _PedidoTile extends StatelessWidget {
                             style: GoogleFonts.manrope(
                               fontWeight: FontWeight.w800,
                               fontSize: 14,
-                              color: AppColors.button,
+                              color: AppColors.linkOnDark,
                             ),
                           ),
                           Text(

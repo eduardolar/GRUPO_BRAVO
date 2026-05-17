@@ -110,7 +110,7 @@ class _SuperCierresCajaScreenState extends State<SuperCierresCajaScreen> {
       builder: (ctx, child) => Theme(
         data: ThemeData.dark().copyWith(
           colorScheme: const ColorScheme.dark(
-            primary: AppColors.button,
+            primary: AppColors.primaryOnDark,
             surface: AppColors.bottomSheetBg,
           ),
         ),
@@ -223,7 +223,7 @@ class _SuperCierresCajaScreenState extends State<SuperCierresCajaScreen> {
 
   Widget _buildBody() {
     return RefreshIndicator(
-      color: AppColors.button,
+      color: AppColors.primaryOnDark,
       backgroundColor: Colors.black87,
       onRefresh: _cargar,
       child: SingleChildScrollView(
@@ -245,7 +245,7 @@ class _SuperCierresCajaScreenState extends State<SuperCierresCajaScreen> {
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 60),
                 child: Center(
-                  child: CircularProgressIndicator(color: AppColors.button),
+                  child: CircularProgressIndicator(color: AppColors.primaryOnDark),
                 ),
               )
             else if (_error != null)
@@ -282,7 +282,7 @@ class _SuperCierresCajaScreenState extends State<SuperCierresCajaScreen> {
           child: Row(
             children: [
               const Icon(Icons.storefront_outlined,
-                  color: AppColors.button, size: 18),
+                  color: AppColors.detailOnDark, size: 18),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -328,7 +328,7 @@ class _SuperCierresCajaScreenState extends State<SuperCierresCajaScreen> {
           child: Row(
             children: [
               const Icon(Icons.calendar_today,
-                  color: AppColors.button, size: 18),
+                  color: AppColors.detailOnDark, size: 18),
               const SizedBox(width: 12),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -387,7 +387,7 @@ class _SuperCierresCajaScreenState extends State<SuperCierresCajaScreen> {
               icon: const Icon(Icons.refresh),
               label: const Text('Reintentar'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.button,
+                backgroundColor: AppColors.primaryAccent,
                 foregroundColor: Colors.white,
               ),
             ),
@@ -454,7 +454,7 @@ class _CierreCard extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
-        splashColor: AppColors.button.withValues(alpha: 0.12),
+        splashColor: AppColors.primaryOnDark.withValues(alpha: 0.12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -464,14 +464,14 @@ class _CierreCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(9),
                   decoration: BoxDecoration(
-                    color: AppColors.button.withValues(alpha: 0.2),
+                    color: AppColors.detailOnDark.withValues(alpha: 0.2),
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: AppColors.button.withValues(alpha: 0.5),
+                      color: AppColors.detailOnDark.withValues(alpha: 0.5),
                     ),
                   ),
                   child: Icon(_iconoTurno(turno),
-                      color: AppColors.button, size: 18),
+                      color: AppColors.detailOnDark, size: 18),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -558,7 +558,7 @@ class _CierreCard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w800,
-                  color: AppColors.button,
+                  color: AppColors.linkOnDark,
                   letterSpacing: 1.2,
                 ),
               ),
@@ -686,7 +686,7 @@ class _SelectorSucursalSheet extends StatelessWidget {
               child: Row(
                 children: [
                   Icon(Icons.storefront_outlined,
-                      color: AppColors.button, size: 20),
+                      color: AppColors.detailOnDark, size: 20),
                   SizedBox(width: 10),
                   Text(
                     'SELECCIONAR SUCURSAL',
@@ -705,7 +705,7 @@ class _SelectorSucursalSheet extends StatelessWidget {
             if (cargando)
               const Padding(
                 padding: EdgeInsets.all(24),
-                child: CircularProgressIndicator(color: AppColors.button),
+                child: CircularProgressIndicator(color: AppColors.primaryOnDark),
               )
             else
               ConstrainedBox(
@@ -754,20 +754,20 @@ class _SelectorSucursalSheet extends StatelessWidget {
     return ListTile(
       leading: Icon(
         icono,
-        color: seleccionado ? AppColors.button : Colors.white54,
+        color: seleccionado ? AppColors.detailOnDark : Colors.white54,
         size: 20,
       ),
       title: Text(
         nombre,
         style: TextStyle(
-          color: seleccionado ? AppColors.button : Colors.white,
+          color: seleccionado ? AppColors.linkOnDark : Colors.white,
           fontWeight:
               seleccionado ? FontWeight.bold : FontWeight.normal,
           fontSize: 14,
         ),
       ),
       trailing: seleccionado
-          ? const Icon(Icons.check, color: AppColors.button, size: 18)
+          ? const Icon(Icons.check, color: AppColors.detailOnDark, size: 18)
           : null,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       onTap: onTap,

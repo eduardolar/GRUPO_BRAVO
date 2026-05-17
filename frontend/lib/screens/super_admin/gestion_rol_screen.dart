@@ -119,7 +119,7 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
                       if (provider.cargando) {
                         return const Center(
                           child: CircularProgressIndicator(
-                            color: AppColors.button,
+                            color: AppColors.primaryOnDark,
                           ),
                         );
                       }
@@ -205,7 +205,7 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
             ),
           ),
           const SizedBox(height: 6),
-          Container(height: 2, width: 40, color: AppColors.button),
+          Container(height: 2, width: 40, color: AppColors.detailOnDark),
           const SizedBox(height: 10),
           Text(
             'Modifica el rol de cualquier usuario de esta sucursal',
@@ -227,9 +227,9 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
       padding: const EdgeInsets.only(top: 8, bottom: 10),
       child: Row(
         children: [
-          Container(width: 3, height: 18, color: AppColors.button),
+          Container(width: 3, height: 18, color: AppColors.detailOnDark),
           const SizedBox(width: 10),
-          Icon(icono, color: AppColors.button, size: 16),
+          Icon(icono, color: AppColors.detailOnDark, size: 16),
           const SizedBox(width: 8),
           Text(
             etiqueta.toUpperCase(),
@@ -244,10 +244,10 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
             decoration: BoxDecoration(
-              color: AppColors.button.withValues(alpha: 0.2),
+              color: AppColors.detailOnDark.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(4),
               border: Border.all(
-                color: AppColors.button.withValues(alpha: 0.45),
+                color: AppColors.detailOnDark.withValues(alpha: 0.45),
               ),
             ),
             child: Text(
@@ -289,7 +289,7 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
                   Container(
                     width: 36,
                     height: 36,
-                    color: AppColors.button,
+                    color: AppColors.primaryAccent,
                     alignment: Alignment.center,
                     child: Text(
                       user.nombre
@@ -347,11 +347,11 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
                   ),
                   focusedBorder: const OutlineInputBorder(
                     borderRadius: BorderRadius.zero,
-                    borderSide: BorderSide(color: AppColors.button, width: 1.5),
+                    borderSide: BorderSide(color: AppColors.detailOnDark, width: 1.5),
                   ),
                   prefixIcon: const Icon(
                     Icons.vpn_key_outlined,
-                    color: AppColors.button,
+                    color: AppColors.detailOnDark,
                   ),
                   filled: true,
                   fillColor: const Color(0x8C000000),
@@ -397,7 +397,7 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
                           'Rol actualizado a ${_rolesEtiqueta[rolActual] ?? rolActual}',
                           style: GoogleFonts.manrope(),
                         ),
-                        backgroundColor: AppColors.button,
+                        backgroundColor: AppColors.primary,
                       ),
                     );
                   }
@@ -414,7 +414,7 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
                 'Guardar',
                 style: GoogleFonts.manrope(
                   fontWeight: FontWeight.w700,
-                  color: AppColors.button,
+                  color: AppColors.linkOnDark,
                 ),
               ),
             ),
@@ -466,7 +466,7 @@ class _RolTile extends StatelessWidget {
                   width: 52,
                   height: 64,
                   decoration: BoxDecoration(
-                    color: AppColors.button.withValues(alpha: 0.85),
+                    color: AppColors.primaryAccent.withValues(alpha: 0.85),
                     borderRadius: const BorderRadius.only(
                       topLeft: Radius.circular(20),
                       bottomLeft: Radius.circular(20),
@@ -502,10 +502,10 @@ class _RolTile extends StatelessWidget {
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: AppColors.button.withValues(alpha: 0.25),
+                          color: AppColors.detailOnDark.withValues(alpha: 0.25),
                           borderRadius: BorderRadius.circular(4),
                           border: Border.all(
-                            color: AppColors.button.withValues(alpha: 0.5),
+                            color: AppColors.detailOnDark.withValues(alpha: 0.5),
                           ),
                         ),
                         child: Text(

@@ -20,7 +20,7 @@ import '../../services/producto_service.dart';
 const _kGreen = AppColors.successVibrant;
 const _kOrange = AppColors.warningLight;
 const _kRed = AppColors.error;
-const _kAccent = AppColors.button;
+const _kAccent = AppColors.primaryAccent; // fills sólidos / texto sobre diálogo blanco
 
 // ─── Constantes de validación / negocio ──────────────────────────────────────
 const double _kPrecioMin = 0.01;
@@ -670,7 +670,7 @@ class _CatalogoMasivoScreenState extends State<CatalogoMasivoScreen> {
     }
     // 2) Cargando productos de la sucursal seleccionada.
     if (_cargando) {
-      return const Center(child: CircularProgressIndicator(color: _kAccent));
+      return const Center(child: CircularProgressIndicator(color: AppColors.primaryOnDark));
     }
     // 3) Error al cargar.
     if (_error != null) {
@@ -710,7 +710,7 @@ class _CatalogoMasivoScreenState extends State<CatalogoMasivoScreen> {
         Expanded(
           child: RefreshIndicator(
             onRefresh: _cargar,
-            color: _kAccent,
+            color: AppColors.primaryOnDark,
             child: ListView(
               controller: _scroll,
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
@@ -745,7 +745,7 @@ class _CatalogoMasivoScreenState extends State<CatalogoMasivoScreen> {
             child: SizedBox(
               height: 22,
               width: 22,
-              child: CircularProgressIndicator(color: _kAccent, strokeWidth: 2),
+              child: CircularProgressIndicator(color: AppColors.primaryOnDark, strokeWidth: 2),
             ),
           );
         }
@@ -766,7 +766,7 @@ class _CatalogoMasivoScreenState extends State<CatalogoMasivoScreen> {
                   onPressed: prov.cargar,
                   child: const Text(
                     'Reintentar',
-                    style: TextStyle(color: _kAccent, fontSize: 12),
+                    style: TextStyle(color: AppColors.linkOnDark, fontSize: 12),
                   ),
                 ),
               ],
@@ -780,7 +780,7 @@ class _CatalogoMasivoScreenState extends State<CatalogoMasivoScreen> {
             children: [
               Row(
                 children: [
-                  Container(width: 3, height: 18, color: AppColors.button),
+                  Container(width: 3, height: 18, color: AppColors.detailOnDark),
                   const SizedBox(width: 10),
                   const Text(
                     'SUCURSAL',
@@ -888,7 +888,7 @@ class _CatalogoMasivoScreenState extends State<CatalogoMasivoScreen> {
         children: [
           Row(
             children: [
-              Container(width: 3, height: 18, color: AppColors.button),
+              Container(width: 3, height: 18, color: AppColors.detailOnDark),
               const SizedBox(width: 10),
               const Text(
                 'EDICIÓN MASIVA',
@@ -1002,7 +1002,7 @@ class _CatalogoMasivoScreenState extends State<CatalogoMasivoScreen> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: _kAccent, width: 1.5),
+                borderSide: const BorderSide(color: AppColors.detailOnDark, width: 1.5),
               ),
             ),
           ),
@@ -1156,7 +1156,7 @@ class _CabeceraCategoria extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Row(
             children: [
-              const Icon(Icons.folder_rounded, color: _kAccent, size: 20),
+              const Icon(Icons.folder_rounded, color: AppColors.detailOnDark, size: 20),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
@@ -1307,11 +1307,11 @@ class _ChipSucursal extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
             color: activa
-                ? _kAccent.withValues(alpha: 0.22)
+                ? AppColors.detailOnDark.withValues(alpha: 0.22)
                 : Colors.white.withValues(alpha: 0.06),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: activa ? _kAccent : Colors.white.withValues(alpha: 0.18),
+              color: activa ? AppColors.detailOnDark : Colors.white.withValues(alpha: 0.18),
               width: activa ? 1.4 : 1,
             ),
           ),
@@ -1321,7 +1321,7 @@ class _ChipSucursal extends StatelessWidget {
               Icon(
                 activa ? Icons.storefront_rounded : Icons.storefront_outlined,
                 size: 14,
-                color: activa ? _kAccent : Colors.white70,
+                color: activa ? AppColors.detailOnDark : Colors.white70,
               ),
               const SizedBox(width: 6),
               Text(
@@ -1791,14 +1791,14 @@ class _ImagenProductoSheetState extends State<_ImagenProductoSheet> {
               onPressed: _subiendo ? null : _elegirImagen,
               icon: const Icon(
                 Icons.add_photo_alternate_outlined,
-                color: _kAccent,
+                color: AppColors.detailOnDark,
               ),
               label: Text(
                 tieneImagen || tieneNueva ? 'CAMBIAR IMAGEN' : 'ELEGIR IMAGEN',
-                style: const TextStyle(color: _kAccent, letterSpacing: 1),
+                style: const TextStyle(color: AppColors.linkOnDark, letterSpacing: 1),
               ),
               style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: _kAccent),
+                side: const BorderSide(color: AppColors.detailOnDark),
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
@@ -2021,7 +2021,7 @@ class _CampoPrecio extends StatelessWidget {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: error ? _kRed : _kAccent, width: 1.5),
+            borderSide: BorderSide(color: error ? _kRed : AppColors.detailOnDark, width: 1.5),
           ),
         ),
       ),

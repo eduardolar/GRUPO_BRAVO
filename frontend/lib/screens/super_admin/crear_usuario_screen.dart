@@ -179,7 +179,7 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
         shape: const RoundedRectangleBorder(),
         title: Row(
           children: [
-            const Icon(Icons.mark_email_read_outlined, color: AppColors.button),
+            const Icon(Icons.mark_email_read_outlined, color: AppColors.primary),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
@@ -211,7 +211,7 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
                 correo,
                 style: GoogleFonts.manrope(
                   fontWeight: FontWeight.w700,
-                  color: AppColors.button,
+                  color: AppColors.primary,
                   fontSize: 13,
                 ),
               ),
@@ -233,7 +233,7 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
             width: double.infinity,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.button,
+                backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
                 shape: const RoundedRectangleBorder(
                   borderRadius: BorderRadius.zero,
@@ -358,7 +358,7 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
           ),
         ),
         const SizedBox(height: 10),
-        Container(height: 2, width: 40, color: AppColors.button),
+        Container(height: 2, width: 40, color: AppColors.detailOnDark),
         const SizedBox(height: 15),
         Text(
           _modoLibre
@@ -427,7 +427,7 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(15),
-            borderSide: const BorderSide(color: AppColors.button, width: 2),
+            borderSide: const BorderSide(color: AppColors.detailOnDark, width: 2),
           ),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
           errorBorder: OutlineInputBorder(
@@ -466,7 +466,7 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
                 width: 22,
                 height: 22,
                 child: CircularProgressIndicator(
-                  color: AppColors.button,
+                  color: AppColors.primaryOnDark,
                   strokeWidth: 2,
                 ),
               ),
@@ -500,7 +500,7 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(15),
                 borderSide:
-                    const BorderSide(color: AppColors.button, width: 2),
+                    const BorderSide(color: AppColors.detailOnDark, width: 2),
               ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(15),
@@ -539,7 +539,7 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
       height: 55,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.button,
+          backgroundColor: AppColors.primaryAccent,
           foregroundColor: Colors.white,
           shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
           elevation: 0,

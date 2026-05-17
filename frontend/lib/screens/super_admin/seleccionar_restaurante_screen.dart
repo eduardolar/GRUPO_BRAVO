@@ -60,7 +60,7 @@ class _SeleccionarRestauranteScreenState
                   ),
                   prefixIcon: const Icon(
                     Icons.storefront_outlined,
-                    color: AppColors.button,
+                    color: AppColors.detailOnDark,
                     size: 20,
                   ),
                   filled: true,
@@ -74,7 +74,7 @@ class _SeleccionarRestauranteScreenState
                   ),
                   focusedBorder: const OutlineInputBorder(
                     borderRadius: BorderRadius.zero,
-                    borderSide: BorderSide(color: AppColors.button, width: 1.5),
+                    borderSide: BorderSide(color: AppColors.detailOnDark, width: 1.5),
                   ),
                 ),
                 validator: (v) =>
@@ -92,7 +92,7 @@ class _SeleccionarRestauranteScreenState
                   ),
                   prefixIcon: const Icon(
                     Icons.location_on_outlined,
-                    color: AppColors.button,
+                    color: AppColors.detailOnDark,
                     size: 20,
                   ),
                   filled: true,
@@ -106,7 +106,7 @@ class _SeleccionarRestauranteScreenState
                   ),
                   focusedBorder: const OutlineInputBorder(
                     borderRadius: BorderRadius.zero,
-                    borderSide: BorderSide(color: AppColors.button, width: 1.5),
+                    borderSide: BorderSide(color: AppColors.detailOnDark, width: 1.5),
                   ),
                 ),
                 validator: (v) =>
@@ -131,7 +131,7 @@ class _SeleccionarRestauranteScreenState
               esEdicion ? 'GUARDAR' : 'CREAR',
               style: GoogleFonts.manrope(
                 fontWeight: FontWeight.w700,
-                color: AppColors.button,
+                color: AppColors.primary,
               ),
             ),
           ),
@@ -158,7 +158,7 @@ class _SeleccionarRestauranteScreenState
               ok ? 'Sucursal actualizada' : 'Error al actualizar',
               style: GoogleFonts.manrope(),
             ),
-            backgroundColor: ok ? AppColors.button : AppColors.error,
+            backgroundColor: ok ? AppColors.primary : AppColors.error,
           ),
         );
       }
@@ -171,7 +171,7 @@ class _SeleccionarRestauranteScreenState
               ok ? 'Sucursal creada' : 'Error al crear',
               style: GoogleFonts.manrope(),
             ),
-            backgroundColor: ok ? AppColors.button : AppColors.error,
+            backgroundColor: ok ? AppColors.primary : AppColors.error,
           ),
         );
       }
@@ -230,7 +230,7 @@ class _SeleccionarRestauranteScreenState
             ok ? 'Sucursal eliminada' : 'Error al eliminar',
             style: GoogleFonts.manrope(),
           ),
-          backgroundColor: ok ? AppColors.button : AppColors.error,
+          backgroundColor: ok ? AppColors.primary : AppColors.error,
         ),
       );
     }
@@ -271,7 +271,7 @@ class _SeleccionarRestauranteScreenState
               nuevoEstado ? 'ACTIVAR' : 'SUSPENDER',
               style: GoogleFonts.manrope(
                 fontWeight: FontWeight.w700,
-                color: nuevoEstado ? AppColors.button : AppColors.error,
+                color: nuevoEstado ? AppColors.primary : AppColors.error,
               ),
             ),
           ),
@@ -293,7 +293,7 @@ class _SeleccionarRestauranteScreenState
             style: GoogleFonts.manrope(),
           ),
           backgroundColor: ok
-              ? (nuevoEstado ? AppColors.button : AppColors.error)
+              ? (nuevoEstado ? AppColors.primary : AppColors.error)
               : AppColors.error,
         ),
       );
@@ -310,7 +310,7 @@ class _SeleccionarRestauranteScreenState
         onPressed: () {
           _mostrarFormulario();
         },
-        backgroundColor: AppColors.button,
+        backgroundColor: AppColors.primaryAccent,
         elevation: 4,
         shape: const RoundedRectangleBorder(),
         icon: const Icon(Icons.add_rounded, color: Colors.white),
@@ -372,7 +372,7 @@ class _SeleccionarRestauranteScreenState
                   padding: const EdgeInsets.fromLTRB(24, 28, 24, 8),
                   child: Row(
                     children: [
-                      Container(width: 3, height: 18, color: AppColors.button),
+                      Container(width: 3, height: 18, color: AppColors.detailOnDark),
                       const SizedBox(width: 10),
                       Text(
                         'SUCURSALES',
@@ -399,7 +399,7 @@ class _SeleccionarRestauranteScreenState
                             padding: EdgeInsets.only(top: 48),
                             child: Center(
                               child: CircularProgressIndicator(
-                                color: AppColors.button,
+                                color: AppColors.primaryOnDark,
                               ),
                             ),
                           ),
@@ -645,7 +645,7 @@ class _RestauranteCard extends StatelessWidget {
               ),
               child: Container(
                 width: 52,
-                color: AppColors.button,
+                color: AppColors.primaryAccent,
                 alignment: Alignment.center,
                 padding: const EdgeInsets.symmetric(vertical: 20),
                 child: Text(
@@ -760,7 +760,7 @@ class _RestauranteCard extends StatelessWidget {
                         style: GoogleFonts.manrope(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.button,
+                          color: AppColors.linkOnDark,
                           letterSpacing: 1.5,
                         ),
                       ),
@@ -781,7 +781,7 @@ class _RestauranteCard extends StatelessWidget {
                       icon: const Icon(
                         Icons.edit_outlined,
                         size: 20,
-                        color: AppColors.button,
+                        color: AppColors.detailOnDark,
                       ),
                       onPressed: onEdit,
                       tooltip: 'Editar',
@@ -805,7 +805,7 @@ class _RestauranteCard extends StatelessWidget {
                     scale: 0.75,
                     child: Switch.adaptive(
                       value: restaurante.activo,
-                      activeThumbColor: AppColors.button,
+                      activeThumbColor: AppColors.primaryOnDark,
                       inactiveThumbColor: AppColors.error,
                       onChanged: onToggleActivo,
                     ),

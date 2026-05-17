@@ -125,7 +125,7 @@ class _SuperReservasScreenState extends State<SuperReservasScreen> {
       builder: (ctx, child) => Theme(
         data: ThemeData.dark().copyWith(
           colorScheme: const ColorScheme.dark(
-            primary: AppColors.button,
+            primary: AppColors.primaryOnDark,
             surface: AppColors.bottomSheetBg,
           ),
         ),
@@ -202,7 +202,7 @@ class _SuperReservasScreenState extends State<SuperReservasScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Reserva cancelada'),
-            backgroundColor: AppColors.button,
+            backgroundColor: AppColors.primary,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -306,7 +306,7 @@ class _SuperReservasScreenState extends State<SuperReservasScreen> {
                   child: Row(
                     children: [
                       const Icon(Icons.storefront_outlined,
-                          color: AppColors.button, size: 18),
+                          color: AppColors.detailOnDark, size: 18),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
@@ -349,7 +349,7 @@ class _SuperReservasScreenState extends State<SuperReservasScreen> {
                         child: Row(
                           children: [
                             const Icon(Icons.calendar_today,
-                                color: AppColors.button, size: 18),
+                                color: AppColors.detailOnDark, size: 18),
                             const SizedBox(width: 10),
                             Text(
                               esHoy ? 'Hoy' : _fechaStr,
@@ -388,7 +388,7 @@ class _SuperReservasScreenState extends State<SuperReservasScreen> {
                               height: 18,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: AppColors.button,
+                                color: AppColors.primaryOnDark,
                               ),
                             )
                           : const Icon(Icons.refresh, color: Colors.white70),
@@ -426,12 +426,12 @@ class _SuperReservasScreenState extends State<SuperReservasScreen> {
                   const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               decoration: BoxDecoration(
                 color: seleccionado
-                    ? AppColors.button
+                    ? AppColors.primaryAccent
                     : Colors.black.withValues(alpha: 0.4),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color:
-                      seleccionado ? AppColors.button : Colors.white24,
+                      seleccionado ? AppColors.primaryAccent : Colors.white24,
                 ),
               ),
               child: Text(
@@ -454,7 +454,7 @@ class _SuperReservasScreenState extends State<SuperReservasScreen> {
   Widget _buildCuerpo() {
     if (_cargando) {
       return const Center(
-        child: CircularProgressIndicator(color: AppColors.button),
+        child: CircularProgressIndicator(color: AppColors.primaryOnDark),
       );
     }
 
@@ -474,7 +474,7 @@ class _SuperReservasScreenState extends State<SuperReservasScreen> {
               const SizedBox(height: 24),
               ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.button,
+                  backgroundColor: AppColors.primaryAccent,
                   foregroundColor: Colors.white,
                 ),
                 onPressed: _cargar,
@@ -508,7 +508,7 @@ class _SuperReservasScreenState extends State<SuperReservasScreen> {
     }
 
     return RefreshIndicator(
-      color: AppColors.button,
+      color: AppColors.primaryOnDark,
       backgroundColor: Colors.black87,
       onRefresh: _cargar,
       child: ListView.builder(
@@ -768,7 +768,7 @@ class _SelectorSucursalSheet extends StatelessWidget {
               child: Row(
                 children: [
                   Icon(Icons.storefront_outlined,
-                      color: AppColors.button, size: 20),
+                      color: AppColors.detailOnDark, size: 20),
                   SizedBox(width: 10),
                   Text(
                     'SELECCIONAR SUCURSAL',
@@ -787,7 +787,7 @@ class _SelectorSucursalSheet extends StatelessWidget {
             if (cargando)
               const Padding(
                 padding: EdgeInsets.all(24),
-                child: CircularProgressIndicator(color: AppColors.button),
+                child: CircularProgressIndicator(color: AppColors.primaryOnDark),
               )
             else
               ConstrainedBox(
@@ -835,20 +835,20 @@ class _SelectorSucursalSheet extends StatelessWidget {
     return ListTile(
       leading: Icon(
         icono,
-        color: seleccionado ? AppColors.button : Colors.white54,
+        color: seleccionado ? AppColors.detailOnDark : Colors.white54,
         size: 20,
       ),
       title: Text(
         nombre,
         style: TextStyle(
-          color: seleccionado ? AppColors.button : Colors.white,
+          color: seleccionado ? AppColors.linkOnDark : Colors.white,
           fontWeight:
               seleccionado ? FontWeight.bold : FontWeight.normal,
           fontSize: 14,
         ),
       ),
       trailing: seleccionado
-          ? const Icon(Icons.check, color: AppColors.button, size: 18)
+          ? const Icon(Icons.check, color: AppColors.detailOnDark, size: 18)
           : null,
       shape:
           RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),

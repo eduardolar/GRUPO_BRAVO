@@ -36,7 +36,7 @@ class SucursalDetailScreen extends StatelessWidget {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () =>
             _ir(context, CrearUsuarioScreen(restauranteId: restauranteId)),
-        backgroundColor: AppColors.button,
+        backgroundColor: AppColors.primaryAccent,
         elevation: 4,
         shape: const RoundedRectangleBorder(),
         icon: const Icon(Icons.person_add_outlined, color: Colors.white),
@@ -216,7 +216,7 @@ class SucursalDetailScreen extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(24, 28, 24, 8),
         child: Row(
           children: [
-            Container(width: 3, height: 18, color: AppColors.button),
+            Container(width: 3, height: 18, color: AppColors.detailOnDark),
             const SizedBox(width: 10),
             Text(
               label,
@@ -298,7 +298,7 @@ class _KpiSectionState extends State<_KpiSection> {
                           Container(
                             width: 3,
                             height: 18,
-                            color: AppColors.button,
+                            color: AppColors.detailOnDark,
                           ),
                           const SizedBox(width: 10),
                           Text(
@@ -317,7 +317,7 @@ class _KpiSectionState extends State<_KpiSection> {
                               height: 12,
                               child: CircularProgressIndicator(
                                 strokeWidth: 1.5,
-                                color: AppColors.button,
+                                color: AppColors.primaryOnDark,
                               ),
                             ),
                           ],
@@ -491,8 +491,8 @@ class _GlassTile extends StatelessWidget {
             color: Colors.transparent,
             child: InkWell(
               borderRadius: BorderRadius.circular(20),
-              highlightColor: AppColors.button.withValues(alpha: 0.1),
-              splashColor: AppColors.button.withValues(alpha: 0.2),
+              highlightColor: AppColors.primaryOnDark.withValues(alpha: 0.1),
+              splashColor: AppColors.primaryOnDark.withValues(alpha: 0.2),
               onTap: onTap,
               child: Padding(
                 padding: const EdgeInsets.all(20),
@@ -501,14 +501,14 @@ class _GlassTile extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: AppColors.button.withValues(alpha: 0.2),
+                        color: AppColors.detailOnDark.withValues(alpha: 0.2),
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: AppColors.button.withValues(alpha: 0.5),
+                          color: AppColors.detailOnDark.withValues(alpha: 0.5),
                           width: 1,
                         ),
                       ),
-                      child: Icon(icon, color: AppColors.button, size: 22),
+                      child: Icon(icon, color: AppColors.detailOnDark, size: 22),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -572,12 +572,12 @@ class _KpiGlassCard extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: highlight
-                ? AppColors.button.withValues(alpha: 0.65)
+                ? AppColors.primaryAccent.withValues(alpha: 0.65)
                 : Colors.black.withValues(alpha: 0.45),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: highlight
-                  ? AppColors.button.withValues(alpha: 0.85)
+                  ? AppColors.primaryAccent.withValues(alpha: 0.85)
                   : Colors.white.withValues(alpha: 0.15),
               width: 1.5,
             ),
@@ -592,7 +592,7 @@ class _KpiGlassCard extends StatelessWidget {
                     size: 15,
                     color: highlight
                         ? Colors.white
-                        : AppColors.button.withValues(alpha: 0.95),
+                        : AppColors.detailOnDark.withValues(alpha: 0.95),
                   ),
                   const SizedBox(width: 6),
                   Flexible(

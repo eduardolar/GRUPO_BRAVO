@@ -10,7 +10,7 @@
 // Reglas:
 //   - Cumple WCAG 2.1 nivel AA (contraste mínimo 4.5:1 para texto normal).
 //     Varios tokens llegan a AAA (7:1) — se anota cuando aplica.
-//   - Identidad: burdeos (#6E001B) + crema (#FFF8E1) + tonos pétreos.
+//   - Identidad: azul marino (#0B2545) + crema (#FFF8E1) + tonos pétreos.
 //   - Estados (success/error/warning/info) con sus variantes de fondo y texto.
 //   - Aliases legacy (button, panel, line, disp, noDisp…) se conservan para
 //     no romper los 1500+ usos repartidos por el proyecto.
@@ -18,7 +18,7 @@
 import 'package:flutter/material.dart';
 
 /// Paleta GRUPO BRAVO — WCAG 2.1 nivel AA (varios tokens llegan a AAA).
-/// Mantiene la identidad burdeos + crema con tonos calibrados para contraste.
+/// Mantiene la identidad azul marino + crema con tonos calibrados para contraste.
 /// Los nombres antiguos (button, disp, noDisp, line, panel, etc.) se conservan
 /// como aliases para no romper los 1500+ usos existentes.
 class AppColors {
@@ -33,10 +33,20 @@ class AppColors {
   static const Color lineStrong = Color(0xFF8C8270);
   static const Color line = lineSubtle; // alias retro-compat
 
-  // ── Marca burdeos ──────────────────────────────────────────────────────────
-  static const Color primary = Color(0xFF6E001B);
-  static const Color primaryHover = Color(0xFF4D0014);
-  static const Color primaryAccent = Color(0xFFA6405A);
+  // ── Marca azul marino ──────────────────────────────────────────────────────
+  static const Color primary = Color(0xFF0B2545); // navy profundo (~15:1 con blanco/crema, AAA)
+  static const Color primaryHover = Color(0xFF061A33);
+  static const Color primaryAccent = Color(0xFF3D6FA6);
+  // ── Marca SOBRE FONDOS OSCUROS ─────────────────────────────────────────────
+  // El navy `primary` se confunde con el negro del scaffold de auth y los
+  // paneles glass del super_admin. Sobre oscuro se usa esta sub-paleta
+  // (todas con contraste alto AA/AAA sobre negro):
+  /// Azul eléctrico — acción principal / botones / acento general sobre oscuro.
+  static const Color primaryOnDark = Color(0xFF60A5FA);
+  /// Cian brillante — texto pequeño y enlaces importantes sobre oscuro.
+  static const Color linkOnDark = Color(0xFF22D3EE);
+  /// Azul cielo claro — detalles, iconos y bordes de tarjeta sobre oscuro.
+  static const Color detailOnDark = Color(0xFF93C5FD);
   static const Color button = primary; // alias retro-compat
   static const Color backgroundButton = primary; // alias retro-compat
   static const Color sombra = primaryHover; // alias retro-compat
@@ -93,7 +103,7 @@ class AppColors {
   // ── Otros ──────────────────────────────────────────────────────────────────
   static const Color shadow = Color(0x66000000);
   static const Color successBackground = successBg; // alias retro-compat
-  static const Color excludedIngredient = Color(0xFFD3717C);
+  static const Color excludedIngredient = Color(0xFF8AA4C2); // azul polvo (deriva de primary)
   static const Color mesaSeleccionada = Color(0xFFB26200);
 
   // ── Tokens auxiliares ──────────────────────────────────────────────────────

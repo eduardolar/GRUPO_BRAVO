@@ -102,9 +102,9 @@ abstract final class AppTheme {
   // ── ColorScheme ────────────────────────────────────────────────────────────
   static const ColorScheme _colorScheme = ColorScheme(
     brightness: Brightness.light,
-    primary: AppColors.button, // burdeos #6E001B
+    primary: AppColors.button, // azul marino #0B2545
     onPrimary: Colors.white,
-    secondary: AppColors.primaryHover, // burdeos oscuro #4D0014
+    secondary: AppColors.primaryHover, // navy oscuro #061A33
     onSecondary: Colors.white,
     surface: AppColors.background, // blanco #FFFFFF
     onSurface: AppColors.textPrimary, // casi negro #1A1A1A
