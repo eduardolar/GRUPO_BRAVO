@@ -150,7 +150,7 @@ class _AdminCategoriasTabState extends State<AdminCategoriasTab> {
           controller: ctrl,
           autofocus: true,
           textCapitalization: TextCapitalization.words,
-          cursorColor: AppColors.button,
+          cursorColor: AppColors.detailOnDark,
           style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(
             hintText: 'Nombre',
@@ -163,7 +163,7 @@ class _AdminCategoriasTabState extends State<AdminCategoriasTab> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppColors.button, width: 2),
+              borderSide: const BorderSide(color: AppColors.detailOnDark, width: 2),
             ),
           ),
           onSubmitted: (v) => Navigator.pop(ctx, v),
@@ -179,7 +179,7 @@ class _AdminCategoriasTabState extends State<AdminCategoriasTab> {
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, ctrl.text),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.button,
+              backgroundColor: AppColors.primaryAccent,
               foregroundColor: Colors.white,
             ),
             child: Text(cta),
@@ -197,7 +197,7 @@ class _AdminCategoriasTabState extends State<AdminCategoriasTab> {
   Widget build(BuildContext context) {
     if (_cargando) {
       return const Center(
-        child: CircularProgressIndicator(color: AppColors.button),
+        child: CircularProgressIndicator(color: AppColors.primaryOnDark),
       );
     }
 
@@ -213,7 +213,7 @@ class _AdminCategoriasTabState extends State<AdminCategoriasTab> {
           )
         else
           RefreshIndicator(
-            color: AppColors.button,
+            color: AppColors.primaryOnDark,
             onRefresh: _cargar,
             child: ReorderableListView.builder(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
@@ -248,7 +248,7 @@ class _AdminCategoriasTabState extends State<AdminCategoriasTab> {
           child: FloatingActionButton.extended(
             heroTag: 'fab-cat',
             onPressed: _crear,
-            backgroundColor: AppColors.button,
+            backgroundColor: AppColors.primaryAccent,
             foregroundColor: Colors.white,
             icon: const Icon(Icons.add),
             label: const Text('Nueva categoría'),
@@ -292,15 +292,15 @@ class _AdminCategoriasTabState extends State<AdminCategoriasTab> {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: AppColors.button.withValues(alpha: 0.25),
+                    color: AppColors.detailOnDark.withValues(alpha: 0.25),
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                      color: AppColors.button.withValues(alpha: 0.4),
+                      color: AppColors.detailOnDark.withValues(alpha: 0.4),
                     ),
                   ),
                   child: const Icon(
                     Icons.category,
-                    color: AppColors.button,
+                    color: AppColors.detailOnDark,
                     size: 20,
                   ),
                 ),
@@ -334,7 +334,7 @@ class _AdminCategoriasTabState extends State<AdminCategoriasTab> {
                   value: 'rename',
                   child: Row(
                     children: [
-                      Icon(Icons.edit, color: AppColors.button, size: 18),
+                      Icon(Icons.edit, color: AppColors.detailOnDark, size: 18),
                       SizedBox(width: 10),
                       Text('Renombrar', style: TextStyle(color: Colors.white)),
                     ],

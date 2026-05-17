@@ -105,7 +105,7 @@ class _AdminLocalScreenState extends State<AdminLocalScreen> {
   Widget _buildBody() {
     if (_cargando) {
       return const Center(
-        child: CircularProgressIndicator(color: AppColors.button),
+        child: CircularProgressIndicator(color: AppColors.primaryOnDark),
       );
     }
 
@@ -130,7 +130,7 @@ class _AdminLocalScreenState extends State<AdminLocalScreen> {
               const SizedBox(height: 24),
               ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.button,
+                  backgroundColor: AppColors.primaryAccent,
                   foregroundColor: Colors.white,
                 ),
                 onPressed: _cargar,
@@ -211,16 +211,16 @@ class _AdminLocalScreenState extends State<AdminLocalScreen> {
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: AppColors.button.withValues(alpha: 0.2),
+                  color: AppColors.detailOnDark.withValues(alpha: 0.2),
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: AppColors.button.withValues(alpha: 0.5),
+                    color: AppColors.detailOnDark.withValues(alpha: 0.5),
                     width: 1,
                   ),
                 ),
                 child: const Icon(
                   Icons.storefront,
-                  color: AppColors.button,
+                  color: AppColors.detailOnDark,
                   size: 32,
                 ),
               ),
@@ -276,7 +276,7 @@ class _AdminLocalScreenState extends State<AdminLocalScreen> {
           ),
           child: Row(
             children: [
-              Icon(icono, color: AppColors.button, size: 22),
+              Icon(icono, color: AppColors.detailOnDark, size: 22),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
@@ -331,7 +331,7 @@ class _AdminLocalScreenState extends State<AdminLocalScreen> {
               const Padding(
                 padding: EdgeInsets.only(top: 2),
                 child: Icon(Icons.schedule_outlined,
-                    color: AppColors.button, size: 22),
+                    color: AppColors.detailOnDark, size: 22),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -487,7 +487,7 @@ class _AdminLocalScreenState extends State<AdminLocalScreen> {
       height: 52,
       child: ElevatedButton.icon(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.button,
+          backgroundColor: AppColors.primaryAccent,
           foregroundColor: Colors.white,
           shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
           elevation: 0,

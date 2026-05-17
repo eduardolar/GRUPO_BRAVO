@@ -154,7 +154,7 @@ class _AdminMesasScreenState extends State<AdminMesasScreen> {
       messenger.showSnackBar(
         SnackBar(
           content: Text('Mesa ${nueva.numero} creada correctamente'),
-          backgroundColor: AppColors.button,
+          backgroundColor: AppColors.primary,
           behavior: SnackBarBehavior.floating,
           action: SnackBarAction(
             label: 'IMPRIMIR QR',
@@ -217,7 +217,7 @@ class _AdminMesasScreenState extends State<AdminMesasScreen> {
       messenger.showSnackBar(
         SnackBar(
           content: Text('Mesa ${mesaActualizada.numero} actualizada'),
-          backgroundColor: AppColors.button,
+          backgroundColor: AppColors.primary,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -348,7 +348,7 @@ class _AdminMesasScreenState extends State<AdminMesasScreen> {
             ),
             child: TextField(
               controller: _busquedaCtrl,
-              cursorColor: AppColors.button,
+              cursorColor: AppColors.primary,
               style: const TextStyle(color: Colors.black87, fontSize: 13),
               onChanged: (v) => setState(() => _busqueda = v.toLowerCase()),
               decoration: InputDecoration(
@@ -496,7 +496,7 @@ class _AdminMesasScreenState extends State<AdminMesasScreen> {
       backgroundColor: Colors.black,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _mostrarFormCrearMesa,
-        backgroundColor: AppColors.button,
+        backgroundColor: AppColors.primaryAccent,
         foregroundColor: Colors.white,
         elevation: 4,
         icon: const Icon(Icons.add, size: 20),
@@ -606,7 +606,7 @@ class _AdminMesasScreenState extends State<AdminMesasScreen> {
                   child: Row(
                     children: [
                       _LegendaDot(
-                        color: AppColors.button,
+                        color: AppColors.primaryOnDark,
                         label: 'Disponible',
                         icon: Icons.check_circle_outline,
                       ),
@@ -647,7 +647,7 @@ class _AdminMesasScreenState extends State<AdminMesasScreen> {
                                         width: 3,
                                         height: 16,
                                         decoration: BoxDecoration(
-                                          color: AppColors.button,
+                                          color: AppColors.primaryOnDark,
                                           borderRadius:
                                               BorderRadius.circular(2),
                                         ),
@@ -773,15 +773,15 @@ class _SheetGestionAdmin extends StatelessWidget {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: AppColors.button.withValues(alpha: 0.25),
+                      color: AppColors.detailOnDark.withValues(alpha: 0.25),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: AppColors.button.withValues(alpha: 0.4),
+                        color: AppColors.detailOnDark.withValues(alpha: 0.4),
                       ),
                     ),
                     child: const Icon(
                       Icons.table_restaurant_outlined,
-                      color: AppColors.button,
+                      color: AppColors.detailOnDark,
                       size: 20,
                     ),
                   ),
@@ -860,7 +860,7 @@ class _SheetGestionAdmin extends StatelessWidget {
                     style: TextStyle(letterSpacing: 1.2, fontSize: 11),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.button,
+                    backgroundColor: AppColors.primaryAccent,
                     foregroundColor: Colors.white,
                     minimumSize: const Size(double.infinity, 48),
                     elevation: 0,
@@ -1049,15 +1049,15 @@ class _SheetCrearMesaState extends State<_SheetCrearMesa> {
                         width: 40,
                         height: 40,
                         decoration: BoxDecoration(
-                          color: AppColors.button.withValues(alpha: 0.25),
+                          color: AppColors.detailOnDark.withValues(alpha: 0.25),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: AppColors.button.withValues(alpha: 0.4),
+                            color: AppColors.detailOnDark.withValues(alpha: 0.4),
                           ),
                         ),
                         child: const Icon(
                           Icons.add_circle_outline,
-                          color: AppColors.button,
+                          color: AppColors.detailOnDark,
                           size: 20,
                         ),
                       ),
@@ -1222,7 +1222,7 @@ class _SheetCrearMesaState extends State<_SheetCrearMesa> {
                               child: ElevatedButton(
                                 onPressed: _confirmar,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.button,
+                                  backgroundColor: AppColors.primaryAccent,
                                   foregroundColor: Colors.white,
                                   padding: const EdgeInsets.symmetric(
                                     vertical: 14,
@@ -1379,15 +1379,15 @@ class _SheetEditarMesaState extends State<_SheetEditarMesa> {
                         width: 40,
                         height: 40,
                         decoration: BoxDecoration(
-                          color: AppColors.button.withValues(alpha: 0.25),
+                          color: AppColors.detailOnDark.withValues(alpha: 0.25),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: AppColors.button.withValues(alpha: 0.4),
+                            color: AppColors.detailOnDark.withValues(alpha: 0.4),
                           ),
                         ),
                         child: const Icon(
                           Icons.edit_outlined,
-                          color: AppColors.button,
+                          color: AppColors.detailOnDark,
                           size: 20,
                         ),
                       ),
@@ -1544,7 +1544,7 @@ class _SheetEditarMesaState extends State<_SheetEditarMesa> {
                               child: ElevatedButton(
                                 onPressed: _guardando ? null : _guardar,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.button,
+                                  backgroundColor: AppColors.primaryAccent,
                                   foregroundColor: Colors.white,
                                   padding: const EdgeInsets.symmetric(
                                     vertical: 14,
@@ -1609,9 +1609,9 @@ class _MesaPainter extends CustomPainter {
     final chairH = size.width * 0.075;
     final chairDist = tableRadius + chairH + 3.0;
 
-    final tableColor = disponible ? AppColors.button : AppColors.iconPrimary;
-    final chairColor = disponible ? AppColors.button : AppColors.iconPrimary;
-    final borderColor = disponible ? AppColors.button : AppColors.iconPrimary;
+    final tableColor = disponible ? AppColors.primaryOnDark : AppColors.iconPrimary;
+    final chairColor = disponible ? AppColors.primaryOnDark : AppColors.iconPrimary;
+    final borderColor = disponible ? AppColors.primaryOnDark : AppColors.iconPrimary;
 
     final shadowPaint = Paint()
       ..color = Colors.black.withValues(alpha: 0.35)
@@ -1850,10 +1850,10 @@ class _FiltroChip extends StatelessWidget {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: activo ? AppColors.button : Colors.black.withValues(alpha: 0.35),
+          color: activo ? AppColors.primaryAccent : Colors.black.withValues(alpha: 0.35),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: activo ? AppColors.button : Colors.white24,
+            color: activo ? AppColors.primaryAccent : Colors.white24,
           ),
         ),
         child: Text(
@@ -1933,7 +1933,7 @@ class _Campo extends StatelessWidget {
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: const BorderSide(
-                color: AppColors.button,
+                color: AppColors.detailOnDark,
                 width: 1.5,
               ),
             ),
@@ -1973,10 +1973,10 @@ class _ChipUbicacion extends StatelessWidget {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: BoxDecoration(
-          color: selected ? AppColors.button : Colors.black45,
+          color: selected ? AppColors.primaryAccent : Colors.black45,
           borderRadius: BorderRadius.circular(6),
           border: Border.all(
-            color: selected ? AppColors.button : Colors.white24,
+            color: selected ? AppColors.primaryAccent : Colors.white24,
           ),
         ),
         child: Text(

@@ -139,7 +139,7 @@ class _AdminCierreDetalleScreenState extends State<AdminCierreDetalleScreen> {
   Widget _buildBody() {
     if (_cargando) {
       return const Center(
-        child: CircularProgressIndicator(color: AppColors.button),
+        child: CircularProgressIndicator(color: AppColors.primaryOnDark),
       );
     }
 
@@ -185,7 +185,7 @@ class _AdminCierreDetalleScreenState extends State<AdminCierreDetalleScreen> {
               icon: const Icon(Icons.refresh),
               label: const Text('Reintentar'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.button,
+                backgroundColor: AppColors.primaryAccent,
                 foregroundColor: Colors.white,
               ),
             ),
@@ -229,15 +229,15 @@ class _AdminCierreDetalleScreenState extends State<AdminCierreDetalleScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppColors.button.withValues(alpha: 0.2),
+                    color: AppColors.detailOnDark.withValues(alpha: 0.2),
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: AppColors.button.withValues(alpha: 0.5),
+                      color: AppColors.detailOnDark.withValues(alpha: 0.5),
                     ),
                   ),
                   child: Icon(
                     _iconoTurno(turno),
-                    color: AppColors.button,
+                    color: AppColors.detailOnDark,
                     size: 24,
                   ),
                 ),
@@ -412,7 +412,7 @@ class _AdminCierreDetalleScreenState extends State<AdminCierreDetalleScreen> {
   Widget _buildSeccionTitulo(String titulo) {
     return Row(
       children: [
-        Container(width: 3, height: 14, color: AppColors.button),
+        Container(width: 3, height: 14, color: AppColors.detailOnDark),
         const SizedBox(width: 8),
         Text(
           titulo,

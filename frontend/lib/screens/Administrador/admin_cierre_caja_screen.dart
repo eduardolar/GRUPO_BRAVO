@@ -102,12 +102,12 @@ class _AdminCierreCajaScreenState extends State<AdminCierreCajaScreen> {
     return Theme(
       data: Theme.of(ctx).copyWith(
         colorScheme: const ColorScheme.light(
-          primary: AppColors.button,
+          primary: AppColors.primary,
           onPrimary: Colors.white,
           onSurface: AppColors.textPrimary,
         ),
         textButtonTheme: TextButtonThemeData(
-          style: TextButton.styleFrom(foregroundColor: AppColors.button),
+          style: TextButton.styleFrom(foregroundColor: AppColors.primary),
         ),
       ),
       child: child,
@@ -226,7 +226,7 @@ class _AdminCierreCajaScreenState extends State<AdminCierreCajaScreen> {
 
   Widget _buildBody() {
     return RefreshIndicator(
-      color: AppColors.button,
+      color: AppColors.primaryOnDark,
       backgroundColor: Colors.black87,
       onRefresh: _cargar,
       child: SingleChildScrollView(
@@ -246,7 +246,7 @@ class _AdminCierreCajaScreenState extends State<AdminCierreCajaScreen> {
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 60),
                 child: Center(
-                  child: CircularProgressIndicator(color: AppColors.button),
+                  child: CircularProgressIndicator(color: AppColors.primaryOnDark),
                 ),
               ),
 
@@ -287,7 +287,7 @@ class _AdminCierreCajaScreenState extends State<AdminCierreCajaScreen> {
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
           child: Row(
             children: [
-              const Icon(Icons.calendar_today, color: AppColors.button, size: 18),
+              const Icon(Icons.calendar_today, color: AppColors.detailOnDark, size: 18),
               const SizedBox(width: 12),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -350,7 +350,7 @@ class _AdminCierreCajaScreenState extends State<AdminCierreCajaScreen> {
               icon: const Icon(Icons.refresh),
               label: const Text('Reintentar'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.button,
+                backgroundColor: AppColors.primaryAccent,
                 foregroundColor: Colors.white,
               ),
             ),
@@ -412,13 +412,13 @@ class _CardTurno extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppColors.button.withValues(alpha: 0.2),
+                  color: AppColors.detailOnDark.withValues(alpha: 0.2),
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: AppColors.button.withValues(alpha: 0.5),
+                    color: AppColors.detailOnDark.withValues(alpha: 0.5),
                   ),
                 ),
-                child: Icon(_iconoTurno, color: AppColors.button, size: 22),
+                child: Icon(_iconoTurno, color: AppColors.detailOnDark, size: 22),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -482,7 +482,7 @@ class _CardTurno extends StatelessWidget {
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.button,
+                backgroundColor: AppColors.primaryAccent,
                 foregroundColor: Colors.white,
                 minimumSize: const Size(double.infinity, 48),
                 shape: RoundedRectangleBorder(
@@ -730,7 +730,7 @@ class _SheetAbrirState extends State<_SheetAbrir> {
             child: ElevatedButton(
               onPressed: _enviando ? null : _confirmar,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.button,
+                backgroundColor: AppColors.primaryAccent,
                 foregroundColor: Colors.white,
                 minimumSize: const Size(double.infinity, 52),
                 shape: RoundedRectangleBorder(
@@ -921,14 +921,14 @@ class _SheetCerrarState extends State<_SheetCerrar> {
               decoration: InputDecoration(
                 labelText: 'Efectivo contado (€)',
                 labelStyle: const TextStyle(color: Colors.white54),
-                prefixIcon: const Icon(Icons.euro, color: AppColors.button),
+                prefixIcon: const Icon(Icons.euro, color: AppColors.detailOnDark),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: const BorderSide(color: Colors.white24),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppColors.button),
+                  borderSide: const BorderSide(color: AppColors.detailOnDark),
                 ),
                 errorBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),

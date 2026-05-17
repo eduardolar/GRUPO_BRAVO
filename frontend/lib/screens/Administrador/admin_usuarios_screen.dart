@@ -331,7 +331,7 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen>
         content: Text(msj,
             style: const TextStyle(
                 color: Colors.white, fontWeight: FontWeight.bold)),
-        backgroundColor: esExito ? AppColors.disp : AppColors.button,
+        backgroundColor: esExito ? AppColors.disp : AppColors.primary,
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -361,7 +361,7 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen>
       appBar: const BravoAppBar(title: 'GESTIÓN DE EQUIPO'),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _abrirCrearEmpleado,
-        backgroundColor: AppColors.button,
+        backgroundColor: AppColors.primaryAccent,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.person_add),
         label: const Text(
@@ -392,7 +392,7 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen>
           child: SafeArea(
             child: _cargando
                 ? const Center(
-                    child: CircularProgressIndicator(color: AppColors.button),
+                    child: CircularProgressIndicator(color: AppColors.primaryOnDark),
                   )
                 : AdminMaxWidth(child: _buildContenido()),
           ),
@@ -458,7 +458,7 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen>
         // ─── Tabs ───────────────────────────────────────────────
         TabBar(
           controller: _tabCtrl,
-          indicatorColor: AppColors.button,
+          indicatorColor: AppColors.detailOnDark,
           indicatorWeight: 3,
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white38,
@@ -528,7 +528,7 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen>
             children: [
               CircleAvatar(
                 backgroundColor:
-                    suspendido ? AppColors.lineStrong : AppColors.button,
+                    suspendido ? AppColors.lineStrong : AppColors.primaryAccent,
                 child: Text(
                   usuario.nombre.isNotEmpty
                       ? usuario.nombre[0].toUpperCase()
@@ -604,7 +604,7 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen>
                     : 'CLIENTE',
                 style: TextStyle(
                   color:
-                      suspendido ? Colors.white30 : AppColors.button,
+                      suspendido ? Colors.white30 : AppColors.linkOnDark,
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 1,
@@ -870,7 +870,7 @@ class _CrearEmpleadoSheetState extends State<_CrearEmpleadoSheet> {
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide:
-                      const BorderSide(color: AppColors.button, width: 2),
+                      const BorderSide(color: AppColors.detailOnDark, width: 2),
                 ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -905,7 +905,7 @@ class _CrearEmpleadoSheetState extends State<_CrearEmpleadoSheet> {
               height: 52,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.button,
+                  backgroundColor: AppColors.primaryAccent,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -973,7 +973,7 @@ class _Campo extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.button, width: 2),
+          borderSide: const BorderSide(color: AppColors.detailOnDark, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),

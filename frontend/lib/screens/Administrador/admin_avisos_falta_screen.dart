@@ -102,7 +102,7 @@ class _AdminAvisosFaltaScreenState extends State<AdminAvisosFaltaScreen> {
           ),
           child: SafeArea(
             child: RefreshIndicator(
-              color: AppColors.button,
+              color: AppColors.primaryOnDark,
               backgroundColor: Colors.black87,
               onRefresh: _cargar,
               child: _buildBody(),
@@ -116,7 +116,7 @@ class _AdminAvisosFaltaScreenState extends State<AdminAvisosFaltaScreen> {
   Widget _buildBody() {
     if (_cargando) {
       return const Center(
-        child: CircularProgressIndicator(color: AppColors.button),
+        child: CircularProgressIndicator(color: AppColors.primaryOnDark),
       );
     }
 
@@ -138,7 +138,7 @@ class _AdminAvisosFaltaScreenState extends State<AdminAvisosFaltaScreen> {
               ElevatedButton(
                 onPressed: _cargar,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.button,
+                  backgroundColor: AppColors.primaryAccent,
                 ),
                 child: const Text('Reintentar'),
               ),

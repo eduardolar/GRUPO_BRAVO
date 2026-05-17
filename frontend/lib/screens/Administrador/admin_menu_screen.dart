@@ -234,7 +234,7 @@ class _AdminMenuScreenState extends State<AdminMenuScreen>
           : FloatingActionButton.extended(
               heroTag: 'fab-prod',
               onPressed: () => _abrirEditor(),
-              backgroundColor: AppColors.button,
+              backgroundColor: AppColors.primaryAccent,
               foregroundColor: Colors.white,
               icon: const Icon(Icons.add),
               label: const Text('Nuevo producto'),
@@ -261,7 +261,7 @@ class _AdminMenuScreenState extends State<AdminMenuScreen>
             child: TabBar(
               controller: _tabController,
               indicator: BoxDecoration(
-                color: AppColors.button,
+                color: AppColors.primaryAccent,
                 borderRadius: BorderRadius.circular(10),
               ),
               indicatorSize: TabBarIndicatorSize.tab,
@@ -358,7 +358,7 @@ class _AdminMenuScreenState extends State<AdminMenuScreen>
                   )
                 : RefreshIndicator(
                     key: ValueKey('lista_$_selectedCategoryIndex'),
-                    color: AppColors.button,
+                    color: AppColors.primaryOnDark,
                     onRefresh: _cargarDatos,
                     child: ReorderableListView.builder(
                       buildDefaultDragHandles: false,
@@ -445,7 +445,7 @@ class _AdminMenuScreenState extends State<AdminMenuScreen>
             ),
             child: TextField(
               controller: _busquedaCtrl,
-              cursorColor: AppColors.button,
+              cursorColor: AppColors.primary,
               style: const TextStyle(color: Colors.black87, fontSize: 14),
               onChanged: (v) => setState(() => _busqueda = v.toLowerCase()),
               decoration: InputDecoration(
@@ -492,12 +492,12 @@ class _AdminMenuScreenState extends State<AdminMenuScreen>
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppColors.button
+              ? AppColors.primaryAccent
               : Colors.black.withValues(alpha: 0.4),
           borderRadius: BorderRadius.circular(22),
           border: Border.all(
             color: isSelected
-                ? AppColors.button
+                ? AppColors.primaryAccent
                 : Colors.white.withValues(alpha: 0.3),
           ),
         ),
@@ -564,12 +564,12 @@ class _AdminMenuScreenState extends State<AdminMenuScreen>
                           ),
                           decoration: BoxDecoration(
                             color: selected
-                                ? AppColors.button.withValues(alpha: 0.18)
+                                ? AppColors.primaryAccent.withValues(alpha: 0.18)
                                 : Colors.white.withValues(alpha: 0.06),
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(
                               color: selected
-                                  ? AppColors.button
+                                  ? AppColors.primaryAccent
                                   : Colors.white.withValues(alpha: 0.15),
                               width: selected ? 1.5 : 1,
                             ),
@@ -581,7 +581,7 @@ class _AdminMenuScreenState extends State<AdminMenuScreen>
                                   _categorias[i],
                                   style: TextStyle(
                                     color: selected
-                                        ? AppColors.button
+                                        ? AppColors.linkOnDark
                                         : Colors.white,
                                     fontWeight: selected
                                         ? FontWeight.w700
@@ -593,7 +593,7 @@ class _AdminMenuScreenState extends State<AdminMenuScreen>
                               if (selected)
                                 const Icon(
                                   Icons.check_circle,
-                                  color: AppColors.button,
+                                  color: AppColors.detailOnDark,
                                   size: 22,
                                 ),
                             ],
@@ -635,7 +635,7 @@ class _AdminMenuScreenState extends State<AdminMenuScreen>
             ),
             child: Row(
               children: [
-                const Icon(Icons.category, color: AppColors.button, size: 22),
+                const Icon(Icons.category, color: AppColors.detailOnDark, size: 22),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
@@ -875,7 +875,7 @@ class _EditarPill extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: BoxDecoration(
-          color: AppColors.button,
+          color: AppColors.primaryAccent,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
           boxShadow: [

@@ -201,7 +201,7 @@ class _AdminStockScreenState extends State<AdminStockScreen> {
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(
                               color: actual
-                                  ? AppColors.button
+                                  ? AppColors.detailOnDark
                                   : Colors.white.withValues(alpha: 0.15),
                               width: actual ? 1.5 : 1,
                             ),
@@ -226,7 +226,7 @@ class _AdminStockScreenState extends State<AdminStockScreen> {
                                 const Text(
                                   'Actual',
                                   style: TextStyle(
-                                    color: AppColors.button,
+                                    color: AppColors.linkOnDark,
                                     fontSize: 12,
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -329,7 +329,7 @@ class _AdminStockScreenState extends State<AdminStockScreen> {
                   child: _cargando
                       ? const Center(
                           child: CircularProgressIndicator(
-                            color: AppColors.button,
+                            color: AppColors.primaryOnDark,
                           ),
                         )
                       : _errorCarga != null
@@ -337,7 +337,7 @@ class _AdminStockScreenState extends State<AdminStockScreen> {
                       : filtrados.isEmpty
                       ? _buildEmpty()
                       : RefreshIndicator(
-                          color: AppColors.button,
+                          color: AppColors.primaryOnDark,
                           onRefresh: _cargar,
                           child: ListView.builder(
                             padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
@@ -361,7 +361,7 @@ class _AdminStockScreenState extends State<AdminStockScreen> {
       floatingActionButton: FloatingActionButton.extended(
         heroTag: 'fab-stock',
         onPressed: () => _abrirEditor(),
-        backgroundColor: AppColors.button,
+        backgroundColor: AppColors.primaryAccent,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add),
         label: const Text('Nuevo ingrediente'),
@@ -411,7 +411,7 @@ class _AdminStockScreenState extends State<AdminStockScreen> {
             ),
             child: TextField(
               controller: _busquedaCtrl,
-              cursorColor: AppColors.button,
+              cursorColor: AppColors.primary,
               style: const TextStyle(color: Colors.black87, fontSize: 14),
               onChanged: (v) => setState(() => _busqueda = v.toLowerCase()),
               decoration: InputDecoration(
@@ -459,12 +459,12 @@ class _AdminStockScreenState extends State<AdminStockScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
         decoration: BoxDecoration(
           color: selected
-              ? AppColors.button
+              ? AppColors.primaryAccent
               : Colors.black.withValues(alpha: 0.4),
           borderRadius: BorderRadius.circular(22),
           border: Border.all(
             color: selected
-                ? AppColors.button
+                ? AppColors.primaryAccent
                 : Colors.white.withValues(alpha: 0.3),
           ),
         ),
@@ -533,12 +533,12 @@ class _AdminStockScreenState extends State<AdminStockScreen> {
                           ),
                           decoration: BoxDecoration(
                             color: selected
-                                ? AppColors.button.withValues(alpha: 0.18)
+                                ? AppColors.primaryAccent.withValues(alpha: 0.18)
                                 : Colors.white.withValues(alpha: 0.06),
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(
                               color: selected
-                                  ? AppColors.button
+                                  ? AppColors.primaryAccent
                                   : Colors.white.withValues(alpha: 0.15),
                               width: selected ? 1.5 : 1,
                             ),
@@ -550,7 +550,7 @@ class _AdminStockScreenState extends State<AdminStockScreen> {
                                   cat,
                                   style: TextStyle(
                                     color: selected
-                                        ? AppColors.button
+                                        ? AppColors.linkOnDark
                                         : Colors.white,
                                     fontWeight: selected
                                         ? FontWeight.w700
@@ -562,7 +562,7 @@ class _AdminStockScreenState extends State<AdminStockScreen> {
                               if (selected)
                                 const Icon(
                                   Icons.check_circle,
-                                  color: AppColors.button,
+                                  color: AppColors.detailOnDark,
                                   size: 22,
                                 ),
                             ],
@@ -604,7 +604,7 @@ class _AdminStockScreenState extends State<AdminStockScreen> {
               children: [
                 const Icon(
                   Icons.filter_list,
-                  color: AppColors.button,
+                  color: AppColors.detailOnDark,
                   size: 22,
                 ),
                 const SizedBox(width: 12),
@@ -875,15 +875,15 @@ class _IngredienteCard extends StatelessWidget {
                         width: 38,
                         height: 38,
                         decoration: BoxDecoration(
-                          color: AppColors.button.withValues(alpha: 0.2),
+                          color: AppColors.detailOnDark.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(
-                            color: AppColors.button.withValues(alpha: 0.35),
+                            color: AppColors.detailOnDark.withValues(alpha: 0.35),
                           ),
                         ),
                         child: Icon(
                           _iconForCategory(ing.categoria),
-                          color: AppColors.button,
+                          color: AppColors.detailOnDark,
                           size: 20,
                         ),
                       ),
@@ -950,10 +950,10 @@ class _IngredienteCard extends StatelessWidget {
                                 vertical: 8,
                               ),
                               decoration: BoxDecoration(
-                                color: AppColors.button.withValues(alpha: 0.18),
+                                color: AppColors.detailOnDark.withValues(alpha: 0.18),
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(
-                                  color: AppColors.button.withValues(
+                                  color: AppColors.detailOnDark.withValues(
                                     alpha: 0.4,
                                   ),
                                 ),
@@ -963,14 +963,14 @@ class _IngredienteCard extends StatelessWidget {
                                 children: const [
                                   Icon(
                                     Icons.drive_file_move_outline,
-                                    color: AppColors.button,
+                                    color: AppColors.detailOnDark,
                                     size: 16,
                                   ),
                                   SizedBox(width: 4),
                                   Text(
                                     'Mover',
                                     style: TextStyle(
-                                      color: AppColors.button,
+                                      color: AppColors.linkOnDark,
                                       fontWeight: FontWeight.w700,
                                       fontSize: 11,
                                       letterSpacing: 0.5,
@@ -1243,7 +1243,7 @@ class _EditorIngredienteSheetState extends State<_EditorIngredienteSheet> {
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: AppColors.button, width: 2),
+      borderSide: const BorderSide(color: AppColors.detailOnDark, width: 2),
     ),
     errorBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
@@ -1296,17 +1296,17 @@ class _EditorIngredienteSheetState extends State<_EditorIngredienteSheet> {
                         width: 40,
                         height: 40,
                         decoration: BoxDecoration(
-                          color: AppColors.button.withValues(alpha: 0.25),
+                          color: AppColors.detailOnDark.withValues(alpha: 0.25),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: AppColors.button.withValues(alpha: 0.4),
+                            color: AppColors.detailOnDark.withValues(alpha: 0.4),
                           ),
                         ),
                         child: Icon(
                           _esEdicion
                               ? Icons.edit_note
                               : Icons.add_circle_outline,
-                          color: AppColors.button,
+                          color: AppColors.detailOnDark,
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -1362,7 +1362,7 @@ class _EditorIngredienteSheetState extends State<_EditorIngredienteSheet> {
                           controller: _nombreCtrl,
                           autofocus: true,
                           style: const TextStyle(color: Colors.white),
-                          cursorColor: AppColors.button,
+                          cursorColor: AppColors.detailOnDark,
                           textCapitalization: TextCapitalization.words,
                           decoration: _fieldDec('Nombre del ingrediente'),
                           validator: (v) =>
@@ -1378,7 +1378,7 @@ class _EditorIngredienteSheetState extends State<_EditorIngredienteSheet> {
                               child: TextFormField(
                                 controller: _cantidadCtrl,
                                 style: const TextStyle(color: Colors.white),
-                                cursorColor: AppColors.button,
+                                cursorColor: AppColors.detailOnDark,
                                 keyboardType:
                                     const TextInputType.numberWithOptions(
                                   decimal: true,
@@ -1439,7 +1439,7 @@ class _EditorIngredienteSheetState extends State<_EditorIngredienteSheet> {
                         TextFormField(
                           controller: _minimoCtrl,
                           style: const TextStyle(color: Colors.white),
-                          cursorColor: AppColors.button,
+                          cursorColor: AppColors.detailOnDark,
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
                           ),
@@ -1487,9 +1487,9 @@ class _EditorIngredienteSheetState extends State<_EditorIngredienteSheet> {
                           child: ElevatedButton(
                             onPressed: _guardando ? null : _guardar,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.button,
+                              backgroundColor: AppColors.primaryAccent,
                               foregroundColor: Colors.white,
-                              disabledBackgroundColor: AppColors.button
+                              disabledBackgroundColor: AppColors.primaryAccent
                                   .withValues(alpha: 0.5),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(14),
@@ -1568,11 +1568,11 @@ class _StepBtn extends StatelessWidget {
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            color: AppColors.button.withValues(alpha: 0.2),
+            color: AppColors.detailOnDark.withValues(alpha: 0.2),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.button.withValues(alpha: 0.4)),
+            border: Border.all(color: AppColors.detailOnDark.withValues(alpha: 0.4)),
           ),
-          child: Icon(icon, color: AppColors.button, size: 18),
+          child: Icon(icon, color: AppColors.detailOnDark, size: 18),
         ),
       ),
     );

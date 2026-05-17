@@ -247,7 +247,7 @@ class _AdminEditarStockScreenState extends State<AdminEditarStockScreen> {
       child: ElevatedButton(
         onPressed: _estaGuardando ? null : _guardarCambios,
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.button,
+          backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(15),
