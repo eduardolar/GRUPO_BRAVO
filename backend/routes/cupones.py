@@ -226,6 +226,35 @@ def evaluar_cupon(
     return True, descuento, "Cupón aplicado correctamente"
 
 
+def consumir_cupon(codigo: str, session=None) -> bool:
+    """Incrementa `usos_actuales` de forma atómica.
+
+    Solo incrementa si el cupón está activo y aún no ha alcanzado
+    `usos_maximos`. Devuelve True si se consumió, False si no existe /
+    está inactivo / agotado. Pensado para llamarse DENTRO de la
+    transacción de creación del pedido (pasar `session`), de modo que
+    si el pedido falla el incremento se revierte automáticamente.
+    """
+    codigo_limpio = (codigo or "").strip().upper()
+    if not codigo_limpio:
+        return False
+    res = coleccion_cupones.update_one(
+        {
+            "codigo": codigo_limpio,
+            "activo": True,
+            "$expr": {
+                "$or": [
+                    {"$eq": [{"$ifNull": ["$usos_maximos", None]}, None]},
+                    {"$lt": [{"$ifNull": ["$usos_actuales", 0]}, "$usos_maximos"]},
+                ]
+            },
+        },
+        {"$inc": {"usos_actuales": 1}},
+        session=session,
+    )
+    return res.modified_count == 1
+
+
 @router.post("/validar", summary="Validar un cupón y calcular descuento")
 def validar_cupon(datos: CuponValidar):
     """Valida un cupón por código y devuelve el descuento aplicable.

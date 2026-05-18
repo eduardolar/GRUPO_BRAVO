@@ -52,8 +52,10 @@ from models import CorreoStr, UsuarioLogin, UsuarioRegistro, VerificarRecuperaci
 from limiter import limiter
 from security import crear_token
 from exceptions import (
+    AppError,
     NotFoundError, ValidacionError,
     AutenticacionError, AutorizacionError,
+    ConflictError,
 )
 from utils.auth_helpers import (
     conf,
@@ -66,6 +68,7 @@ from utils.auth_helpers import (
     buscar_codigo_recuperacion,
     generar_otp,
     enviar_correo_2fa,
+    enviar_correo_verificacion,
 )
 
 router = APIRouter()
@@ -113,52 +116,10 @@ class VerificacionCodigo(BaseModel):
     codigo: str
 
 
-# --- ENDPOINT: LOGIN ---
-# --- 2. FUNCIÓN PARA ENVIAR EL EMAIL ---
-from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
-from pydantic import EmailStr
-import logging
-
-# Configuración de logging para rastrear errores
-logger = logging.getLogger("uvicorn")
-
-async def enviar_correo_verificacion(email_destino: str, codigo: str):
-    html = f"""
-    <div style="font-family: Arial, sans-serif; background-color: #FBF9F6; padding: 40px 20px; text-align: center;">
-        <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; padding: 30px; border: 1px solid #E0DBD3; border-radius: 10px;">
-            <h2 style="color: #800020; margin-top: 0;">Restaurante Bravo</h2>
-            <hr style="border: 0; border-top: 1px solid #E0DBD3; margin: 20px 0;">
-            <p style="color: #2D2D2D; font-size: 16px; line-height: 1.5;">
-                ¡Bienvenido! Para activar tu cuenta y empezar tu experiencia gastronómica, usa el siguiente código de seguridad:
-            </p>
-            <div style="background-color: #800020; color: #ffffff; padding: 15px 25px; font-size: 32px; font-weight: bold; letter-spacing: 8px; margin: 25px 0; display: inline-block; border-radius: 5px;">
-                {codigo}
-            </div>
-            <p style="color: #6B6B6B; font-size: 12px; margin-top: 25px; border-top: 1px solid #EEE; padding-top: 15px;">
-                Este código es privado. Si no intentaste registrarte en <strong>Bravo</strong>, puedes ignorar este correo con seguridad.
-            </p>
-            {_FOOTER_RGPD}
-        </div>
-    </div>
-    """
-
-    mensaje = MessageSchema(
-        subject="Código de Verificación - Restaurante Bravo",
-        recipients=[email_destino],
-        body=html,
-        subtype=MessageType.html
-    )
-
-    fm = FastMail(conf) # Asegúrate de que 'conf' esté importado/disponible
-    
-    try:
-        await fm.send_message(mensaje)
-    except Exception as e:
-        # Esto evita que la API devuelva un error 500 si el correo falla
-        logger.error(f"Error enviando correo a {email_destino}: {str(e)}")
-        return False
-    
-    return True
+# `enviar_correo_verificacion` y `enviar_correo_2fa` se importan desde
+# utils.auth_helpers (versión fail-soft con pie RGPD correcto). Las copias
+# locales que había aquí usaban `_FOOTER_RGPD` (no definido) y rompían el
+# registro con un 500.
 
 # --- 3. ENDPOINT: REGISTRO ---
 # Flujo:
@@ -187,7 +148,7 @@ async def registrar_usuario(request: Request, usuario: UsuarioRegistro):
         # Regla de negocio: solo los clientes pueden registrarse "huérfanos".
         # Los empleados deben pertenecer a una sucursal específica para que
         # las consultas multi-tenant funcionen.
-        if usuario.rol != "cliente" and not usuario.restauranteId:
+        if usuario.rol != "cliente" and not usuario.restaurante_id:
             raise ValidacionError("Los empleados deben estar vinculados a un restauranteId")
 
         # Generar OTP de 6 dígitos. random.choices basta para OTPs de un solo
@@ -283,39 +244,6 @@ async def verificar_codigo(request: Request, datos: VerificacionCodigo):
     if resultado.modified_count > 0:
         return {"mensaje": "¡Cuenta verificada con éxito! Ya puedes hacer login."}
     return {"mensaje": "La cuenta ya estaba verificada."}
-# --- NUEVA FUNCIÓN PARA EL CORREO 2FA ---
-async def enviar_correo_2fa(email_destino: str, codigo: str):
-    html = f"""
-    <div style="font-family: Arial, sans-serif; background-color: #FBF9F6; padding: 40px 20px; text-align: center;">
-        <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; padding: 30px; border: 1px solid #E0DBD3; border-radius: 10px;">
-            <h2 style="color: #800020; margin-top: 0;">Restaurante Bravo - Seguridad</h2>
-            <hr style="border: 0; border-top: 1px solid #E0DBD3; margin: 20px 0;">
-            <p style="color: #2D2D2D; font-size: 16px; line-height: 1.5;">
-                Hemos detectado un intento de inicio de sesión. Usa este código para confirmar que eres tú:
-            </p>
-            <div style="background-color: #800020; color: #ffffff; padding: 15px 25px; font-size: 32px; font-weight: bold; letter-spacing: 8px; margin: 25px 0; display: inline-block; border-radius: 5px;">
-                {codigo}
-            </div>
-            <p style="color: #6B6B6B; font-size: 12px; margin-top: 25px; border-top: 1px solid #EEE; padding-top: 15px;">
-                Si no estás intentando iniciar sesión, por favor cambia tu contraseña inmediatamente.
-            </p>
-            {_FOOTER_RGPD}
-        </div>
-    </div>
-    """
-    mensaje = MessageSchema(
-        subject="Código de Acceso - Restaurante Bravo",
-        recipients=[email_destino],
-        body=html,
-        subtype=MessageType.html
-    )
-    try:
-        fm = FastMail(conf)
-        await fm.send_message(mensaje)
-    except Exception as e:
-        logger.error(f"Error enviando 2FA a {email_destino}: {str(e)}")
-
-
 # --- 5. ENDPOINT: LOGIN (SOLO CLIENTES TIENEN 2FA OPCIONAL) ---
 # Flujo:
 #   1) Buscamos por correo normalizado.

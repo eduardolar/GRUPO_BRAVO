@@ -450,6 +450,95 @@ def _pedido_a_respuesta(pedido_doc: dict, n_items: int) -> dict:
     }
 
 
+# ── Fidelización (Bravo Coins) ────────────────────────────────────────────────
+# Regla de negocio: los puntos se otorgan SOLO cuando el pedido está
+# realmente pagado (efectivo cobrado, cobro en TPV, o pasarela confirmada
+# por webhook) — nunca al crear un pedido con pago pendiente. Si el pedido
+# se cancela tras haber otorgado puntos, se revierten.
+
+
+def otorgar_puntos_fidelidad(pedido_id: str) -> None:
+    """Abona puntos al cliente del pedido (1€ = 1 Coin), idempotente.
+
+    - Solo si `estado_pago == "pagado"`.
+    - Solo una vez: usa el flag `puntos_otorgados` como guarda atómica
+      (find_one_and_update condicional), así dos confirmaciones
+      concurrentes no duplican el abono.
+    Errores no críticos se loguean sin romper el flujo de cobro.
+    """
+    try:
+        if not ObjectId.is_valid(pedido_id):
+            return
+        # Guarda atómica: marcamos el pedido como "puntos otorgados" solo
+        # si está pagado y aún no se habían otorgado.
+        doc = coleccion_pedidos.find_one(
+            {"_id": ObjectId(pedido_id)},
+            {"total": 1, "total_final": 1, "estado_pago": 1,
+             "usuario_id": 1, "puntos_otorgados": 1},
+        )
+        if not doc or doc.get("estado_pago") != "pagado":
+            return
+        if doc.get("puntos_otorgados"):
+            return
+        usuario_id = doc.get("usuario_id")
+        if not usuario_id:
+            return
+        importe = doc.get("total_final")
+        if importe is None:
+            importe = doc.get("total", 0)
+        puntos = int(float(importe or 0))
+        if puntos <= 0:
+            return
+        reservado = coleccion_pedidos.find_one_and_update(
+            {
+                "_id": ObjectId(pedido_id),
+                "estado_pago": "pagado",
+                "puntos_otorgados": {"$exists": False},
+            },
+            {"$set": {"puntos_otorgados": puntos}},
+        )
+        if not reservado:
+            return  # otra request ya los otorgó
+        uid_obj = ObjectId(usuario_id) if ObjectId.is_valid(usuario_id) else usuario_id
+        coleccion_usuarios.update_one(
+            {"_id": uid_obj}, {"$inc": {"puntos": puntos}}
+        )
+        logger.info("Fidelización: pedido %s otorgó %s Bravo Coins", pedido_id, puntos)
+    except Exception as e:  # noqa: BLE001 - no debe romper el cobro
+        logger.error("Error otorgando puntos de fidelidad (pedido %s): %s", pedido_id, e)
+
+
+def revertir_puntos_fidelidad(pedido_doc: dict) -> None:
+    """Si un pedido cancelado había otorgado puntos, los descuenta.
+
+    Idempotente: pone `puntos_otorgados=0` de forma condicional para que
+    no se reviertan dos veces.
+    """
+    try:
+        puntos = int(pedido_doc.get("puntos_otorgados") or 0)
+        if puntos <= 0:
+            return
+        usuario_id = pedido_doc.get("usuario_id")
+        if not usuario_id:
+            return
+        consumido = coleccion_pedidos.find_one_and_update(
+            {"_id": pedido_doc["_id"], "puntos_otorgados": puntos},
+            {"$set": {"puntos_otorgados": 0, "puntos_revertidos": True}},
+        )
+        if not consumido:
+            return  # ya revertido por otra request
+        uid_obj = ObjectId(usuario_id) if ObjectId.is_valid(usuario_id) else usuario_id
+        coleccion_usuarios.update_one(
+            {"_id": uid_obj}, {"$inc": {"puntos": -puntos}}
+        )
+        logger.info(
+            "Fidelización: revertidos %s Bravo Coins del pedido %s (cancelado)",
+            puntos, pedido_doc.get("_id"),
+        )
+    except Exception as e:  # noqa: BLE001
+        logger.error("Error revirtiendo puntos de fidelidad: %s", e)
+
+
 @router.post("")
 @limiter.limit("20/minute")
 async def crear_pedido(
@@ -511,29 +600,33 @@ async def crear_pedido(
             f"Cupón {pedido.cuponCodigo} aplicado: -{descuento_cupon:.2f} EUR"
         )
 
-    # ── CANJE DE BRAVO COINS (resta ATÓMICA — fix race condition de main) ──
+    # ── CANJE DE BRAVO COINS ──────────────────────────────────────────────
+    # La resta REAL de puntos se hace DENTRO de la transacción (ver
+    # `_consumir_recursos` más abajo): así, si el pedido falla (p. ej.
+    # stock insuficiente), los puntos se reembolsan automáticamente con el
+    # rollback. Aquí solo resolvemos al usuario, validamos saldo y aplicamos
+    # el descuento al total.
+    canje_uid_obj = None
     if pedido.puntosUsados > 0:
         # Resolución del cliente: cliente usa su sub; staff debe
         # identificar al cliente con un userId ObjectId válido.
         if normalizar_rol(current_user.get("rol", "")) == "cliente":
-            uid_obj = ObjectId(current_user["sub"])
+            canje_uid_obj = ObjectId(current_user["sub"])
         else:
             uid_payload_raw = pedido.userId or ""
             if not uid_payload_raw or not ObjectId.is_valid(uid_payload_raw):
                 raise ValidacionError(
                     "Para canjear puntos hay que identificar al cliente (userId)"
                 )
-            uid_obj = ObjectId(uid_payload_raw)
+            canje_uid_obj = ObjectId(uid_payload_raw)
 
-        # Resta condicional y atómica: solo descuenta si el documento aún
-        # tiene puntos suficientes. Dos pedidos concurrentes ya no pueden
-        # gastar los mismos puntos (antes era find_one + check + update
-        # por separado → race condition).
-        resultado_resta = coleccion_usuarios.update_one(
-            {"_id": uid_obj, "puntos": {"$gte": pedido.puntosUsados}},
-            {"$inc": {"puntos": -pedido.puntosUsados}},
+        # Comprobación temprana de saldo (mensaje claro antes de procesar).
+        # La resta definitiva, atómica y condicional al saldo ocurre en la
+        # transacción para que un fallo del pedido la revierta.
+        usuario_canje = coleccion_usuarios.find_one(
+            {"_id": canje_uid_obj}, {"puntos": 1}
         )
-        if resultado_resta.modified_count == 0:
+        if not usuario_canje or usuario_canje.get("puntos", 0) < pedido.puntosUsados:
             raise ValidacionError(
                 "No tienes suficientes Bravo Coins para este descuento."
             )
@@ -541,7 +634,7 @@ async def crear_pedido(
         descuento_coins = pedido.puntosUsados / 10.0
         total_calculado = max(0.0, total_calculado - descuento_coins)
         logger.info(
-            f"Se han canjeado {pedido.puntosUsados} puntos "
+            f"Se canjearán {pedido.puntosUsados} puntos "
             f"por un descuento de {descuento_coins}€"
         )
     # ────────────────────────────────────────────────────────────────
@@ -635,18 +728,54 @@ async def crear_pedido(
     if rid_pedido:
         pedido_dict["restaurante_id"] = rid_pedido
 
+    def _buscar_pedido_idempotente():
+        """Devuelve el pedido ya creado con esta Idempotency-Key, o None.
+
+        Protegido contra `idempotency_key` ausente: un DuplicateKeyError
+        de otro índice único (sin cabecera de idempotencia) ya no provoca
+        un AttributeError que enmascare el error real.
+        """
+        if not idempotency_key or not idempotency_key.strip():
+            return None
+        return coleccion_pedidos.find_one(
+            {"usuario_id": usuario_id_pedido,
+             "idempotency_key": idempotency_key.strip()}
+        )
+
+    def _consumir_recursos(session=None):
+        """Resta los puntos canjeados y consume el cupón de forma atómica.
+
+        Se ejecuta dentro de la transacción (o sin sesión en MongoDB
+        standalone). Si algo falla aquí, la excepción propaga y la
+        transacción revierte stock + pedido + puntos + cupón.
+        """
+        if pedido.puntosUsados > 0 and canje_uid_obj is not None:
+            r = coleccion_usuarios.update_one(
+                {"_id": canje_uid_obj, "puntos": {"$gte": pedido.puntosUsados}},
+                {"$inc": {"puntos": -pedido.puntosUsados}},
+                session=session,
+            )
+            if r.modified_count == 0:
+                raise ValidacionError(
+                    "No tienes suficientes Bravo Coins para este descuento."
+                )
+        if pedido.cuponCodigo and descuento_cupon > 0:
+            from routes.cupones import consumir_cupon
+
+            if not consumir_cupon(pedido.cuponCodigo, session=session):
+                raise ValidacionError("El cupón ya no tiene usos disponibles")
+
     resultado = None
     try:
         with cliente.start_session() as session:
             with session.start_transaction():
                 _descontar_stock(items_dict, session=session, restaurante_id=rid_pedido)
+                _consumir_recursos(session=session)
                 resultado = coleccion_pedidos.insert_one(pedido_dict, session=session)
     except AppError:
         raise
     except DuplicateKeyError:
-        existing = coleccion_pedidos.find_one(
-            {"usuario_id": usuario_id_pedido, "idempotency_key": idempotency_key.strip()}
-        )
+        existing = _buscar_pedido_idempotente()
         if existing:
             items_raw = existing.get("items", [])
             n = len(items_raw) if isinstance(items_raw, list) else 0
@@ -655,13 +784,16 @@ async def crear_pedido(
     except OperationFailure as e:
         if "Transaction numbers are only allowed" in str(e) or e.code == 20:
             logger.warning("MongoDB standalone detectado: usando actualizaciones atómicas sin transacción")
+            # NOTA: sin transacción no hay rollback. Si el insert_one
+            # posterior fallara, puntos/cupón ya estarían consumidos. Es
+            # una limitación conocida del modo standalone (solo dev/test);
+            # en producción el clúster es replica set y sí hay transacción.
             try:
                 _descontar_stock(items_dict, restaurante_id=rid_pedido)
+                _consumir_recursos()
                 resultado = coleccion_pedidos.insert_one(pedido_dict)
             except DuplicateKeyError:
-                existing = coleccion_pedidos.find_one(
-                    {"usuario_id": usuario_id_pedido, "idempotency_key": idempotency_key.strip()}
-                ) if idempotency_key else None
+                existing = _buscar_pedido_idempotente()
                 if existing:
                     items_raw = existing.get("items", [])
                     n = len(items_raw) if isinstance(items_raw, list) else 0
@@ -675,21 +807,12 @@ async def crear_pedido(
 
     pedido_id = str(resultado.inserted_id)
 
-    # ── NUEVO: SISTEMA DE FIDELIZACIÓN ──
-    # Si el pedido tiene un usuario asociado, le sumamos los puntos (1€ = 1 Coin)
-    if usuario_id_pedido:
-        try:
-            puntos_a_sumar = int(total_calculado)
-            if puntos_a_sumar > 0:
-                # Convertimos ID a ObjectId si es necesario
-                uid_obj = ObjectId(usuario_id_pedido) if ObjectId.is_valid(usuario_id_pedido) else usuario_id_pedido
-                coleccion_usuarios.update_one(
-                    {"_id": uid_obj},
-                    {"$inc": {"puntos": puntos_a_sumar}}
-                )
-                logger.info(f"Usuario {usuario_id_pedido} ha ganado {puntos_a_sumar} Bravo Coins.")
-        except Exception as e:
-            logger.error(f"Error al sumar puntos de fidelidad: {e}")
+    # ── SISTEMA DE FIDELIZACIÓN ──
+    # Los puntos se otorgan SOLO si el pedido ya está pagado (1€ = 1 Coin).
+    # `otorgar_puntos_fidelidad` es no-op si estado_pago != "pagado"; en
+    # pagos con pasarela o cobro posterior, el abono ocurre al confirmarse
+    # el pago (webhook de Stripe / actualizar_estado_pago / actualizar_pedido).
+    otorgar_puntos_fidelidad(pedido_id)
     # ─────────────────────────────────────────────────────────────────
 
     # Enviar factura al correo del usuario
@@ -815,6 +938,12 @@ def actualizar_estado_pago(
     # de seguimiento usando el ObjectId real (no el session_id de Stripe).
     actualizado = coleccion_pedidos.find_one(filtro, {"_id": 1})
     pedido_id = str(actualizado["_id"]) if actualizado else None
+
+    # Fidelización: si el pedido acaba de quedar pagado, otorgar puntos
+    # (idempotente: no duplica si ya se otorgaron).
+    if payload.estadoPago == "pagado" and pedido_id:
+        otorgar_puntos_fidelidad(pedido_id)
+
     return {
         "updated": result.modified_count > 0,
         "pedido_id": pedido_id,
@@ -1315,6 +1444,18 @@ def actualizar_pedido(
                     "No se pudo liberar mesa %s tras cancelar pedido %s",
                     mesa_id_pedido, pedido_id,
                 )
+
+        # Si el pedido ya había otorgado puntos de fidelidad, revertirlos.
+        revertir_puntos_fidelidad(pedido)
+
+    # Fidelización: si el pedido acaba de quedar pagado por esta vía
+    # (cobro manual desde sala), otorgar puntos (idempotente).
+    if (
+        payload.estadoPago == "pagado"
+        and pedido.get("estado_pago") != "pagado"
+        and result.modified_count > 0
+    ):
+        otorgar_puntos_fidelidad(pedido_id)
 
     return {"updated": result.modified_count > 0}
 
