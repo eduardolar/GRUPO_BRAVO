@@ -47,9 +47,9 @@ FOOTER_RGPD = """
             border-top:1px solid #E0DBD3;text-align:center;line-height:1.6;">
   <strong>Restaurante Bravo</strong> — Responsable del tratamiento.<br>
   Tus datos son tratados conforme al RGPD (UE) 2016/679 y la LOPDGDD 3/2018.<br>
-  <a href="https://grupobravo.com/privacidad" style="color:#800020;">
+  <a href="https://grupobravo.com/privacidad" style="color:#0B2545;">
     Política de Privacidad</a> &nbsp;·&nbsp;
-  <a href="mailto:privacidad@grupobravo.com" style="color:#800020;">
+  <a href="mailto:privacidad@grupobravo.com" style="color:#0B2545;">
     Ejercer derechos ARSULIPO</a>
 </div>
 """
@@ -158,12 +158,12 @@ async def enviar_correo_verificacion(email_destino: str, codigo: str) -> bool:
     html = f"""
     <div style="font-family: Arial, sans-serif; background-color: #FBF9F6; padding: 40px 20px; text-align: center;">
         <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; padding: 30px; border: 1px solid #E0DBD3; border-radius: 10px;">
-            <h2 style="color: #800020; margin-top: 0;">Restaurante Bravo</h2>
+            <h2 style="color: #0B2545; margin-top: 0;">Restaurante Bravo</h2>
             <hr style="border: 0; border-top: 1px solid #E0DBD3; margin: 20px 0;">
             <p style="color: #2D2D2D; font-size: 16px; line-height: 1.5;">
                 ¡Bienvenido! Para activar tu cuenta y empezar tu experiencia gastronómica, usa el siguiente código de seguridad:
             </p>
-            <div style="background-color: #800020; color: #ffffff; padding: 15px 25px; font-size: 32px; font-weight: bold; letter-spacing: 8px; margin: 25px 0; display: inline-block; border-radius: 5px;">
+            <div style="background-color: #0B2545; color: #ffffff; padding: 15px 25px; font-size: 32px; font-weight: bold; letter-spacing: 8px; margin: 25px 0; display: inline-block; border-radius: 5px;">
                 {codigo}
             </div>
             <p style="color: #6B6B6B; font-size: 12px; margin-top: 25px; border-top: 1px solid #EEE; padding-top: 15px;">
@@ -191,12 +191,12 @@ async def enviar_correo_2fa(email_destino: str, codigo: str) -> None:
     html = f"""
     <div style="font-family: Arial, sans-serif; background-color: #FBF9F6; padding: 40px 20px; text-align: center;">
         <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; padding: 30px; border: 1px solid #E0DBD3; border-radius: 10px;">
-            <h2 style="color: #800020; margin-top: 0;">Restaurante Bravo - Seguridad</h2>
+            <h2 style="color: #0B2545; margin-top: 0;">Restaurante Bravo - Seguridad</h2>
             <hr style="border: 0; border-top: 1px solid #E0DBD3; margin: 20px 0;">
             <p style="color: #2D2D2D; font-size: 16px; line-height: 1.5;">
                 Hemos detectado un intento de inicio de sesión. Usa este código para confirmar que eres tú:
             </p>
-            <div style="background-color: #800020; color: #ffffff; padding: 15px 25px; font-size: 32px; font-weight: bold; letter-spacing: 8px; margin: 25px 0; display: inline-block; border-radius: 5px;">
+            <div style="background-color: #0B2545; color: #ffffff; padding: 15px 25px; font-size: 32px; font-weight: bold; letter-spacing: 8px; margin: 25px 0; display: inline-block; border-radius: 5px;">
                 {codigo}
             </div>
             <p style="color: #6B6B6B; font-size: 12px; margin-top: 25px; border-top: 1px solid #EEE; padding-top: 15px;">
@@ -222,13 +222,13 @@ async def enviar_correo_recuperacion(correo: str, codigo: str) -> None:
     html = f"""
     <div style="font-family: Arial, sans-serif; background-color: #FBF9F6; padding: 40px 20px; text-align: center;">
         <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; padding: 30px; border: 1px solid #E0DBD3; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-            <h2 style="color: #800020; margin-top: 0;">Restaurante Bravo</h2>
+            <h2 style="color: #0B2545; margin-top: 0;">Restaurante Bravo</h2>
             <div style="height: 1px; background-color: #E0DBD3; margin: 20px 0;"></div>
             <h3 style="color: #2D2D2D; font-size: 18px;">Restablecer Contraseña</h3>
             <p style="color: #2D2D2D; font-size: 15px; line-height: 1.5;">
                 Recibimos una solicitud para acceder a tu cuenta. Utiliza el siguiente código para completar el proceso de recuperación:
             </p>
-            <div style="background-color: #800020; color: #ffffff; padding: 15px 25px; font-size: 32px; font-weight: bold; letter-spacing: 8px; margin: 25px 0; display: inline-block; border-radius: 5px;">
+            <div style="background-color: #0B2545; color: #ffffff; padding: 15px 25px; font-size: 32px; font-weight: bold; letter-spacing: 8px; margin: 25px 0; display: inline-block; border-radius: 5px;">
                 {codigo}
             </div>
             <p style="color: #6B6B6B; font-size: 12px; margin-top: 25px; border-top: 1px solid #EEE; padding-top: 15px;">

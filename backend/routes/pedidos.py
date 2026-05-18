@@ -253,7 +253,7 @@ async def _enviar_factura(email_destino: str, nombre_usuario: str, pedido_id: st
     notas_html = ""
     if pedido.get("notas"):
         notas_html = f"""
-        <p style="margin:16px 0 4px;color:#800020;font-weight:bold;">Notas</p>
+        <p style="margin:16px 0 4px;color:#0B2545;font-weight:bold;">Notas</p>
         <p style="margin:0;color:#555;font-style:italic;">{pedido['notas']}</p>"""
 
     html = f"""
@@ -261,9 +261,9 @@ async def _enviar_factura(email_destino: str, nombre_usuario: str, pedido_id: st
       <div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #E0DBD3;border-radius:10px;overflow:hidden;">
 
         <!-- Cabecera -->
-        <div style="background:#800020;padding:28px 32px;text-align:center;">
+        <div style="background:#0B2545;padding:28px 32px;text-align:center;">
           <h1 style="margin:0;color:#fff;font-size:22px;letter-spacing:2px;">RESTAURANTE BRAVO</h1>
-          <p style="margin:6px 0 0;color:#f5c6c6;font-size:13px;">Confirmación de pedido</p>
+          <p style="margin:6px 0 0;color:#93C5FD;font-size:13px;">Confirmación de pedido</p>
         </div>
 
         <!-- Cuerpo -->
@@ -286,9 +286,9 @@ async def _enviar_factura(email_destino: str, nombre_usuario: str, pedido_id: st
           <table style="width:100%;border-collapse:collapse;font-size:14px;">
             <thead>
               <tr style="background:#f7f3ee;">
-                <th style="padding:10px 8px;text-align:left;color:#800020;">Producto</th>
-                <th style="padding:10px 8px;text-align:center;color:#800020;">Cant.</th>
-                <th style="padding:10px 8px;text-align:right;color:#800020;">Precio</th>
+                <th style="padding:10px 8px;text-align:left;color:#0B2545;">Producto</th>
+                <th style="padding:10px 8px;text-align:center;color:#0B2545;">Cant.</th>
+                <th style="padding:10px 8px;text-align:right;color:#0B2545;">Precio</th>
               </tr>
             </thead>
             <tbody>
@@ -297,8 +297,8 @@ async def _enviar_factura(email_destino: str, nombre_usuario: str, pedido_id: st
           </table>
 
           <!-- Total -->
-          <div style="text-align:right;margin-top:16px;padding-top:12px;border-top:2px solid #800020;">
-            <span style="font-size:18px;font-weight:bold;color:#800020;">Total: {pedido['total']:.2f} €</span>
+          <div style="text-align:right;margin-top:16px;padding-top:12px;border-top:2px solid #0B2545;">
+            <span style="font-size:18px;font-weight:bold;color:#0B2545;">Total: {pedido['total']:.2f} €</span>
           </div>
 
           {notas_html}

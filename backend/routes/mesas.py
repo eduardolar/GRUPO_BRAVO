@@ -61,22 +61,26 @@ class CrearMesa(BaseModel):
 router = APIRouter(prefix="/mesas", tags=["Mesas"])
 
 
-def _serializar(m: dict) -> dict:
+def _serializar(m: dict, reservas_map: dict | None = None) -> dict:
     estado = m.get("estado", "libre")
+    mid = str(m["_id"])
+    reserva = (reservas_map or {}).get(mid)
     return {
-        "id": str(m["_id"]),
+        "id": mid,
         "numero": m.get("numero", 0),
         "capacidad": m.get("capacidad", 0),
         "ubicacion": m.get("ubicacion", "interior"),
-        # `disponible` queda como bool retrocompatible: solo true si está
-        # libre (no en uso ni pendiente de limpiar). El estado completo va
-        # en el nuevo campo `estado`.
         "disponible": estado == "libre",
         "estado": estado,
         "codigoQr": m.get("codigoQr", m.get("codigo_qr", f"mesa_{m.get('numero', 0)}")),
         "restauranteId": m.get("restaurante_id"),
         "restaurante_id": m.get("restaurante_id"),
+        # NUEVO: indica si la mesa tiene una reserva activa ahora mismo.
+        "reservada": reserva is not None,
+        "reservaHora": reserva["hora"] if reserva else None,
+        "reservaNombre": reserva["nombre"] if reserva else None,
     }
+
 
 
 @router.get("", summary="Listar mesas (filtra por restaurante_id si se pasa)")
@@ -115,7 +119,12 @@ def obtener_mesas(
             )
 
     filtro = {"restaurante_id": rid} if rid else {}
-    return [_serializar(m) for m in coleccion_mesas.find(filtro)]
+    # Import diferido para evitar import circular mesas <-> reservas.
+    from routes.reservas import reservas_activas_por_mesa
+
+    reservas_map = reservas_activas_por_mesa(rid)
+    return [_serializar(m, reservas_map) for m in coleccion_mesas.find(filtro)]
+
 
 
 @router.post("", summary="Crear mesa (admin)")

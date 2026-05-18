@@ -43,14 +43,14 @@ from datetime import datetime, timezone
 import bcrypt
 import pyotp
 from bson import ObjectId
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 import config  # carga .env una sola vez (efecto de import)
 from database import coleccion_usuarios
 from models import CorreoStr, UsuarioLogin, UsuarioRegistro, VerificarRecuperacion
 from limiter import limiter
-from security import crear_token
+from security import crear_token, get_current_user, normalizar_rol
 from exceptions import (
     AppError,
     NotFoundError, ValidacionError,
@@ -81,6 +81,35 @@ _hash_otp = hash_otp
 _otp_coincide = otp_coincide
 _codigo_expirado = codigo_expirado
 _expiry_iso = expiry_iso
+
+
+# ── Autorización para los endpoints de gestión de 2FA ─────────────────────────
+# Los endpoints `/usuarios/{user_id}/2fa[...]` reciben el `user_id` por path.
+# Sin esta guarda, cualquiera (autenticado o no) podía: enumerar IDs válidos
+# (404 vs 200), forzar el envío de OTP por correo a una víctima, o
+# sobrescribir el `totp_secret_temp` de otra cuenta. La regla es simple:
+# solo el dueño de la cuenta (sub == user_id) o un rol administrativo
+# (admin / super_admin) puede tocar la configuración 2FA de ese usuario.
+_ROLES_ADMIN_2FA = {"admin", "super_admin"}
+
+
+def _exigir_propietario_o_admin(
+    user_id: str,
+    current_user: dict = Depends(get_current_user),
+) -> dict:
+    """Autoriza acciones sobre la configuración 2FA de `user_id`.
+
+    Requiere JWT válido (vía `get_current_user`, que además revalida que la
+    cuenta sigue activa) y exige que el actor sea el propio dueño o un
+    administrador. Lanza 403 genérico en caso contrario para no filtrar si
+    el `user_id` existe.
+    """
+    sub = str(current_user.get("sub", ""))
+    rol_raw = current_user.get("rol", "")
+    rol = normalizar_rol(rol_raw) if isinstance(rol_raw, str) else ""
+    if sub != user_id and rol not in _ROLES_ADMIN_2FA:
+        raise AutorizacionError("No tienes permiso para gestionar el 2FA de esta cuenta")
+    return current_user
 
 
 # Modelos Pydantic usados en auth
@@ -415,7 +444,10 @@ async def reenviar_login_2fa(datos: Reenviar2FA):
 #              persisten el secret y los códigos de recuperación.
 
 @router.post("/usuarios/{user_id}/2fa/setup")
-def setup_2fa(user_id: str):
+def setup_2fa(
+    user_id: str,
+    _actor: dict = Depends(_exigir_propietario_o_admin),
+):
     try:
         usuario_db = coleccion_usuarios.find_one({"_id": ObjectId(user_id)})
     except Exception:
@@ -439,7 +471,11 @@ def setup_2fa(user_id: str):
 
 
 @router.post("/usuarios/{user_id}/2fa/activar")
-def activar_2fa(user_id: str, datos: Activar2FA):
+def activar_2fa(
+    user_id: str,
+    datos: Activar2FA,
+    _actor: dict = Depends(_exigir_propietario_o_admin),
+):
     try:
         usuario_db = coleccion_usuarios.find_one({"_id": ObjectId(user_id)})
     except Exception:
@@ -471,7 +507,11 @@ def activar_2fa(user_id: str, datos: Activar2FA):
 
 
 @router.post("/usuarios/{user_id}/2fa/desactivar")
-def desactivar_2fa(user_id: str, datos: Desactivar2FA):
+def desactivar_2fa(
+    user_id: str,
+    datos: Desactivar2FA,
+    _actor: dict = Depends(_exigir_propietario_o_admin),
+):
     try:
         usuario_db = coleccion_usuarios.find_one({"_id": ObjectId(user_id)})
     except Exception:
@@ -583,7 +623,12 @@ def verificar_2fa_recovery(request: Request, datos: VerificarRecuperacion):
 
 @router.post("/usuarios/{user_id}/2fa/regenerar-codigos")
 @limiter.limit("3/minute")
-def regenerar_codigos_recuperacion(request: Request, user_id: str, datos: Activar2FA):
+def regenerar_codigos_recuperacion(
+    request: Request,
+    user_id: str,
+    datos: Activar2FA,
+    _actor: dict = Depends(_exigir_propietario_o_admin),
+):
     try:
         usuario_db = coleccion_usuarios.find_one({"_id": ObjectId(user_id)})
     except Exception:
@@ -613,7 +658,11 @@ def regenerar_codigos_recuperacion(request: Request, user_id: str, datos: Activa
 
 @router.post("/usuarios/{user_id}/2fa-email/solicitar")
 @limiter.limit("3/minute")
-async def solicitar_codigo_email_2fa(request: Request, user_id: str):
+async def solicitar_codigo_email_2fa(
+    request: Request,
+    user_id: str,
+    _actor: dict = Depends(_exigir_propietario_o_admin),
+):
     try:
         usuario_db = coleccion_usuarios.find_one({"_id": ObjectId(user_id)})
     except Exception:
@@ -632,7 +681,12 @@ async def solicitar_codigo_email_2fa(request: Request, user_id: str):
 
 @router.post("/usuarios/{user_id}/2fa-email/activar")
 @limiter.limit("5/minute")
-def activar_email_2fa(request: Request, user_id: str, datos: ConfirmarEmail2FA):
+def activar_email_2fa(
+    request: Request,
+    user_id: str,
+    datos: ConfirmarEmail2FA,
+    _actor: dict = Depends(_exigir_propietario_o_admin),
+):
     try:
         usuario_db = coleccion_usuarios.find_one({"_id": ObjectId(user_id)})
     except Exception:
@@ -653,7 +707,12 @@ def activar_email_2fa(request: Request, user_id: str, datos: ConfirmarEmail2FA):
 
 @router.post("/usuarios/{user_id}/2fa-email/desactivar")
 @limiter.limit("5/minute")
-def desactivar_email_2fa(request: Request, user_id: str, datos: ConfirmarEmail2FA):
+def desactivar_email_2fa(
+    request: Request,
+    user_id: str,
+    datos: ConfirmarEmail2FA,
+    _actor: dict = Depends(_exigir_propietario_o_admin),
+):
     try:
         usuario_db = coleccion_usuarios.find_one({"_id": ObjectId(user_id)})
     except Exception:
