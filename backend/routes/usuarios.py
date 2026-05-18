@@ -34,7 +34,7 @@ import audit_general as ag
 from security import require_role, normalizar_rol, ROLES_CANONICOS
 from limiter import limiter
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from fastapi_mail import FastMail, MessageSchema, MessageType
 from models import CorreoStr
 
@@ -118,6 +118,21 @@ class UsuarioActualizar(BaseModel):
     longitud: float | None = None
     activo: bool | None = None
     rol: str | None = None
+
+    @field_validator("latitud")
+    @classmethod
+    def _lat_valida(cls, v):
+        if v is not None and not (-90 <= v <= 90):
+            raise ValueError("latitud fuera de rango (-90 a 90)")
+        return v
+
+    @field_validator("longitud")
+    @classmethod
+    def _lon_valida(cls, v):
+        if v is not None and not (-180 <= v <= 180):
+            raise ValueError("longitud fuera de rango (-180 a 180)")
+        return v
+
 
 # Modelo para crear usuarios desde el panel de Admin
 class UsuarioCrear(BaseModel):
@@ -235,8 +250,18 @@ def actualizar_perfil(user_id: str, datos: UsuarioActualizar, request: Request,
     """Edita los datos de un empleado. Solo accesible por admin/super_admin.
     Los clientes usan PUT /clientes/me para su propio perfil."""
     # Convertimos el modelo Pydantic a un diccionario de Python sin valores None.
-    datos_dict = datos.dict()
-    actualizacion = {k: v for k, v in datos_dict.items() if v is not None}
+    enviados = datos.model_dump(exclude_unset=True)
+    actualizacion: dict = {}
+    for k, v in enviados.items():
+        if k in ("latitud", "longitud"):
+          actualizacion[k] = v            # permite None -> limpia coords
+        elif v is not None:
+            actualizacion[k] = v
+    if "direccion" in actualizacion and "latitud" not in enviados \
+        and "longitud" not in enviados:
+        actualizacion["latitud"] = None
+        actualizacion["longitud"] = None
+
 
     # Si por algún motivo el diccionario queda vacío, avisamos
     if not actualizacion:
@@ -249,10 +274,26 @@ def actualizar_perfil(user_id: str, datos: UsuarioActualizar, request: Request,
             raise ValidacionError(f"Rol '{rol_limpio}' no válido")
         actualizacion["rol"] = rol_limpio
 
+    try:
+        oid = ObjectId(user_id)
+    except Exception:
+        raise ValidacionError("ID de usuario inválido")
+
+    if "correo" in actualizacion:
+        from utils.auth_helpers import normalizar_correo
+        nuevo = normalizar_correo(actualizacion["correo"])
+        ya = coleccion_usuarios.find_one(
+            {"correo": nuevo, "_id": {"$ne": oid}}
+        )
+        if ya:
+            raise ConflictError("Ese correo ya está en uso")
+        actualizacion["correo"] = nuevo
+
     resultado = coleccion_usuarios.update_one(
-        {"_id": ObjectId(user_id)},
+        {"_id": oid},
         {"$set": actualizacion}
     )
+
 
     if resultado.matched_count == 0:
         raise NotFoundError("Usuario no encontrado")

@@ -59,7 +59,7 @@ from datetime import datetime, timezone
 import bcrypt
 from bson import ObjectId
 from fastapi import APIRouter, Depends, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 import config  # carga .env una sola vez
 from database import coleccion_usuarios, coleccion_pedidos
@@ -113,6 +113,20 @@ class PerfilClienteActualizar(BaseModel):
     direccion: str | None = None
     latitud: float | None = None
     longitud: float | None = None
+
+    @field_validator("latitud")
+    @classmethod
+    def _lat_valida(cls, v):
+        if v is not None and not (-90 <= v <= 90):
+            raise ValueError("latitud fuera de rango (-90 a 90)")
+        return v
+
+    @field_validator("longitud")
+    @classmethod
+    def _lon_valida(cls, v):
+        if v is not None and not (-180 <= v <= 180):
+            raise ValueError("longitud fuera de rango (-180 a 180)")
+        return v
 
 
 class CambiarPassword(BaseModel):
@@ -365,11 +379,22 @@ def actualizar_perfil_propio(
     except Exception:
         raise ValidacionError("ID de usuario inválido en token")
 
-    actualizacion = {
-        k: v
-        for k, v in datos.model_dump().items()
-        if v is not None and k in _CAMPOS_EDITABLES
-    }
+    enviados = datos.model_dump(exclude_unset=True)
+    actualizacion: dict = {}
+    for k in _CAMPOS_EDITABLES:
+        if k not in enviados:
+            continue
+        v = enviados[k]
+        if k in ("latitud", "longitud"):
+            actualizacion[k] = v
+        elif v is not None:
+            actualizacion[k] = v
+
+    # Si cambian la dirección pero NO mandan coordenadas nuevas, las limpiamos.
+    if "direccion" in actualizacion and "latitud" not in enviados \
+            and "longitud" not in enviados:
+        actualizacion["latitud"] = None
+        actualizacion["longitud"] = None
 
     if not actualizacion:
         raise ValidacionError("No se enviaron datos válidos para actualizar")
@@ -383,7 +408,6 @@ def actualizar_perfil_propio(
         raise NotFoundError("Usuario no encontrado")
 
     return {"mensaje": "Perfil actualizado correctamente"}
-
 
 @router.put("/me/password", summary="Cambiar contraseña propia del cliente")
 def cambiar_password_propio(

@@ -96,7 +96,7 @@ class TestPedidoCrear:
         assert p.tipoEntrega == TipoEntrega.local
 
     def test_normalizacion_domicilio_variantes(self):
-        p = self._pedido(tipoEntrega="A domicilio")
+        p = self._pedido(tipoEntrega="A domicilio", direccionEntrega="Calle Falsa 123")
         assert p.tipoEntrega == TipoEntrega.domicilio
 
     def test_normalizacion_recoger(self):

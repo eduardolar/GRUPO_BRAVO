@@ -23,10 +23,17 @@
 # ============================================================================
 import re
 from enum import Enum
-from typing import Annotated, Any, Dict, List, Optional
+from typing import Annotated, Any, Dict, List, Optional, Self
 from pydantic import BaseModel, EmailStr
 from email_validator import EmailNotValidError, validate_email
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validator
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_validator,
+)
 
 import config
 
@@ -183,6 +190,9 @@ class PedidoCrear(BaseModel):
     referenciaPago: Optional[str] = None    # id externo (Stripe PaymentIntent...)
     estadoPago: Optional[EstadoPago] = EstadoPago.pendiente
     restauranteId: Optional[str] = None     # multi-tenant: sucursal
+    direccionEntregaLat: float | None = None
+    direccionEntregaLon: float | None = None
+
     # Prioridad para cocina: pedidos urgentes (cliente con prisa, alergia, etc.)
     # se destacan en la pantalla del cocinero con un banner rojo.
     prioritario: bool = False
@@ -229,6 +239,18 @@ class PedidoCrear(BaseModel):
             "applepay": "apple_pay",
         }
         return _ALIAS.get(texto, texto)
+    
+    @model_validator(mode="after")
+    def _validar_direccion_domicilio(self):
+        """Un pedido a domicilio necesita SIEMPRE dirección de entrega."""
+        te = getattr(self.tipoEntrega, "value", self.tipoEntrega)
+        if te == "domicilio":
+            if not self.direccionEntrega or not self.direccionEntrega.strip():
+                raise ValueError(
+                    "La dirección de entrega es obligatoria para pedidos a domicilio"
+                )
+        return self
+
 
     @field_validator("estadoPago", mode="before")
     @classmethod
