@@ -305,6 +305,8 @@ async def iniciar_sesion(request: Request, credenciales: UsuarioLogin):
                     "id": str(usuario_db["_id"]),
                     "nombre": usuario_db["nombre"],
                     "correo": usuario_db["correo"],
+                    "telefono": usuario_db.get("telefono", ""),
+                    "direccion": usuario_db.get("direccion", ""),
                     "rol": rol,
                     "restauranteId": usuario_db.get("restaurante_id", ""),
                     "email_2fa_enabled": False,
