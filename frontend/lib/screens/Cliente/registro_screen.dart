@@ -127,11 +127,16 @@ class _RegistroScreenState extends State<RegistroScreen> {
 
   Future<void> _cargarRestaurantes() async {
     try {
-      final lista = await RestauranteService().obtenerTodos();
+      final lista = await RestauranteService().obtenerPublicos();
       if (!mounted) return;
       setState(() => _restaurantes = lista);
     } catch (e) {
       debugPrint('Error al cargar restaurantes: $e');
+      if (!mounted) return;
+      showAppError(
+        context,
+        'No pudimos cargar los restaurantes. Comprueba tu conexión e inténtalo de nuevo.',
+      );
     }
   }
 
