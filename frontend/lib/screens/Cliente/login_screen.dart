@@ -42,6 +42,8 @@ import 'package:frontend/components/Cliente/primary_button.dart';
 // Import para la verificación del 2FA
 import 'package:frontend/screens/cliente/verificacion_screen.dart';
 
+import '../../services/http_client.dart';
+
 /// Pantalla de inicio de sesión común a todos los roles (cliente, trabajador,
 /// cocinero, administrador y superadministrador).
 ///
@@ -262,9 +264,15 @@ class _LoginScreenState extends State<LoginScreen> {
       if (authProvider.usuarioActual != null) {
         _navigateToRoleHome(authProvider.usuarioActual!);
       }
-    } catch (e) {
-      if (mounted) showAppError(context, 'Error: ${e.toString()}');
-    } finally {
+    } on ApiException catch (e) {
+  final msg = e.statusCode == 401
+      ? 'Correo o contraseña incorrectos'
+      : e.message;
+  if (mounted) showAppError(context, msg);
+} catch (e) {
+  if (mounted) showAppError(context, 'Error: ${e.toString()}');
+}
+ finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
