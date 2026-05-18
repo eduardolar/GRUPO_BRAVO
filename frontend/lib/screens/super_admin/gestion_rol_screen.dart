@@ -199,7 +199,7 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
             'Permisos y Roles',
             style: TextStyle(
               fontFamily: 'Playfair Display',
-              color: Colors.white,
+              color: Colors.black,
               fontSize: 30,
               fontWeight: FontWeight.bold,
             ),
@@ -255,7 +255,7 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
               style: GoogleFonts.manrope(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
-                color: Colors.white,
+                color: Colors.black,
               ),
             ),
           ),
@@ -274,11 +274,14 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setStateDialog) => AlertDialog(
-          backgroundColor: AppColors.background,
+          backgroundColor: Colors.black,
           shape: const RoundedRectangleBorder(),
           title: Text(
             'Cambiar rol',
-            style: GoogleFonts.manrope(fontWeight: FontWeight.w700),
+            style: GoogleFonts.manrope(
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+            ),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -315,6 +318,7 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
                           style: GoogleFonts.manrope(
                             fontWeight: FontWeight.w700,
                             fontSize: 14,
+                            color: Colors.white,
                           ),
                         ),
                         Text(
@@ -332,6 +336,10 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
               const SizedBox(height: 20),
               DropdownButtonFormField<String>(
                 initialValue: rolActual,
+                // Color de fondo del menú desplegable cuando se abre (Blanco para contraste total)
+                dropdownColor: Colors.white,
+                // Color del texto/icono seleccionado dentro del botón principal
+                style: GoogleFonts.manrope(color: Colors.black),
                 decoration: InputDecoration(
                   labelText: 'Nuevo rol',
                   labelStyle: GoogleFonts.manrope(
@@ -354,16 +362,20 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
                     color: AppColors.button,
                   ),
                   filled: true,
-                  fillColor: const Color(0x8C000000),
+                  // Fondo blanco para la caja del input para que coincida con las letras negras
+                  fillColor: Colors.white,
                 ),
-                style: GoogleFonts.manrope(color: Colors.white),
                 items: _opcionesRol
                     .map(
                       (r) => DropdownMenuItem(
                         value: r,
                         child: Text(
                           _rolesEtiqueta[r] ?? r,
-                          style: GoogleFonts.manrope(),
+                          // Forzamos explícitamente a que las letras de las opciones sean negras
+                          style: GoogleFonts.manrope(
+                            color: Colors.black,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                     )
