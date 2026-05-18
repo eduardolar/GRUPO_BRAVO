@@ -134,6 +134,13 @@ def validar_entorno_produccion() -> None:
     if not jwt_secret or jwt_secret.startswith(_JWT_PLACEHOLDER_PREFIX):
         errores.append("JWT_SECRET_KEY no está definido o sigue siendo el placeholder")
 
+    if not ALLOWED_ORIGINS.strip():
+        # En producción, CORS con "*" abriría la API a cualquier origen.
+        # Exigimos la lista explícita de dominios del frontend.
+        errores.append(
+            "ALLOWED_ORIGINS no está definido (en producción NO se permite '*')"
+        )
+
     if errores:
         detalle = "\n  - ".join(errores)
         raise RuntimeError(
