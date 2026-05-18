@@ -196,6 +196,9 @@ def crear_payment_intent(
             amount=int(round(total * 100)),
             currency=payload.currency.lower(),
             automatic_payment_methods={"enabled": True},
+            metadata=(
+                {"pedido_id": payload.pedido_id} if payload.pedido_id else {}
+            ),
         )
         registrar_pago(request, "stripe.intent_created", "stripe",
                        importe=total, moneda=payload.currency,
@@ -265,7 +268,11 @@ async def iniciar_apple_pay(
             amount=int(round(total * 100)),
             currency=payload.currency.lower(),
             automatic_payment_methods={"enabled": True},
-            metadata={"platform": "apple_pay", "country": payload.country},
+            metadata={
+                "platform": "apple_pay",
+                "country": payload.country,
+                **({"pedido_id": payload.pedido_id} if payload.pedido_id else {}),
+            },
         )
         registrar_pago(request, "apple_pay.intent_created", "apple_pay",
                        importe=total, moneda=payload.currency,
@@ -356,7 +363,10 @@ async def iniciar_google_pay(
             amount=int(round(total * 100)),
             currency=payload.currency.lower(),
             automatic_payment_methods={"enabled": True},
-            metadata={"platform": "google_pay"},
+            metadata={
+                "platform": "google_pay",
+                **({"pedido_id": payload.pedido_id} if payload.pedido_id else {}),
+            },
         )
         registrar_pago(request, "google_pay.intent_created", "google_pay",
                        importe=total, moneda=payload.currency,
@@ -481,6 +491,12 @@ def crear_checkout_session(
             mode="payment",
             success_url=payload.success_url,
             cancel_url=payload.cancel_url,
+            # El metadata debe viajar en el PaymentIntent subyacente para
+            # que llegue al evento `payment_intent.succeeded` del webhook.
+            payment_intent_data=(
+                {"metadata": {"pedido_id": payload.pedido_id}}
+                if payload.pedido_id else {}
+            ),
         )
         registrar_pago(request, "stripe.checkout_created", "stripe",
                        importe=total, moneda=payload.currency,
@@ -730,6 +746,15 @@ async def stripe_webhook(request: Request):
                     "fecha_pago": datetime.utcnow().isoformat(),
                 }},
             )
+            # Fidelización: el pago quedó confirmado por la pasarela
+            # (fuente de verdad). Otorgar puntos de forma idempotente.
+            try:
+                from routes.pedidos import otorgar_puntos_fidelidad
+
+                otorgar_puntos_fidelidad(pedido_id)
+            except Exception as e:  # noqa: BLE001 - no romper el webhook
+                logger.error("Error otorgando puntos vía webhook (pedido %s): %s",
+                             pedido_id, e)
         registrar_pago(request, "stripe.webhook.succeeded", "stripe",
                        referencia=intent_id, estado="succeeded",
                        detalle=f"pedido_id={pedido_id}")

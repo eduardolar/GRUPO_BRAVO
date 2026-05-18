@@ -29,6 +29,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from bson import ObjectId
+from pymongo.errors import DuplicateKeyError
 from database import coleccion_reservas, coleccion_mesas, coleccion_restaurantes
 from models import ReservaCrear
 from security import get_current_user, require_role, normalizar_rol
@@ -434,7 +435,15 @@ def crear_reserva(
     if creado_por_actor is not None:
         reserva_dict["creado_por_actor"] = creado_por_actor
 
-    resultado = coleccion_reservas.insert_one(reserva_dict)
+    try:
+        resultado = coleccion_reservas.insert_one(reserva_dict)
+    except DuplicateKeyError:
+        # El índice único `ux_reserva_slot_confirmada` ya tenía ese slot:
+        # otra reserva ganó la carrera entre el check y el insert.
+        raise HTTPException(
+            status_code=409,
+            detail="Esa mesa ya está reservada para esa fecha y hora",
+        )
     return {
         "id": str(resultado.inserted_id),
         "usuarioId": usuario_id_final or "",
