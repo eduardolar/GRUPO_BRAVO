@@ -59,8 +59,9 @@ def test_stripe_intent_cliente_pedido_propio_devuelve_200(client):
         "id": "pi_test", "client_secret": "cs_test", "status": "requires_payment_method"
     }[k]
 
-    with patch("pagos.coleccion_pedidos") as mock_col, \
+    with patch("services.pagos_service.coleccion_pedidos") as mock_col, \
          patch("pagos.stripe") as mock_stripe, \
+         patch("services.pagos_service.stripe") as mock_stripe_svc, \
          patch("pagos.registrar_pago"):
         mock_col.find_one.return_value = pedido_doc
         mock_stripe.PaymentIntent.create.return_value = {
@@ -69,6 +70,9 @@ def test_stripe_intent_cliente_pedido_propio_devuelve_200(client):
             "status": "requires_payment_method",
         }
         mock_stripe.api_key = "sk_test_fake"
+        # _exigir_stripe vive ahora en services.pagos_service (piloto 6.2.3)
+        # y lee SU referencia a stripe; hay que mockear su api_key también.
+        mock_stripe_svc.api_key = "sk_test_fake"
 
         resp = client.post(
             "/api/v1/payments/stripe/create-intent",
@@ -86,7 +90,7 @@ def test_stripe_intent_cliente_pedido_ajeno_devuelve_403(client):
     # usuario_id distinto al sub del token del cliente
     pedido_doc = _make_pedido(pedido_id, usuario_id=_OTRO_CLIENTE_ID)
 
-    with patch("pagos.coleccion_pedidos") as mock_col:
+    with patch("services.pagos_service.coleccion_pedidos") as mock_col:
         mock_col.find_one.return_value = pedido_doc
 
         resp = client.post(
@@ -103,7 +107,7 @@ def test_stripe_intent_camarero_pedido_otra_sucursal_devuelve_403(client):
     pedido_id = str(ObjectId())
     pedido_doc = _make_pedido(pedido_id, usuario_id=_OTRO_CLIENTE_ID, restaurante_id="r2")
 
-    with patch("pagos.coleccion_pedidos") as mock_col:
+    with patch("services.pagos_service.coleccion_pedidos") as mock_col:
         mock_col.find_one.return_value = pedido_doc
 
         resp = client.post(
@@ -137,7 +141,7 @@ def test_checkout_session_cliente_pedido_ajeno_devuelve_403(client):
     pedido_id = str(ObjectId())
     pedido_doc = _make_pedido(pedido_id, usuario_id=_OTRO_CLIENTE_ID)
 
-    with patch("pagos.coleccion_pedidos") as mock_col:
+    with patch("services.pagos_service.coleccion_pedidos") as mock_col:
         mock_col.find_one.return_value = pedido_doc
 
         resp = client.post(
@@ -171,7 +175,7 @@ def test_paypal_create_order_cliente_pedido_ajeno_devuelve_403(client):
     pedido_id = str(ObjectId())
     pedido_doc = _make_pedido(pedido_id, usuario_id=_OTRO_CLIENTE_ID)
 
-    with patch("pagos.coleccion_pedidos") as mock_col:
+    with patch("services.pagos_service.coleccion_pedidos") as mock_col:
         mock_col.find_one.return_value = pedido_doc
 
         resp = client.post(
@@ -200,7 +204,7 @@ def test_apple_pay_init_cliente_pedido_ajeno_devuelve_403(client):
     pedido_id = str(ObjectId())
     pedido_doc = _make_pedido(pedido_id, usuario_id=_OTRO_CLIENTE_ID)
 
-    with patch("pagos.coleccion_pedidos") as mock_col:
+    with patch("services.pagos_service.coleccion_pedidos") as mock_col:
         mock_col.find_one.return_value = pedido_doc
 
         resp = client.post(
@@ -229,7 +233,7 @@ def test_google_pay_init_cliente_pedido_ajeno_devuelve_403(client):
     pedido_id = str(ObjectId())
     pedido_doc = _make_pedido(pedido_id, usuario_id=_OTRO_CLIENTE_ID)
 
-    with patch("pagos.coleccion_pedidos") as mock_col:
+    with patch("services.pagos_service.coleccion_pedidos") as mock_col:
         mock_col.find_one.return_value = pedido_doc
 
         resp = client.post(

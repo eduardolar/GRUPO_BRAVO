@@ -49,8 +49,17 @@ from pydantic import BaseModel, Field
 
 import config  # carga .env una sola vez (efecto de import)
 from audit import registrar_pago
-from security import require_role, get_current_user, normalizar_rol
+from security import require_role, get_current_user
 from database import coleccion_auditoria_pagos, coleccion_pedidos
+# Capa de servicios (piloto 6.2.3): helpers de negocio/autorización
+# extraídos de este router a services/pagos_service.py. Se importan con el
+# MISMO nombre para no tocar los call sites ni el contrato de la API.
+from services.pagos_service import (
+    _exigir_stripe,
+    _total_pedido,
+    _autorizar_pedido,
+    _autorizar_intent,
+)
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -60,17 +69,6 @@ STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 PAYPAL_CLIENT_ID = os.getenv("PAYPAL_CLIENT_ID", "")
 PAYPAL_CLIENT_SECRET = os.getenv("PAYPAL_CLIENT_SECRET", "")
 PAYPAL_BASE_URL = os.getenv("PAYPAL_BASE_URL", "https://api-m.sandbox.paypal.com")
-
-
-def _exigir_stripe() -> None:
-    """Detiene la petición con 503 si Stripe no está configurado.
-
-    No revela detalles internos como el nombre de la variable que falta:
-    eso aparece sólo en el log del servidor.
-    """
-    if not stripe.api_key:
-        logger.error("STRIPE_SECRET_KEY ausente: el servicio de pagos no puede operar.")
-        raise HTTPException(status_code=503, detail="Servicio de pagos no disponible")
 
 router = APIRouter(prefix="/payments", tags=["Pagos"])
 
@@ -129,72 +127,9 @@ class PayPalCaptureRequest(BaseModel):
     orderId: str
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
-
-def _total_pedido(pedido_id: str) -> float:
-    """Return the server-calculated total for a pedido; never trust client amounts."""
-    if not ObjectId.is_valid(pedido_id):
-        raise HTTPException(status_code=400, detail="pedido_id inválido")
-    pedido = coleccion_pedidos.find_one({"_id": ObjectId(pedido_id)}, {"total": 1})
-    if not pedido:
-        raise HTTPException(status_code=404, detail="Pedido no encontrado")
-    return float(pedido["total"])
-
-
-def _autorizar_pedido(pedido_id: str, current_user: dict) -> dict:
-    """Verifica que el caller tiene permiso sobre el pedido y devuelve el doc.
-
-    - cliente: solo su propio pedido (usuario_id == sub).
-    - camarero/admin: solo pedidos de su restaurante_id.
-    - super_admin: sin restricción.
-    Lanza 403 si no tiene permiso.
-    """
-    if not ObjectId.is_valid(pedido_id):
-        raise HTTPException(status_code=400, detail="pedido_id inválido")
-    pedido = coleccion_pedidos.find_one({"_id": ObjectId(pedido_id)})
-    if not pedido:
-        raise HTTPException(status_code=404, detail="Pedido no encontrado")
-
-    rol = normalizar_rol(current_user.get("rol", ""))
-    if rol == "cliente":
-        if pedido.get("usuario_id") != current_user.get("sub"):
-            raise HTTPException(status_code=403, detail="No puedes acceder a este pedido")
-    elif rol in {"camarero", "admin"}:
-        rid = current_user.get("restaurante_id")
-        if rid and pedido.get("restaurante_id") and pedido["restaurante_id"] != rid:
-            raise HTTPException(status_code=403, detail="No puedes acceder a pedidos de otra sucursal")
-    # super_admin: sin restricción
-    return pedido
-
-
-def _autorizar_intent(payment_intent_id: str, current_user: dict) -> dict:
-    """Recupera el PaymentIntent y verifica propiedad si lleva pedido_id.
-
-    Los `*/confirm` y `*/verify` recibían un payment_intent_id opaco SIN
-    autenticación: un cliente legítimo podía confirmar/consultar intents
-    ajenos y filtrar metadata (p. ej. `platform`). Ahora:
-
-      - El endpoint exige `Depends(get_current_user)` (no más anónimo).
-      - Si el intent tiene `metadata.pedido_id`, se valida propiedad con
-        `_autorizar_pedido` (cliente: su pedido; camarero/admin: su
-        sucursal; super_admin: todo).
-      - Si NO hay pedido_id (flujo legacy: el pedido se crea DESPUÉS del
-        pago), no hay propiedad que comprobar todavía, pero la
-        autenticación ya elimina el acceso anónimo.
-
-    Devuelve el intent recuperado para que el llamante lo reutilice y no
-    haga una segunda llamada a Stripe.
-    """
-    _exigir_stripe()
-    if not payment_intent_id or not payment_intent_id.strip():
-        raise HTTPException(status_code=400, detail="payment_intent_id requerido")
-    try:
-        intent = stripe.PaymentIntent.retrieve(payment_intent_id.strip())
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    pedido_id = (intent.get("metadata") or {}).get("pedido_id")
-    if pedido_id:
-        _autorizar_pedido(pedido_id, current_user)
-    return intent
+# _exigir_stripe, _total_pedido, _autorizar_pedido y _autorizar_intent se
+# movieron a services/pagos_service.py (piloto 6.2.3) y se importan arriba
+# con el mismo nombre. El resto de helpers de PayPal sigue aquí de momento.
 
 
 # ── Stripe ─────────────────────────────────────────────────────────────────────
