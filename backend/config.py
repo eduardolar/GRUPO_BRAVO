@@ -82,7 +82,7 @@ def get(key: str, default: str | None = None) -> str | None:
 # en lugar de `os.environ[...]` (lanza KeyError tarde y críptico).
 
 MONGO_URI: str | None = os.getenv("MONGO_URI")              # cadena de conexión a Mongo Atlas / local
-HOST: str = os.getenv("HOST", "127.0.0.1")                  # host donde escucha uvicorn
+HOST: str = os.getenv("HOST", "0.0.0.0")                  # host donde escucha uvicorn
 PORT: int = int(os.getenv("PORT", "8000"))                  # puerto del servidor
 ALLOWED_ORIGINS: str = os.getenv("ALLOWED_ORIGINS", "")     # CSV de orígenes CORS permitidos
 JWT_SECRET_KEY: str | None = os.getenv("JWT_SECRET_KEY")    # secreto HMAC para firmar JWT

@@ -40,6 +40,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+
 class AuthSession {
   static String? _token;
   static String? _userId;
@@ -67,6 +68,8 @@ class AuthSession {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString(_kToken);
+
+
       if (token == null || token.isEmpty) return; // sin sesión guardada
       _token = token;
       _userId = prefs.getString(_kUserId);

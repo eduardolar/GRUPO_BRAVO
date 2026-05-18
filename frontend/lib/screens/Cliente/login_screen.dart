@@ -12,8 +12,7 @@
 // si se le forzó a loguearse (p. ej. "ver mi historial" o "reservar").
 // ============================================================================
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:frontend/services/auth_session.dart';
+import 'package:frontend/services/biometric_auth.dart';
 import 'package:provider/provider.dart';
 
 import 'package:frontend/core/app_routes.dart';
@@ -87,6 +86,7 @@ class _LoginScreenState extends State<LoginScreen> {
     _passwordController.dispose();
     super.dispose();
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -271,9 +271,6 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) setState(() => _isLoading = false);
     }
 
-    final storage = FlutterSecureStorage();// Guardar el token de autenticación de forma segura
-
-    await storage.write(key: "auth_token", value: AuthSession.token); 
   }
 
   /// Reemplaza la pila de navegación por el home correspondiente al rol.
@@ -322,5 +319,17 @@ class _LoginScreenState extends State<LoginScreen> {
       AppRoute.reveal(destino),
       (route) => false,
     );
+  }
+
+  void inicioSesionBiometrico(){
+    try{
+      Future<AuthProvider?> authProvider = InicioSesionBiometrico().authenticarBiometrico();
+      authProvider.then((provider) {
+        if (provider != null) {
+          _navigateToRoleHome(provider.usuarioActual!);
+        }
+      });
+    } 
+    catch (e) {}
   }
 }

@@ -36,7 +36,8 @@ import 'auth_session.dart';
 class ApiService {
   // Comparte una única fuente de verdad con api_config.dart para que el
   // override --dart-define=API_BASE_URL se respete también aquí.
-  static String get baseUrl => api_config.baseUrl;
+  // static String get baseUrl => api_config.baseUrl;
+  static const String baseUrl = 'http://192.168.1.131'; // ip local fija para pruebas en red local, no usar en producción ni con emuladores
 
   // ─── AUTH ────────────────────────────────────────────────────
 

@@ -2,6 +2,7 @@
     <!-- Permiso para mostrar notificaciones locales en Android 13+ (TIRAMISU). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="frontend"
         android:name="${applicationName}"

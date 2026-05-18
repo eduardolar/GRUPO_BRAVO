@@ -20,6 +20,7 @@
 // ============================================================================
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/usuario_model.dart';
 import '../services/auth_service.dart';
@@ -36,21 +37,31 @@ class AuthProvider with ChangeNotifier {
   /// ID temporal durante el flujo de login con 2FA activo.
   String? get pendingUserId2fa => _pendingUserId2fa;
 
-  Future<void> cargarSesion() async {
-    // Primero restaurar el token JWT; si no hay token, la UI no intentará
-    // llamadas autenticadas aunque sí haya objeto Usuario guardado.
-    await AuthSession.cargar();
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final json = prefs.getString(_kSesionKey);
-      if (json != null) {
-        _usuarioActual = Usuario.fromJson(
-          jsonDecode(json) as Map<String, dynamic>,
-        );
+  Future<void> cargarSesion([String? token]) async {
+    // Si se le pasa el token por parámetro perteneciente al login biométrico, se intenta cargar la sesión desde el token JWT guardado en memoria.
+    if (token != null) {
+      try {
+        _usuarioActual = Usuario.fromJson(jsonDecode(token) as Map<String, dynamic>);
         notifyListeners();
+      } catch (e) {
+        debugPrint('cargarSesion: no se pudo restaurar la sesión ($e)');
       }
-    } catch (e) {
-      debugPrint('cargarSesion: no se pudo restaurar la sesión ($e)');
+    } else {
+          // Primero restaurar el token JWT; si no hay token, la UI no intentará
+    // llamadas autenticadas aunque sí haya objeto Usuario guardado.
+      await AuthSession.cargar();
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final json = prefs.getString(_kSesionKey);
+        if (json != null) {
+          _usuarioActual = Usuario.fromJson(
+            jsonDecode(json) as Map<String, dynamic>,
+          );
+          notifyListeners();
+        }
+      } catch (e) {
+        debugPrint('cargarSesion: no se pudo restaurar la sesión ($e)');
+      }
     }
   }
 
@@ -58,6 +69,13 @@ class AuthProvider with ChangeNotifier {
     if (_usuarioActual == null) return;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_kSesionKey, jsonEncode(_usuarioActual!.toJson()));
+
+    final storage =
+        FlutterSecureStorage(); // Guardar el token de autenticación de forma segura en la memoria interna del dispositivo
+    await storage.write(
+      key: "token_memoria",
+      value: prefs.getString(_kSesionKey),
+    );
   }
 
   Future<void> _limpiarSesion() async {
@@ -332,16 +350,17 @@ class AuthProvider with ChangeNotifier {
       rethrow;
     }
   }
+
   // --- ACTUALIZAR PUNTOS TRAS COMPRA ---
   void descontarPuntosLocales(int puntosUsados) {
     if (_usuarioActual != null && puntosUsados > 0) {
       final puntosActuales = _usuarioActual!.puntos;
       final nuevosPuntos = puntosActuales - puntosUsados;
-      
+
       _usuarioActual = _usuarioActual!.copyWith(
         puntos: nuevosPuntos < 0 ? 0 : nuevosPuntos,
       );
-      
+
       notifyListeners();
       _guardarSesion(); // Guardamos el nuevo saldo en la memoria del móvil
     }
