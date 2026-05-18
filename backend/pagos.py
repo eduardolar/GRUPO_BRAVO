@@ -49,8 +49,17 @@ from pydantic import BaseModel, Field
 
 import config  # carga .env una sola vez (efecto de import)
 from audit import registrar_pago
-from security import require_role, get_current_user, normalizar_rol
+from security import require_role, get_current_user
 from database import coleccion_auditoria_pagos, coleccion_pedidos
+# Capa de servicios (piloto 6.2.3): helpers de negocio/autorización
+# extraídos de este router a services/pagos_service.py. Se importan con el
+# MISMO nombre para no tocar los call sites ni el contrato de la API.
+from services.pagos_service import (
+    _exigir_stripe,
+    _total_pedido,
+    _autorizar_pedido,
+    _autorizar_intent,
+)
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -60,17 +69,6 @@ STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 PAYPAL_CLIENT_ID = os.getenv("PAYPAL_CLIENT_ID", "")
 PAYPAL_CLIENT_SECRET = os.getenv("PAYPAL_CLIENT_SECRET", "")
 PAYPAL_BASE_URL = os.getenv("PAYPAL_BASE_URL", "https://api-m.sandbox.paypal.com")
-
-
-def _exigir_stripe() -> None:
-    """Detiene la petición con 503 si Stripe no está configurado.
-
-    No revela detalles internos como el nombre de la variable que falta:
-    eso aparece sólo en el log del servidor.
-    """
-    if not stripe.api_key:
-        logger.error("STRIPE_SECRET_KEY ausente: el servicio de pagos no puede operar.")
-        raise HTTPException(status_code=503, detail="Servicio de pagos no disponible")
 
 router = APIRouter(prefix="/payments", tags=["Pagos"])
 
@@ -129,41 +127,9 @@ class PayPalCaptureRequest(BaseModel):
     orderId: str
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
-
-def _total_pedido(pedido_id: str) -> float:
-    """Return the server-calculated total for a pedido; never trust client amounts."""
-    if not ObjectId.is_valid(pedido_id):
-        raise HTTPException(status_code=400, detail="pedido_id inválido")
-    pedido = coleccion_pedidos.find_one({"_id": ObjectId(pedido_id)}, {"total": 1})
-    if not pedido:
-        raise HTTPException(status_code=404, detail="Pedido no encontrado")
-    return float(pedido["total"])
-
-
-def _autorizar_pedido(pedido_id: str, current_user: dict) -> dict:
-    """Verifica que el caller tiene permiso sobre el pedido y devuelve el doc.
-
-    - cliente: solo su propio pedido (usuario_id == sub).
-    - camarero/admin: solo pedidos de su restaurante_id.
-    - super_admin: sin restricción.
-    Lanza 403 si no tiene permiso.
-    """
-    if not ObjectId.is_valid(pedido_id):
-        raise HTTPException(status_code=400, detail="pedido_id inválido")
-    pedido = coleccion_pedidos.find_one({"_id": ObjectId(pedido_id)})
-    if not pedido:
-        raise HTTPException(status_code=404, detail="Pedido no encontrado")
-
-    rol = normalizar_rol(current_user.get("rol", ""))
-    if rol == "cliente":
-        if pedido.get("usuario_id") != current_user.get("sub"):
-            raise HTTPException(status_code=403, detail="No puedes acceder a este pedido")
-    elif rol in {"camarero", "admin"}:
-        rid = current_user.get("restaurante_id")
-        if rid and pedido.get("restaurante_id") and pedido["restaurante_id"] != rid:
-            raise HTTPException(status_code=403, detail="No puedes acceder a pedidos de otra sucursal")
-    # super_admin: sin restricción
-    return pedido
+# _exigir_stripe, _total_pedido, _autorizar_pedido y _autorizar_intent se
+# movieron a services/pagos_service.py (piloto 6.2.3) y se importan arriba
+# con el mismo nombre. El resto de helpers de PayPal sigue aquí de momento.
 
 
 # ── Stripe ─────────────────────────────────────────────────────────────────────
@@ -217,12 +183,15 @@ def crear_payment_intent(
 
 @router.post("/stripe/confirm")
 @router.post("/card/confirm")
-def confirmar_payment_intent(request: Request, payload: CardConfirmRequest):
-    # Sin auth — solo confirma un PaymentIntent con Stripe usando su ID opaco;
-    # no recibe pedido_id ni expone datos del pedido.
-    _exigir_stripe()
+def confirmar_payment_intent(
+    request: Request,
+    payload: CardConfirmRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    # Requiere auth + propiedad del pedido (si el intent lleva pedido_id).
     if not payload.payment_intent_id.strip() or not payload.payment_method_id.strip():
         raise HTTPException(status_code=400, detail="payment_intent_id y payment_method_id son requeridos")
+    _autorizar_intent(payload.payment_intent_id, current_user)
     try:
         intent = stripe.PaymentIntent.confirm(
             payload.payment_intent_id,
@@ -290,12 +259,15 @@ async def iniciar_apple_pay(
 
 
 @router.post("/apple-pay/confirm")
-async def confirmar_apple_pay(request: Request, payload: ConfirmPaymentIntentRequest):
-    # Sin auth — solo confirma un PaymentIntent de Apple Pay con Stripe usando su ID opaco;
-    # no recibe pedido_id ni expone datos del pedido.
-    _exigir_stripe()
+async def confirmar_apple_pay(
+    request: Request,
+    payload: ConfirmPaymentIntentRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    # Requiere auth + propiedad del pedido (si el intent lleva pedido_id).
     if not payload.payment_intent_id.strip() or not payload.payment_method_id.strip():
         raise HTTPException(status_code=400, detail="payment_intent_id y payment_method_id son requeridos")
+    _autorizar_intent(payload.payment_intent_id, current_user)
     try:
         intent = stripe.PaymentIntent.confirm(
             payload.payment_intent_id,
@@ -317,12 +289,16 @@ async def confirmar_apple_pay(request: Request, payload: ConfirmPaymentIntentReq
 
 
 @router.get("/apple-pay/verify/{payment_intent_id}")
-def verificar_apple_pay(request: Request, payment_intent_id: str):
-    # Sin auth — refresca el estado de un PaymentIntent de Apple Pay en Stripe;
-    # solo devuelve id/status/paid, no datos del pedido.
-    _exigir_stripe()
+def verificar_apple_pay(
+    request: Request,
+    payment_intent_id: str,
+    current_user: dict = Depends(get_current_user),
+):
+    # Requiere auth + propiedad del pedido (si el intent lleva pedido_id).
+    # _autorizar_intent va FUERA del try para que un 403/404 no se
+    # enmascare como 400 por el `except Exception` de abajo.
+    intent = _autorizar_intent(payment_intent_id, current_user)
     try:
-        intent = stripe.PaymentIntent.retrieve(payment_intent_id)
         paid = intent["status"] == "succeeded"
         registrar_pago(request, "apple_pay.verified", "apple_pay",
                        referencia=intent["id"], estado=intent["status"],
@@ -384,12 +360,15 @@ async def iniciar_google_pay(
 
 
 @router.post("/google-pay/confirm")
-async def confirmar_google_pay(request: Request, payload: ConfirmPaymentIntentRequest):
-    # Sin auth — solo confirma un PaymentIntent de Google Pay con Stripe usando su ID opaco;
-    # no recibe pedido_id ni expone datos del pedido.
-    _exigir_stripe()
+async def confirmar_google_pay(
+    request: Request,
+    payload: ConfirmPaymentIntentRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    # Requiere auth + propiedad del pedido (si el intent lleva pedido_id).
     if not payload.payment_intent_id.strip() or not payload.payment_method_id.strip():
         raise HTTPException(status_code=400, detail="payment_intent_id y payment_method_id son requeridos")
+    _autorizar_intent(payload.payment_intent_id, current_user)
     try:
         intent = stripe.PaymentIntent.confirm(
             payload.payment_intent_id,
@@ -411,12 +390,14 @@ async def confirmar_google_pay(request: Request, payload: ConfirmPaymentIntentRe
 
 
 @router.get("/google-pay/verify/{payment_intent_id}")
-def verificar_google_pay(request: Request, payment_intent_id: str):
-    # Sin auth — refresca el estado de un PaymentIntent de Google Pay en Stripe;
-    # solo devuelve id/status/paid, no datos del pedido.
-    _exigir_stripe()
+def verificar_google_pay(
+    request: Request,
+    payment_intent_id: str,
+    current_user: dict = Depends(get_current_user),
+):
+    # Requiere auth + propiedad del pedido (si el intent lleva pedido_id).
+    intent = _autorizar_intent(payment_intent_id, current_user)
     try:
-        intent = stripe.PaymentIntent.retrieve(payment_intent_id)
         paid = intent["status"] == "succeeded"
         registrar_pago(request, "google_pay.verified", "google_pay",
                        referencia=intent["id"], estado=intent["status"],
@@ -435,12 +416,14 @@ def verificar_google_pay(request: Request, payment_intent_id: str):
 
 @router.get("/stripe/verify/{payment_intent_id}")
 @router.get("/card/verify/{payment_intent_id}")
-def verificar_payment_intent(request: Request, payment_intent_id: str):
-    # Sin auth — refresca el estado de un PaymentIntent en Stripe usando su ID opaco;
-    # solo devuelve id/status/paid, no datos del pedido.
-    _exigir_stripe()
+def verificar_payment_intent(
+    request: Request,
+    payment_intent_id: str,
+    current_user: dict = Depends(get_current_user),
+):
+    # Requiere auth + propiedad del pedido (si el intent lleva pedido_id).
+    intent = _autorizar_intent(payment_intent_id, current_user)
     try:
-        intent = stripe.PaymentIntent.retrieve(payment_intent_id)
         paid = intent["status"] == "succeeded"
         registrar_pago(request, "stripe.intent_verified", "stripe",
                        referencia=intent["id"], estado=intent["status"],
@@ -510,9 +493,15 @@ def crear_checkout_session(
 
 
 @router.get("/stripe/verify-session/{session_id}")
-def verificar_checkout_session(request: Request, session_id: str):
-    # Sin auth — refresca el estado de una Checkout Session de Stripe usando su session_id opaco;
-    # solo devuelve session_id/payment_status/paid, no datos del pedido.
+def verificar_checkout_session(
+    request: Request,
+    session_id: str,
+    current_user: dict = Depends(get_current_user),
+):
+    # Requiere auth (elimina el acceso anónimo). El session_id es opaco y
+    # solo se devuelve estado de pago; la verificación de propiedad por
+    # pedido_id se aplica en los endpoints de PaymentIntent
+    # (confirm/verify), donde el pedido_id viaja en metadata.
     _exigir_stripe()
     try:
         session = stripe.checkout.Session.retrieve(session_id)

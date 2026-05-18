@@ -51,3 +51,17 @@ const String stripePublishableKey = String.fromEnvironment(
   defaultValue:
       'pk_test_51TOw8VAyHSG5POXsDtUQMKCwyJ5SUdFWc7eyNMsrIq4NsxbhX6kaZLSOZb3B1K0mncosU5pg3bWLqPP4XDFzuB4u00p4DnMegH',
 );
+
+/// URLs de retorno de PayPal (a dónde redirige el navegador tras aprobar o
+/// cancelar el pago). Antes estaban hardcodeadas a `example.com`, un dominio
+/// que no controlamos: el usuario aterrizaba en una página ajena y parecía
+/// un fallo. Se parametrizan con el mismo patrón --dart-define:
+///   flutter run --dart-define=PAYPAL_RETURN_BASE=https://grupobravo.com
+/// Sin el flag, se usa el dominio del proyecto por defecto.
+const String _paypalReturnBase = String.fromEnvironment(
+  'PAYPAL_RETURN_BASE',
+  defaultValue: 'https://grupobravo.com',
+);
+
+String get paypalSuccessUrl => '$_paypalReturnBase/paypal-success';
+String get paypalCancelUrl => '$_paypalReturnBase/paypal-cancel';

@@ -41,6 +41,10 @@ if str(_BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(_BACKEND_DIR))
 
 # 2) Variables de entorno seguras y deterministas para los tests
+# ENV=test: los tests NO deben hacerse pasar por producción (si no se define,
+# config.ENV cae al default "production" y el startup check abortaría la suite
+# por STRIPE_WEBHOOK_SECRET vacío). Un test concreto puede forzar otro ENV.
+os.environ.setdefault("ENV", "test")
 os.environ.setdefault("MONGO_URI", "mongodb://localhost:27017/test")
 os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key-do-not-use-in-prod")
 os.environ.setdefault("STRIPE_SECRET_KEY", "")

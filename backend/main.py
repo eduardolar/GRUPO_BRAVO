@@ -24,6 +24,7 @@ from fastapi import APIRouter, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 # slowapi implementa rate limiting (limita peticiones por IP/usuario).
 # Lo usamos para frenar fuerza bruta en /login y abusos en endpoints públicos.
 from slowapi import _rate_limit_exceeded_handler
@@ -31,6 +32,11 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
 import config  # Importar config ejecuta load_dotenv() una sola vez (efecto de import).
+
+# Startup check: si ENV=production y faltan secretos críticos
+# (STRIPE_WEBHOOK_SECRET, JWT_SECRET_KEY real), abortar el arranque ANTES de
+# montar la app. Es preferible no arrancar a arrancar de forma insegura.
+config.validar_entorno_produccion()
 from limiter import limiter
 from exceptions import AppError
 import log_redactor
@@ -78,6 +84,14 @@ app.add_middleware(SlowAPIMiddleware)
 # CORS: "*" y credenciales son incompatibles).
 _allowed_origins = [o.strip() for o in config.ALLOWED_ORIGINS.split(",") if o.strip()]
 if not _allowed_origins:
+    if config.IS_PRODUCTION:
+        # Salvaguarda: en producción jamás "*". En la práctica
+        # validar_entorno_produccion() ya habría abortado el arranque
+        # antes de llegar aquí; esto es defensa en profundidad.
+        raise RuntimeError(
+            "ALLOWED_ORIGINS vacío en producción: configura los dominios del frontend."
+        )
+    # Solo en desarrollo/test: "*" para comodidad local (sin credenciales).
     _allowed_origins = ["*"]
 _allow_credentials = _allowed_origins != ["*"]
 
@@ -90,6 +104,50 @@ app.add_middleware(
     # duplicar pedidos/cobros si una petición se reintenta.
     allow_headers=["Authorization", "Content-Type", "Idempotency-Key"],
 )
+
+# --- Cabeceras de seguridad HTTP -----------------------------------------
+# Defensa en profundidad para el navegador. Se aplican a TODAS las
+# respuestas. Notas:
+#   - X-Content-Type-Options=nosniff: impide MIME-sniffing.
+#   - X-Frame-Options=DENY: anti-clickjacking (no embebible en iframe).
+#   - Referrer-Policy: no filtrar la URL completa a terceros.
+#   - HSTS: solo en producción (en local rompería http://127.0.0.1).
+#   - CSP: esta API devuelve JSON, así que una política estricta
+#     `default-src 'none'` es correcta. PERO Swagger UI (/docs) y ReDoc
+#     (/redoc) sirven HTML+JS desde CDN; aplicarles esa CSP los rompería,
+#     así que esas rutas (y /openapi.json) quedan exentas de CSP.
+_RUTAS_SIN_CSP = ("/docs", "/redoc", "/openapi.json")
+
+
+@app.middleware("http")
+async def _cabeceras_seguridad(request: Request, call_next):
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault(
+        "Referrer-Policy", "strict-origin-when-cross-origin"
+    )
+    if not request.url.path.startswith(_RUTAS_SIN_CSP):
+        response.headers.setdefault(
+            "Content-Security-Policy",
+            "default-src 'none'; frame-ancestors 'none'",
+        )
+    if config.IS_PRODUCTION:
+        # 1 año, incluye subdominios. Solo en prod: el navegador recordará
+        # que este host es HTTPS-only.
+        response.headers.setdefault(
+            "Strict-Transport-Security",
+            "max-age=31536000; includeSubDomains",
+        )
+    return response
+
+
+# Redirect HTTP→HTTPS solo en producción. Requiere que uvicorn corra con
+# --proxy-headers si hay un balanceador que termina TLS (para que
+# request.url.scheme refleje el esquema real y no haya bucle de redirects).
+if config.IS_PRODUCTION:
+    app.add_middleware(HTTPSRedirectMiddleware)
+
 
 # --- Manejadores de errores globales -------------------------------------
 # La idea es que el cliente SIEMPRE reciba un JSON con la forma
