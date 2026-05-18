@@ -477,3 +477,63 @@ def test_get_mesas_personal_sin_rid_jwt_devuelve_400(client):
 
     assert resp.status_code == 400
     assert "sucursal" in resp.json()["detail"].lower()
+    
+def test_mesa_marca_reservada_si_hay_reserva_activa(client):
+    from datetime import datetime
+    from database import coleccion_mesas, coleccion_reservas
+    from tests.tok_helpers import tok
+
+    rid = "R-RES-1"
+    mesa_id = coleccion_mesas.insert_one({
+        "numero": 12, "capacidad": 4, "estado": "libre",
+        "restaurante_id": rid,
+    }).inserted_id
+
+    ahora = datetime.now()
+    coleccion_reservas.insert_one({
+        "mesa_id": str(mesa_id),
+        "nombre_completo": "Cliente Reserva",
+        "fecha": ahora.strftime("%Y-%m-%d"),
+        "hora": ahora.strftime("%H:%M"),   # misma hora -> solapa seguro
+        "estado": "Confirmada",
+        "restaurante_id": rid,
+    })
+
+    resp = client.get(
+        "/api/v1/mesas",
+        headers=tok("camarero", restaurante_id=rid),
+    )
+    assert resp.status_code == 200, resp.text
+    mesa = next(m for m in resp.json() if m["id"] == str(mesa_id))
+    assert mesa["reservada"] is True
+    assert mesa["reservaNombre"] == "Cliente Reserva"
+
+
+def test_mesa_no_reservada_si_reserva_cancelada(client):
+    from datetime import datetime
+    from database import coleccion_mesas, coleccion_reservas
+    from tests.tok_helpers import tok
+
+    rid = "R-RES-2"
+    mesa_id = coleccion_mesas.insert_one({
+        "numero": 13, "capacidad": 2, "estado": "libre",
+        "restaurante_id": rid,
+    }).inserted_id
+
+    ahora = datetime.now()
+    coleccion_reservas.insert_one({
+        "mesa_id": str(mesa_id),
+        "nombre_completo": "Cancelada",
+        "fecha": ahora.strftime("%Y-%m-%d"),
+        "hora": ahora.strftime("%H:%M"),
+        "estado": "Cancelada",            # NO debe contar
+        "restaurante_id": rid,
+    })
+
+    resp = client.get(
+        "/api/v1/mesas",
+        headers=tok("camarero", restaurante_id=rid),
+    )
+    mesa = next(m for m in resp.json() if m["id"] == str(mesa_id))
+    assert mesa["reservada"] is False
+
