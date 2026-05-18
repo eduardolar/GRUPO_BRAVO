@@ -110,6 +110,42 @@ def _mesas_ocupadas_por_hora(
             ocupadas.add(r["mesa_id"])
     return ocupadas
 
+def reservas_activas_por_mesa(
+        restaurante_id: str | None = None,
+        fecha: str | None = None,
+        hora: str | None = None,
+    ) -> dict:
+        ahora = datetime.now()
+        fecha = fecha or ahora.strftime("%Y-%m-%d")
+        hora = hora or ahora.strftime("%H:%M")
+
+        filtro: dict = {
+            "fecha": fecha,
+            "estado": {"$in": ["Confirmada", "Llegado"]},
+        }
+
+        if restaurante_id:
+            filtro["restaurante_id"] = restaurante_id
+
+        activas: dict = {}
+
+        for r in coleccion_reservas.find(filtro):
+            mesa_id = r.get("mesa_id")
+            hora_r = r.get("hora")
+
+            if not mesa_id or not hora_r:
+                continue
+
+            if _hay_conflicto_horario(hora_r, hora):
+                activas[str(mesa_id)] = {
+                    "hora": hora_r,
+                    "nombre": r.get("nombre_completo", ""),
+                    "estado": r.get("estado", "Confirmada"),
+                }
+
+        return activas
+
+
 
 def _serializar_reserva(r: dict) -> dict:
     """Devuelve una reserva normalizada. Rellena numeroMesa si falta."""

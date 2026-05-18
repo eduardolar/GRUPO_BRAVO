@@ -96,15 +96,15 @@ def listar_restaurantes(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al obtener restaurantes: {str(e)}")
     
-    @router.get("/publicos")
-    def listar_restaurantes_publicos():
-        restaurantes = list(
-        coleccion_restaurantes.find({"activo": {"$ne": False}})
+@router.get("/publicos")
+def listar_restaurantes_publicos():
+    restaurantes = list(
+    coleccion_restaurantes.find({"activo": {"$ne": False}})
     )
     return [
         {
-            "id": str(r["_id"]),
-            "nombre": r.get("nombre", ""),
+    "id": str(r["_id"]),
+    "nombre": r.get("nombre", ""),
             "direccion": r.get("direccion", ""),
             "ciudad": r.get("ciudad", ""),
         }
