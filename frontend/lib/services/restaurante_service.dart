@@ -28,6 +28,18 @@ class RestauranteService {
     throw toApiException(response.statusCode, decodeBody(response));
   }
 
+  Future<List<Restaurante>> obtenerPublicos() async {
+  final response = await httpWithRetry(
+    () => http.get(Uri.parse('$baseUrl/restaurantes/publicos')),
+  );
+  if (response.statusCode == 200) {
+    final List<dynamic> body = jsonDecode(response.body);
+    return body.map((e) => Restaurante.fromJson(e)).toList();
+  }
+  throw toApiException(response.statusCode, decodeBody(response));
+}
+
+
   Future<Restaurante?> crearRestaurante({
     required String nombre,
     required String direccion,

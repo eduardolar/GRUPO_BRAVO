@@ -95,6 +95,22 @@ def listar_restaurantes(
         return [_serializar_restaurante(r) for r in restaurantes]
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al obtener restaurantes: {str(e)}")
+    
+    @router.get("/publicos")
+    def listar_restaurantes_publicos():
+        restaurantes = list(
+        coleccion_restaurantes.find({"activo": {"$ne": False}})
+    )
+    return [
+        {
+            "id": str(r["_id"]),
+            "nombre": r.get("nombre", ""),
+            "direccion": r.get("direccion", ""),
+            "ciudad": r.get("ciudad", ""),
+        }
+        for r in restaurantes
+    ]
+
 
 @router.get("/{id}")
 def obtener_restaurante(
