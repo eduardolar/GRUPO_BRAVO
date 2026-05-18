@@ -69,7 +69,7 @@ class _Linea extends StatelessWidget {
         duration: const Duration(milliseconds: 350),
         height: 1,
         margin: const EdgeInsets.symmetric(horizontal: 10),
-        color: activa ? AppColors.button : Colors.white.withValues(alpha: 0.20),
+        color: activa ? AppColors.detailOnDark : Colors.white.withValues(alpha: 0.20),
       ),
     );
   }
@@ -98,10 +98,10 @@ class _StepDot extends StatelessWidget {
           height: 28,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: filled ? AppColors.button : Colors.transparent,
+            color: filled ? AppColors.primaryAccent : Colors.transparent,
             border: Border.all(
               color: filled
-                  ? AppColors.button
+                  ? AppColors.primaryAccent
                   : Colors.white.withValues(alpha: 0.30),
               width: 1.5,
             ),

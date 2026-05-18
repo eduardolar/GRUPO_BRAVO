@@ -35,7 +35,7 @@ class SelectorSucursalPill extends StatelessWidget {
               height: 18,
               width: 18,
               child: CircularProgressIndicator(
-                color: AppColors.button,
+                color: AppColors.primaryOnDark,
                 strokeWidth: 2,
               ),
             ),
@@ -71,7 +71,7 @@ class SelectorSucursalPill extends StatelessWidget {
                     children: [
                       const Icon(
                         Icons.storefront_rounded,
-                        color: AppColors.button,
+                        color: AppColors.detailOnDark,
                         size: 16,
                       ),
                       const SizedBox(width: 8),

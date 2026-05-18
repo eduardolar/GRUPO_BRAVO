@@ -319,7 +319,7 @@ class _MenuAdministradorState extends State<MenuAdministrador> {
           ),
           child: SafeArea(
             child: RefreshIndicator(
-              color: AppColors.button,
+              color: AppColors.primaryOnDark,
               backgroundColor: Colors.black87,
               onRefresh: _cargarTodo,
               child: SingleChildScrollView(
@@ -374,7 +374,7 @@ class _MenuAdministradorState extends State<MenuAdministrador> {
                                       height: 20,
                                       child: CircularProgressIndicator(
                                         strokeWidth: 2,
-                                        color: AppColors.button,
+                                        color: AppColors.primaryOnDark,
                                       ),
                                     )
                                   : const Icon(
@@ -617,8 +617,8 @@ class _MenuAdministradorState extends State<MenuAdministrador> {
                   color: Colors.transparent,
                   child: InkWell(
                     borderRadius: BorderRadius.circular(20),
-                    highlightColor: AppColors.button.withValues(alpha: 0.1),
-                    splashColor: AppColors.button.withValues(alpha: 0.2),
+                    highlightColor: AppColors.primaryOnDark.withValues(alpha: 0.1),
+                    splashColor: AppColors.primaryOnDark.withValues(alpha: 0.2),
                     onTap: () => Navigator.push(
                       context,
                       MaterialPageRoute(builder: (context) => destination),
@@ -733,14 +733,14 @@ class _MenuAdministradorState extends State<MenuAdministrador> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.button.withValues(alpha: 0.2),
+        color: AppColors.detailOnDark.withValues(alpha: 0.2),
         shape: BoxShape.circle,
         border: Border.all(
-          color: AppColors.button.withValues(alpha: 0.5),
+          color: AppColors.detailOnDark.withValues(alpha: 0.5),
           width: 1,
         ),
       ),
-      child: Icon(icon, color: AppColors.button, size: 30),
+      child: Icon(icon, color: AppColors.detailOnDark, size: 30),
     );
   }
 }
@@ -893,7 +893,7 @@ class _SeccionKpisState extends State<_SeccionKpis> {
     // Cabecera de sección
     final header = Row(
       children: [
-        Container(width: 3, height: 18, color: AppColors.button),
+        Container(width: 3, height: 18, color: AppColors.detailOnDark),
         const SizedBox(width: 10),
         const Text(
           'PULSO DE TU SUCURSAL HOY',
@@ -911,7 +911,7 @@ class _SeccionKpisState extends State<_SeccionKpis> {
             height: 12,
             child: CircularProgressIndicator(
               strokeWidth: 1.5,
-              color: AppColors.button,
+              color: AppColors.primaryOnDark,
             ),
           ),
         ],
@@ -930,7 +930,7 @@ class _SeccionKpisState extends State<_SeccionKpis> {
         sub: 'facturado hoy',
         accentColor: (widget.ventasHoy ?? 0) > 0
             ? AppColors.success
-            : AppColors.button,
+            : AppColors.detailOnDark,
         onTapAdvance: _avanzarSiguiente,
         onLongPressPause: _pausarRotacion,
         onLongPressResume: _retomarRotacion,
@@ -1100,7 +1100,7 @@ class _SeccionKpisState extends State<_SeccionKpis> {
                 height: 8,
                 decoration: BoxDecoration(
                   color: i == _paginaActual
-                      ? AppColors.button
+                      ? AppColors.detailOnDark
                       : Colors.white.withValues(alpha: 0.25),
                   borderRadius: BorderRadius.circular(4),
                 ),
@@ -1149,7 +1149,7 @@ class _AdminKpiCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final iconColor = accentColor ?? AppColors.button;
+    final iconColor = accentColor ?? AppColors.detailOnDark;
     final bg = overrideBackground != null && overrideBackground != Colors.transparent
         ? overrideBackground!
         : Colors.black.withValues(alpha: 0.4);

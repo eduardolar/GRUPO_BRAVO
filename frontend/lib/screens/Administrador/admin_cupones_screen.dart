@@ -137,7 +137,7 @@ class _AdminCuponesScreenState extends State<AdminCuponesScreen>
       appBar: const BravoAppBar(title: 'CUPONES'),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _abrirCrearCupon,
-        backgroundColor: AppColors.button,
+        backgroundColor: AppColors.primaryAccent,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add),
         label: const Text(
@@ -207,7 +207,7 @@ class _AdminCuponesScreenState extends State<AdminCuponesScreen>
                 // ─── Tabs ──────────────────────────────────────────
                 TabBar(
                   controller: _tabCtrl,
-                  indicatorColor: AppColors.button,
+                  indicatorColor: AppColors.detailOnDark,
                   indicatorWeight: 3,
                   labelColor: Colors.white,
                   unselectedLabelColor: Colors.white38,
@@ -236,7 +236,7 @@ class _AdminCuponesScreenState extends State<AdminCuponesScreen>
   Widget _buildCuerpo() {
     if (_cargando) {
       return const Center(
-        child: CircularProgressIndicator(color: AppColors.button),
+        child: CircularProgressIndicator(color: AppColors.primaryOnDark),
       );
     }
 
@@ -256,7 +256,7 @@ class _AdminCuponesScreenState extends State<AdminCuponesScreen>
               const SizedBox(height: 24),
               ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.button,
+                    backgroundColor: AppColors.primaryAccent,
                     foregroundColor: Colors.white),
                 onPressed: _cargar,
                 icon: const Icon(Icons.refresh),
@@ -280,7 +280,7 @@ class _AdminCuponesScreenState extends State<AdminCuponesScreen>
     }
 
     return RefreshIndicator(
-      color: AppColors.button,
+      color: AppColors.primaryOnDark,
       backgroundColor: Colors.black87,
       onRefresh: _cargar,
       child: ListView.builder(
@@ -348,16 +348,16 @@ class _AdminCuponesScreenState extends State<AdminCuponesScreen>
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
-                        color: AppColors.button.withValues(alpha: 0.15),
+                        color: AppColors.detailOnDark.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                            color: AppColors.button
+                            color: AppColors.detailOnDark
                                 .withValues(alpha: 0.4)),
                       ),
                       child: Text(
                         c.etiquetaValor,
                         style: const TextStyle(
-                          color: AppColors.button,
+                          color: AppColors.linkOnDark,
                           fontWeight: FontWeight.w800,
                           fontSize: 15,
                         ),
@@ -510,7 +510,7 @@ class _FormularioCuponSheetState extends State<_FormularioCuponSheet> {
       builder: (ctx, child) => Theme(
         data: ThemeData.dark().copyWith(
           colorScheme: const ColorScheme.dark(
-            primary: AppColors.button,
+            primary: AppColors.primaryOnDark,
             surface: AppColors.bottomSheetBg,
           ),
         ),
@@ -593,7 +593,7 @@ class _FormularioCuponSheetState extends State<_FormularioCuponSheet> {
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide:
-                        const BorderSide(color: AppColors.button, width: 2),
+                        const BorderSide(color: AppColors.detailOnDark, width: 2),
                   ),
                   border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12)),
@@ -664,7 +664,7 @@ class _FormularioCuponSheetState extends State<_FormularioCuponSheet> {
                 height: 52,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.button,
+                    backgroundColor: AppColors.primaryAccent,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -730,7 +730,7 @@ class _Campo extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.button, width: 2),
+          borderSide: const BorderSide(color: AppColors.detailOnDark, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -777,7 +777,7 @@ class _CampoFecha extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.button, width: 2),
+          borderSide: const BorderSide(color: AppColors.detailOnDark, width: 2),
         ),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       ),

@@ -17,7 +17,7 @@ const _kGreen = AppColors.successVibrant;
 const _kRed = AppColors.error;
 const _kBlue = AppColors.info;
 const _kGranate = AppColors.primary; // granate para cupones globales
-const _kAccent = AppColors.button;
+const _kAccent = AppColors.primaryAccent; // fills sólidos con texto blanco (legible sobre oscuro)
 
 class CuponesScreen extends StatefulWidget {
   const CuponesScreen({super.key});
@@ -498,9 +498,9 @@ class _CuponesScreenState extends State<CuponesScreen>
           // Tabs filtro
           TabBar(
             controller: _tabCtrl,
-            labelColor: _kAccent,
+            labelColor: AppColors.linkOnDark,
             unselectedLabelColor: _kSub,
-            indicatorColor: _kAccent,
+            indicatorColor: AppColors.detailOnDark,
             tabs: const [
               Tab(text: 'Todos'),
               Tab(text: 'Activos'),
@@ -512,7 +512,7 @@ class _CuponesScreenState extends State<CuponesScreen>
           Expanded(
             child: _cargando
                 ? const Center(
-                    child: CircularProgressIndicator(color: _kAccent),
+                    child: CircularProgressIndicator(color: AppColors.primaryOnDark),
                   )
                 : _error != null
                     ? _buildError()
@@ -600,7 +600,7 @@ class _CuponesScreenState extends State<CuponesScreen>
                                         IconButton(
                                           icon: const Icon(
                                             Icons.qr_code,
-                                            color: _kAccent,
+                                            color: AppColors.detailOnDark,
                                           ),
                                           tooltip: 'Ver QR',
                                           onPressed: () => _mostrarQR(c),
@@ -1112,7 +1112,7 @@ class _FormCrearCuponState extends State<_FormCrearCupon> {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: _kAccent, width: 1.5),
+        borderSide: const BorderSide(color: AppColors.detailOnDark, width: 1.5),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),

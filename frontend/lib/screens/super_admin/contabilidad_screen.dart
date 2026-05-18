@@ -200,12 +200,12 @@ class _ContabilidadScreenState extends State<ContabilidadScreen> {
     return Theme(
       data: Theme.of(ctx).copyWith(
         colorScheme: const ColorScheme.light(
-          primary: AppColors.button,
+          primary: AppColors.primary,
           onPrimary: Colors.white,
           onSurface: AppColors.textPrimary,
         ),
         textButtonTheme: TextButtonThemeData(
-          style: TextButton.styleFrom(foregroundColor: AppColors.button),
+          style: TextButton.styleFrom(foregroundColor: AppColors.primary),
         ),
       ),
       child: child,
@@ -433,7 +433,7 @@ class _ContabilidadScreenState extends State<ContabilidadScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
             children: [
-              const Icon(Icons.store_outlined, color: AppColors.button, size: 16),
+              const Icon(Icons.store_outlined, color: AppColors.detailOnDark, size: 16),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
@@ -452,7 +452,7 @@ class _ContabilidadScreenState extends State<ContabilidadScreen> {
                   height: 14,
                   child: CircularProgressIndicator(
                     strokeWidth: 1.5,
-                    color: AppColors.button,
+                    color: AppColors.primaryOnDark,
                   ),
                 )
               else
@@ -524,7 +524,7 @@ class _ContabilidadScreenState extends State<ContabilidadScreen> {
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
               color: activo
-                  ? AppColors.button.withValues(alpha: 0.6)
+                  ? AppColors.detailOnDark.withValues(alpha: 0.6)
                   : Colors.white24,
             ),
           ),
@@ -545,7 +545,7 @@ class _ContabilidadScreenState extends State<ContabilidadScreen> {
                   Icon(
                     Icons.calendar_today,
                     size: 13,
-                    color: activo ? AppColors.button : Colors.white38,
+                    color: activo ? AppColors.detailOnDark : Colors.white38,
                   ),
                   const SizedBox(width: 6),
                   Text(
@@ -601,11 +601,11 @@ class _ContabilidadScreenState extends State<ContabilidadScreen> {
                 // Fondo oscuro para que el chip se distinga sobre la imagen
                 // Bravo de fondo y el texto blanco quede legible.
                 backgroundColor: Colors.black.withValues(alpha: 0.55),
-                selectedColor: AppColors.button,
+                selectedColor: AppColors.primaryAccent,
                 checkmarkColor: Colors.white,
                 side: BorderSide(
                   color: activo
-                      ? AppColors.button
+                      ? AppColors.primaryAccent
                       : Colors.white.withValues(alpha: 0.25),
                 ),
                 shape: RoundedRectangleBorder(
@@ -625,7 +625,7 @@ class _ContabilidadScreenState extends State<ContabilidadScreen> {
     return const Padding(
       padding: EdgeInsets.symmetric(vertical: 60),
       child: Center(
-        child: CircularProgressIndicator(color: AppColors.button),
+        child: CircularProgressIndicator(color: AppColors.primaryOnDark),
       ),
     );
   }
@@ -657,7 +657,7 @@ class _ContabilidadScreenState extends State<ContabilidadScreen> {
               icon: const Icon(Icons.refresh),
               label: const Text('Reintentar'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.button,
+                backgroundColor: AppColors.primaryAccent,
                 foregroundColor: Colors.white,
               ),
             ),
@@ -897,7 +897,7 @@ class _ContabilidadScreenState extends State<ContabilidadScreen> {
                       value: ratio,
                       minHeight: 5,
                       backgroundColor: Colors.white12,
-                      color: AppColors.button,
+                      color: AppColors.primaryOnDark,
                     ),
                   ),
                 ],
@@ -1079,7 +1079,7 @@ class _ContabilidadScreenState extends State<ContabilidadScreen> {
               ),
             ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.button,
+              backgroundColor: AppColors.primaryAccent,
               foregroundColor: Colors.white,
               minimumSize: const Size(double.infinity, 48),
               shape: RoundedRectangleBorder(
@@ -1121,7 +1121,7 @@ class _ContabilidadScreenState extends State<ContabilidadScreen> {
       children: [
         Row(
           children: [
-            Container(width: 3, height: 14, color: AppColors.button),
+            Container(width: 3, height: 14, color: AppColors.detailOnDark),
             const SizedBox(width: 8),
             Text(
               titulo,
@@ -1213,7 +1213,7 @@ class _BottomSheetSucursal extends StatelessWidget {
               if (cargando)
                 const Padding(
                   padding: EdgeInsets.all(24),
-                  child: CircularProgressIndicator(color: AppColors.button),
+                  child: CircularProgressIndicator(color: AppColors.primaryOnDark),
                 )
               else
                 Flexible(
@@ -1269,13 +1269,13 @@ class _TileSucursal extends StatelessWidget {
     return ListTile(
       leading: Icon(
         icono,
-        color: seleccionada ? AppColors.button : Colors.white54,
+        color: seleccionada ? AppColors.detailOnDark : Colors.white54,
         size: 20,
       ),
       title: Text(
         nombre,
         style: TextStyle(
-          color: seleccionada ? AppColors.button : Colors.white,
+          color: seleccionada ? AppColors.linkOnDark : Colors.white,
           fontWeight: seleccionada ? FontWeight.w700 : FontWeight.w500,
           fontSize: 14,
         ),
@@ -1287,7 +1287,7 @@ class _TileSucursal extends StatelessWidget {
             )
           : null,
       trailing: seleccionada
-          ? const Icon(Icons.check_rounded, color: AppColors.button, size: 18)
+          ? const Icon(Icons.check_rounded, color: AppColors.detailOnDark, size: 18)
           : null,
       onTap: onTap,
     );
@@ -1423,7 +1423,7 @@ class _SparklinePainter extends CustomPainter {
     canvas.drawPath(
       pathLine,
       Paint()
-        ..color = AppColors.button
+        ..color = AppColors.primaryOnDark
         ..strokeWidth = 2.0
         ..style = PaintingStyle.stroke
         ..strokeCap = StrokeCap.round
@@ -1436,7 +1436,7 @@ class _SparklinePainter extends CustomPainter {
       puntos.last,
       3.5,
       Paint()
-        ..color = AppColors.button
+        ..color = AppColors.primaryOnDark
         ..strokeWidth = 1.5
         ..style = PaintingStyle.stroke,
     );

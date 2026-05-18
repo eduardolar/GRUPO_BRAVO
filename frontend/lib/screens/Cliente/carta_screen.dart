@@ -344,7 +344,7 @@ class _CartaScreenState extends State<CartaScreen> {
           ],
         ),
         duration: Duration(seconds: error ? 3 : 2),
-        backgroundColor: error ? AppColors.error : AppColors.button,
+        backgroundColor: error ? AppColors.error : AppColors.primary,
         behavior: SnackBarBehavior.floating,
         shape: const RoundedRectangleBorder(borderRadius: _kRadius),
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 112),
@@ -432,7 +432,7 @@ class _CartaScreenState extends State<CartaScreen> {
         Expanded(
           child: RefreshIndicator(
             onRefresh: _cargarDatos,
-            color: AppColors.button,
+            color: AppColors.primaryOnDark,
             child: _categorias.isEmpty
                 ? const _SinCategorias()
                 : filtered.isEmpty
@@ -553,7 +553,7 @@ class _ErrorCarta extends StatelessWidget {
               icon: const Icon(Icons.refresh),
               label: const Text('REINTENTAR'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.button,
+                backgroundColor: AppColors.primaryAccent,
                 foregroundColor: Colors.white,
                 shape: const RoundedRectangleBorder(borderRadius: _kRadius),
                 padding: const EdgeInsets.symmetric(
@@ -833,11 +833,11 @@ class _ReorderBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.50),
         borderRadius: _kRadius,
-        border: Border.all(color: AppColors.button.withValues(alpha: 0.55)),
+        border: Border.all(color: AppColors.detailOnDark.withValues(alpha: 0.55)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.history, color: AppColors.button, size: 16),
+          const Icon(Icons.history, color: AppColors.detailOnDark, size: 16),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -846,7 +846,7 @@ class _ReorderBanner extends StatelessWidget {
                 const Text(
                   'PEDIDO ANTERIOR',
                   style: TextStyle(
-                    color: AppColors.button,
+                    color: AppColors.linkOnDark,
                     fontSize: 11,
                     letterSpacing: 2.0,
                     fontWeight: FontWeight.w700,
@@ -864,7 +864,7 @@ class _ReorderBanner extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           Material(
-            color: AppColors.button,
+            color: AppColors.primaryAccent,
             borderRadius: BorderRadius.circular(8),
             child: InkWell(
               onTap: onReorder,
@@ -1010,10 +1010,10 @@ class _Chip extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: seleccionado ? AppColors.button : Colors.black45,
+            color: seleccionado ? AppColors.primaryAccent : Colors.black45,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: seleccionado ? AppColors.button : Colors.white24,
+              color: seleccionado ? AppColors.primaryAccent : Colors.white24,
             ),
           ),
           child: Text(
@@ -1046,7 +1046,7 @@ class _CartFAB extends StatelessWidget {
           child: Opacity(
             opacity: enabled ? 1.0 : 0.5,
             child: Material(
-              color: AppColors.button,
+              color: AppColors.primaryAccent,
               borderRadius: _kRadius,
               elevation: enabled ? 4 : 0,
               shadowColor: Colors.black54,

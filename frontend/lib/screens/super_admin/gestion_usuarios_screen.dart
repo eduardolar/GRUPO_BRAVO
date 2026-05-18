@@ -217,7 +217,7 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
                     builder: (context, provider, _) {
                       if (provider.cargando && provider.usuarios.isEmpty) {
                         return const Center(
-                          child: CircularProgressIndicator(color: AppColors.button),
+                          child: CircularProgressIndicator(color: AppColors.primaryOnDark),
                         );
                       }
                       
@@ -323,7 +323,7 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
                   ),
                 ),
                 const SizedBox(height: 6),
-                Center(child: Container(height: 2, width: 40, color: AppColors.button)),
+                Center(child: Container(height: 2, width: 40, color: AppColors.detailOnDark)),
                 const SizedBox(height: 10),
                 Text(
                   subtext,
@@ -521,13 +521,13 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
               onPressed: _irACrearUsuario,
               icon: const Icon(
                 Icons.person_add_outlined,
-                color: AppColors.button,
+                color: AppColors.detailOnDark,
                 size: 18,
               ),
               label: Text(
                 'Agregar el primero',
                 style: GoogleFonts.manrope(
-                  color: AppColors.button,
+                  color: AppColors.linkOnDark,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -555,7 +555,7 @@ class _GestionUsuariosScreenState extends State<GestionUsuariosScreen> {
           style: GoogleFonts.manrope(),
         ),
         backgroundColor: ok
-            ? (nuevoEstado ? AppColors.button : AppColors.warningLight)
+            ? (nuevoEstado ? AppColors.primary : AppColors.warningLight)
             : AppColors.error,
       ),
     );
@@ -621,14 +621,14 @@ void _abrirEdicion(BuildContext context, Usuario user) {
                     ok ? 'Usuario actualizado' : 'Error al actualizar',
                     style: GoogleFonts.manrope(),
                   ),
-                  backgroundColor: ok ? AppColors.button : AppColors.error,
+                  backgroundColor: ok ? AppColors.primary : AppColors.error,
                 ),
               );
             },
             child: Text(
               'Guardar',
               style: GoogleFonts.manrope(
-                color: AppColors.button,
+                color: AppColors.primary,
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -679,7 +679,7 @@ void _abrirEdicion(BuildContext context, Usuario user) {
                       'Usuario eliminado',
                       style: GoogleFonts.manrope(),
                     ),
-                    backgroundColor: AppColors.button,
+                    backgroundColor: AppColors.primary,
                   ),
                 );
               }
@@ -706,7 +706,7 @@ class _NuevoUsuarioButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.button,
+      color: AppColors.primaryAccent,
       child: InkWell(
         onTap: onPressed,
         child: Padding(
@@ -778,7 +778,7 @@ class _UsuarioTile extends StatelessWidget {
             width: 52,
             height: 72,
             color: activo
-                ? AppColors.button.withValues(alpha: 0.8)
+                ? AppColors.primaryAccent.withValues(alpha: 0.8)
                 : AppColors.warningLight.withValues(alpha: 0.5),
             alignment: Alignment.center,
             child: Text(
@@ -978,10 +978,10 @@ class _BranchCategoryChip extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: seleccionado ? AppColors.button : Colors.black45,
+            color: seleccionado ? AppColors.primaryAccent : Colors.black45,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: seleccionado ? AppColors.button : Colors.white24,
+              color: seleccionado ? AppColors.primaryAccent : Colors.white24,
             ),
           ),
           child: Text(

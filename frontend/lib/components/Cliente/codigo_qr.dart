@@ -80,8 +80,8 @@ class _CodigoQrState extends State<CodigoQr> {
         width: double.infinity,
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: AppColors.button,
-          border: Border.all(color: AppColors.primaryAccent),
+          color: AppColors.primaryAccent,
+          border: Border.all(color: AppColors.detailOnDark),
           borderRadius: BorderRadius.circular(14),
         ),
         child: Row(

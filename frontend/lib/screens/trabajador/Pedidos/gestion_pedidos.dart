@@ -139,7 +139,7 @@ class _GestionPedidosState extends State<GestionPedidos>
                 letterSpacing: 1.0,
               ),
             ),
-            backgroundColor: AppColors.button,
+            backgroundColor: AppColors.primary,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),
@@ -214,13 +214,13 @@ class _GestionPedidosState extends State<GestionPedidos>
                             height: 32,
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
-                              color: AppColors.button.withValues(alpha: 0.12),
+                              color: AppColors.detailOnDark.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
                               '${m.numero}',
                               style: const TextStyle(
-                                color: AppColors.button,
+                                color: AppColors.linkOnDark,
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
@@ -316,7 +316,7 @@ class _GestionPedidosState extends State<GestionPedidos>
                       child: Row(
                         children: [
                           const CircleAvatar(
-                            backgroundColor: AppColors.button,
+                            backgroundColor: AppColors.primaryAccent,
                             radius: 16,
                             child: Icon(
                               Icons.person,
@@ -444,7 +444,7 @@ class _GestionPedidosState extends State<GestionPedidos>
                         ),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.button,
+                        backgroundColor: AppColors.primaryAccent,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         elevation: 0,
@@ -466,7 +466,7 @@ class _GestionPedidosState extends State<GestionPedidos>
                         ),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.button,
+                        backgroundColor: AppColors.primaryAccent,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         elevation: 0,
@@ -585,7 +585,7 @@ class _GestionPedidosState extends State<GestionPedidos>
                       Expanded(
                         child: TabBar(
                           controller: _tabController,
-                          indicatorColor: AppColors.button,
+                          indicatorColor: AppColors.detailOnDark,
                           labelColor: Colors.white,
                           unselectedLabelColor: Colors.white54,
                           indicatorWeight: 2.5,
@@ -690,7 +690,7 @@ class _GestionPedidosState extends State<GestionPedidos>
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _mostrarBottomSheetCrear(context),
-        backgroundColor: AppColors.button,
+        backgroundColor: AppColors.primaryAccent,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add),
         label: const Text(
@@ -742,7 +742,7 @@ class _TabConBadge extends StatelessWidget {
               child: Text(
                 '$count',
                 style: const TextStyle(
-                  color: AppColors.button,
+                  color: AppColors.linkOnDark,
                   fontWeight: FontWeight.w700,
                   fontSize: 11,
                 ),
@@ -806,7 +806,7 @@ class _CrearPedidoBottomSheet extends StatelessWidget {
             icono: Icons.local_mall,
             titulo: 'Recoger',
             subtitulo: 'Pedido para recoger en el restaurante',
-            color: AppColors.button,
+            color: AppColors.primary,
             onTap: () {
               Navigator.pop(context);
               Navigator.push(context, AppRoute.slide(const PedidoRecoger()));
@@ -973,7 +973,7 @@ class _PedidoTile extends StatelessWidget {
       case 'pendiente':
         return AppColors.surfacePending;
       case 'preparando':
-        return AppColors.button;
+        return AppColors.primaryOnDark;
       case 'listo':
         return AppColors.info;
       case 'entregado':
@@ -1121,7 +1121,7 @@ class _PedidoTile extends StatelessWidget {
                         child: Text(
                           '×${p.cantidad}',
                           style: const TextStyle(
-                            color: AppColors.button,
+                            color: AppColors.linkOnDark,
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
                           ),
@@ -1321,7 +1321,7 @@ class _EstadoTab extends StatelessWidget {
     if (cargando) {
       return const Center(
         child: CircularProgressIndicator(
-          color: AppColors.button,
+          color: AppColors.primaryOnDark,
           strokeWidth: 2.5,
         ),
       );
@@ -1347,7 +1347,7 @@ class _EstadoTab extends StatelessWidget {
               ElevatedButton(
                 onPressed: onReintentar,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.button,
+                  backgroundColor: AppColors.primaryAccent,
                   foregroundColor: Colors.white,
                   elevation: 0,
                   shape: RoundedRectangleBorder(
@@ -1432,7 +1432,7 @@ class _TabActivos extends StatelessWidget {
     }
     return RefreshIndicator(
       onRefresh: onRefresh,
-      color: AppColors.button,
+      color: AppColors.primaryOnDark,
       child: ListView.builder(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
         itemCount: pedidos.length,
@@ -1445,7 +1445,7 @@ class _TabActivos extends StatelessWidget {
           return _PedidoTile(
             pedido: p,
             labelAccion: esLocal ? 'MODIFICAR' : 'CANCELAR',
-            colorAccion: esLocal ? AppColors.button : AppColors.error,
+            colorAccion: esLocal ? AppColors.primaryAccent : AppColors.error,
             onAccion: () => esLocal ? onModificar(p) : onCancelar(p),
             labelAccionSecundaria: esLocal ? 'CANCELAR' : null,
             onAccionSecundaria: esLocal ? () => onCancelar(p) : null,
@@ -1497,7 +1497,7 @@ class _TabListos extends StatelessWidget {
     }
     return RefreshIndicator(
       onRefresh: onRefresh,
-      color: AppColors.button,
+      color: AppColors.primaryOnDark,
       child: ListView.builder(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
         itemCount: pedidos.length,
@@ -1544,7 +1544,7 @@ class _TabCobrar extends StatelessWidget {
     }
     return RefreshIndicator(
       onRefresh: onRefresh,
-      color: AppColors.button,
+      color: AppColors.primaryOnDark,
       child: ListView.builder(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
         itemCount: pedidos.length,
@@ -1659,7 +1659,7 @@ class _DialogMotivoCancelacionState extends State<_DialogMotivoCancelacion> {
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: const BorderSide(
-                    color: AppColors.button,
+                    color: AppColors.primary,
                     width: 1.5,
                   ),
                 ),

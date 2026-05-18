@@ -63,7 +63,7 @@ class _QRScannerState extends State<QRScanner> {
               width: 240,
               height: 240,
               decoration: BoxDecoration(
-                border: Border.all(color: AppColors.button, width: 2),
+                border: Border.all(color: AppColors.detailOnDark, width: 2),
               ),
               child: Stack(children: _corners()),
             ),
@@ -223,7 +223,7 @@ class _QRScannerState extends State<QRScanner> {
                   border: OutlineInputBorder(borderRadius: BorderRadius.zero),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.zero,
-                    borderSide: BorderSide(color: AppColors.button),
+                    borderSide: BorderSide(color: AppColors.primary),
                   ),
                   contentPadding: EdgeInsets.symmetric(
                     horizontal: 12,
@@ -268,7 +268,7 @@ class _QRScannerState extends State<QRScanner> {
                       child: Container(
                         height: 44,
                         alignment: Alignment.center,
-                        color: AppColors.button,
+                        color: AppColors.primary,
                         child: const Text(
                           'ACEPTAR',
                           style: TextStyle(

@@ -30,7 +30,7 @@ class AuthHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 10),
-        Container(height: 2, width: 40, color: AppColors.button),
+        Container(height: 2, width: 40, color: AppColors.detailOnDark),
         const SizedBox(height: 15),
         if (subtituloWidget != null)
           subtituloWidget!

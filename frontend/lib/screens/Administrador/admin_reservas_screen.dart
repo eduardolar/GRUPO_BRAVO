@@ -96,7 +96,7 @@ class _AdminReservasScreenState extends State<AdminReservasScreen> {
       builder: (ctx, child) => Theme(
         data: ThemeData.dark().copyWith(
           colorScheme: const ColorScheme.dark(
-            primary: AppColors.button,
+            primary: AppColors.primaryOnDark,
             surface: AppColors.bottomSheetBg,
           ),
         ),
@@ -180,7 +180,7 @@ class _AdminReservasScreenState extends State<AdminReservasScreen> {
                   if (cargandoMesas)
                     const Center(
                       child: CircularProgressIndicator(
-                          color: AppColors.button),
+                          color: AppColors.primaryOnDark),
                     )
                   else if (mesas.isEmpty)
                     const Text(
@@ -349,7 +349,7 @@ class _AdminReservasScreenState extends State<AdminReservasScreen> {
                     child: Row(
                       children: [
                         const Icon(Icons.calendar_today,
-                            color: AppColors.button, size: 18),
+                            color: AppColors.detailOnDark, size: 18),
                         const SizedBox(width: 10),
                         Text(
                           etiqueta,
@@ -388,7 +388,7 @@ class _AdminReservasScreenState extends State<AdminReservasScreen> {
                           height: 18,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            color: AppColors.button,
+                            color: AppColors.primaryOnDark,
                           ),
                         )
                       : const Icon(Icons.refresh,
@@ -425,12 +425,12 @@ class _AdminReservasScreenState extends State<AdminReservasScreen> {
                   const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               decoration: BoxDecoration(
                 color: seleccionado
-                    ? AppColors.button
+                    ? AppColors.primaryAccent
                     : Colors.black.withValues(alpha: 0.4),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: seleccionado
-                      ? AppColors.button
+                      ? AppColors.primaryAccent
                       : Colors.white24,
                 ),
               ),
@@ -455,7 +455,7 @@ class _AdminReservasScreenState extends State<AdminReservasScreen> {
   Widget _buildCuerpo() {
     if (_cargando) {
       return const Center(
-        child: CircularProgressIndicator(color: AppColors.button),
+        child: CircularProgressIndicator(color: AppColors.primaryOnDark),
       );
     }
 
@@ -475,7 +475,7 @@ class _AdminReservasScreenState extends State<AdminReservasScreen> {
               const SizedBox(height: 24),
               ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.button,
+                    backgroundColor: AppColors.primaryAccent,
                     foregroundColor: Colors.white),
                 onPressed: _cargar,
                 icon: const Icon(Icons.refresh),
@@ -508,7 +508,7 @@ class _AdminReservasScreenState extends State<AdminReservasScreen> {
     }
 
     return RefreshIndicator(
-      color: AppColors.button,
+      color: AppColors.primaryOnDark,
       backgroundColor: Colors.black87,
       onRefresh: _cargar,
       child: ListView.builder(

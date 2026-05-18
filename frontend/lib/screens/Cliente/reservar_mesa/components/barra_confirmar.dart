@@ -82,9 +82,9 @@ class BarraConfirmar extends StatelessWidget {
             child: ElevatedButton.icon(
               onPressed: isLoading ? null : onConfirmar,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.button,
+                backgroundColor: AppColors.primaryAccent,
                 foregroundColor: Colors.white,
-                disabledBackgroundColor: AppColors.button.withValues(alpha: 0.5),
+                disabledBackgroundColor: AppColors.primaryAccent.withValues(alpha: 0.5),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
@@ -129,7 +129,7 @@ class _DatoResumen extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(icono, color: AppColors.button, size: 14),
+        Icon(icono, color: AppColors.detailOnDark, size: 14),
         const SizedBox(width: 6),
         Flexible(
           child: Text(

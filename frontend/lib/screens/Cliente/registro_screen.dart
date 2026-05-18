@@ -429,7 +429,7 @@ class _IndicadorPasos extends StatelessWidget {
     final bool completado = index < pasoActual;
     final bool activo = index == pasoActual;
     final Color fondo = (completado || activo)
-        ? AppColors.button
+        ? AppColors.primaryAccent
         : Colors.white.withValues(alpha: 0.2);
 
     return AnimatedContainer(
@@ -440,7 +440,7 @@ class _IndicadorPasos extends StatelessWidget {
         color: fondo,
         shape: BoxShape.circle,
         border: Border.all(
-          color: activo ? AppColors.button : Colors.transparent,
+          color: activo ? AppColors.detailOnDark : Colors.transparent,
           width: 2,
         ),
       ),
@@ -468,7 +468,7 @@ class _IndicadorPasos extends StatelessWidget {
       width: 40,
       height: 2,
       color: completada
-          ? AppColors.button
+          ? AppColors.detailOnDark
           : Colors.white.withValues(alpha: 0.2),
     );
   }
@@ -851,10 +851,10 @@ class _ConsentimientoRgpd extends StatelessWidget {
                         child: const Text(
                           'Política de Privacidad',
                           style: TextStyle(
-                            color: AppColors.button,
+                            color: AppColors.linkOnDark,
                             fontWeight: FontWeight.bold,
                             decoration: TextDecoration.underline,
-                            decorationColor: AppColors.button,
+                            decorationColor: AppColors.linkOnDark,
                             fontSize: 13,
                           ),
                         ),

@@ -251,7 +251,7 @@ class _ModificarComandaState extends State<ModificarComanda> {
         const SizedBox(height: 12),
         Expanded(
           child: RefreshIndicator(
-            color: AppColors.button,
+            color: AppColors.primaryOnDark,
             backgroundColor: Colors.black,
             onRefresh: _cargarMesas,
             child: ListView.builder(
@@ -450,7 +450,7 @@ class _DetalleComandaSheetState extends State<_DetalleComandaSheet> {
       messenger.showSnackBar(
         const SnackBar(
           content: Text('CAMBIOS GUARDADOS'),
-          backgroundColor: AppColors.button,
+          backgroundColor: AppColors.primary,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(),
           margin: EdgeInsets.fromLTRB(16, 0, 16, 32),
@@ -602,7 +602,7 @@ class _DetalleComandaSheetState extends State<_DetalleComandaSheet> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 14, vertical: 8),
                         decoration: BoxDecoration(
-                          color: AppColors.button,
+                          color: AppColors.primaryAccent,
                           borderRadius: BorderRadius.zero,
                         ),
                         child: const Row(
@@ -662,7 +662,7 @@ class _DetalleComandaSheetState extends State<_DetalleComandaSheet> {
                                 Text(
                                   '× $cantidad',
                                   style: TextStyle(
-                                    color: AppColors.button,
+                                    color: AppColors.linkOnDark,
                                     fontWeight: FontWeight.w700,
                                     fontSize: 14,
                                   ),
@@ -710,7 +710,7 @@ class _DetalleComandaSheetState extends State<_DetalleComandaSheet> {
                                       : () => _incrementar(i),
                                   icon: const Icon(
                                     Icons.add_circle_outline,
-                                    color: AppColors.button,
+                                    color: AppColors.detailOnDark,
                                     size: 22,
                                   ),
                                   tooltip: 'Añadir 1 más',
@@ -748,7 +748,7 @@ class _DetalleComandaSheetState extends State<_DetalleComandaSheet> {
                       Text(
                         '${total.toStringAsFixed(2).replaceAll('.', ',')} €',
                         style: TextStyle(
-                          color: AppColors.button,
+                          color: AppColors.linkOnDark,
                           fontSize: 18,
                           fontWeight: FontWeight.w800,
                         ),
@@ -768,7 +768,7 @@ class _DetalleComandaSheetState extends State<_DetalleComandaSheet> {
                     child: ElevatedButton(
                       onPressed: _guardando ? null : _guardarCambios,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.button,
+                        backgroundColor: AppColors.primaryAccent,
                         foregroundColor: Colors.white,
                         elevation: 0,
                         shape: const RoundedRectangleBorder(),

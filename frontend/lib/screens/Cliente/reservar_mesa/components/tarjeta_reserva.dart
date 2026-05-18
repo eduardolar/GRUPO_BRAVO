@@ -57,7 +57,7 @@ class TarjetaReserva extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: pasada
                       ? AppColors.line.withValues(alpha: 0.5)
-                      : AppColors.button.withValues(alpha: 0.08),
+                      : AppColors.detailOnDark.withValues(alpha: 0.08),
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(14),
                     bottomLeft: Radius.circular(14),
@@ -69,7 +69,7 @@ class TarjetaReserva extends StatelessWidget {
                     Text(
                       '${reserva.fecha.day}',
                       style: TextStyle(
-                        color: pasada ? AppColors.textSecondary : AppColors.button,
+                        color: pasada ? AppColors.textSecondary : AppColors.linkOnDark,
                         fontSize: 30,
                         fontWeight: FontWeight.bold,
                         height: 1,
@@ -78,7 +78,7 @@ class TarjetaReserva extends StatelessWidget {
                     Text(
                       ru.kMesesAbrev[reserva.fecha.month - 1],
                       style: TextStyle(
-                        color: pasada ? AppColors.textSecondary : AppColors.button,
+                        color: pasada ? AppColors.textSecondary : AppColors.linkOnDark,
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 1,
@@ -128,16 +128,16 @@ class TarjetaReserva extends StatelessWidget {
                                   padding: const EdgeInsets.all(6),
                                   decoration: BoxDecoration(
                                     color:
-                                        AppColors.button.withValues(alpha: 0.1),
+                                        AppColors.detailOnDark.withValues(alpha: 0.1),
                                     borderRadius: BorderRadius.circular(8),
                                     border: Border.all(
-                                      color: AppColors.button
+                                      color: AppColors.detailOnDark
                                           .withValues(alpha: 0.3),
                                     ),
                                   ),
                                   child: const Icon(
                                     Icons.group_outlined,
-                                    color: AppColors.button,
+                                    color: AppColors.detailOnDark,
                                     size: 16,
                                   ),
                                 ),

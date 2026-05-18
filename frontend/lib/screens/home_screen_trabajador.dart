@@ -230,14 +230,14 @@ class _TrabajadorCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.button.withValues(alpha: 0.2),
+        color: AppColors.detailOnDark.withValues(alpha: 0.2),
         shape: BoxShape.circle,
         border: Border.all(
-          color: AppColors.button.withValues(alpha: 0.5),
+          color: AppColors.detailOnDark.withValues(alpha: 0.5),
           width: 1,
         ),
       ),
-      child: Icon(icon, color: AppColors.button, size: 30),
+      child: Icon(icon, color: AppColors.detailOnDark, size: 30),
     );
   }
 
@@ -261,8 +261,8 @@ class _TrabajadorCard extends StatelessWidget {
             color: Colors.transparent,
             child: InkWell(
               borderRadius: BorderRadius.circular(20),
-              highlightColor: AppColors.button.withValues(alpha: 0.1),
-              splashColor: AppColors.button.withValues(alpha: 0.2),
+              highlightColor: AppColors.primaryOnDark.withValues(alpha: 0.1),
+              splashColor: AppColors.primaryOnDark.withValues(alpha: 0.2),
               onTap: () => Navigator.push(
                 context,
                 AppRoute.slide(destination),

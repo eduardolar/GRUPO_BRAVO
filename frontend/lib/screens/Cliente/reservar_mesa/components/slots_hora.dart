@@ -40,7 +40,7 @@ class SlotsHora extends StatelessWidget {
                 width: 24,
                 height: 24,
                 child: CircularProgressIndicator(
-                  color: AppColors.button,
+                  color: AppColors.primaryOnDark,
                   strokeWidth: 2.5,
                 ),
               ),
@@ -95,14 +95,14 @@ class SlotsHora extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 decoration: BoxDecoration(
                   color: sel
-                      ? AppColors.button
+                      ? AppColors.primaryAccent
                       : disponible
                       ? AppColors.panel.withValues(alpha: 0.9)
                       : Colors.white.withValues(alpha: 0.04),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
                     color: sel
-                        ? AppColors.button
+                        ? AppColors.primaryAccent
                         : disponible
                         ? Colors.white24
                         : Colors.white10,

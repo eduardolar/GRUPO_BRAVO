@@ -95,7 +95,7 @@ class _ActivarCuentaScreenState extends State<ActivarCuentaScreen> {
                           height: 55,
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.button,
+                              backgroundColor: AppColors.primaryAccent,
                               foregroundColor: Colors.white,
                               shape: const RoundedRectangleBorder(
                                 borderRadius: BorderRadius.zero,
@@ -152,7 +152,7 @@ class _ActivarCuentaScreenState extends State<ActivarCuentaScreen> {
           ),
         ),
         const SizedBox(height: 10),
-        Container(height: 2, width: 40, color: AppColors.button),
+        Container(height: 2, width: 40, color: AppColors.detailOnDark),
         const SizedBox(height: 15),
         Text(
           'Ingresa tu correo para continuar con el código que recibiste.',

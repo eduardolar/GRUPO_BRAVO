@@ -90,7 +90,7 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Mesa ${nueva.numero} creada correctamente'),
-          backgroundColor: AppColors.button,
+          backgroundColor: AppColors.primary,
           behavior: SnackBarBehavior.floating,
           shape: const RoundedRectangleBorder(),
           margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -165,7 +165,7 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
                 children: [
                   const Icon(
                     Icons.table_restaurant_outlined,
-                    color: AppColors.button,
+                    color: AppColors.primary,
                     size: 22,
                   ),
                   const SizedBox(width: 10),
@@ -218,7 +218,7 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
             ListTile(
               leading: const Icon(
                 Icons.edit_outlined,
-                color: AppColors.button,
+                color: AppColors.primary,
               ),
               title: const Text('Modificar comanda'),
               subtitle: const Text(
@@ -237,7 +237,7 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
             ListTile(
               leading: const Icon(
                 Icons.calculate_outlined,
-                color: AppColors.button,
+                color: AppColors.primary,
               ),
               title: const Text('Sacar la cuenta'),
               subtitle: const Text('Cobrar y cerrar la mesa'),
@@ -333,7 +333,7 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
       floatingActionButton: puedeCrearMesa
           ? FloatingActionButton.extended(
               onPressed: _mostrarFormCrearMesa,
-              backgroundColor: AppColors.button,
+              backgroundColor: AppColors.primary,
               foregroundColor: AppColors.background,
               elevation: 4,
               icon: const Icon(Icons.add, size: 20),
@@ -438,7 +438,7 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
                     runSpacing: 6,
                     children: [
                       _LegendaDot(
-                        color: AppColors.button,
+                        color: AppColors.primary,
                         label: 'Disponible',
                         icon: Icons.check_circle_outline,
                       ),
@@ -459,7 +459,7 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
                 Expanded(
                   child: RefreshIndicator(
                     onRefresh: _cargarMesas,
-                    color: AppColors.button,
+                    color: AppColors.primaryOnDark,
                     backgroundColor: Colors.black,
                     child: ListView(
                     physics: const AlwaysScrollableScrollPhysics(
@@ -482,7 +482,7 @@ class _SeleccionMesaState extends State<SeleccionMesa> {
                                   width: 3,
                                   height: 16,
                                   decoration: BoxDecoration(
-                                    color: AppColors.button,
+                                    color: AppColors.primary,
                                     borderRadius: BorderRadius.circular(2),
                                   ),
                                 ),
@@ -645,9 +645,9 @@ class _MesaPainter extends CustomPainter {
     final chairH = size.width * 0.075;
     final chairDist = tableRadius + chairH + 3.0;
 
-    final tableColor = disponible ? AppColors.button : AppColors.iconPrimary;
-    final chairColor = disponible ? AppColors.button : AppColors.iconPrimary;
-    final borderColor = disponible ? AppColors.button : AppColors.iconPrimary;
+    final tableColor = disponible ? AppColors.primary : AppColors.iconPrimary;
+    final chairColor = disponible ? AppColors.primary : AppColors.iconPrimary;
+    final borderColor = disponible ? AppColors.primary : AppColors.iconPrimary;
 
     // Sombra de la mesa
     final shadowPaint = Paint()
@@ -836,7 +836,7 @@ class _DialogConfirmacion extends StatelessWidget {
                   child: ElevatedButton(
                     onPressed: () => Navigator.pop(context, true),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.button,
+                      backgroundColor: AppColors.primary,
                       foregroundColor: AppColors.background,
                       padding: const EdgeInsets.symmetric(vertical: 13),
                       elevation: 0,
@@ -1047,7 +1047,7 @@ class _DialogCrearMesaState extends State<_DialogCrearMesa> {
                     child: ElevatedButton(
                       onPressed: _confirmar,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.button,
+                        backgroundColor: AppColors.primary,
                         foregroundColor: AppColors.background,
                         padding: const EdgeInsets.symmetric(vertical: 13),
                         elevation: 0,
@@ -1140,7 +1140,7 @@ class _Campo extends StatelessWidget {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: AppColors.button, width: 1.5),
+              borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
@@ -1178,10 +1178,10 @@ class _ChipUbicacion extends StatelessWidget {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: BoxDecoration(
-          color: selected ? AppColors.button : AppColors.background,
+          color: selected ? AppColors.primary : AppColors.background,
           borderRadius: BorderRadius.circular(6),
           border: Border.all(
-            color: selected ? AppColors.button : AppColors.line,
+            color: selected ? AppColors.primary : AppColors.line,
           ),
         ),
         child: Text(

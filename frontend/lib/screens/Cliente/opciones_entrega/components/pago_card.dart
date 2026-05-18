@@ -31,11 +31,11 @@ class PagoCard extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: kRadiusEntrega,
             color: seleccionada
-                ? AppColors.button.withValues(alpha: 0.18)
+                ? AppColors.primaryAccent.withValues(alpha: 0.18)
                 : Colors.white.withValues(alpha: 0.07),
             border: Border.all(
               color: seleccionada
-                  ? AppColors.button
+                  ? AppColors.primaryAccent
                   : Colors.white.withValues(alpha: 0.18),
               width: seleccionada ? 1.5 : 1,
             ),
@@ -46,7 +46,7 @@ class PagoCard extends StatelessWidget {
                 icono,
                 size: 24,
                 color: seleccionada
-                    ? AppColors.button
+                    ? AppColors.detailOnDark
                     : Colors.white.withValues(alpha: 0.55),
               ),
               const SizedBox(width: 14),
@@ -79,10 +79,10 @@ class PagoCard extends StatelessWidget {
                 height: 22,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: seleccionada ? AppColors.button : Colors.transparent,
+                  color: seleccionada ? AppColors.primaryAccent : Colors.transparent,
                   border: Border.all(
                     color: seleccionada
-                        ? AppColors.button
+                        ? AppColors.primaryAccent
                         : Colors.white.withValues(alpha: 0.25),
                     width: 1.5,
                   ),

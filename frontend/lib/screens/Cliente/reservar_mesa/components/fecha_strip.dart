@@ -66,19 +66,19 @@ class _DateChip extends StatelessWidget {
         margin: const EdgeInsets.only(right: 6),
         decoration: BoxDecoration(
           color: seleccionada
-              ? AppColors.button
+              ? AppColors.primaryAccent
               : Colors.white.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: seleccionada
-                ? AppColors.button
+                ? AppColors.primaryAccent
                 : Colors.white.withValues(alpha: 0.12),
             width: seleccionada ? 1.4 : 1,
           ),
           boxShadow: seleccionada
               ? [
                   BoxShadow(
-                    color: AppColors.button.withValues(alpha: 0.45),
+                    color: AppColors.primaryAccent.withValues(alpha: 0.45),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
@@ -94,7 +94,7 @@ class _DateChip extends StatelessWidget {
                 color: seleccionada
                     ? Colors.white
                     : (esFinDeSemana
-                          ? AppColors.button.withValues(alpha: 0.9)
+                          ? AppColors.linkOnDark.withValues(alpha: 0.9)
                           : Colors.white60),
                 fontSize: 12,
                 fontWeight: FontWeight.w800,

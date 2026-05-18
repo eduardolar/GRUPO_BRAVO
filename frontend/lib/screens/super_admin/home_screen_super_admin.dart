@@ -135,7 +135,7 @@ class _HomeScreenSuperAdminState extends State<HomeScreenSuperAdmin> {
               esEdicion ? 'GUARDAR' : 'CREAR',
               style: GoogleFonts.manrope(
                 fontWeight: FontWeight.w700,
-                color: AppColors.button,
+                color: AppColors.primary, // navy sobre diálogo blanco (legible)
               ),
             ),
           ),
@@ -275,7 +275,7 @@ class _HomeScreenSuperAdminState extends State<HomeScreenSuperAdmin> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg, style: GoogleFonts.manrope()),
-        backgroundColor: AppColors.button,
+        backgroundColor: AppColors.primary, // navy sólido + texto blanco (legible)
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -303,7 +303,7 @@ class _HomeScreenSuperAdminState extends State<HomeScreenSuperAdmin> {
         ),
         hintStyle: GoogleFonts.manrope(color: Colors.white60),
         prefixIcon: icon != null
-            ? Icon(icon, color: AppColors.button, size: 20)
+            ? Icon(icon, color: AppColors.detailOnDark, size: 20)
             : null,
         filled: true,
         fillColor: const Color(0x8C000000),
@@ -314,7 +314,7 @@ class _HomeScreenSuperAdminState extends State<HomeScreenSuperAdmin> {
         ),
         focusedBorder: const OutlineInputBorder(
           borderRadius: BorderRadius.zero,
-          borderSide: BorderSide(color: AppColors.button, width: 1.5),
+          borderSide: BorderSide(color: AppColors.detailOnDark, width: 1.5),
         ),
       ),
       validator: validator,
@@ -352,7 +352,7 @@ class _HomeScreenSuperAdminState extends State<HomeScreenSuperAdmin> {
           ),
           child: SafeArea(
             child: RefreshIndicator(
-              color: AppColors.button,
+              color: AppColors.primaryOnDark,
               backgroundColor: Colors.black87,
               onRefresh: () async {
                 await Future.wait([
@@ -410,7 +410,7 @@ class _HomeScreenSuperAdminState extends State<HomeScreenSuperAdmin> {
                                       height: 20,
                                       child: CircularProgressIndicator(
                                         strokeWidth: 2,
-                                        color: AppColors.button,
+                                        color: AppColors.primaryOnDark,
                                       ),
                                     )
                                   : const Icon(
@@ -448,7 +448,7 @@ class _HomeScreenSuperAdminState extends State<HomeScreenSuperAdmin> {
                               padding: EdgeInsets.all(32),
                               child: Center(
                                 child: CircularProgressIndicator(
-                                  color: AppColors.button,
+                                  color: AppColors.primaryOnDark,
                                 ),
                               ),
                             );
@@ -695,7 +695,7 @@ class _HomeScreenSuperAdminState extends State<HomeScreenSuperAdmin> {
   Widget _sectionLabel(String label) {
     return Row(
       children: [
-        Container(width: 3, height: 18, color: AppColors.button),
+        Container(width: 3, height: 18, color: AppColors.detailOnDark),
         const SizedBox(width: 10),
         Text(
           label,
@@ -805,7 +805,7 @@ class _SeccionKpisGlobalesState extends State<_SeccionKpisGlobales> {
 
     final header = Row(
       children: [
-        Container(width: 3, height: 18, color: AppColors.button),
+        Container(width: 3, height: 18, color: AppColors.detailOnDark),
         const SizedBox(width: 10),
         const Text(
           'PULSO GLOBAL HOY',
@@ -823,7 +823,7 @@ class _SeccionKpisGlobalesState extends State<_SeccionKpisGlobales> {
             height: 12,
             child: CircularProgressIndicator(
               strokeWidth: 1.5,
-              color: AppColors.button,
+              color: AppColors.primaryOnDark,
             ),
           ),
         ],
@@ -856,7 +856,7 @@ class _SeccionKpisGlobalesState extends State<_SeccionKpisGlobales> {
         sub: 'facturado hoy',
         accentColor: (ingresos ?? 0) > 0
             ? AppColors.success
-            : AppColors.button,
+            : AppColors.primaryOnDark,
         onTapAdvance: _avanzarSiguiente,
         onLongPressPause: _pausarRotacion,
         onLongPressResume: _retomarRotacion,
@@ -1033,7 +1033,7 @@ class _SeccionKpisGlobalesState extends State<_SeccionKpisGlobales> {
                 height: 8,
                 decoration: BoxDecoration(
                   color: i == _paginaActual
-                      ? AppColors.button
+                      ? AppColors.detailOnDark
                       : Colors.white.withValues(alpha: 0.25),
                   borderRadius: BorderRadius.circular(4),
                 ),
@@ -1077,7 +1077,7 @@ class _SuperKpiCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final iconColor = accentColor ?? AppColors.button;
+    final iconColor = accentColor ?? AppColors.detailOnDark;
 
     return Semantics(
       label: '$label: $value',
@@ -1230,8 +1230,8 @@ class _SucursalGlassCard extends StatelessWidget {
               color: Colors.transparent,
               child: InkWell(
                 borderRadius: BorderRadius.circular(20),
-                highlightColor: AppColors.button.withValues(alpha: 0.1),
-                splashColor: AppColors.button.withValues(alpha: 0.2),
+                highlightColor: AppColors.primaryOnDark.withValues(alpha: 0.1),
+                splashColor: AppColors.primaryOnDark.withValues(alpha: 0.2),
                 onTap: onTap,
                 child: Padding(
                   padding: const EdgeInsets.all(16),
@@ -1245,7 +1245,7 @@ class _SucursalGlassCard extends StatelessWidget {
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           color: (r.activo && !suspendida
-                                  ? AppColors.button
+                                  ? AppColors.primaryAccent
                                   : Colors.white24)
                               .withValues(
                                   alpha: r.activo && !suspendida ? 0.85 : 1),
@@ -1360,8 +1360,7 @@ class _SucursalGlassCard extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w800,
-                                color:
-                                    AppColors.button.withValues(alpha: 0.95),
+                                color: AppColors.linkOnDark,
                                 letterSpacing: 1.5,
                               ),
                             ),
@@ -1376,7 +1375,7 @@ class _SucursalGlassCard extends StatelessWidget {
                           _AccionPill(
                             label: 'DETALLES',
                             icono: Icons.tune_rounded,
-                            color: AppColors.button,
+                            color: AppColors.detailOnDark,
                             onTap: onEditarDetalles,
                             semantics: 'Editar detalles de la sucursal',
                           ),
@@ -1466,16 +1465,16 @@ class _NuevaSucursalGlass extends StatelessWidget {
           color: Colors.transparent,
           child: InkWell(
             borderRadius: BorderRadius.circular(20),
-            highlightColor: AppColors.button.withValues(alpha: 0.1),
-            splashColor: AppColors.button.withValues(alpha: 0.2),
+            highlightColor: AppColors.primaryOnDark.withValues(alpha: 0.1),
+            splashColor: AppColors.primaryOnDark.withValues(alpha: 0.2),
             onTap: onTap,
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 16),
               decoration: BoxDecoration(
-                color: AppColors.button.withValues(alpha: 0.18),
+                color: AppColors.primaryOnDark.withValues(alpha: 0.18),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: AppColors.button.withValues(alpha: 0.55),
+                  color: AppColors.primaryOnDark.withValues(alpha: 0.55),
                   width: 1.5,
                 ),
               ),
@@ -1536,8 +1535,8 @@ class _GlassCard extends StatelessWidget {
             color: Colors.transparent,
             child: InkWell(
               borderRadius: BorderRadius.circular(20),
-              highlightColor: AppColors.button.withValues(alpha: 0.1),
-              splashColor: AppColors.button.withValues(alpha: 0.2),
+              highlightColor: AppColors.primaryOnDark.withValues(alpha: 0.1),
+              splashColor: AppColors.primaryOnDark.withValues(alpha: 0.2),
               onTap: onTap,
               child: Padding(
                 padding: const EdgeInsets.all(20.0),
@@ -1547,14 +1546,14 @@ class _GlassCard extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: AppColors.button.withValues(alpha: 0.2),
+                        color: AppColors.detailOnDark.withValues(alpha: 0.2),
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: AppColors.button.withValues(alpha: 0.5),
+                          color: AppColors.detailOnDark.withValues(alpha: 0.5),
                           width: 1,
                         ),
                       ),
-                      child: Icon(icon, color: AppColors.button, size: 28),
+                      child: Icon(icon, color: AppColors.detailOnDark, size: 28),
                     ),
                     const Spacer(),
                     Text(

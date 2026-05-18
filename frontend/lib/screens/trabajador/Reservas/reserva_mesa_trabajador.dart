@@ -518,11 +518,11 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
         margin: const EdgeInsets.only(right: 4),
         decoration: BoxDecoration(
           color: seleccionada
-              ? AppColors.button
+              ? AppColors.primaryAccent
               : AppColors.panel.withValues(alpha: 0.13),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: seleccionada ? AppColors.button : Colors.white12,
+            color: seleccionada ? AppColors.primaryAccent : Colors.white12,
             width: seleccionada ? 2 : 1,
           ),
         ),
@@ -590,7 +590,7 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
           duration: const Duration(milliseconds: 200),
           margin: const EdgeInsets.all(4),
           decoration: BoxDecoration(
-            color: sel ? AppColors.button : Colors.transparent,
+            color: sel ? AppColors.primaryAccent : Colors.transparent,
             borderRadius: BorderRadius.circular(9),
           ),
           child: Row(
@@ -628,7 +628,7 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
           ),
         ),
         const SizedBox(height: 5),
-        Container(height: 2, width: 24, color: AppColors.button),
+        Container(height: 2, width: 24, color: AppColors.detailOnDark),
         const SizedBox(height: 14),
       ],
     );
@@ -652,7 +652,7 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
                 width: 24,
                 height: 24,
                 child: CircularProgressIndicator(
-                  color: AppColors.button,
+                  color: AppColors.primaryOnDark,
                   strokeWidth: 2.5,
                 ),
               ),
@@ -709,14 +709,14 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 decoration: BoxDecoration(
                   color: sel
-                      ? AppColors.button
+                      ? AppColors.primaryAccent
                       : disponible
                       ? AppColors.panel.withValues(alpha: 0.9)
                       : Colors.white.withValues(alpha: 0.04),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
                     color: sel
-                        ? AppColors.button
+                        ? AppColors.primaryAccent
                         : disponible
                         ? Colors.white24
                         : Colors.white10,
@@ -824,13 +824,13 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: activo
-              ? AppColors.button.withValues(alpha: 0.12)
+              ? AppColors.detailOnDark.withValues(alpha: 0.12)
               : Colors.transparent,
-          border: Border.all(color: activo ? AppColors.button : AppColors.line),
+          border: Border.all(color: activo ? AppColors.detailOnDark : AppColors.line),
         ),
         child: Icon(
           icono,
-          color: activo ? AppColors.button : AppColors.line,
+          color: activo ? AppColors.detailOnDark : AppColors.line,
           size: 20,
         ),
       ),
@@ -861,7 +861,7 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
           fontSize: 14,
         ),
         prefixIcon: maxLines == 1
-            ? Icon(icono, color: AppColors.button, size: 20)
+            ? Icon(icono, color: AppColors.detailOnDark, size: 20)
             : null,
         contentPadding: EdgeInsets.symmetric(
           horizontal: maxLines > 1 ? 16 : 0,
@@ -875,7 +875,7 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.button, width: 2),
+          borderSide: const BorderSide(color: AppColors.detailOnDark, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -938,9 +938,9 @@ class _ReservaMesaTrabajadorState extends State<ReservaMesaTrabajador>
             child: ElevatedButton(
               onPressed: _isLoading ? null : _confirmarReserva,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.button,
+                backgroundColor: AppColors.primaryAccent,
                 foregroundColor: Colors.white,
-                disabledBackgroundColor: AppColors.button.withValues(
+                disabledBackgroundColor: AppColors.primaryAccent.withValues(
                   alpha: 0.5,
                 ),
                 shape: const RoundedRectangleBorder(
@@ -1091,7 +1091,7 @@ class _ConfirmacionSheet extends StatelessWidget {
             child: ElevatedButton(
               onPressed: onVerReservas,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.button,
+                backgroundColor: AppColors.primaryAccent,
                 foregroundColor: Colors.white,
                 shape: const RoundedRectangleBorder(
                   borderRadius: BorderRadius.zero,
@@ -1112,7 +1112,7 @@ class _ConfirmacionSheet extends StatelessWidget {
   Widget _fila(IconData icono, String texto) {
     return Row(
       children: [
-        Icon(icono, color: AppColors.button, size: 18),
+        Icon(icono, color: AppColors.detailOnDark, size: 18),
         const SizedBox(width: 12),
         Expanded(
           child: Text(
@@ -1214,7 +1214,7 @@ class _SkeletonReservasState extends State<_SkeletonReservas>
         borderRadius: BorderRadius.circular(radio),
         color: Color.lerp(
           Colors.white.withValues(alpha: 0.05),
-          AppColors.button.withValues(alpha: 0.20),
+          AppColors.detailOnDark.withValues(alpha: 0.20),
           t,
         ),
       ),
@@ -1229,8 +1229,8 @@ class _SkeletonReservasState extends State<_SkeletonReservas>
       t,
     )!;
     final colFecha = Color.lerp(
-      AppColors.button.withValues(alpha: pasada ? 0.03 : 0.05),
-      AppColors.button.withValues(alpha: pasada ? 0.07 : 0.12),
+      AppColors.detailOnDark.withValues(alpha: pasada ? 0.03 : 0.05),
+      AppColors.detailOnDark.withValues(alpha: pasada ? 0.07 : 0.12),
       t,
     )!;
 

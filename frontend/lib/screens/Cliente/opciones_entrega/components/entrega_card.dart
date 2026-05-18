@@ -33,11 +33,11 @@ class EntregaCard extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: kRadiusEntrega,
             color: seleccionada
-                ? AppColors.button.withValues(alpha: 0.18)
+                ? AppColors.primaryAccent.withValues(alpha: 0.18)
                 : Colors.white.withValues(alpha: 0.07),
             border: Border.all(
               color: seleccionada
-                  ? AppColors.button
+                  ? AppColors.primaryAccent
                   : Colors.white.withValues(alpha: 0.18),
               width: seleccionada ? 1.5 : 1,
             ),
@@ -51,7 +51,7 @@ class EntregaCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(10),
                   color: seleccionada
-                      ? AppColors.button
+                      ? AppColors.primaryAccent
                       : Colors.white.withValues(alpha: 0.10),
                 ),
                 child: Icon(
@@ -94,7 +94,7 @@ class EntregaCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(6),
                   color: seleccionada
-                      ? AppColors.button
+                      ? AppColors.primaryAccent
                       : Colors.white.withValues(alpha: 0.10),
                 ),
                 child: Text(

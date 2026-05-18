@@ -208,7 +208,7 @@ class _StepperButton extends StatelessWidget {
           height: 30,
           decoration: BoxDecoration(
             color: filled
-                ? AppColors.button
+                ? AppColors.primaryAccent
                 : Colors.black.withValues(alpha: 0.30),
             borderRadius: BorderRadius.circular(6),
             border: filled ? null : Border.all(color: Colors.white38),

@@ -36,7 +36,7 @@ class CampoTextoReserva extends StatelessWidget {
           fontSize: 14,
         ),
         prefixIcon: maxLines == 1
-            ? Icon(icono, color: AppColors.button, size: 20)
+            ? Icon(icono, color: AppColors.detailOnDark, size: 20)
             : null,
         contentPadding: EdgeInsets.symmetric(
           horizontal: maxLines > 1 ? 16 : 0,
@@ -50,7 +50,7 @@ class CampoTextoReserva extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.button, width: 2),
+          borderSide: const BorderSide(color: AppColors.detailOnDark, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),

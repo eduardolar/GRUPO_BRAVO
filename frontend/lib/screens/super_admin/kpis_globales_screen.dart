@@ -326,7 +326,7 @@ class _KpisGlobalesScreenState extends State<KpisGlobalesScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(height: 2, width: 32, color: AppColors.button),
+                Container(height: 2, width: 32, color: AppColors.detailOnDark),
                 const SizedBox(height: 6),
                 Text(
                   'Comparativa entre sucursales',
@@ -353,20 +353,20 @@ class _KpisGlobalesScreenState extends State<KpisGlobalesScreen> {
                       height: 14,
                       child: CircularProgressIndicator(
                         strokeWidth: 1.8,
-                        color: AppColors.button,
+                        color: AppColors.detailOnDark,
                       ),
                     )
                   : const Icon(
                       Icons.download_outlined,
                       size: 16,
-                      color: AppColors.button,
+                      color: AppColors.detailOnDark,
                     ),
               label: Text(
                 _exportandoKpis ? 'EXPORTANDO…' : 'EXPORTAR CSV',
                 style: GoogleFonts.manrope(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.button,
+                  color: AppColors.linkOnDark,
                 ),
               ),
             ),
@@ -378,7 +378,7 @@ class _KpisGlobalesScreenState extends State<KpisGlobalesScreen> {
                     height: 18,
                     child: CircularProgressIndicator(
                       strokeWidth: 1.8,
-                      color: AppColors.button,
+                      color: AppColors.primaryOnDark,
                     ),
                   )
                 : Icon(
@@ -412,10 +412,10 @@ class _KpisGlobalesScreenState extends State<KpisGlobalesScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
               decoration: BoxDecoration(
                 color: sel
-                    ? AppColors.button
+                    ? AppColors.primaryAccent
                     : Colors.white.withValues(alpha: 0.07),
                 border: Border.all(
-                  color: sel ? AppColors.button : Colors.white24,
+                  color: sel ? AppColors.primaryAccent : Colors.white24,
                 ),
               ),
               child: Text(
@@ -496,7 +496,7 @@ class _KpisGlobalesScreenState extends State<KpisGlobalesScreen> {
         children: [
           Row(
             children: [
-              Container(width: 3, height: 14, color: AppColors.button),
+              Container(width: 3, height: 14, color: AppColors.detailOnDark),
               const SizedBox(width: 8),
               Text(
                 'SUCURSALES DESTACADAS',
@@ -555,10 +555,10 @@ class _KpisGlobalesScreenState extends State<KpisGlobalesScreen> {
                 ),
                 decoration: BoxDecoration(
                   border: Border.all(
-                    color: sel ? AppColors.button : Colors.white24,
+                    color: sel ? AppColors.detailOnDark : Colors.white24,
                   ),
                   color: sel
-                      ? AppColors.button.withValues(alpha: 0.15)
+                      ? AppColors.detailOnDark.withValues(alpha: 0.15)
                       : Colors.transparent,
                 ),
                 child: Text(
@@ -566,7 +566,7 @@ class _KpisGlobalesScreenState extends State<KpisGlobalesScreen> {
                   style: GoogleFonts.manrope(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: sel ? AppColors.button : Colors.white70,
+                    color: sel ? AppColors.linkOnDark : Colors.white70,
                   ),
                 ),
               ),
@@ -580,7 +580,7 @@ class _KpisGlobalesScreenState extends State<KpisGlobalesScreen> {
   Widget _buildCuerpo(List<_SucursalKpi> kpis, double totalIngresos) {
     if (_cargando) {
       return const Center(
-        child: CircularProgressIndicator(color: AppColors.button),
+        child: CircularProgressIndicator(color: AppColors.primaryOnDark),
       );
     }
     if (_error != null) {
@@ -603,7 +603,7 @@ class _KpisGlobalesScreenState extends State<KpisGlobalesScreen> {
               onPressed: _cargar,
               child: Text(
                 'Reintentar',
-                style: GoogleFonts.manrope(color: AppColors.button),
+                style: GoogleFonts.manrope(color: AppColors.linkOnDark),
               ),
             ),
           ],
@@ -621,7 +621,7 @@ class _KpisGlobalesScreenState extends State<KpisGlobalesScreen> {
 
     return RefreshIndicator(
       onRefresh: _cargar,
-      color: AppColors.button,
+      color: AppColors.primaryOnDark,
       backgroundColor: Colors.black,
       child: ListView.builder(
         padding: const EdgeInsets.fromLTRB(20, 4, 20, 60),
@@ -813,7 +813,7 @@ class _CarruselWidgetState extends State<_CarruselWidget> {
                 height: 8,
                 decoration: BoxDecoration(
                   color: i == _paginaActual
-                      ? AppColors.button
+                      ? AppColors.detailOnDark
                       : Colors.white.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(4),
                 ),
@@ -860,7 +860,7 @@ class _SuperAdminKpiCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
                 color: esLider
-                    ? AppColors.button.withValues(alpha: 0.6)
+                    ? AppColors.detailOnDark.withValues(alpha: 0.6)
                     : Colors.white12,
                 width: esLider ? 1.5 : 1,
               ),
@@ -918,7 +918,7 @@ class _SuperAdminKpiCard extends StatelessWidget {
                   style: GoogleFonts.manrope(
                     fontSize: 20,
                     fontWeight: FontWeight.w800,
-                    color: esLider ? AppColors.button : Colors.white,
+                    color: esLider ? AppColors.linkOnDark : Colors.white,
                     height: 1.1,
                   ),
                   maxLines: 1,
@@ -966,12 +966,12 @@ class _MiniKpi extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
           decoration: BoxDecoration(
             color: highlight
-                ? AppColors.button.withValues(alpha: 0.65)
+                ? AppColors.primaryAccent.withValues(alpha: 0.65)
                 : Colors.black.withValues(alpha: 0.45),
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: highlight
-                  ? AppColors.button.withValues(alpha: 0.85)
+                  ? AppColors.primaryAccent.withValues(alpha: 0.85)
                   : Colors.white.withValues(alpha: 0.15),
               width: 1.2,
             ),
@@ -1038,7 +1038,7 @@ class _SucursalCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: esLider
-                    ? AppColors.button.withValues(alpha: 0.6)
+                    ? AppColors.detailOnDark.withValues(alpha: 0.6)
                     : Colors.white.withValues(alpha: 0.15),
                 width: esLider ? 1.8 : 1.5,
               ),
@@ -1054,7 +1054,7 @@ class _SucursalCard extends StatelessWidget {
                         height: 28,
                         decoration: BoxDecoration(
                           color: esLider
-                              ? AppColors.button
+                              ? AppColors.primaryAccent
                               : Colors.white.withValues(alpha: 0.12),
                           shape: BoxShape.circle,
                           border: Border.all(
@@ -1143,8 +1143,8 @@ class _SucursalCard extends StatelessWidget {
                           height: 4,
                           width: c.maxWidth * pct,
                           color: esLider
-                              ? AppColors.button
-                              : AppColors.button.withValues(alpha: 0.5),
+                              ? AppColors.primaryOnDark
+                              : AppColors.primaryOnDark.withValues(alpha: 0.5),
                         ),
                       ],
                     ),
@@ -1217,7 +1217,7 @@ class _MetricaItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = color ?? (destacado ? AppColors.button : Colors.white70);
+    final c = color ?? (destacado ? AppColors.detailOnDark : Colors.white70);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

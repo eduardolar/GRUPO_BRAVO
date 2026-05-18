@@ -332,7 +332,7 @@ class _GestionReservasState extends State<GestionReservas>
                   color: Colors.black.withValues(alpha: 0.35),
                   child: TabBar(
                     controller: _tabController,
-                    indicatorColor: AppColors.button,
+                    indicatorColor: AppColors.detailOnDark,
                     indicatorWeight: 3,
                     labelColor: Colors.white,
                     unselectedLabelColor: Colors.white60,
@@ -403,7 +403,7 @@ class _GestionReservasState extends State<GestionReservas>
           );
           _cargarReservas();
         },
-        backgroundColor: AppColors.button,
+        backgroundColor: AppColors.primaryAccent,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add),
         label: const Text(
@@ -446,7 +446,7 @@ class _TabConBadge extends StatelessWidget {
               child: Text(
                 '$count',
                 style: const TextStyle(
-                  color: AppColors.button,
+                  color: AppColors.linkOnDark,
                   fontWeight: FontWeight.w700,
                   fontSize: 11,
                 ),
@@ -481,7 +481,7 @@ class _EstadoTab extends StatelessWidget {
   Widget build(BuildContext context) {
     if (cargando) {
       return const Center(
-        child: CircularProgressIndicator(color: AppColors.button, strokeWidth: 2.5),
+        child: CircularProgressIndicator(color: AppColors.primaryOnDark, strokeWidth: 2.5),
       );
     }
     if (error != null) {
@@ -505,7 +505,7 @@ class _EstadoTab extends StatelessWidget {
               ElevatedButton(
                 onPressed: onReintentar,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.button,
+                  backgroundColor: AppColors.primaryAccent,
                   foregroundColor: Colors.white,
                   elevation: 0,
                   shape: RoundedRectangleBorder(
@@ -593,7 +593,7 @@ class _TabReservas extends StatelessWidget {
     }
     return RefreshIndicator(
       onRefresh: onRefresh,
-      color: AppColors.button,
+      color: AppColors.primaryOnDark,
       child: ListView.builder(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
         itemCount: reservas.length,
@@ -702,7 +702,7 @@ class _TabHistorial extends StatelessWidget {
               }
               return RefreshIndicator(
                 onRefresh: onRefresh,
-                color: AppColors.button,
+                color: AppColors.primaryOnDark,
                 child: ListView.builder(
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 96),
                   itemCount: reservas.length,
@@ -1023,7 +1023,7 @@ class _ReservaTile extends StatelessWidget {
                     ElevatedButton(
                       onPressed: onModificar,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.button,
+                        backgroundColor: AppColors.primaryAccent,
                         foregroundColor: Colors.white,
                         elevation: 0,
                         padding: const EdgeInsets.symmetric(
@@ -1198,7 +1198,7 @@ class _EditarReservaDialogState extends State<_EditarReservaDialog> {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.button, width: 2),
+        borderSide: const BorderSide(color: AppColors.primary, width: 2),
       ),
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
     );
@@ -1341,7 +1341,7 @@ class _EditarReservaDialogState extends State<_EditarReservaDialog> {
                         : (sel) {
                             if (sel) setState(() => _hora = h);
                           },
-                    selectedColor: AppColors.button,
+                    selectedColor: AppColors.primary,
                     labelStyle: TextStyle(
                       color: _hora == h
                           ? Colors.white
@@ -1382,7 +1382,7 @@ class _EditarReservaDialogState extends State<_EditarReservaDialog> {
                         ? null
                         : () => _cambiarComensales(-1),
                     icon: const Icon(Icons.remove_circle_outline),
-                    color: AppColors.button,
+                    color: AppColors.primary,
                   ),
                   Expanded(
                     child: Text(
@@ -1401,7 +1401,7 @@ class _EditarReservaDialogState extends State<_EditarReservaDialog> {
                         ? null
                         : () => _cambiarComensales(1),
                     icon: const Icon(Icons.add_circle_outline),
-                    color: AppColors.button,
+                    color: AppColors.primary,
                   ),
                 ],
               ),
@@ -1431,14 +1431,14 @@ class _EditarReservaDialogState extends State<_EditarReservaDialog> {
                   width: 16,
                   height: 16,
                   child: CircularProgressIndicator(
-                    color: AppColors.button,
+                    color: AppColors.primary,
                     strokeWidth: 2,
                   ),
                 )
               : const Text(
                   'GUARDAR',
                   style: TextStyle(
-                    color: AppColors.button,
+                    color: AppColors.primary,
                     fontWeight: FontWeight.bold,
                   ),
                 ),

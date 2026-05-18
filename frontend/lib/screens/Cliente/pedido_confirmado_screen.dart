@@ -34,7 +34,7 @@ extension on _EstadoVisual {
   Color get colorPrimario => switch (this) {
     _EstadoVisual.cancelado => AppColors.error,
     _EstadoVisual.entregado => AppColors.disp,
-    _EstadoVisual.enCurso => AppColors.button,
+    _EstadoVisual.enCurso => AppColors.primaryOnDark,
   };
 
   IconData get iconoCabecera => switch (this) {
@@ -497,19 +497,19 @@ class _ChipTiempo extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 18),
       decoration: BoxDecoration(
-        color: AppColors.button.withValues(alpha: 0.12),
+        color: AppColors.detailOnDark.withValues(alpha: 0.12),
         borderRadius: _kRadius,
-        border: Border.all(color: AppColors.button.withValues(alpha: 0.50)),
+        border: Border.all(color: AppColors.detailOnDark.withValues(alpha: 0.50)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.access_time, color: AppColors.button, size: 18),
+          const Icon(Icons.access_time, color: AppColors.detailOnDark, size: 18),
           const SizedBox(width: 10),
           Text(
             'Tiempo estimado: $tiempoEstimado',
             style: const TextStyle(
-              color: AppColors.button,
+              color: AppColors.linkOnDark,
               fontSize: 13,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.5,
@@ -608,7 +608,7 @@ class _CtaVolverInicio extends StatelessWidget {
       width: double.infinity,
       height: 52,
       child: Material(
-        color: AppColors.button,
+        color: AppColors.primaryAccent,
         borderRadius: _kRadius,
         elevation: 4,
         shadowColor: Colors.black54,
@@ -723,7 +723,7 @@ class _SeguimientoWidget extends StatelessWidget {
                       curve: Curves.easeOutCubic,
                       height: 1.5,
                       color: pasos[i].hecho
-                          ? AppColors.button
+                          ? AppColors.detailOnDark
                           : Colors.white.withValues(alpha: 0.18),
                     ),
                   ),
@@ -768,7 +768,7 @@ class _StepCircle extends StatelessWidget {
   Widget build(BuildContext context) {
     final activado = paso.hecho || paso.actual;
     final color = activado
-        ? AppColors.button
+        ? AppColors.primaryAccent
         : Colors.white.withValues(alpha: 0.20);
     return AnimatedContainer(
       duration: _kStepAnimDuration,
@@ -778,7 +778,7 @@ class _StepCircle extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: activado
-            ? AppColors.button.withValues(alpha: 0.18)
+            ? AppColors.primaryAccent.withValues(alpha: 0.18)
             : Colors.transparent,
         border: Border.all(color: color, width: 1.5),
       ),
@@ -859,13 +859,13 @@ class _FilaItem extends StatelessWidget {
             height: 26,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: AppColors.button.withValues(alpha: 0.15),
+              color: AppColors.detailOnDark.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
               '$cantidad',
               style: const TextStyle(
-                color: AppColors.button,
+                color: AppColors.linkOnDark,
                 fontSize: 11,
                 fontWeight: FontWeight.w800,
               ),

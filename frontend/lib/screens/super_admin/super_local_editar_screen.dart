@@ -272,7 +272,7 @@ class _SuperLocalEditarScreenState extends State<SuperLocalEditarScreen> {
       builder: (ctx, child) => Theme(
         data: ThemeData.dark().copyWith(
           colorScheme: ColorScheme.dark(
-            primary: AppColors.button,
+            primary: AppColors.primaryOnDark,
             onPrimary: Colors.white,
             surface: AppColors.bottomSheetBg,
             onSurface: Colors.white,
@@ -471,9 +471,9 @@ class _SuperLocalEditarScreenState extends State<SuperLocalEditarScreen> {
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         children: [
-          Container(width: 3, height: 18, color: AppColors.button),
+          Container(width: 3, height: 18, color: AppColors.detailOnDark),
           const SizedBox(width: 10),
-          Icon(icono, color: AppColors.button, size: 16),
+          Icon(icono, color: AppColors.detailOnDark, size: 16),
           const SizedBox(width: 8),
           Text(
             titulo,
@@ -561,16 +561,16 @@ class _SuperLocalEditarScreenState extends State<SuperLocalEditarScreen> {
               onPressed: _subiendoLogo ? null : _elegirLogo,
               icon: const Icon(
                 Icons.add_photo_alternate_outlined,
-                color: AppColors.button,
+                color: AppColors.detailOnDark,
               ),
               label: Text(
                 tieneLogoServidor || tieneLogoNuevo
                     ? 'CAMBIAR LOGO'
                     : 'SUBIR LOGO',
-                style: const TextStyle(color: AppColors.button, letterSpacing: 1),
+                style: const TextStyle(color: AppColors.linkOnDark, letterSpacing: 1),
               ),
               style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: AppColors.button),
+                side: const BorderSide(color: AppColors.detailOnDark),
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
@@ -598,7 +598,7 @@ class _SuperLocalEditarScreenState extends State<SuperLocalEditarScreen> {
                     : const Icon(Icons.cloud_upload_outlined),
                 label: const Text('GUARDAR LOGO'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.button,
+                  backgroundColor: AppColors.primaryAccent,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   shape: RoundedRectangleBorder(
@@ -721,8 +721,8 @@ class _SuperLocalEditarScreenState extends State<SuperLocalEditarScreen> {
             label: '${dia.etiqueta} abierto',
             child: Switch.adaptive(
               value: horario.abierto,
-              activeThumbColor: AppColors.button,
-              activeTrackColor: AppColors.button.withValues(alpha: 0.5),
+              activeThumbColor: AppColors.primaryOnDark,
+              activeTrackColor: AppColors.primaryOnDark.withValues(alpha: 0.5),
               onChanged: (v) {
                 setState(() {
                   _horariosDia[dia.clave] = horario.copyWith(abierto: v);
@@ -894,12 +894,12 @@ class _SuperLocalEditarScreenState extends State<SuperLocalEditarScreen> {
                 ),
                 decoration: BoxDecoration(
                   color: activo
-                      ? AppColors.button.withValues(alpha: 0.2)
+                      ? AppColors.detailOnDark.withValues(alpha: 0.2)
                       : Colors.white.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
                     color: activo
-                        ? AppColors.button
+                        ? AppColors.detailOnDark
                         : Colors.white.withValues(alpha: 0.2),
                     width: activo ? 1.5 : 1,
                   ),
@@ -910,7 +910,7 @@ class _SuperLocalEditarScreenState extends State<SuperLocalEditarScreen> {
                     Icon(
                       m.icono,
                       size: 16,
-                      color: activo ? AppColors.button : Colors.white54,
+                      color: activo ? AppColors.detailOnDark : Colors.white54,
                     ),
                     const SizedBox(width: 8),
                     Text(
@@ -928,7 +928,7 @@ class _SuperLocalEditarScreenState extends State<SuperLocalEditarScreen> {
                       const Icon(
                         Icons.check_circle_rounded,
                         size: 14,
-                        color: AppColors.button,
+                        color: AppColors.detailOnDark,
                       ),
                     ],
                   ],
@@ -949,7 +949,7 @@ class _SuperLocalEditarScreenState extends State<SuperLocalEditarScreen> {
       height: 56,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.button,
+          backgroundColor: AppColors.primaryAccent,
           foregroundColor: Colors.white,
           shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
           elevation: 0,

@@ -13,7 +13,7 @@ import 'package:provider/provider.dart';
 
 const _kSheetBg = AppColors.bottomSheetBg;
 const _kBorder = Color(0x33FFFFFF); // blanco 20%
-const _kBorderFocus = AppColors.button;
+const _kBorderFocus = AppColors.detailOnDark;
 
 /// Devuelve `true` si el producto fue creado, actualizado o eliminado.
 Future<bool> mostrarEditorProducto(
@@ -805,15 +805,15 @@ class _EditorProductoSheetState extends State<_EditorProductoSheet> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: AppColors.button.withValues(alpha: 0.25),
+              color: AppColors.detailOnDark.withValues(alpha: 0.25),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: AppColors.button.withValues(alpha: 0.4),
+                color: AppColors.detailOnDark.withValues(alpha: 0.4),
               ),
             ),
             child: Icon(
               _esEdicion ? Icons.edit_note : Icons.add_circle_outline,
-              color: AppColors.button,
+              color: AppColors.detailOnDark,
             ),
           ),
           const SizedBox(width: 12),
@@ -900,7 +900,7 @@ class _EditorProductoSheetState extends State<_EditorProductoSheet> {
         keyboardType: teclado,
         inputFormatters: formatters,
         style: const TextStyle(color: Colors.white),
-        cursorColor: AppColors.button,
+        cursorColor: AppColors.detailOnDark,
         validator: (v) {
           if (!requerido) return null;
           if (v == null || v.trim().isEmpty) return 'Campo obligatorio';
@@ -972,8 +972,8 @@ class _EditorProductoSheetState extends State<_EditorProductoSheet> {
             ),
             Switch(
               value: _disponible,
-              activeThumbColor: AppColors.button,
-              activeTrackColor: AppColors.button.withValues(alpha: 0.4),
+              activeThumbColor: AppColors.primaryOnDark,
+              activeTrackColor: AppColors.primaryOnDark.withValues(alpha: 0.4),
               inactiveThumbColor: Colors.white38,
               inactiveTrackColor: Colors.white12,
               onChanged: (v) => setState(() => _disponible = v),
@@ -1107,7 +1107,7 @@ class _EditorProductoSheetState extends State<_EditorProductoSheet> {
         signed: false,
       ),
       inputFormatters: [_DecimalInputFormatter()],
-      cursorColor: AppColors.button,
+      cursorColor: AppColors.detailOnDark,
       style: const TextStyle(
         fontWeight: FontWeight.w700,
         color: Colors.white,
@@ -1151,7 +1151,7 @@ class _EditorProductoSheetState extends State<_EditorProductoSheet> {
           child: ElevatedButton(
             onPressed: _guardando ? null : _guardar,
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.button,
+              backgroundColor: AppColors.primaryAccent,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
@@ -1299,7 +1299,7 @@ class _SelectorIngredientesSheetState
               controller: _busquedaCtrl,
               autofocus: false,
               style: const TextStyle(color: Colors.white, fontSize: 14),
-              cursorColor: AppColors.button,
+              cursorColor: AppColors.detailOnDark,
               onChanged: (v) => setState(() => _query = v.toLowerCase()),
               decoration: InputDecoration(
                 hintText: 'Buscar por nombre o categoría...',
@@ -1392,9 +1392,9 @@ class _SelectorIngredientesSheetState
                       : 'Añadir ${_seleccion.length} ingrediente${_seleccion.length == 1 ? '' : 's'}',
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.button,
+                  backgroundColor: AppColors.primaryAccent,
                   disabledBackgroundColor:
-                      AppColors.button.withValues(alpha: 0.35),
+                      AppColors.primaryAccent.withValues(alpha: 0.35),
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
@@ -1413,12 +1413,12 @@ class _SelectorIngredientesSheetState
       padding: const EdgeInsets.fromLTRB(4, 12, 4, 4),
       child: Row(
         children: [
-          const Icon(Icons.label_outline, size: 14, color: AppColors.button),
+          const Icon(Icons.label_outline, size: 14, color: AppColors.detailOnDark),
           const SizedBox(width: 6),
           Text(
             categoria.toUpperCase(),
             style: const TextStyle(
-              color: AppColors.button,
+              color: AppColors.linkOnDark,
               fontWeight: FontWeight.w700,
               fontSize: 11,
               letterSpacing: 0.8,
@@ -1427,7 +1427,7 @@ class _SelectorIngredientesSheetState
           const SizedBox(width: 8),
           Expanded(
             child: Divider(
-              color: AppColors.button.withValues(alpha: 0.3),
+              color: AppColors.detailOnDark.withValues(alpha: 0.3),
               thickness: 1,
             ),
           ),
@@ -1456,12 +1456,12 @@ class _SelectorIngredientesSheetState
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
           color: marcado
-              ? AppColors.button.withValues(alpha: 0.18)
+              ? AppColors.primaryAccent.withValues(alpha: 0.18)
               : Colors.white.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: marcado
-                ? AppColors.button.withValues(alpha: 0.5)
+                ? AppColors.primaryAccent.withValues(alpha: 0.5)
                 : Colors.white.withValues(alpha: 0.10),
           ),
         ),
@@ -1495,10 +1495,10 @@ class _SelectorIngredientesSheetState
               height: 24,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: marcado ? AppColors.button : Colors.transparent,
+                color: marcado ? AppColors.primaryAccent : Colors.transparent,
                 border: Border.all(
                   color: marcado
-                      ? AppColors.button
+                      ? AppColors.primaryAccent
                       : Colors.white.withValues(alpha: 0.3),
                   width: 1.5,
                 ),

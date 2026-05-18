@@ -31,11 +31,11 @@ class DireccionOption extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: kRadiusEntrega,
             color: seleccionada
-                ? AppColors.button.withValues(alpha: 0.15)
+                ? AppColors.primaryAccent.withValues(alpha: 0.15)
                 : Colors.white.withValues(alpha: 0.06),
             border: Border.all(
               color: seleccionada
-                  ? AppColors.button
+                  ? AppColors.primaryAccent
                   : Colors.white.withValues(alpha: 0.15),
               width: seleccionada ? 1.5 : 1,
             ),
@@ -46,7 +46,7 @@ class DireccionOption extends StatelessWidget {
                 icono,
                 size: 18,
                 color: seleccionada
-                    ? AppColors.button
+                    ? AppColors.detailOnDark
                     : Colors.white.withValues(alpha: 0.50),
               ),
               const SizedBox(width: 12),
@@ -79,7 +79,7 @@ class DireccionOption extends StatelessWidget {
                 const Icon(
                   Icons.check_circle,
                   size: 16,
-                  color: AppColors.button,
+                  color: AppColors.detailOnDark,
                 ),
             ],
           ),

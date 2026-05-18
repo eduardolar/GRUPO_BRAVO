@@ -232,7 +232,7 @@ class _RestauranteCard extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(14),
-        splashColor: AppColors.button.withValues(alpha: 0.12),
+        splashColor: AppColors.primaryOnDark.withValues(alpha: 0.12),
         highlightColor: Colors.white.withValues(alpha: 0.04),
         child: Container(
           padding: const EdgeInsets.all(18),
@@ -248,15 +248,15 @@ class _RestauranteCard extends StatelessWidget {
                 width: 46,
                 height: 46,
                 decoration: BoxDecoration(
-                  color: AppColors.button.withValues(alpha: 0.15),
+                  color: AppColors.detailOnDark.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: AppColors.button.withValues(alpha: 0.35),
+                    color: AppColors.detailOnDark.withValues(alpha: 0.35),
                   ),
                 ),
                 child: const Icon(
                   Icons.storefront_outlined,
-                  color: AppColors.button,
+                  color: AppColors.detailOnDark,
                   size: 22,
                 ),
               ),
