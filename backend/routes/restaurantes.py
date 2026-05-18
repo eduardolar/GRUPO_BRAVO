@@ -95,12 +95,22 @@ def listar_restaurantes(
         return [_serializar_restaurante(r) for r in restaurantes]
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al obtener restaurantes: {str(e)}")
-    
-    @router.get("/publicos")
-    def listar_restaurantes_publicos():
-        restaurantes = list(
-        coleccion_restaurantes.find({"activo": {"$ne": False}})
-    )
+
+
+@router.get("/publicos")
+def listar_restaurantes_publicos():
+    """Lista pública de sucursales activas (SIN autenticación).
+
+    Endpoint deliberadamente público: lo consume el frontend ANTES del
+    login (p. ej. la pantalla de registro, donde el cliente elige sucursal;
+    ver `restaurante_service.dart::obtenerPublicos`, que llama sin headers
+    de sesión). Por eso solo expone campos NO sensibles de sucursales
+    activas; nunca configuración interna.
+
+    Se define ANTES de `@router.get("/{id}")` para que la ruta literal
+    "/publicos" no quede capturada por el parámetro de ruta `{id}`.
+    """
+    restaurantes = list(coleccion_restaurantes.find({"activo": {"$ne": False}}))
     return [
         {
             "id": str(r["_id"]),

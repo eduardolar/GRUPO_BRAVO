@@ -31,6 +31,7 @@ import '../../core/colors_style.dart';
 import '../../models/opciones_pedido.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/cart_provider.dart';
+import '../../services/api_config.dart';
 import '../../services/api_service.dart';
 import '../../services/cupon_service.dart';
 import 'direccion_screen.dart';
@@ -1484,14 +1485,11 @@ class _PantallaOpcionesEntregaState extends State<PantallaOpcionesEntrega> {
       final cart = context.read<CartProvider>();
       final total = _calcularTotal(cart);
 
-      const successUrl = 'https://example.com/paypal-success';
-      const cancelUrl = 'https://example.com/paypal-cancel';
-
       final orden = await ApiService.crearOrdenPaypal(
         total: total,
         currency: 'EUR',
-        successUrl: successUrl,
-        cancelUrl: cancelUrl,
+        successUrl: paypalSuccessUrl,
+        cancelUrl: paypalCancelUrl,
       );
 
       final orderId = orden['id']?.toString();
