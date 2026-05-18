@@ -468,7 +468,7 @@ async def _enviar_email_cupon(
     """
     html = f"""
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;">
-        <h2 style="color: #800020;">¡Hola {nombre}!</h2>
+        <h2 style="color: #0B2545;">¡Hola {nombre}!</h2>
         <p>Tienes un nuevo beneficio exclusivo de <strong>Bravo</strong>.</p>
         <div style="background: #111; color: #fff; padding: 20px; border-radius: 10px; text-align: center;">
             <h1 style="font-size: 35px; letter-spacing: 4px; color: #d4af37;">{codigo}</h1>
