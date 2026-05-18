@@ -70,14 +70,14 @@ async def _enviar_correo_activacion(email: str, nombre: str, codigo: str):
     html = f"""
     <div style="font-family: Arial, sans-serif; background-color: #FBF9F6; padding: 40px 20px; text-align: center;">
         <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; padding: 30px; border: 1px solid #E0DBD3;">
-            <h2 style="color: #800020; margin-top: 0; font-family: serif; letter-spacing: 1px;">Restaurante Bravo</h2>
+            <h2 style="color: #0B2545; margin-top: 0; font-family: serif; letter-spacing: 1px;">Restaurante Bravo</h2>
             <div style="height: 1px; background-color: #E0DBD3; margin: 20px 0;"></div>
             <p style="color: #2D2D2D; font-size: 16px;">Hola, <strong>{nombre}</strong>.</p>
             <p style="color: #2D2D2D; font-size: 15px; line-height: 1.6;">
                 El administrador te ha creado una cuenta en <strong>Restaurante Bravo</strong>.<br>
                 Usa el siguiente código en la app para establecer tu contraseña definitiva:
             </p>
-            <div style="background-color: #800020; color: #ffffff; padding: 15px 25px; font-size: 32px; font-weight: bold; letter-spacing: 8px; margin: 25px 0; display: inline-block;">
+            <div style="background-color: #0B2545; color: #ffffff; padding: 15px 25px; font-size: 32px; font-weight: bold; letter-spacing: 8px; margin: 25px 0; display: inline-block;">
                 {codigo}
             </div>
             <p style="color: #6B6B6B; font-size: 12px; margin-top: 25px; border-top: 1px solid #EEE; padding-top: 15px;">
