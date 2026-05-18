@@ -96,3 +96,48 @@ STRIPE_WEBHOOK_SECRET: str | None = os.getenv("STRIPE_WEBHOOK_SECRET")  # `whsec
 # clásico de "olvidé poner ENV en producción y arranca como dev".
 ENV: str = os.getenv("ENV", "production").lower()
 IS_PRODUCTION: bool = ENV in {"production", "prod"}
+
+
+# Prefijo de los placeholders conocidos de JWT_SECRET_KEY: tanto el default
+# de security.py ("CAMBIAR_EN_PRODUCCION_clave_muy_larga...") como el de
+# .env.example ("CAMBIAR_EN_PRODUCCION_genera_con_secrets..."). Cualquier
+# valor que empiece así NO es un secreto real.
+_JWT_PLACEHOLDER_PREFIX = "CAMBIAR_EN_PRODUCCION"
+
+
+def validar_entorno_produccion() -> None:
+    """Aborta el arranque si el entorno de producción está mal configurado.
+
+    Se invoca una sola vez al iniciar la app (ver main.py). En
+    development/test/dev no hace nada. En producción exige:
+
+      - STRIPE_WEBHOOK_SECRET definido: sin él los webhooks de Stripe se
+        rechazan con 503 y, lo más peligroso, alguien podría "arreglarlo"
+        desactivando la verificación de firma, permitiendo a un atacante
+        falsificar un evento `payment_intent.succeeded` y marcar pedidos
+        como pagados gratis.
+      - JWT_SECRET_KEY definido y distinto del placeholder: con el default
+        cualquiera con el código fuente podría firmar tokens válidos
+        (incluso de super_admin).
+
+    Falla rápido y con mensaje claro: es preferible no arrancar a arrancar
+    de forma insegura.
+    """
+    if not IS_PRODUCTION:
+        return
+
+    errores: list[str] = []
+    if not STRIPE_WEBHOOK_SECRET:
+        errores.append("STRIPE_WEBHOOK_SECRET no está definido")
+
+    jwt_secret = JWT_SECRET_KEY or ""
+    if not jwt_secret or jwt_secret.startswith(_JWT_PLACEHOLDER_PREFIX):
+        errores.append("JWT_SECRET_KEY no está definido o sigue siendo el placeholder")
+
+    if errores:
+        detalle = "\n  - ".join(errores)
+        raise RuntimeError(
+            "Configuración de producción inválida (ENV=production):\n  - "
+            + detalle
+            + "\nDefine estas variables en backend/.env antes de arrancar la API."
+        )

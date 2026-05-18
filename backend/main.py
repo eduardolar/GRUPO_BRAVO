@@ -31,6 +31,11 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
 import config  # Importar config ejecuta load_dotenv() una sola vez (efecto de import).
+
+# Startup check: si ENV=production y faltan secretos críticos
+# (STRIPE_WEBHOOK_SECRET, JWT_SECRET_KEY real), abortar el arranque ANTES de
+# montar la app. Es preferible no arrancar a arrancar de forma insegura.
+config.validar_entorno_produccion()
 from limiter import limiter
 from exceptions import AppError
 import log_redactor
