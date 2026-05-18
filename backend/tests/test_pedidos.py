@@ -2670,3 +2670,10 @@ def test_aumentar_cantidad_de_item_hecho_se_permite(client):
         )
 
     assert resp.status_code == 200
+
+def test_domicilio_sin_direccion_devuelve_422(client):
+    payload = {**PEDIDO_VALIDO, "tipoEntrega": "domicilio"}
+    payload.pop("direccionEntrega", None)
+    resp = client.post("/api/v1/pedidos", json=payload,
+                        headers=_auth_cliente())
+    assert resp.status_code == 422, resp.text

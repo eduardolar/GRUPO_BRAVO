@@ -707,6 +707,11 @@ async def crear_pedido(
 
     if pedido.direccionEntrega:
         pedido_dict["direccion_entrega"] = pedido.direccionEntrega
+    if pedido.direccionEntregaLat is not None:
+        pedido_dict["direccion_lat"] = pedido.direccionEntregaLat
+    if pedido.direccionEntregaLon is not None:
+        pedido_dict["direccion_lon"] = pedido.direccionEntregaLon
+
     if pedido.mesaId:
         pedido_dict["mesa_id"] = pedido.mesaId
     if pedido.numeroMesa is not None:

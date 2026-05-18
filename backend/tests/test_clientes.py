@@ -483,3 +483,10 @@ def test_baja_rgpd_sin_token_devuelve_401(client):
 def test_baja_rgpd_admin_devuelve_403(client):
     resp = client.delete("/api/v1/clientes/me", headers=_tok_admin())
     assert resp.status_code == 403, resp.json()
+
+def test_coordenada_fuera_de_rango_422(client):
+    from tests.tok_helpers import tok
+    resp = client.put("/api/v1/clientes/me",
+                       headers=tok("cliente"),
+                       json={"latitud": 999, "longitud": 0})
+    assert resp.status_code == 422, resp.text
