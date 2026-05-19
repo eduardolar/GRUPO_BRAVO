@@ -26,7 +26,17 @@ import string
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
-from database import coleccion_restaurantes
+from database import (
+    coleccion_restaurantes,
+    coleccion_pedidos,
+    coleccion_mesas,
+    coleccion_reservas,
+    coleccion_ingredientes,
+    coleccion_productos,
+    coleccion_usuarios,
+    coleccion_cierres_caja,
+    coleccion_cupones,
+)
 from bson import ObjectId
 from bson.errors import InvalidId
 from security import require_role, get_current_user, normalizar_rol
@@ -310,6 +320,21 @@ def toggle_activo_restaurante(
     estado = "activado" if datos.activo else "suspendido"
     return {"mensaje": f"Restaurante {estado}"}
 
+# Colecciones que referencian una sucursal vía `restaurante_id` (string del
+# ObjectId). Si alguna tiene documentos de la sucursal, el hard-delete dejaría
+# esos datos huérfanos, así que lo bloqueamos (409) y se debe suspender.
+_COLECCIONES_DEPENDIENTES = (
+    ("pedidos", coleccion_pedidos),
+    ("mesas", coleccion_mesas),
+    ("reservas", coleccion_reservas),
+    ("ingredientes", coleccion_ingredientes),
+    ("productos", coleccion_productos),
+    ("usuarios", coleccion_usuarios),
+    ("cierres de caja", coleccion_cierres_caja),
+    ("cupones", coleccion_cupones),
+)
+
+
 @router.delete("/{id}", summary="Hard-delete de una sucursal (super_admin)")
 def eliminar_restaurante(
     id: str,
@@ -317,11 +342,46 @@ def eliminar_restaurante(
 ):
     """Elimina permanentemente una sucursal.
 
-    La doble confirmación es responsabilidad del frontend. Este endpoint
-    borra el documento sin posibilidad de recuperación.
-    Para suspensión reversible usa PATCH /super-admin/restaurantes/{id}/suspender.
+    Para evitar datos huérfanos, el borrado se RECHAZA con 409 si la sucursal
+    tiene cualquier dato asociado (pedidos, mesas, reservas, ingredientes,
+    productos, usuarios, cierres de caja o cupones). En ese caso hay que usar
+    la suspensión reversible: PATCH /super-admin/restaurantes/{id}/suspender.
+
+    La doble confirmación de la UI es responsabilidad del frontend. Cuando se
+    permite, este endpoint borra el documento sin posibilidad de recuperación.
     """
-    resultado = coleccion_restaurantes.delete_one({"_id": ObjectId(id)})
+    try:
+        oid = ObjectId(id)
+    except (InvalidId, TypeError):
+        raise HTTPException(status_code=400, detail="ID de restaurante inválido")
+
+    if not coleccion_restaurantes.find_one({"_id": oid}):
+        raise HTTPException(status_code=404, detail="Restaurante no encontrado")
+
+    # Solo contamos hasta el primer documento de cada colección: para decidir
+    # "hay datos / no hay datos" no necesitamos el total exacto.
+    dependencias = {}
+    for etiqueta, coleccion in _COLECCIONES_DEPENDIENTES:
+        n = coleccion.count_documents({"restaurante_id": id}, limit=1)
+        if n:
+            dependencias[etiqueta] = coleccion.count_documents(
+                {"restaurante_id": id}
+            )
+
+    if dependencias:
+        detalle = ", ".join(
+            f"{cnt} {nombre}" for nombre, cnt in dependencias.items()
+        )
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"No se puede eliminar la sucursal: tiene datos asociados "
+                f"({detalle}). Suspéndela en su lugar "
+                f"(PATCH /super-admin/restaurantes/{id}/suspender)."
+            ),
+        )
+
+    resultado = coleccion_restaurantes.delete_one({"_id": oid})
     if resultado.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Restaurante no encontrado")
     return {"mensaje": "Restaurante eliminado"}

@@ -29,16 +29,15 @@ class RestauranteService {
   }
 
   Future<List<Restaurante>> obtenerPublicos() async {
-  final response = await httpWithRetry(
-    () => http.get(Uri.parse('$baseUrl/restaurantes/publicos')),
-  );
-  if (response.statusCode == 200) {
-    final List<dynamic> body = jsonDecode(response.body);
-    return body.map((e) => Restaurante.fromJson(e)).toList();
+    final response = await httpWithRetry(
+      () => http.get(Uri.parse('$baseUrl/restaurantes/publicos')),
+    );
+    if (response.statusCode == 200) {
+      final List<dynamic> body = jsonDecode(response.body);
+      return body.map((e) => Restaurante.fromJson(e)).toList();
+    }
+    throw toApiException(response.statusCode, decodeBody(response));
   }
-  throw toApiException(response.statusCode, decodeBody(response));
-}
-
 
   Future<Restaurante?> crearRestaurante({
     required String nombre,
@@ -100,18 +99,19 @@ class RestauranteService {
     }
   }
 
-  Future<bool> eliminarRestaurante(String id) async {
-    try {
-      final response = await httpWithRetry(
-        () => http.delete(
-          Uri.parse('$baseUrl/restaurantes/$id'),
-          headers: AuthSession.headers(),
-        ),
-        retry: false,
-      );
-      return response.statusCode == 200;
-    } on ApiException {
-      return false;
+  /// Elimina una sucursal. Lanza [ApiException] si el backend lo rechaza
+  /// (p. ej. 409 con el motivo cuando la sucursal tiene datos asociados),
+  /// para que la UI pueda mostrar el mensaje real en vez de uno genérico.
+  Future<void> eliminarRestaurante(String id) async {
+    final response = await httpWithRetry(
+      () => http.delete(
+        Uri.parse('$baseUrl/restaurantes/$id'),
+        headers: AuthSession.headers(),
+      ),
+      retry: false,
+    );
+    if (response.statusCode != 200) {
+      throw toApiException(response.statusCode, decodeBody(response));
     }
   }
 
@@ -158,9 +158,7 @@ class RestauranteService {
         ),
       );
 
-    final streamed = await request.send().timeout(
-      const Duration(seconds: 60),
-    );
+    final streamed = await request.send().timeout(const Duration(seconds: 60));
     final response = await http.Response.fromStream(streamed);
 
     if (response.statusCode == 200) {

@@ -1,9 +1,12 @@
+import 'dart:ui';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../components/bravo_app_bar.dart';
+import '../../components/confirm_dialog.dart';
 import '../../core/app_snackbar.dart';
 import '../../core/colors_style.dart';
 import '../../models/restaurante_model.dart';
@@ -18,7 +21,11 @@ import '../shared/restaurante_editor/components/selector_hora.dart';
 
 // Copiado de admin_editar_plato.dart para mantener independencia entre roles.
 const int _kMaxLogoBytes = 5 * 1024 * 1024; // 5 MB
-const List<String> _kMimesPermitidos = ['image/jpeg', 'image/png', 'image/webp'];
+const List<String> _kMimesPermitidos = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+];
 
 /// Slugs de métodos de pago y sus etiquetas legibles.
 const List<_MetodoPago> _kMetodosPago = [
@@ -120,8 +127,7 @@ class _SuperLocalEditarScreenState extends State<SuperLocalEditarScreen> {
     // horario por defecto 09:00–23:00.
     _horariosDia = {};
     for (final dia in _kDias) {
-      _horariosDia[dia.clave] =
-          r.horariosDia?[dia.clave] ?? const HorarioDia();
+      _horariosDia[dia.clave] = r.horariosDia?[dia.clave] ?? const HorarioDia();
     }
 
     _cifCtrl = TextEditingController(text: r.cif ?? '');
@@ -330,9 +336,7 @@ class _SuperLocalEditarScreenState extends State<SuperLocalEditarScreen> {
       if (codigo != r.codigo) datos['codigo'] = codigo;
 
       // Horarios por día — siempre los enviamos si alguno cambió.
-      final horariosJson = _horariosDia.map(
-        (k, v) => MapEntry(k, v.toJson()),
-      );
+      final horariosJson = _horariosDia.map((k, v) => MapEntry(k, v.toJson()));
       // Comparación simple: serializar ambos y comparar strings.
       final horariosOriginalJson = (r.horariosDia ?? {}).map(
         (k, v) => MapEntry(k, v.toJson()),
@@ -342,12 +346,42 @@ class _SuperLocalEditarScreenState extends State<SuperLocalEditarScreen> {
       }
 
       // Datos fiscales
-      _agregarSiCambio(datos, 'cif', _cifCtrl.text.trim().toUpperCase(), r.cif ?? '');
-      _agregarSiCambio(datos, 'razon_social', _razonSocialCtrl.text.trim(), r.razonSocial ?? '');
-      _agregarSiCambio(datos, 'direccion_fiscal', _dirFiscalCtrl.text.trim(), r.direccionFiscal ?? '');
-      _agregarSiCambio(datos, 'codigo_postal', _cpCtrl.text.trim(), r.codigoPostal ?? '');
-      _agregarSiCambio(datos, 'ciudad', _ciudadCtrl.text.trim(), r.ciudad ?? '');
-      _agregarSiCambio(datos, 'provincia', _provinciaCtrl.text.trim(), r.provincia ?? '');
+      _agregarSiCambio(
+        datos,
+        'cif',
+        _cifCtrl.text.trim().toUpperCase(),
+        r.cif ?? '',
+      );
+      _agregarSiCambio(
+        datos,
+        'razon_social',
+        _razonSocialCtrl.text.trim(),
+        r.razonSocial ?? '',
+      );
+      _agregarSiCambio(
+        datos,
+        'direccion_fiscal',
+        _dirFiscalCtrl.text.trim(),
+        r.direccionFiscal ?? '',
+      );
+      _agregarSiCambio(
+        datos,
+        'codigo_postal',
+        _cpCtrl.text.trim(),
+        r.codigoPostal ?? '',
+      );
+      _agregarSiCambio(
+        datos,
+        'ciudad',
+        _ciudadCtrl.text.trim(),
+        r.ciudad ?? '',
+      );
+      _agregarSiCambio(
+        datos,
+        'provincia',
+        _provinciaCtrl.text.trim(),
+        r.provincia ?? '',
+      );
       _agregarSiCambio(datos, 'pais', _paisCtrl.text.trim(), r.pais ?? '');
 
       // Métodos de pago
@@ -441,10 +475,7 @@ class _SuperLocalEditarScreenState extends State<SuperLocalEditarScreen> {
                   _buildDatosFiscales(),
                   const SizedBox(height: 24),
 
-                  _buildSeccion(
-                    'MÉTODOS DE PAGO',
-                    Icons.payment_outlined,
-                  ),
+                  _buildSeccion('MÉTODOS DE PAGO', Icons.payment_outlined),
                   _buildMetodosPago(),
                   const SizedBox(height: 32),
 
@@ -567,7 +598,10 @@ class _SuperLocalEditarScreenState extends State<SuperLocalEditarScreen> {
                 tieneLogoServidor || tieneLogoNuevo
                     ? 'CAMBIAR LOGO'
                     : 'SUBIR LOGO',
-                style: const TextStyle(color: AppColors.linkOnDark, letterSpacing: 1),
+                style: const TextStyle(
+                  color: AppColors.linkOnDark,
+                  letterSpacing: 1,
+                ),
               ),
               style: OutlinedButton.styleFrom(
                 side: const BorderSide(color: AppColors.detailOnDark),
@@ -918,9 +952,7 @@ class _SuperLocalEditarScreenState extends State<SuperLocalEditarScreen> {
                       style: TextStyle(
                         color: activo ? Colors.white : Colors.white54,
                         fontSize: 13,
-                        fontWeight: activo
-                            ? FontWeight.w600
-                            : FontWeight.w400,
+                        fontWeight: activo ? FontWeight.w600 : FontWeight.w400,
                       ),
                     ),
                     if (activo) ...[
@@ -966,10 +998,7 @@ class _SuperLocalEditarScreenState extends State<SuperLocalEditarScreen> {
               )
             : const Text(
                 'GUARDAR CAMBIOS',
-                style: TextStyle(
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 2,
-                ),
+                style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 2),
               ),
       ),
     );
@@ -998,10 +1027,7 @@ class _SuperLocalEditarScreenState extends State<SuperLocalEditarScreen> {
             : const Icon(Icons.delete_forever_outlined, size: 18),
         label: const Text(
           'ELIMINAR SUCURSAL',
-          style: TextStyle(
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1.5,
-          ),
+          style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 1.5),
         ),
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.error,
@@ -1016,136 +1042,146 @@ class _SuperLocalEditarScreenState extends State<SuperLocalEditarScreen> {
     final r = widget.restaurante;
 
     // Primera confirmación
-    final primera = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: AppColors.background,
-        shape: const RoundedRectangleBorder(),
-        title: const Text(
-          'Eliminar permanentemente',
-          style: TextStyle(
-            fontWeight: FontWeight.w700,
-            color: AppColors.error,
-          ),
-        ),
-        content: Text(
+    final primera = await showConfirmDialog(
+      context,
+      titulo: 'Eliminar permanentemente',
+      mensaje:
           '¿Eliminar permanentemente "${r.nombre}"?\n\n'
           'Esta acción no se puede deshacer y borra todos los datos asociados.',
-          style: const TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 13,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text(
-              'Cancelar',
-              style: TextStyle(color: AppColors.textSecondary),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text(
-              'CONTINUAR',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                color: AppColors.error,
-              ),
-            ),
-          ),
-        ],
-      ),
+      textoConfirmar: 'CONTINUAR',
+      colorConfirmar: AppColors.error,
     );
-    if (primera != true || !mounted) return;
+    if (!primera || !mounted) return;
 
     // Segunda confirmación: escribir el nombre exacto
     final confirmCtrl = TextEditingController();
     final segunda = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setS) => AlertDialog(
-          backgroundColor: AppColors.background,
-          shape: const RoundedRectangleBorder(),
-          title: const Text(
-            'Confirmar eliminación',
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-              color: AppColors.error,
+        builder: (ctx, setS) {
+          final coincide = confirmCtrl.text.trim() == r.nombre;
+          return Dialog(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            insetPadding: const EdgeInsets.symmetric(
+              horizontal: 40,
+              vertical: 24,
             ),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Esta acción no se puede deshacer. Escribe el nombre de la '
-                'sucursal para confirmar:',
-                style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 13,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                r.nombre,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.error,
-                  fontSize: 14,
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: confirmCtrl,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: 'Escribe el nombre exacto...',
-                  hintStyle: const TextStyle(color: Colors.white60),
-                  filled: true,
-                  fillColor: const Color(0x8C000000),
-                  border: const OutlineInputBorder(
-                    borderRadius: BorderRadius.zero,
-                    borderSide: BorderSide(color: AppColors.line),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+                  decoration: BoxDecoration(
+                    color: AppColors.background.withValues(alpha: 0.92),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: AppColors.line.withValues(alpha: 0.6),
+                    ),
                   ),
-                  enabledBorder: const OutlineInputBorder(
-                    borderRadius: BorderRadius.zero,
-                    borderSide: BorderSide(color: AppColors.line),
-                  ),
-                  focusedBorder: const OutlineInputBorder(
-                    borderRadius: BorderRadius.zero,
-                    borderSide:
-                        BorderSide(color: AppColors.error, width: 1.5),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Text(
+                        'Confirmar eliminación',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 18,
+                          color: AppColors.error,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Esta acción no se puede deshacer. Escribe el nombre '
+                        'de la sucursal para confirmar:',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        r.nombre,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.error,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: confirmCtrl,
+                        style: const TextStyle(color: AppColors.textPrimary),
+                        decoration: InputDecoration(
+                          hintText: 'Escribe el nombre exacto...',
+                          hintStyle: const TextStyle(
+                            color: AppColors.textSecondary,
+                          ),
+                          filled: true,
+                          fillColor: AppColors.surface,
+                          border: const OutlineInputBorder(
+                            borderRadius: BorderRadius.zero,
+                            borderSide: BorderSide(color: AppColors.line),
+                          ),
+                          enabledBorder: const OutlineInputBorder(
+                            borderRadius: BorderRadius.zero,
+                            borderSide: BorderSide(color: AppColors.line),
+                          ),
+                          focusedBorder: const OutlineInputBorder(
+                            borderRadius: BorderRadius.zero,
+                            borderSide: BorderSide(
+                              color: AppColors.error,
+                              width: 1.5,
+                            ),
+                          ),
+                        ),
+                        onChanged: (_) => setS(() {}),
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: const Text(
+                              'Cancelar',
+                              style: TextStyle(color: AppColors.textSecondary),
+                            ),
+                          ),
+                          ElevatedButton(
+                            onPressed: coincide
+                                ? () => Navigator.pop(ctx, true)
+                                : null,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.error,
+                              foregroundColor: Colors.white,
+                              disabledBackgroundColor: AppColors.line,
+                              disabledForegroundColor: AppColors.textSecondary,
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 12,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: const Text(
+                              'ELIMINAR',
+                              style: TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-                onChanged: (_) => setS(() {}),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text(
-                'Cancelar',
-                style: TextStyle(color: AppColors.textSecondary),
               ),
             ),
-            TextButton(
-              onPressed: confirmCtrl.text.trim() == r.nombre
-                  ? () => Navigator.pop(ctx, true)
-                  : null,
-              child: Text(
-                'ELIMINAR DEFINITIVAMENTE',
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  color: confirmCtrl.text.trim() == r.nombre
-                      ? AppColors.error
-                      : Colors.white24,
-                ),
-              ),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
     if (segunda != true || !mounted) return;
@@ -1157,10 +1193,16 @@ class _SuperLocalEditarScreenState extends State<SuperLocalEditarScreen> {
       // Volvemos al listado de sucursales del super_admin con un flag para
       // que recargue la lista al recibirnos.
       Navigator.pop(context, true);
-    } catch (e) {
+    } on ApiException catch (e) {
+      // El backend devuelve el motivo (p. ej. 409: tiene datos asociados,
+      // suspéndela en su lugar). Lo mostramos tal cual.
       if (!mounted) return;
       setState(() => _eliminandoSucursal = false);
-      showAppError(context, 'Error al eliminar: $e');
+      showAppError(context, e.message);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _eliminandoSucursal = false);
+      showAppError(context, 'Error al eliminar');
     }
   }
 }
