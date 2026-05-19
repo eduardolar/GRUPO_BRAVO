@@ -537,3 +537,73 @@ def test_mesa_no_reservada_si_reserva_cancelada(client):
     mesa = next(m for m in resp.json() if m["id"] == str(mesa_id))
     assert mesa["reservada"] is False
 
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# POST /api/v1/mesas/validar-qr — resolver mesaId desde el QR escaneado
+# (Flujo 5.1: el cliente escanea el QR de la mesa y la app abre la carta)
+# ═══════════════════════════════════════════════════════════════════════════
+
+def test_validar_qr_codigoqr_devuelve_mesa_disponible(client):
+    """QR válido (campo codigoQr) → 200 con mesaId, numeroMesa, estado y restauranteId."""
+    from database import coleccion_mesas
+    mesa_id = coleccion_mesas.insert_one({
+        "numero": 12,
+        "capacidad": 4,
+        "codigoQr": "QR-R1-12",
+        "estado": "libre",
+        "restaurante_id": "R1",
+    }).inserted_id
+
+    resp = client.post("/api/v1/mesas/validar-qr", json={"codigoQr": "QR-R1-12"})
+
+    assert resp.status_code == 200, resp.json()
+    data = resp.json()
+    assert data["mesaId"] == str(mesa_id)
+    assert data["numeroMesa"] == 12
+    assert data["estado"] == "disponible"
+    assert data["restauranteId"] == "R1"
+
+
+def test_validar_qr_mesa_ocupada_devuelve_estado_ocupada(client):
+    """Mesa cuyo estado != 'libre' → el endpoint reporta estado 'ocupada'."""
+    from database import coleccion_mesas
+    coleccion_mesas.insert_one({
+        "numero": 3,
+        "capacidad": 2,
+        "codigoQr": "QR-R1-03",
+        "estado": "ocupada",
+        "restaurante_id": "R1",
+    })
+
+    resp = client.post("/api/v1/mesas/validar-qr", json={"codigoQr": "QR-R1-03"})
+
+    assert resp.status_code == 200, resp.json()
+    assert resp.json()["estado"] == "ocupada"
+
+
+def test_validar_qr_fallback_por_numero_mesa(client):
+    """Sin coincidencia exacta de QR, 'mesa_7' resuelve por numero de mesa = 7."""
+    from database import coleccion_mesas
+    mesa_id = coleccion_mesas.insert_one({
+        "numero": 7,
+        "capacidad": 4,
+        "estado": "libre",
+        "restaurante_id": "R1",
+    }).inserted_id
+
+    resp = client.post("/api/v1/mesas/validar-qr", json={"codigoQr": "mesa_7"})
+
+    assert resp.status_code == 200, resp.json()
+    assert resp.json()["mesaId"] == str(mesa_id)
+    assert resp.json()["numeroMesa"] == 7
+
+
+def test_validar_qr_no_encontrada_devuelve_404(client):
+    """QR que no corresponde a ninguna mesa → 404."""
+    resp = client.post(
+        "/api/v1/mesas/validar-qr", json={"codigoQr": "QR-INEXISTENTE-99"}
+    )
+
+    assert resp.status_code == 404, resp.json()
+    assert "no encontrada" in resp.json()["detail"].lower()

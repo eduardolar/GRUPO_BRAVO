@@ -39,10 +39,15 @@ class _CodigoQrState extends State<CodigoQr> {
 
         try {
           final resultado = await ApiService.validarQrMesa(codigoQr: codigoQr);
-          final mesaId = resultado['mesa_id'] as String;
-          final numeroMesa = resultado['numero_mesa'] is int
-              ? resultado['numero_mesa'] as int
-              : int.tryParse(resultado['numero_mesa'].toString()) ?? 0;
+          // El backend responde en camelCase (mesaId/numeroMesa); aceptamos
+          // snake_case como fallback por robustez ante respuestas legacy.
+          final mesaId =
+              (resultado['mesaId'] ?? resultado['mesa_id']) as String;
+          final numeroMesaRaw =
+              resultado['numeroMesa'] ?? resultado['numero_mesa'];
+          final numeroMesa = numeroMesaRaw is int
+              ? numeroMesaRaw
+              : int.tryParse('$numeroMesaRaw') ?? 0;
 
           if (!mounted) return;
           cart.asignarMesa(mesaId: mesaId, numeroMesa: numeroMesa);
