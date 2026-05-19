@@ -30,6 +30,7 @@ from database import (
     coleccion_auditoria,
     coleccion_auditoria_pagos,
     coleccion_avisos_falta,
+    coleccion_cierres_caja,
 )
 
 
@@ -109,6 +110,15 @@ def crear_indices() -> None:
     coleccion_avisos_falta.create_index(
         [("restaurante_id", ASCENDING), ("estado", ASCENDING), ("creado_at", DESCENDING)],
         name="ix_avisos_falta_restaurante_estado_fecha",
+    )
+
+    # CIERRES DE CAJA — un único cierre por sucursal+día+turno.
+    # Garantiza idempotencia de la apertura automática y endurece el
+    # `POST /cierres-caja/abrir` manual (evita carrera check-then-insert).
+    coleccion_cierres_caja.create_index(
+        [("restaurante_id", ASCENDING), ("fecha", ASCENDING), ("turno", ASCENDING)],
+        unique=True,
+        name="ux_cierre_restaurante_fecha_turno",
     )
 
     print("Índices creados/verificados correctamente.")

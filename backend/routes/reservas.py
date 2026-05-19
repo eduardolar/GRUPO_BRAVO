@@ -110,6 +110,59 @@ def _mesas_ocupadas_por_hora(
             ocupadas.add(r["mesa_id"])
     return ocupadas
 
+
+def _hay_mesa_libre(
+    fecha: str, hora: str, comensales: int, restaurante_id: str | None
+) -> bool:
+    """True si a `hora` queda al menos una mesa con capacidad suficiente
+    sin solape. Misma lógica de asignación que `crear_reserva`."""
+    ocupadas = _mesas_ocupadas_por_hora(fecha, hora, restaurante_id)
+    filtro: dict = {"capacidad": {"$gte": comensales}}
+    if restaurante_id:
+        filtro["restaurante_id"] = restaurante_id
+    for m in coleccion_mesas.find(filtro):
+        if str(m["_id"]) not in ocupadas:
+            return True
+    return False
+
+
+def _buscar_horarios_alternativos(
+    fecha: str,
+    hora: str,
+    comensales: int,
+    restaurante_id: str | None,
+    apertura: str | None = None,
+    cierre: str | None = None,
+    max_resultados: int = 4,
+) -> list:
+    """Sugiere horarios cercanos a `hora` (misma fecha) en los que SÍ hay
+    una mesa libre para `comensales`. Recorre la franja de apertura del día
+    en pasos de 30 min y devuelve hasta `max_resultados` slots ordenados por
+    cercanía a la hora solicitada. Si no se conoce el horario del local, usa
+    una ventana razonable por defecto (12:00–23:30)."""
+    apertura = apertura or "12:00"
+    cierre = cierre or "23:30"
+    try:
+        ini = _hora_a_minutos(apertura)
+        fin = _hora_a_minutos(cierre)
+        pedido = _hora_a_minutos(hora)
+    except (ValueError, IndexError):
+        return []
+    if fin <= ini:  # cruza medianoche: no sugerimos, evita bucle raro
+        return []
+
+    candidatos = []
+    slot = ini
+    while slot < fin:
+        if slot != pedido:
+            cand = f"{slot // 60:02d}:{slot % 60:02d}"
+            if _hay_mesa_libre(fecha, cand, comensales, restaurante_id):
+                candidatos.append((abs(slot - pedido), cand))
+        slot += 30
+
+    candidatos.sort()
+    return [c for _, c in candidatos[:max_resultados]]
+
 def reservas_activas_por_mesa(
         restaurante_id: str | None = None,
         fecha: str | None = None,
@@ -359,6 +412,11 @@ def crear_reserva(
         }
 
     # Validar horario del restaurante usando horarios_dia
+    # Franja de apertura del día (si el local la define): se usa para acotar
+    # la búsqueda de horarios alternativos cuando no hay mesa libre.
+    apertura_dia: Optional[str] = None
+    cierre_dia: Optional[str] = None
+
     if restaurante_id_final:
         try:
             rest = coleccion_restaurantes.find_one({"_id": ObjectId(restaurante_id_final)})
@@ -390,6 +448,7 @@ def crear_reserva(
                         )
                     apertura = entrada_dia.get("apertura")
                     cierre = entrada_dia.get("cierre")
+                    apertura_dia, cierre_dia = apertura, cierre
                     if apertura and cierre:
                         if not _hora_en_rango(reserva.hora, apertura, cierre):
                             raise HTTPException(
@@ -435,9 +494,29 @@ def crear_reserva(
                 mesa_asignada = m
                 break
         if not mesa_asignada:
+            alternativas = _buscar_horarios_alternativos(
+                reserva.fecha,
+                reserva.hora,
+                reserva.comensales,
+                restaurante_id_final,
+                apertura_dia,
+                cierre_dia,
+            )
+            mensaje = (
+                f"No hay mesas disponibles para {reserva.comensales} "
+                f"comensales a las {reserva.hora}"
+            )
+            if alternativas:
+                mensaje += f". Horarios alternativos: {', '.join(alternativas)}"
+            # `detail` (no `mensaje`) para que el extractor del frontend
+            # (http_client.dart) siga mostrando el texto; `horariosAlternativos`
+            # queda disponible como dato estructurado para la UI.
             raise HTTPException(
                 status_code=409,
-                detail=f"No hay mesas disponibles para {reserva.comensales} comensales a las {reserva.hora}",
+                detail={
+                    "detail": mensaje,
+                    "horariosAlternativos": alternativas,
+                },
             )
 
     mesa_id = str(mesa_asignada["_id"])

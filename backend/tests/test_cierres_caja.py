@@ -609,3 +609,110 @@ def test_pedidos_fuera_de_rango_no_bloquean_cierre(client):
         headers=_tok_admin("R1"),
     )
     assert resp.status_code == 200, resp.json()
+
+
+# ─── Tests: apertura automática del turno (a la hora de apertura) ─────────────
+
+def _insertar_restaurante(horarios_dia: dict | None) -> str:
+    """Inserta un restaurante con _id ObjectId real y devuelve el id str."""
+    from database import coleccion_restaurantes
+    doc = {"nombre": "Bravo Auto", "codigo": "AUTO1", "activo": True}
+    if horarios_dia is not None:
+        doc["horarios_dia"] = horarios_dia
+    return str(coleccion_restaurantes.insert_one(doc).inserted_id)
+
+
+def test_turno_activo_segun_hora_local():
+    from routes.cierres_caja import _turno_activo
+    # comida 05:00-16:59, cena 17:00-04:59 (cruza medianoche)
+    assert _turno_activo(datetime(2026, 5, 20, 13, 0)) == "comida"
+    assert _turno_activo(datetime(2026, 5, 20, 9, 30)) == "comida"
+    assert _turno_activo(datetime(2026, 5, 20, 21, 0)) == "cena"
+    assert _turno_activo(datetime(2026, 5, 20, 2, 0)) == "cena"  # madrugada
+
+
+def test_restaurante_abierto_ahora_dentro_fuera_cerrado():
+    from routes.cierres_caja import _restaurante_abierto_ahora, _DIAS_ES
+    ahora = datetime(2026, 5, 20, 13, 0)               # miércoles
+    dia = _DIAS_ES[ahora.weekday()]
+
+    rid_ok = _insertar_restaurante({dia: {"apertura": "12:30", "cierre": "23:30", "abierto": True}})
+    assert _restaurante_abierto_ahora(rid_ok, ahora) is True
+    assert _restaurante_abierto_ahora(rid_ok, datetime(2026, 5, 20, 11, 0)) is False  # antes de abrir
+
+    rid_cerrado = _insertar_restaurante({dia: {"apertura": "12:30", "cierre": "23:30", "abierto": False}})
+    assert _restaurante_abierto_ahora(rid_cerrado, ahora) is False
+
+    rid_sin_horario = _insertar_restaurante(None)
+    assert _restaurante_abierto_ahora(rid_sin_horario, ahora) is True  # sin horarios: no bloquea
+
+
+def test_auto_abrir_crea_cierre_cuando_dentro_de_horario():
+    from routes.cierres_caja import _auto_abrir_si_corresponde, _DIAS_ES
+    from database import coleccion_cierres_caja
+    ahora = datetime(2026, 5, 20, 13, 0)
+    dia = _DIAS_ES[ahora.weekday()]
+    rid = _insertar_restaurante({dia: {"apertura": "12:30", "cierre": "23:30", "abierto": True}})
+
+    doc = _auto_abrir_si_corresponde(rid, "comida", "2026-05-20", ahora_local=ahora)
+    assert doc is not None
+    assert doc["estado"] == "abierto"
+    assert doc["abierto_por"] == "sistema"
+    assert coleccion_cierres_caja.count_documents(
+        {"restaurante_id": rid, "fecha": "2026-05-20", "turno": "comida"}
+    ) == 1
+
+
+def test_auto_abrir_no_crea_fuera_de_horario_de_apertura():
+    from routes.cierres_caja import _auto_abrir_si_corresponde, _DIAS_ES
+    from database import coleccion_cierres_caja
+    ahora = datetime(2026, 5, 20, 11, 0)  # antes de apertura 12:30
+    dia = _DIAS_ES[ahora.weekday()]
+    rid = _insertar_restaurante({dia: {"apertura": "12:30", "cierre": "23:30", "abierto": True}})
+
+    doc = _auto_abrir_si_corresponde(rid, "comida", "2026-05-20", ahora_local=ahora)
+    assert doc is None
+    assert coleccion_cierres_caja.count_documents({"restaurante_id": rid}) == 0
+
+
+def test_auto_abrir_no_crea_si_turno_pedido_no_es_el_activo():
+    from routes.cierres_caja import _auto_abrir_si_corresponde, _DIAS_ES
+    from database import coleccion_cierres_caja
+    ahora = datetime(2026, 5, 20, 13, 0)  # turno activo = comida
+    dia = _DIAS_ES[ahora.weekday()]
+    rid = _insertar_restaurante({dia: {"apertura": "12:30", "cierre": "23:30", "abierto": True}})
+
+    doc = _auto_abrir_si_corresponde(rid, "cena", "2026-05-20", ahora_local=ahora)
+    assert doc is None
+    assert coleccion_cierres_caja.count_documents({"restaurante_id": rid}) == 0
+
+
+def test_auto_abrir_idempotente_devuelve_existente_sin_duplicar():
+    from routes.cierres_caja import _auto_abrir_si_corresponde, _DIAS_ES
+    from database import coleccion_cierres_caja
+    ahora = datetime(2026, 5, 20, 13, 0)
+    dia = _DIAS_ES[ahora.weekday()]
+    rid = _insertar_restaurante({dia: {"apertura": "12:30", "cierre": "23:30", "abierto": True}})
+
+    primero = _auto_abrir_si_corresponde(rid, "comida", "2026-05-20", ahora_local=ahora)
+    segundo = _auto_abrir_si_corresponde(rid, "comida", "2026-05-20", ahora_local=ahora)
+    assert primero is not None and segundo is not None
+    assert str(primero["_id"]) == str(segundo["_id"])
+    assert coleccion_cierres_caja.count_documents({"restaurante_id": rid}) == 1
+
+
+def test_auto_abrir_no_reabre_un_cierre_ya_cerrado():
+    from routes.cierres_caja import _auto_abrir_si_corresponde, _DIAS_ES
+    from database import coleccion_cierres_caja
+    ahora = datetime(2026, 5, 20, 13, 0)
+    dia = _DIAS_ES[ahora.weekday()]
+    rid = _insertar_restaurante({dia: {"apertura": "12:30", "cierre": "23:30", "abierto": True}})
+    coleccion_cierres_caja.insert_one({
+        "restaurante_id": rid, "fecha": "2026-05-20", "turno": "comida",
+        "estado": "cerrado", "abierto_por": "sistema",
+    })
+
+    doc = _auto_abrir_si_corresponde(rid, "comida", "2026-05-20", ahora_local=ahora)
+    assert doc is not None
+    assert doc["estado"] == "cerrado"  # NO se reabre solo
+    assert coleccion_cierres_caja.count_documents({"restaurante_id": rid}) == 1

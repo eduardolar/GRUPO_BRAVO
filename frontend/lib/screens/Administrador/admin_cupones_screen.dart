@@ -1,5 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:frontend/providers/auth_provider.dart';
 import '../../components/admin/admin_max_width.dart';
 import '../../components/bravo_app_bar.dart';
 import '../../core/colors_style.dart';
@@ -13,6 +15,8 @@ const _kSheetBg = AppColors.bottomSheetBg;
 // translúcido se confundía con el papel claro y dejaba el texto invisible.
 const _kFieldFill = Color(0x8C000000);
 const _kBorder = Color(0x33FFFFFF);
+// Azul plateado: color único para todos los iconos de acción de la tarjeta.
+const _kIcono = AppColors.detailOnDark;
 
 class AdminCuponesScreen extends StatefulWidget {
   const AdminCuponesScreen({super.key});
@@ -106,21 +110,140 @@ class _AdminCuponesScreenState extends State<AdminCuponesScreen>
     }
   }
 
-  void _abrirCrearCupon() {
+  void _abrirFormCupon({Cupon? cupon}) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _FormularioCuponSheet(onGuardado: _cargar),
+      builder: (_) => _FormularioCuponSheet(onGuardado: _cargar, cupon: cupon),
     );
+  }
+
+  Future<void> _eliminar(Cupon c) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: _kSheetBg,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          '¿Eliminar cupón?',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+        ),
+        content: Text(
+          'Se eliminará "${c.codigo}" permanentemente. Esta acción no se '
+          'puede deshacer.',
+          style: const TextStyle(color: Colors.white70, fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text(
+              'Cancelar',
+              style: TextStyle(color: Colors.white60),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(
+              'ELIMINAR',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await CuponService.eliminar(c.id);
+      if (!mounted) return;
+      _showSnack('Cupón eliminado', esExito: true);
+      _cargar();
+    } on ApiException catch (e) {
+      _showSnack(e.message);
+    } catch (e) {
+      _showSnack(e.toString());
+    }
+  }
+
+  Future<void> _enviarMasivo(Cupon c) async {
+    // El admin solo puede enviar a los clientes de SU sucursal.
+    final rid = context.read<AuthProvider>().usuarioActual?.restauranteId;
+    if (rid == null || rid.isEmpty) {
+      _showSnack('No se pudo determinar tu sucursal');
+      return;
+    }
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: _kSheetBg,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Enviar cupón por email',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+        ),
+        content: Text(
+          'Se enviará "${c.codigo}" por email a todos los clientes de tu '
+          'sucursal. ¿Continuar?',
+          style: const TextStyle(color: Colors.white70, fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text(
+              'Cancelar',
+              style: TextStyle(color: Colors.white60),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primaryAccent,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(
+              'ENVIAR',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await CuponService.enviarNotificacionMasiva(
+        cuponId: c.id,
+        tipoFiltro: 'restaurante',
+        restauranteId: rid,
+      );
+      if (!mounted) return;
+      _showSnack('Emails en cola de envío', esExito: true);
+    } on ApiException catch (e) {
+      _showSnack(e.message);
+    } catch (e) {
+      _showSnack(e.toString());
+    }
   }
 
   void _showSnack(String msg, {bool esExito = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(msg,
-            style: const TextStyle(
-                color: Colors.white, fontWeight: FontWeight.bold)),
+        content: Text(
+          msg,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         backgroundColor: esExito ? AppColors.disp : AppColors.error,
         behavior: SnackBarBehavior.floating,
       ),
@@ -136,7 +259,7 @@ class _AdminCuponesScreenState extends State<AdminCuponesScreen>
       extendBodyBehindAppBar: true,
       appBar: const BravoAppBar(title: 'CUPONES'),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _abrirCrearCupon,
+        onPressed: () => _abrirFormCupon(),
         backgroundColor: AppColors.primaryAccent,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add),
@@ -169,63 +292,66 @@ class _AdminCuponesScreenState extends State<AdminCuponesScreen>
             child: AdminMaxWidth(
               child: Column(
                 children: [
-                // ─── Buscador glass ────────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      // Fondo blanco sólido + texto/iconos negros: la imagen
-                      // Bravo es muy clara y los overlays translúcidos no
-                      // daban contraste suficiente. Patrón input "claro".
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: Colors.black.withValues(alpha: 0.15),
+                  // ─── Buscador glass ────────────────────────────────
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        // Fondo blanco sólido + texto/iconos negros: la imagen
+                        // Bravo es muy clara y los overlays translúcidos no
+                        // daban contraste suficiente. Patrón input "claro".
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.black.withValues(alpha: 0.15),
+                          ),
                         ),
-                      ),
-                      child: TextField(
-                        style: const TextStyle(color: Colors.black87),
-                        onChanged: (v) =>
-                            setState(() => _busqueda = v.toLowerCase()),
-                        decoration: const InputDecoration(
-                          hintText: 'Buscar código o descripción…',
-                          hintStyle: TextStyle(
-                              color: Colors.black54, fontSize: 14),
-                          prefixIcon: Icon(Icons.search,
-                              color: Colors.black54),
-                          border: InputBorder.none,
-                          contentPadding:
-                              EdgeInsets.symmetric(vertical: 14),
+                        child: TextField(
+                          style: const TextStyle(color: Colors.black87),
+                          onChanged: (v) =>
+                              setState(() => _busqueda = v.toLowerCase()),
+                          decoration: const InputDecoration(
+                            hintText: 'Buscar código o descripción…',
+                            hintStyle: TextStyle(
+                              color: Colors.black54,
+                              fontSize: 14,
+                            ),
+                            prefixIcon: Icon(
+                              Icons.search,
+                              color: Colors.black54,
+                            ),
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.symmetric(vertical: 14),
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
 
-                // ─── Tabs ──────────────────────────────────────────
-                TabBar(
-                  controller: _tabCtrl,
-                  indicatorColor: AppColors.detailOnDark,
-                  indicatorWeight: 3,
-                  labelColor: Colors.white,
-                  unselectedLabelColor: Colors.white38,
-                  labelStyle: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                    letterSpacing: 1,
+                  // ─── Tabs ──────────────────────────────────────────
+                  TabBar(
+                    controller: _tabCtrl,
+                    indicatorColor: AppColors.detailOnDark,
+                    indicatorWeight: 3,
+                    labelColor: Colors.white,
+                    unselectedLabelColor: Colors.white38,
+                    labelStyle: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                      letterSpacing: 1,
+                    ),
+                    tabs: const [
+                      Tab(text: 'TODOS'),
+                      Tab(text: 'ACTIVOS'),
+                      Tab(text: 'INACTIVOS'),
+                    ],
                   ),
-                  tabs: const [
-                    Tab(text: 'TODOS'),
-                    Tab(text: 'ACTIVOS'),
-                    Tab(text: 'INACTIVOS'),
-                  ],
-                ),
 
-                Expanded(child: _buildCuerpo()),
-              ],
-            ),
+                  Expanded(child: _buildCuerpo()),
+                ],
+              ),
             ),
           ),
         ),
@@ -247,17 +373,23 @@ class _AdminCuponesScreenState extends State<AdminCuponesScreen>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.cloud_off_outlined,
-                  color: Colors.white54, size: 64),
+              const Icon(
+                Icons.cloud_off_outlined,
+                color: Colors.white54,
+                size: 64,
+              ),
               const SizedBox(height: 16),
-              Text(_error!,
-                  style: const TextStyle(color: Colors.white70),
-                  textAlign: TextAlign.center),
+              Text(
+                _error!,
+                style: const TextStyle(color: Colors.white70),
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 24),
               ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryAccent,
-                    foregroundColor: Colors.white),
+                  backgroundColor: AppColors.primaryAccent,
+                  foregroundColor: Colors.white,
+                ),
                 onPressed: _cargar,
                 icon: const Icon(Icons.refresh),
                 label: const Text('Reintentar'),
@@ -285,7 +417,8 @@ class _AdminCuponesScreenState extends State<AdminCuponesScreen>
       onRefresh: _cargar,
       child: ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(
-            parent: BouncingScrollPhysics()),
+          parent: BouncingScrollPhysics(),
+        ),
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
         itemCount: lista.length,
         itemBuilder: (_, i) => _cardCupon(lista[i]),
@@ -308,7 +441,9 @@ class _AdminCuponesScreenState extends State<AdminCuponesScreen>
               color: Colors.black.withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: c.activo ? Colors.white12 : Colors.white.withValues(alpha: 0.05),
+                color: c.activo
+                    ? Colors.white12
+                    : Colors.white.withValues(alpha: 0.05),
               ),
             ),
             child: Column(
@@ -324,9 +459,7 @@ class _AdminCuponesScreenState extends State<AdminCuponesScreen>
                           Text(
                             c.codigo,
                             style: TextStyle(
-                              color: c.activo
-                                  ? Colors.white
-                                  : Colors.white38,
+                              color: c.activo ? Colors.white : Colors.white38,
                               fontSize: 17,
                               fontWeight: FontWeight.w800,
                               letterSpacing: 1,
@@ -336,7 +469,9 @@ class _AdminCuponesScreenState extends State<AdminCuponesScreen>
                             Text(
                               c.descripcion,
                               style: const TextStyle(
-                                  color: Colors.white54, fontSize: 12),
+                                color: Colors.white54,
+                                fontSize: 12,
+                              ),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -346,13 +481,15 @@ class _AdminCuponesScreenState extends State<AdminCuponesScreen>
                     // Valor del cupón
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 5),
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.detailOnDark.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                            color: AppColors.detailOnDark
-                                .withValues(alpha: 0.4)),
+                          color: AppColors.detailOnDark.withValues(alpha: 0.4),
+                        ),
                       ),
                       child: Text(
                         c.etiquetaValor,
@@ -375,28 +512,54 @@ class _AdminCuponesScreenState extends State<AdminCuponesScreen>
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
 
-                // Usos y fechas
-                Wrap(
-                  spacing: 12,
+                // Usos/fechas + acciones en una sola fila
+                Row(
                   children: [
-                    _infoChip(
-                      Icons.repeat,
-                      c.ilimitado
-                          ? 'Ilimitado'
-                          : '${c.usosActuales}/${c.usosMaximos} usos',
-                    ),
-                    if (c.fechaFin != null)
-                      _infoChip(
-                        Icons.event,
-                        'Hasta ${c.fechaFin!.substring(0, 10)}',
-                        color: exp ? AppColors.error : null,
+                    Expanded(
+                      child: Wrap(
+                        spacing: 12,
+                        runSpacing: 4,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          _infoChip(
+                            Icons.repeat,
+                            c.ilimitado
+                                ? 'Ilimitado'
+                                : '${c.usosActuales}/${c.usosMaximos} usos',
+                          ),
+                          if (c.fechaFin != null)
+                            _infoChip(
+                              Icons.event,
+                              'Hasta ${c.fechaFin!.substring(0, 10)}',
+                              color: exp ? AppColors.error : null,
+                            ),
+                          if (exp)
+                            _infoChip(
+                              Icons.warning_amber,
+                              'EXPIRADO',
+                              color: AppColors.error,
+                            ),
+                        ],
                       ),
-                    if (exp)
-                      _infoChip(Icons.warning_amber,
-                          'EXPIRADO',
-                          color: AppColors.error),
+                    ),
+                    const SizedBox(width: 8),
+                    _accionCupon(
+                      icono: Icons.email_outlined,
+                      etiqueta: 'Enviar',
+                      onTap: () => _enviarMasivo(c),
+                    ),
+                    _accionCupon(
+                      icono: Icons.edit_outlined,
+                      etiqueta: 'Editar',
+                      onTap: () => _abrirFormCupon(cupon: c),
+                    ),
+                    _accionCupon(
+                      icono: Icons.delete_outline,
+                      etiqueta: 'Eliminar',
+                      onTap: () => _eliminar(c),
+                    ),
                   ],
                 ),
               ],
@@ -419,6 +582,19 @@ class _AdminCuponesScreenState extends State<AdminCuponesScreen>
     );
   }
 
+  Widget _accionCupon({
+    required IconData icono,
+    required String etiqueta,
+    required VoidCallback onTap,
+  }) {
+    return IconButton(
+      onPressed: onTap,
+      icon: Icon(icono, size: 20, color: _kIcono),
+      tooltip: etiqueta,
+      visualDensity: VisualDensity.compact,
+      splashRadius: 22,
+    );
+  }
 }
 
 // ─── Bottom sheet: crear cupón ────────────────────────────────────────────────
@@ -426,7 +602,10 @@ class _AdminCuponesScreenState extends State<AdminCuponesScreen>
 class _FormularioCuponSheet extends StatefulWidget {
   final VoidCallback onGuardado;
 
-  const _FormularioCuponSheet({required this.onGuardado});
+  /// Si viene un cupón, el formulario abre en modo edición.
+  final Cupon? cupon;
+
+  const _FormularioCuponSheet({required this.onGuardado, this.cupon});
 
   @override
   State<_FormularioCuponSheet> createState() => _FormularioCuponSheetState();
@@ -444,6 +623,23 @@ class _FormularioCuponSheetState extends State<_FormularioCuponSheet> {
   String _tipo = 'porcentaje';
   bool _guardando = false;
 
+  bool get _esEdicion => widget.cupon != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final c = widget.cupon;
+    if (c != null) {
+      _codigoCtrl.text = c.codigo;
+      _valorCtrl.text = c.valor.toString();
+      _descCtrl.text = c.descripcion;
+      _usosCtrl.text = c.usosMaximos?.toString() ?? '';
+      _fechaInicioCtrl.text = c.fechaInicio ?? '';
+      _fechaFinCtrl.text = c.fechaFin ?? '';
+      _tipo = c.tipo;
+    }
+  }
+
   @override
   void dispose() {
     _codigoCtrl.dispose();
@@ -459,17 +655,32 @@ class _FormularioCuponSheetState extends State<_FormularioCuponSheet> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _guardando = true);
     try {
-      await CuponService.crear(
-        codigo: _codigoCtrl.text.trim().toUpperCase(),
-        tipo: _tipo,
-        valor: double.parse(_valorCtrl.text.trim()),
-        descripcion: _descCtrl.text.trim(),
-        usosMaximos: _usosCtrl.text.trim().isNotEmpty
-            ? int.tryParse(_usosCtrl.text.trim())
-            : null,
-        fechaInicio: _fechaInicioCtrl.text.trim(),
-        fechaFin: _fechaFinCtrl.text.trim(),
-      );
+      final usos = _usosCtrl.text.trim().isNotEmpty
+          ? int.tryParse(_usosCtrl.text.trim())
+          : null;
+      final ini = _fechaInicioCtrl.text.trim();
+      final fin = _fechaFinCtrl.text.trim();
+      if (_esEdicion) {
+        await CuponService.editar(
+          widget.cupon!.id,
+          tipo: _tipo,
+          valor: double.parse(_valorCtrl.text.trim()),
+          descripcion: _descCtrl.text.trim(),
+          usosMaximos: usos,
+          fechaInicio: ini.isNotEmpty ? ini : null,
+          fechaFin: fin.isNotEmpty ? fin : null,
+        );
+      } else {
+        await CuponService.crear(
+          codigo: _codigoCtrl.text.trim().toUpperCase(),
+          tipo: _tipo,
+          valor: double.parse(_valorCtrl.text.trim()),
+          descripcion: _descCtrl.text.trim(),
+          usosMaximos: usos,
+          fechaInicio: ini,
+          fechaFin: fin,
+        );
+      }
       if (!mounted) return;
       Navigator.pop(context);
       widget.onGuardado();
@@ -477,9 +688,13 @@ class _FormularioCuponSheetState extends State<_FormularioCuponSheet> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.message,
-                style: const TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.bold)),
+            content: Text(
+              e.message,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
           ),
@@ -489,8 +704,10 @@ class _FormularioCuponSheetState extends State<_FormularioCuponSheet> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.toString(),
-                style: const TextStyle(color: Colors.white)),
+            content: Text(
+              e.toString(),
+              style: const TextStyle(color: Colors.white),
+            ),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
           ),
@@ -552,9 +769,9 @@ class _FormularioCuponSheetState extends State<_FormularioCuponSheet> {
                 ),
               ),
               const SizedBox(height: 20),
-              const Text(
-                'NUEVO CUPÓN',
-                style: TextStyle(
+              Text(
+                _esEdicion ? 'EDITAR CUPÓN' : 'NUEVO CUPÓN',
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
@@ -563,11 +780,14 @@ class _FormularioCuponSheetState extends State<_FormularioCuponSheet> {
               ),
               const SizedBox(height: 20),
 
-              // Código
+              // Código (no editable en edición: el backend no permite cambiarlo)
               _Campo(
                 controlador: _codigoCtrl,
-                etiqueta: 'Código (ej. VERANO20)',
+                etiqueta: _esEdicion
+                    ? 'Código (no editable)'
+                    : 'Código (ej. VERANO20)',
                 icono: Icons.local_offer_outlined,
+                soloLectura: _esEdicion,
                 validador: (v) => (v == null || v.trim().isEmpty)
                     ? 'Campo obligatorio'
                     : null,
@@ -582,8 +802,10 @@ class _FormularioCuponSheetState extends State<_FormularioCuponSheet> {
                 decoration: InputDecoration(
                   labelText: 'Tipo',
                   labelStyle: const TextStyle(color: Colors.white60),
-                  prefixIcon: const Icon(Icons.category_outlined,
-                      color: Colors.white60),
+                  prefixIcon: const Icon(
+                    Icons.category_outlined,
+                    color: Colors.white60,
+                  ),
                   filled: true,
                   fillColor: _kFieldFill,
                   enabledBorder: OutlineInputBorder(
@@ -592,18 +814,24 @@ class _FormularioCuponSheetState extends State<_FormularioCuponSheet> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide:
-                        const BorderSide(color: AppColors.detailOnDark, width: 2),
+                    borderSide: const BorderSide(
+                      color: AppColors.detailOnDark,
+                      width: 2,
+                    ),
                   ),
                   border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 items: const [
                   DropdownMenuItem(
-                      value: 'porcentaje',
-                      child: Text('Porcentaje (%)')),
+                    value: 'porcentaje',
+                    child: Text('Porcentaje (%)'),
+                  ),
                   DropdownMenuItem(
-                      value: 'fijo', child: Text('Descuento fijo (€)')),
+                    value: 'fijo',
+                    child: Text('Descuento fijo (€)'),
+                  ),
                 ],
                 onChanged: (v) => setState(() => _tipo = v!),
               ),
@@ -612,14 +840,18 @@ class _FormularioCuponSheetState extends State<_FormularioCuponSheet> {
               // Valor
               _Campo(
                 controlador: _valorCtrl,
-                etiqueta: _tipo == 'porcentaje'
-                    ? 'Valor (%)'
-                    : 'Valor (€)',
+                etiqueta: _tipo == 'porcentaje' ? 'Valor (%)' : 'Valor (€)',
                 icono: Icons.percent,
-                tipoTeclado: const TextInputType.numberWithOptions(decimal: true),
+                tipoTeclado: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 validador: (v) {
-                  if (v == null || v.trim().isEmpty) return 'Campo obligatorio';
-                  if (double.tryParse(v.trim()) == null) return 'Número no válido';
+                  if (v == null || v.trim().isEmpty) {
+                    return 'Campo obligatorio';
+                  }
+                  if (double.tryParse(v.trim()) == null) {
+                    return 'Número no válido';
+                  }
                   return null;
                 },
               ),
@@ -676,13 +908,16 @@ class _FormularioCuponSheetState extends State<_FormularioCuponSheet> {
                           width: 22,
                           height: 22,
                           child: CircularProgressIndicator(
-                              color: Colors.white, strokeWidth: 2),
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
                         )
-                      : const Text(
-                          'CREAR CUPÓN',
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.5),
+                      : Text(
+                          _esEdicion ? 'GUARDAR CAMBIOS' : 'CREAR CUPÓN',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.5,
+                          ),
                         ),
                 ),
               ),
@@ -702,6 +937,7 @@ class _Campo extends StatelessWidget {
   final IconData icono;
   final TextInputType tipoTeclado;
   final String? Function(String?)? validador;
+  final bool soloLectura;
 
   const _Campo({
     required this.controlador,
@@ -709,6 +945,7 @@ class _Campo extends StatelessWidget {
     required this.icono,
     this.tipoTeclado = TextInputType.text,
     this.validador,
+    this.soloLectura = false,
   });
 
   @override
@@ -716,7 +953,8 @@ class _Campo extends StatelessWidget {
     return TextFormField(
       controller: controlador,
       keyboardType: tipoTeclado,
-      style: const TextStyle(color: Colors.white),
+      readOnly: soloLectura,
+      style: TextStyle(color: soloLectura ? Colors.white54 : Colors.white),
       validator: validador,
       decoration: InputDecoration(
         labelText: etiqueta,
@@ -767,8 +1005,7 @@ class _CampoFecha extends StatelessWidget {
       decoration: InputDecoration(
         labelText: etiqueta,
         labelStyle: const TextStyle(color: Colors.white60),
-        prefixIcon:
-            const Icon(Icons.calendar_today, color: Colors.white60),
+        prefixIcon: const Icon(Icons.calendar_today, color: Colors.white60),
         filled: true,
         fillColor: _kFieldFill,
         enabledBorder: OutlineInputBorder(

@@ -497,3 +497,102 @@ def test_cliente_crea_reserva_ignora_telefono_correo_cliente(client):
     assert doc.get("telefono_cliente") is None, "telefono_cliente no debe persistirse para clientes"
     assert doc.get("correo_cliente") is None, "correo_cliente no debe persistirse para clientes"
     assert doc.get("creado_por_actor") is None, "creado_por_actor no debe existir cuando el actor es cliente"
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Flujo 5.3 — No solape de mesa: regla de 90 min y 409 al no haber mesa libre
+# ═══════════════════════════════════════════════════════════════════════════
+
+def test_regla_90_min_solape_y_no_solape():
+    """Unit test de la ventana de 90 min usada para detectar solapes.
+
+    Una reserva a las 13:00 ocupa la mesa hasta las 14:30:
+      - 14:00 cae dentro → conflicto.
+      - 14:30 es el límite exacto → SIN conflicto (la mesa queda libre).
+    """
+    from routes.reservas import _hay_conflicto_horario, DURACION_RESERVA_MIN
+
+    assert DURACION_RESERVA_MIN == 90
+    assert _hay_conflicto_horario("13:00", "14:00") is True
+    assert _hay_conflicto_horario("13:00", "14:30") is False
+    assert _hay_conflicto_horario("13:00", "12:00") is True   # solape por la izquierda
+
+
+def test_reserva_solapada_sin_mesa_libre_devuelve_409_con_alternativas(client):
+    """Con una única mesa: 1ª reserva 13:00 OK; 2ª a las 14:00 (dentro de los
+    90 min) se queda sin mesa libre → 409.
+
+    El flujo 5.3 exige que el 409 sugiera horarios alternativos: el `detail`
+    es un objeto con `mensaje` y `horariosAlternativos` (lista no vacía), y
+    ninguno de los alternativos debe solapar con la reserva existente."""
+    horarios = {"martes": {"apertura": "09:00", "cierre": "23:00", "abierto": True}}
+    rid = _insertar_restaurante_con_horarios(horarios)
+    _insertar_mesa_para_restaurante(rid, numero=1, capacidad=4)
+
+    r1 = client.post(
+        "/api/v1/reservas",
+        json=_payload_reserva(rid, fecha="2026-12-01", hora="13:00"),
+        headers=_tok_cliente(_OID_CLIENTE_1),
+    )
+    assert r1.status_code in (200, 201), r1.json()
+
+    r2 = client.post(
+        "/api/v1/reservas",
+        json=_payload_reserva(rid, fecha="2026-12-01", hora="14:00"),
+        headers=_tok_cliente(_OID_CLIENTE_2),
+    )
+    assert r2.status_code == 409, r2.json()
+    detail = r2.json()["detail"]
+    assert isinstance(detail, dict), detail
+    assert "no hay mesas disponibles" in detail["detail"].lower()
+
+    alternativas = detail["horariosAlternativos"]
+    assert isinstance(alternativas, list) and len(alternativas) > 0, detail
+    # La reserva de 13:00 ocupa 13:00–14:30: ningún alternativo cae ahí.
+    from routes.reservas import _hay_conflicto_horario
+    for alt in alternativas:
+        assert not _hay_conflicto_horario("13:00", alt), (
+            f"El horario alternativo {alt} solapa con la reserva de 13:00"
+        )
+    # Y todos dentro de la franja de apertura 09:00–23:00.
+    assert all("09:00" <= alt < "23:00" for alt in alternativas), alternativas
+
+
+def test_horarios_alternativos_vacios_si_no_hay_ninguna_mesa(client):
+    """Si el local no tiene NINGUNA mesa para esos comensales, el 409 llega
+    igual pero con `horariosAlternativos` vacío (no hay nada que sugerir)."""
+    horarios = {"martes": {"apertura": "12:00", "cierre": "16:00", "abierto": True}}
+    rid = _insertar_restaurante_con_horarios(horarios)
+    # Mesa demasiado pequeña para 5 comensales → nunca habrá hueco.
+    _insertar_mesa_para_restaurante(rid, numero=1, capacidad=2)
+
+    resp = client.post(
+        "/api/v1/reservas",
+        json={**_payload_reserva(rid, fecha="2026-12-01", hora="13:00"),
+              "comensales": 5},
+        headers=_tok_cliente(_OID_CLIENTE_1),
+    )
+    assert resp.status_code == 409, resp.json()
+    assert resp.json()["detail"]["horariosAlternativos"] == []
+
+
+def test_reserva_fuera_de_ventana_90_min_reusa_la_mesa(client):
+    """Misma mesa única: 1ª reserva 13:00; 2ª a las 14:30 (fuera de los 90 min)
+    → 200, la mesa se reutiliza porque ya no hay solape."""
+    horarios = {"martes": {"apertura": "09:00", "cierre": "23:00", "abierto": True}}
+    rid = _insertar_restaurante_con_horarios(horarios)
+    _insertar_mesa_para_restaurante(rid, numero=1, capacidad=4)
+
+    r1 = client.post(
+        "/api/v1/reservas",
+        json=_payload_reserva(rid, fecha="2026-12-01", hora="13:00"),
+        headers=_tok_cliente(_OID_CLIENTE_1),
+    )
+    assert r1.status_code in (200, 201), r1.json()
+
+    r2 = client.post(
+        "/api/v1/reservas",
+        json=_payload_reserva(rid, fecha="2026-12-01", hora="14:30"),
+        headers=_tok_cliente(_OID_CLIENTE_2),
+    )
+    assert r2.status_code in (200, 201), r2.json()

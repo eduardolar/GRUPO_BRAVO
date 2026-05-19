@@ -621,8 +621,12 @@ class _BotonesPrincipales extends StatelessWidget {
 
     try {
       final resultado = await ApiService.validarQrMesa(codigoQr: codigoQr);
-      final mesaId = resultado['mesa_id'] as String;
-      final numMesa = int.tryParse(resultado['numero_mesa'].toString()) ?? 0;
+      // El backend responde en camelCase (mesaId/numeroMesa); aceptamos
+      // snake_case como fallback por robustez ante respuestas legacy.
+      final mesaId = (resultado['mesaId'] ?? resultado['mesa_id']) as String;
+      final numMesa =
+          int.tryParse('${resultado['numeroMesa'] ?? resultado['numero_mesa']}') ??
+              0;
 
       cart.asignarMesa(mesaId: mesaId, numeroMesa: numMesa);
       if (!context.mounted) return;

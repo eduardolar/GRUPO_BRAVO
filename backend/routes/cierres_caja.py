@@ -33,9 +33,14 @@ from bson import ObjectId
 from bson.errors import InvalidId
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, field_validator
+from pymongo.errors import DuplicateKeyError
 
 import audit_general as ag
-from database import coleccion_cierres_caja, coleccion_pedidos
+from database import (
+    coleccion_cierres_caja,
+    coleccion_pedidos,
+    coleccion_restaurantes,
+)
 from exceptions import ConflictError, NotFoundError, ValidacionError
 from security import normalizar_rol, require_role
 
@@ -89,6 +94,125 @@ def _rango_a_iso(fecha: str, turno: str) -> tuple[str, str]:
     """Versión de _rango_turno que devuelve strings ISO 8601."""
     ini, fin = _rango_turno(fecha, turno)
     return ini.isoformat(), fin.isoformat()
+
+
+# ── Apertura automática del turno ────────────────────────────────────────────
+# El turno de caja se abre solo (sin que nadie pulse "abrir") la primera vez
+# que se consulta el estado dentro del horario de apertura del restaurante.
+# Es get-or-create idempotente; en concurrencia se apoya en el índice único
+# (restaurante_id, fecha, turno) y captura DuplicateKeyError.
+
+_DIAS_ES = [
+    "lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo",
+]
+
+
+def _hhmm_a_min(valor: str) -> Optional[int]:
+    try:
+        h, m = str(valor).split(":")
+        return int(h) * 60 + int(m)
+    except (ValueError, AttributeError):
+        return None
+
+
+def _turno_activo(ahora_local: datetime) -> Optional[str]:
+    """Devuelve el turno cuyo rango horario contiene la hora local actual."""
+    mins = ahora_local.hour * 60 + ahora_local.minute
+    for nombre, ((h_ini, h_fin), cruza) in _TURNOS.items():
+        a = _hhmm_a_min(h_ini)
+        c = _hhmm_a_min(h_fin)
+        if a is None or c is None:
+            continue
+        dentro = (a <= mins <= c) if not cruza else (mins >= a or mins <= c)
+        if dentro:
+            return nombre
+    return None
+
+
+def _restaurante_abierto_ahora(rid: str, ahora_local: datetime) -> bool:
+    """True si, según `horarios_dia`, hoy el restaurante está abierto y la
+    hora local actual cae en apertura–cierre. Sin horarios definidos se
+    asume abierto (no bloquear la apertura automática)."""
+    try:
+        rest = coleccion_restaurantes.find_one({"_id": ObjectId(rid)})
+    except (InvalidId, TypeError):
+        rest = None
+    if not rest:
+        return False
+    horarios = rest.get("horarios_dia")
+    if not horarios:
+        return True
+    entrada = horarios.get(_DIAS_ES[ahora_local.weekday()]) or {}
+    abierto_raw = entrada.get("abierto", True)
+    abierto = (
+        abierto_raw if isinstance(abierto_raw, bool)
+        else str(abierto_raw).lower() not in ("false", "0", "no")
+    )
+    if not abierto:
+        return False
+    a = _hhmm_a_min(entrada.get("apertura"))
+    c = _hhmm_a_min(entrada.get("cierre"))
+    if a is None or c is None:
+        return True
+    mins = ahora_local.hour * 60 + ahora_local.minute
+    if c > a:
+        return a <= mins < c
+    return mins >= a or mins < c  # horario que cruza medianoche
+
+
+def _auto_abrir_si_corresponde(
+    rid: str, turno: str, fecha: str, ahora_local: Optional[datetime] = None,
+) -> Optional[dict]:
+    """Get-or-create del cierre del turno. Crea uno nuevo (abierto_por
+    'sistema') solo si el restaurante está dentro de su horario de apertura
+    y la hora actual cae en el rango del turno pedido. Idempotente.
+
+    `ahora_local` se inyecta en tests; en producción es la hora local real.
+    """
+    if not rid:
+        return None
+
+    existente = coleccion_cierres_caja.find_one({
+        "restaurante_id": rid, "fecha": fecha, "turno": turno,
+    })
+    if existente:
+        return existente
+
+    if ahora_local is None:
+        ahora_local = datetime.now()
+    if _turno_activo(ahora_local) != turno:
+        return None
+    if not _restaurante_abierto_ahora(rid, ahora_local):
+        return None
+
+    doc = {
+        "restaurante_id": rid,
+        "turno": turno,
+        "fecha": fecha,
+        "abierto_por": "sistema",
+        "abierto_at": datetime.now(timezone.utc).isoformat(),
+        "cerrado_por": None,
+        "cerrado_at": None,
+        "estado": "abierto",
+        "efectivo_declarado": None,
+        "efectivo_sistema": None,
+        "descuadre": None,
+        "totales": None,
+        "reaperturas": [],
+    }
+    try:
+        resultado = coleccion_cierres_caja.insert_one(doc)
+        doc["_id"] = resultado.inserted_id
+        logger.info(
+            "Cierre de caja auto-abierto (sistema): rid=%s fecha=%s turno=%s",
+            rid, fecha, turno,
+        )
+        return doc
+    except DuplicateKeyError:
+        # Otro request lo creó entre el find y el insert: devolvemos ese.
+        return coleccion_cierres_caja.find_one({
+            "restaurante_id": rid, "fecha": fecha, "turno": turno,
+        })
 
 
 # ── Serialización ────────────────────────────────────────────────────────────
@@ -405,6 +529,12 @@ def obtener_abierto_actual(
         filtro["restaurante_id"] = rid
     elif rid:
         filtro["restaurante_id"] = rid
+
+    # Apertura automática: si el restaurante está dentro de su horario y aún
+    # no hay turno para hoy, se crea aquí (abierto_por='sistema'). Si ya
+    # existe pero está cerrado, NO se reabre solo (eso exige /reabrir).
+    if rid:
+        _auto_abrir_si_corresponde(rid, turno, hoy)
 
     doc = coleccion_cierres_caja.find_one(filtro)
     if not doc:
