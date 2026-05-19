@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -5,6 +7,9 @@ import '../../models/restaurante_model.dart';
 import '../../providers/restaurante_provider.dart';
 import '../../providers/usuario_provider.dart';
 import 'sucursal_detail_screen.dart';
+import 'super_local_editar_screen.dart';
+import '../../components/confirm_dialog.dart';
+import '../../services/http_client.dart';
 import '../../core/colors_style.dart';
 
 class SeleccionarRestauranteScreen extends StatefulWidget {
@@ -37,105 +42,166 @@ class _SeleccionarRestauranteScreenState
 
     final confirmado = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.background,
-        shape: const RoundedRectangleBorder(),
-        title: Text(
-          esEdicion ? 'Editar sucursal' : 'Nueva sucursal',
-          style: GoogleFonts.manrope(fontWeight: FontWeight.w700),
-        ),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: nombreCtrl,
-                style: GoogleFonts.manrope(color: Colors.white),
-                decoration: InputDecoration(
-                  labelText: 'Nombre',
-                  labelStyle: GoogleFonts.manrope(
-                    fontSize: 13,
-                    color: Colors.white70,
-                  ),
-                  prefixIcon: const Icon(
-                    Icons.storefront_outlined,
-                    color: AppColors.detailOnDark,
-                    size: 20,
-                  ),
-                  filled: true,
-                  fillColor: const Color(0x8C000000),
-                  border: const OutlineInputBorder(
-                    borderRadius: BorderRadius.zero,
-                  ),
-                  enabledBorder: const OutlineInputBorder(
-                    borderRadius: BorderRadius.zero,
-                    borderSide: BorderSide(color: AppColors.line),
-                  ),
-                  focusedBorder: const OutlineInputBorder(
-                    borderRadius: BorderRadius.zero,
-                    borderSide: BorderSide(color: AppColors.detailOnDark, width: 1.5),
-                  ),
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+              decoration: BoxDecoration(
+                // Fondo semitransparente: el blur lo convierte en "frosted glass"
+                color: AppColors.background.withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: AppColors.line.withValues(alpha: 0.6),
                 ),
-                validator: (v) =>
-                    v == null || v.trim().isEmpty ? 'Campo obligatorio' : null,
               ),
-              const SizedBox(height: 14),
-              TextFormField(
-                controller: direccionCtrl,
-                style: GoogleFonts.manrope(color: Colors.white),
-                decoration: InputDecoration(
-                  labelText: 'Dirección',
-                  labelStyle: GoogleFonts.manrope(
-                    fontSize: 13,
-                    color: Colors.white70,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    esEdicion ? 'Editar sucursal' : 'Nueva sucursal',
+                    style: GoogleFonts.manrope(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 18,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
-                  prefixIcon: const Icon(
-                    Icons.location_on_outlined,
-                    color: AppColors.detailOnDark,
-                    size: 20,
+                  const SizedBox(height: 20),
+                  Form(
+                    key: formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        TextFormField(
+                          controller: nombreCtrl,
+                          style: GoogleFonts.manrope(
+                            color: AppColors.textPrimary,
+                          ),
+                          decoration: InputDecoration(
+                            labelText: 'Nombre',
+                            labelStyle: GoogleFonts.manrope(
+                              fontSize: 13,
+                              color: AppColors.textSecondary,
+                            ),
+                            prefixIcon: const Icon(
+                              Icons.storefront_outlined,
+                              color: AppColors.primary,
+                              size: 20,
+                            ),
+                            filled: true,
+                            fillColor: AppColors.surface,
+                            border: const OutlineInputBorder(
+                              borderRadius: BorderRadius.zero,
+                            ),
+                            enabledBorder: const OutlineInputBorder(
+                              borderRadius: BorderRadius.zero,
+                              borderSide: BorderSide(color: AppColors.line),
+                            ),
+                            focusedBorder: const OutlineInputBorder(
+                              borderRadius: BorderRadius.zero,
+                              borderSide: BorderSide(
+                                color: AppColors.primary,
+                                width: 1.5,
+                              ),
+                            ),
+                          ),
+                          validator: (v) => v == null || v.trim().isEmpty
+                              ? 'Campo obligatorio'
+                              : null,
+                        ),
+                        const SizedBox(height: 14),
+                        TextFormField(
+                          controller: direccionCtrl,
+                          style: GoogleFonts.manrope(
+                            color: AppColors.textPrimary,
+                          ),
+                          decoration: InputDecoration(
+                            labelText: 'Dirección',
+                            labelStyle: GoogleFonts.manrope(
+                              fontSize: 13,
+                              color: AppColors.textSecondary,
+                            ),
+                            prefixIcon: const Icon(
+                              Icons.location_on_outlined,
+                              color: AppColors.primary,
+                              size: 20,
+                            ),
+                            filled: true,
+                            fillColor: AppColors.surface,
+                            border: const OutlineInputBorder(
+                              borderRadius: BorderRadius.zero,
+                            ),
+                            enabledBorder: const OutlineInputBorder(
+                              borderRadius: BorderRadius.zero,
+                              borderSide: BorderSide(color: AppColors.line),
+                            ),
+                            focusedBorder: const OutlineInputBorder(
+                              borderRadius: BorderRadius.zero,
+                              borderSide: BorderSide(
+                                color: AppColors.primary,
+                                width: 1.5,
+                              ),
+                            ),
+                          ),
+                          validator: (v) => v == null || v.trim().isEmpty
+                              ? 'Campo obligatorio'
+                              : null,
+                        ),
+                      ],
+                    ),
                   ),
-                  filled: true,
-                  fillColor: const Color(0x8C000000),
-                  border: const OutlineInputBorder(
-                    borderRadius: BorderRadius.zero,
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, false),
+                        child: Text(
+                          'Cancelar',
+                          style: GoogleFonts.manrope(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                      ElevatedButton(
+                        onPressed: () {
+                          if (formKey.currentState!.validate()) {
+                            Navigator.pop(ctx, true);
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 12,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Text(
+                          esEdicion ? 'GUARDAR' : 'CREAR',
+                          style: GoogleFonts.manrope(
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  enabledBorder: const OutlineInputBorder(
-                    borderRadius: BorderRadius.zero,
-                    borderSide: BorderSide(color: AppColors.line),
-                  ),
-                  focusedBorder: const OutlineInputBorder(
-                    borderRadius: BorderRadius.zero,
-                    borderSide: BorderSide(color: AppColors.detailOnDark, width: 1.5),
-                  ),
-                ),
-                validator: (v) =>
-                    v == null || v.trim().isEmpty ? 'Campo obligatorio' : null,
+                ],
               ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(
-              'Cancelar',
-              style: GoogleFonts.manrope(color: AppColors.textSecondary),
             ),
           ),
-          TextButton(
-            onPressed: () {
-              if (formKey.currentState!.validate()) Navigator.pop(ctx, true);
-            },
-            child: Text(
-              esEdicion ? 'GUARDAR' : 'CREAR',
-              style: GoogleFonts.manrope(
-                fontWeight: FontWeight.w700,
-                color: AppColors.primary,
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
 
@@ -163,74 +229,70 @@ class _SeleccionarRestauranteScreenState
         );
       }
     } else {
-      final ok = await provider.crear(nombre: nombre, direccion: direccion);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              ok ? 'Sucursal creada' : 'Error al crear',
-              style: GoogleFonts.manrope(),
-            ),
-            backgroundColor: ok ? AppColors.primary : AppColors.error,
+      final creada = await provider.crear(nombre: nombre, direccion: direccion);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            creada != null
+                ? 'Sucursal creada · completa los datos fiscales y horarios'
+                : 'Error al crear',
+            style: GoogleFonts.manrope(),
+          ),
+          backgroundColor: creada != null ? AppColors.primary : AppColors.error,
+        ),
+      );
+      if (creada != null) {
+        // Llevamos directamente a completar datos fiscales, horarios y
+        // métodos de pago de la sucursal recién creada. Al volver, si hubo
+        // cambios (guardado/borrado) recargamos el listado.
+        final cambio = await Navigator.push<bool>(
+          context,
+          MaterialPageRoute(
+            builder: (_) => SuperLocalEditarScreen(restaurante: creada),
           ),
         );
+        if (cambio == true && mounted) {
+          context.read<RestauranteProvider>().cargar();
+        }
       }
     }
   }
 
   // ── CONFIRMAR BORRADO ─────────────────────────────────────────────
   Future<void> _confirmarBorrado(Restaurante restaurante) async {
-    final confirmado = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: AppColors.background,
-        shape: const RoundedRectangleBorder(),
-        title: Text(
-          '¿Eliminar sucursal?',
-          style: GoogleFonts.manrope(fontWeight: FontWeight.w700),
-        ),
-        content: Text(
+    final confirmado = await showConfirmDialog(
+      context,
+      titulo: '¿Eliminar sucursal?',
+      mensaje:
           'Se eliminará "${restaurante.nombre}" permanentemente. Esta acción no se puede deshacer.',
-          style: GoogleFonts.manrope(
-            color: AppColors.textSecondary,
-            fontSize: 13,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(
-              'Cancelar',
-              style: GoogleFonts.manrope(color: AppColors.textSecondary),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(
-              'Eliminar',
-              style: GoogleFonts.manrope(
-                color: AppColors.error,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
-      ),
+      textoConfirmar: 'ELIMINAR',
+      colorConfirmar: AppColors.error,
     );
 
-    if (confirmado != true || !mounted) return;
+    if (!confirmado || !mounted) return;
 
-    final ok = await context.read<RestauranteProvider>().eliminar(
-      restaurante.id,
-    );
+    String mensaje;
+    Color color;
+    try {
+      await context.read<RestauranteProvider>().eliminar(restaurante.id);
+      mensaje = 'Sucursal eliminada';
+      color = AppColors.primary;
+    } on ApiException catch (e) {
+      // El backend devuelve el motivo (p. ej. 409: tiene datos asociados,
+      // suspéndela en su lugar). Lo mostramos tal cual.
+      mensaje = e.message;
+      color = AppColors.error;
+    } catch (_) {
+      mensaje = 'Error al eliminar';
+      color = AppColors.error;
+    }
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            ok ? 'Sucursal eliminada' : 'Error al eliminar',
-            style: GoogleFonts.manrope(),
-          ),
-          backgroundColor: ok ? AppColors.primary : AppColors.error,
+          content: Text(mensaje, style: GoogleFonts.manrope()),
+          backgroundColor: color,
         ),
       );
     }
@@ -239,46 +301,16 @@ class _SeleccionarRestauranteScreenState
   // ── TOGGLE ACTIVO ──────────────────────────────────────────────────
   Future<void> _toggleActivo(Restaurante restaurante, bool nuevoEstado) async {
     final accion = nuevoEstado ? 'activar' : 'suspender';
-    final confirmado = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: AppColors.background,
-        shape: const RoundedRectangleBorder(),
-        title: Text(
-          nuevoEstado ? 'Activar sucursal' : 'Suspender sucursal',
-          style: GoogleFonts.manrope(fontWeight: FontWeight.w700),
-        ),
-        content: Text(
-          nuevoEstado
-              ? '¿Deseas activar "${restaurante.nombre}"? Volverá a aceptar pedidos.'
-              : '¿Deseas suspender "${restaurante.nombre}"? No se aceptarán nuevos pedidos mientras esté suspendida.',
-          style: GoogleFonts.manrope(
-            color: AppColors.textSecondary,
-            fontSize: 13,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(
-              'Cancelar',
-              style: GoogleFonts.manrope(color: AppColors.textSecondary),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(
-              nuevoEstado ? 'ACTIVAR' : 'SUSPENDER',
-              style: GoogleFonts.manrope(
-                fontWeight: FontWeight.w700,
-                color: nuevoEstado ? AppColors.primary : AppColors.error,
-              ),
-            ),
-          ),
-        ],
-      ),
+    final confirmado = await showConfirmDialog(
+      context,
+      titulo: nuevoEstado ? 'Activar sucursal' : 'Suspender sucursal',
+      mensaje: nuevoEstado
+          ? '¿Deseas activar "${restaurante.nombre}"? Volverá a aceptar pedidos.'
+          : '¿Deseas suspender "${restaurante.nombre}"? No se aceptarán nuevos pedidos mientras esté suspendida.',
+      textoConfirmar: nuevoEstado ? 'ACTIVAR' : 'SUSPENDER',
+      colorConfirmar: nuevoEstado ? AppColors.success : AppColors.warning,
     );
-    if (confirmado != true || !mounted) return;
+    if (!confirmado || !mounted) return;
     final ok = await context.read<RestauranteProvider>().toggleActivo(
       restaurante.id,
       nuevoEstado,
@@ -372,7 +404,11 @@ class _SeleccionarRestauranteScreenState
                   padding: const EdgeInsets.fromLTRB(24, 28, 24, 8),
                   child: Row(
                     children: [
-                      Container(width: 3, height: 18, color: AppColors.detailOnDark),
+                      Container(
+                        width: 3,
+                        height: 18,
+                        color: AppColors.detailOnDark,
+                      ),
                       const SizedBox(width: 10),
                       Text(
                         'SUCURSALES',
@@ -606,7 +642,13 @@ class _RestauranteCard extends StatelessWidget {
     final hd = r.horariosDia;
     if (hd == null) return null;
     const claves = [
-      'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo',
+      'lunes',
+      'martes',
+      'miercoles',
+      'jueves',
+      'viernes',
+      'sabado',
+      'domingo',
     ];
     final h = hd[claves[DateTime.now().weekday - 1]];
     if (h == null || !h.abierto) return null;

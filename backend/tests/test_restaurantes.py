@@ -264,6 +264,67 @@ def test_hard_delete_inexistente_404(client):
     assert resp.status_code == 404
 
 
+def test_hard_delete_id_invalido_400(client):
+    """Un ID malformado (no ObjectId) → 400."""
+    resp = client.delete("/api/v1/restaurantes/no-es-un-id", headers=_tok_super())
+    assert resp.status_code == 400
+
+
+# ── Tests de protección: no borrar sucursal con datos asociados ───────────────
+
+def test_hard_delete_con_pedidos_409(client):
+    """Una sucursal con pedidos asociados NO se puede borrar (409)."""
+    from database import coleccion_pedidos, coleccion_restaurantes
+
+    rid = _insertar_restaurante("Bravo Con Pedidos")
+    coleccion_pedidos.insert_one({
+        "restaurante_id": rid,
+        "estado": "entregado",
+        "total": 25.0,
+        "items": [],
+    })
+
+    resp = client.delete(f"/api/v1/restaurantes/{rid}", headers=_tok_super())
+    assert resp.status_code == 409, resp.json()
+    assert "pedidos" in resp.json()["detail"]
+    # La sucursal sigue existiendo (no se borró)
+    assert coleccion_restaurantes.find_one({"_id": ObjectId(rid)}) is not None
+
+
+def test_hard_delete_con_mesas_409(client):
+    """Una sucursal con mesas asociadas NO se puede borrar (409)."""
+    from database import coleccion_mesas
+
+    rid = _insertar_restaurante("Bravo Con Mesas")
+    coleccion_mesas.insert_one({"restaurante_id": rid, "numero": 1})
+
+    resp = client.delete(f"/api/v1/restaurantes/{rid}", headers=_tok_super())
+    assert resp.status_code == 409, resp.json()
+    assert "mesas" in resp.json()["detail"]
+
+
+def test_hard_delete_mensaje_sugiere_suspender(client):
+    """El 409 debe orientar a suspender en lugar de borrar."""
+    from database import coleccion_reservas
+
+    rid = _insertar_restaurante("Bravo Con Reservas")
+    coleccion_reservas.insert_one({"restaurante_id": rid, "fecha": "2099-01-01"})
+
+    resp = client.delete(f"/api/v1/restaurantes/{rid}", headers=_tok_super())
+    assert resp.status_code == 409
+    assert "suspénd" in resp.json()["detail"].lower()
+
+
+def test_hard_delete_sin_datos_asociados_ok(client):
+    """Sin datos asociados, el borrado sigue funcionando (200)."""
+    from database import coleccion_restaurantes
+
+    rid = _insertar_restaurante("Bravo Vacía Borrable")
+    resp = client.delete(f"/api/v1/restaurantes/{rid}", headers=_tok_super())
+    assert resp.status_code == 200, resp.json()
+    assert coleccion_restaurantes.find_one({"_id": ObjectId(rid)}) is None
+
+
 # ── Tests de ciclo completo suspender→reactivar ────────────────────────────────
 
 def test_ciclo_suspender_y_reactivar(client):

@@ -33,7 +33,9 @@ class RestauranteProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> crear({
+  /// Crea una sucursal. Devuelve el [Restaurante] recién creado (para poder
+  /// navegar a completar sus datos) o `null` si la creación falló.
+  Future<Restaurante?> crear({
     required String nombre,
     required String direccion,
   }) async {
@@ -44,9 +46,8 @@ class RestauranteProvider with ChangeNotifier {
     if (nuevo != null) {
       _restaurantes = [..._restaurantes, nuevo];
       notifyListeners();
-      return true;
     }
-    return false;
+    return nuevo;
   }
 
   Future<bool> editar({
@@ -92,12 +93,12 @@ class RestauranteProvider with ChangeNotifier {
     return ok;
   }
 
-  Future<bool> eliminar(String id) async {
-    final ok = await _service.eliminarRestaurante(id);
-    if (ok) {
-      _restaurantes = _restaurantes.where((r) => r.id != id).toList();
-      notifyListeners();
-    }
-    return ok;
+  /// Elimina una sucursal. Propaga la `ApiException` del service si el backend
+  /// rechaza el borrado (p. ej. 409 cuando la sucursal tiene datos asociados),
+  /// para que la pantalla muestre el motivo concreto.
+  Future<void> eliminar(String id) async {
+    await _service.eliminarRestaurante(id);
+    _restaurantes = _restaurantes.where((r) => r.id != id).toList();
+    notifyListeners();
   }
 }

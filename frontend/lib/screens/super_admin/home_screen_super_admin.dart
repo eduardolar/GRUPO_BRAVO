@@ -19,6 +19,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:frontend/components/bravo_app_bar.dart';
+import 'package:frontend/components/confirm_dialog.dart';
 import 'package:frontend/core/colors_style.dart';
 import 'package:frontend/providers/usuario_provider.dart';
 import 'package:frontend/providers/restaurante_provider.dart';
@@ -78,6 +79,19 @@ class _HomeScreenSuperAdminState extends State<HomeScreenSuperAdmin> {
   void _ir(BuildContext context, Widget screen) =>
       Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
 
+  /// Abre la pantalla de editar detalles y, al volver, recarga la lista si
+  /// hubo cambios (guardado o borrado): esa pantalla devuelve `true` y aquí
+  /// refrescamos el provider para que el listado refleje el cambio.
+  Future<void> _abrirEditarSucursal(Restaurante r) async {
+    final cambio = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => SuperLocalEditarScreen(restaurante: r)),
+    );
+    if (cambio == true && mounted) {
+      context.read<RestauranteProvider>().cargar();
+    }
+  }
+
   // ── Diálogo crear/editar sucursal ───────────────────────────────
   Future<void> _mostrarFormulario({Restaurante? restaurante}) async {
     final nombreCtrl = TextEditingController(text: restaurante?.nombre ?? '');
@@ -87,59 +101,108 @@ class _HomeScreenSuperAdminState extends State<HomeScreenSuperAdmin> {
 
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.background,
-        shape: const RoundedRectangleBorder(),
-        title: Text(
-          esEdicion ? 'Editar sucursal' : 'Nueva sucursal',
-          style: GoogleFonts.manrope(fontWeight: FontWeight.w700),
-        ),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _campo(
-                ctrl: nombreCtrl,
-                label: 'Nombre',
-                icon: Icons.storefront_outlined,
-                validator: (v) =>
-                    v == null || v.trim().isEmpty ? 'Obligatorio' : null,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+              decoration: BoxDecoration(
+                // Fondo semitransparente: el blur lo convierte en "frosted glass"
+                color: AppColors.background.withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: AppColors.line.withValues(alpha: 0.6),
+                ),
               ),
-              const SizedBox(height: 12),
-              _campo(
-                ctrl: dirCtrl,
-                label: 'Dirección',
-                icon: Icons.location_on_outlined,
-                validator: (v) =>
-                    v == null || v.trim().isEmpty ? 'Obligatorio' : null,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    esEdicion ? 'Editar sucursal' : 'Nueva sucursal',
+                    style: GoogleFonts.manrope(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 18,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Form(
+                    key: formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _campo(
+                          ctrl: nombreCtrl,
+                          label: 'Nombre',
+                          icon: Icons.storefront_outlined,
+                          validator: (v) => v == null || v.trim().isEmpty
+                              ? 'Obligatorio'
+                              : null,
+                        ),
+                        const SizedBox(height: 12),
+                        _campo(
+                          ctrl: dirCtrl,
+                          label: 'Dirección',
+                          icon: Icons.location_on_outlined,
+                          validator: (v) => v == null || v.trim().isEmpty
+                              ? 'Obligatorio'
+                              : null,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, false),
+                        child: Text(
+                          'Cancelar',
+                          style: GoogleFonts.manrope(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                      ElevatedButton(
+                        onPressed: () {
+                          if (formKey.currentState!.validate()) {
+                            Navigator.pop(ctx, true);
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 12,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Text(
+                          esEdicion ? 'GUARDAR' : 'CREAR',
+                          style: GoogleFonts.manrope(
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(
-              'Cancelar',
-              style: GoogleFonts.manrope(color: AppColors.textSecondary),
             ),
           ),
-          TextButton(
-            onPressed: () {
-              if (formKey.currentState!.validate()) {
-                Navigator.pop(ctx, true);
-              }
-            },
-            child: Text(
-              esEdicion ? 'GUARDAR' : 'CREAR',
-              style: GoogleFonts.manrope(
-                fontWeight: FontWeight.w700,
-                color: AppColors.primary, // navy sobre diálogo blanco (legible)
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
     if (ok != true || !mounted) return;
@@ -148,65 +211,40 @@ class _HomeScreenSuperAdminState extends State<HomeScreenSuperAdmin> {
     final nombre = nombreCtrl.text.trim();
     final direccion = dirCtrl.text.trim();
 
-    bool exito;
     if (esEdicion) {
-      exito = await provider.editar(
+      final exito = await provider.editar(
         id: restaurante.id,
         nombre: nombre,
         direccion: direccion,
       );
-    } else {
-      exito = await provider.crear(nombre: nombre, direccion: direccion);
+      if (mounted) {
+        _snack(exito ? 'Sucursal actualizada' : 'Error al guardar');
+      }
+      return;
     }
-    if (mounted) {
-      _snack(
-        exito
-            ? (esEdicion ? 'Sucursal actualizada' : 'Sucursal creada')
-            : 'Error al guardar',
-      );
+
+    // Creación: si va bien, llevamos directamente a la pantalla de detalles
+    // para completar datos fiscales, horarios y métodos de pago.
+    final creada = await provider.crear(nombre: nombre, direccion: direccion);
+    if (!mounted) return;
+    if (creada == null) {
+      _snack('Error al guardar');
+      return;
     }
+    _snack('Sucursal creada · completa los datos fiscales y horarios');
+    _abrirEditarSucursal(creada);
   }
 
   // ── Suspender sucursal ──────────────────────────────────────────
   Future<void> _suspenderSucursal(Restaurante r) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: AppColors.background,
-        shape: const RoundedRectangleBorder(),
-        title: Text(
-          'Suspender sucursal',
-          style: GoogleFonts.manrope(fontWeight: FontWeight.w700),
-        ),
-        content: Text(
-          '¿Suspender "${r.nombre}"? No se aceptarán nuevos pedidos.',
-          style: GoogleFonts.manrope(
-            color: AppColors.textSecondary,
-            fontSize: 13,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(
-              'Cancelar',
-              style: GoogleFonts.manrope(color: AppColors.textSecondary),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(
-              'SUSPENDER',
-              style: GoogleFonts.manrope(
-                fontWeight: FontWeight.w700,
-                color: AppColors.warningLight,
-              ),
-            ),
-          ),
-        ],
-      ),
+    final ok = await showConfirmDialog(
+      context,
+      titulo: 'Suspender sucursal',
+      mensaje: '¿Suspender "${r.nombre}"? No se aceptarán nuevos pedidos.',
+      textoConfirmar: 'SUSPENDER',
+      colorConfirmar: AppColors.warning,
     );
-    if (ok != true || !mounted) return;
+    if (!ok || !mounted) return;
 
     try {
       await SuperAdminService.suspenderRestaurante(r.id);
@@ -221,44 +259,14 @@ class _HomeScreenSuperAdminState extends State<HomeScreenSuperAdmin> {
 
   // ── Reactivar sucursal ──────────────────────────────────────────
   Future<void> _reactivarSucursal(Restaurante r) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: AppColors.background,
-        shape: const RoundedRectangleBorder(),
-        title: Text(
-          'Reactivar sucursal',
-          style: GoogleFonts.manrope(fontWeight: FontWeight.w700),
-        ),
-        content: Text(
-          '¿Reactivar "${r.nombre}"? Volverá a aceptar pedidos.',
-          style: GoogleFonts.manrope(
-            color: AppColors.textSecondary,
-            fontSize: 13,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(
-              'Cancelar',
-              style: GoogleFonts.manrope(color: AppColors.textSecondary),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(
-              'REACTIVAR',
-              style: GoogleFonts.manrope(
-                fontWeight: FontWeight.w700,
-                color: AppColors.disp,
-              ),
-            ),
-          ),
-        ],
-      ),
+    final ok = await showConfirmDialog(
+      context,
+      titulo: 'Reactivar sucursal',
+      mensaje: '¿Reactivar "${r.nombre}"? Volverá a aceptar pedidos.',
+      textoConfirmar: 'REACTIVAR',
+      colorConfirmar: AppColors.success,
     );
-    if (ok != true || !mounted) return;
+    if (!ok || !mounted) return;
 
     try {
       await SuperAdminService.reactivarRestaurante(r.id);
@@ -275,7 +283,8 @@ class _HomeScreenSuperAdminState extends State<HomeScreenSuperAdmin> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg, style: GoogleFonts.manrope()),
-        backgroundColor: AppColors.primary, // navy sólido + texto blanco (legible)
+        backgroundColor:
+            AppColors.primary, // navy sólido + texto blanco (legible)
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -293,20 +302,20 @@ class _HomeScreenSuperAdminState extends State<HomeScreenSuperAdmin> {
     return TextFormField(
       controller: ctrl,
       keyboardType: keyboard,
-      style: GoogleFonts.manrope(color: Colors.white),
+      style: GoogleFonts.manrope(color: AppColors.textPrimary),
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
         labelStyle: GoogleFonts.manrope(
           fontSize: 13,
-          color: Colors.white70,
+          color: AppColors.textSecondary,
         ),
-        hintStyle: GoogleFonts.manrope(color: Colors.white60),
+        hintStyle: GoogleFonts.manrope(color: AppColors.textSecondary),
         prefixIcon: icon != null
-            ? Icon(icon, color: AppColors.detailOnDark, size: 20)
+            ? Icon(icon, color: AppColors.primary, size: 20)
             : null,
         filled: true,
-        fillColor: const Color(0x8C000000),
+        fillColor: AppColors.surface,
         border: const OutlineInputBorder(borderRadius: BorderRadius.zero),
         enabledBorder: const OutlineInputBorder(
           borderRadius: BorderRadius.zero,
@@ -314,7 +323,7 @@ class _HomeScreenSuperAdminState extends State<HomeScreenSuperAdmin> {
         ),
         focusedBorder: const OutlineInputBorder(
           borderRadius: BorderRadius.zero,
-          borderSide: BorderSide(color: AppColors.detailOnDark, width: 1.5),
+          borderSide: BorderSide(color: AppColors.primary, width: 1.5),
         ),
       ),
       validator: validator,
@@ -458,8 +467,7 @@ class _HomeScreenSuperAdminState extends State<HomeScreenSuperAdmin> {
                               padding: const EdgeInsets.all(16),
                               child: Text(
                                 'Error al cargar sucursales: ${rProv.error}',
-                                style:
-                                    const TextStyle(color: Colors.white70),
+                                style: const TextStyle(color: Colors.white70),
                               ),
                             );
                           }
@@ -470,17 +478,13 @@ class _HomeScreenSuperAdminState extends State<HomeScreenSuperAdmin> {
                                 _SucursalGlassCard(
                                   restaurante: lista[i],
                                   numero: i + 1,
-                                  personalCount:
-                                      uProv.usuarios.where((u) {
+                                  personalCount: uProv.usuarios.where((u) {
                                     final id = (u.restauranteId ?? '')
                                         .toString()
                                         .trim()
                                         .toLowerCase();
                                     return id ==
-                                            lista[i]
-                                                .id
-                                                .trim()
-                                                .toLowerCase() &&
+                                            lista[i].id.trim().toLowerCase() &&
                                         u.rolRaw != 'cliente' &&
                                         u.rolRaw != 'superadministrador';
                                   }).length,
@@ -491,12 +495,8 @@ class _HomeScreenSuperAdminState extends State<HomeScreenSuperAdmin> {
                                       restauranteNombre: lista[i].nombre,
                                     ),
                                   ),
-                                  onEditarDetalles: () => _ir(
-                                    context,
-                                    SuperLocalEditarScreen(
-                                      restaurante: lista[i],
-                                    ),
-                                  ),
+                                  onEditarDetalles: () =>
+                                      _abrirEditarSucursal(lista[i]),
                                   onSuspender: () =>
                                       _suspenderSucursal(lista[i]),
                                   onReactivar: () =>
@@ -582,8 +582,7 @@ class _HomeScreenSuperAdminState extends State<HomeScreenSuperAdmin> {
                               title: 'Cupones',
                               subtitle: 'Promociones',
                               icon: Icons.local_offer_rounded,
-                              onTap: () =>
-                                  _ir(context, const CuponesScreen()),
+                              onTap: () => _ir(context, const CuponesScreen()),
                             ),
                           ),
                         ],
@@ -597,10 +596,8 @@ class _HomeScreenSuperAdminState extends State<HomeScreenSuperAdmin> {
                               title: 'Cierres de caja',
                               subtitle: 'Auditoría global',
                               icon: Icons.point_of_sale_outlined,
-                              onTap: () => _ir(
-                                context,
-                                const SuperCierresCajaScreen(),
-                              ),
+                              onTap: () =>
+                                  _ir(context, const SuperCierresCajaScreen()),
                             ),
                           ),
                           const SizedBox(width: 16),
@@ -764,11 +761,7 @@ class _SeccionKpisGlobalesState extends State<_SeccionKpisGlobales> {
       if (!mounted || !_pageCtrl.hasClients) return;
       if (_totalPaginas <= 1) return;
       final sig = (_paginaActual + 1) % _totalPaginas;
-      _pageCtrl.animateToPage(
-        sig,
-        duration: _kAnim,
-        curve: Curves.easeInOut,
-      );
+      _pageCtrl.animateToPage(sig, duration: _kAnim, curve: Curves.easeInOut);
     });
   }
 
@@ -832,8 +825,9 @@ class _SeccionKpisGlobalesState extends State<_SeccionKpisGlobales> {
 
     final sucAbiertas = t?['sucursales_abiertas'] as num?;
     final sucTotal = t?['sucursales_total'] as num? ?? 1;
-    final ratioSuc =
-        (sucAbiertas != null && sucTotal > 0) ? sucAbiertas / sucTotal : 0.0;
+    final ratioSuc = (sucAbiertas != null && sucTotal > 0)
+        ? sucAbiertas / sucTotal
+        : 0.0;
     final colorSuc = ratioSuc >= 0.75
         ? AppColors.disp
         : (ratioSuc >= 0.5 ? AppColors.warning : AppColors.error);
@@ -960,9 +954,7 @@ class _SeccionKpisGlobalesState extends State<_SeccionKpisGlobales> {
   Widget _carrusel(List<Widget> tarjetas, int perPage) {
     final paginas = <List<Widget>>[];
     for (int i = 0; i < tarjetas.length; i += perPage) {
-      paginas.add(
-        tarjetas.sublist(i, (i + perPage).clamp(0, tarjetas.length)),
-      );
+      paginas.add(tarjetas.sublist(i, (i + perPage).clamp(0, tarjetas.length)));
     }
 
     // Actualizamos el total para que _avanzarSiguiente() sepa cuántas hay.
@@ -1197,7 +1189,13 @@ class _SucursalGlassCard extends StatelessWidget {
     final hd = r.horariosDia;
     if (hd == null) return null;
     const claves = [
-      'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo',
+      'lunes',
+      'martes',
+      'miercoles',
+      'jueves',
+      'viernes',
+      'sabado',
+      'domingo',
     ];
     final h = hd[claves[DateTime.now().weekday - 1]];
     if (h == null || !h.abierto) return null;
@@ -1244,11 +1242,13 @@ class _SucursalGlassCard extends StatelessWidget {
                         height: 44,
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
-                          color: (r.activo && !suspendida
-                                  ? AppColors.primaryAccent
-                                  : Colors.white24)
-                              .withValues(
-                                  alpha: r.activo && !suspendida ? 0.85 : 1),
+                          color:
+                              (r.activo && !suspendida
+                                      ? AppColors.primaryAccent
+                                      : Colors.white24)
+                                  .withValues(
+                                    alpha: r.activo && !suspendida ? 0.85 : 1,
+                                  ),
                           shape: BoxShape.circle,
                           border: Border.all(
                             color: Colors.white.withValues(alpha: 0.25),
@@ -1310,8 +1310,9 @@ class _SucursalGlassCard extends StatelessWidget {
                                     r.direccion,
                                     style: TextStyle(
                                       fontSize: 12,
-                                      color:
-                                          Colors.white.withValues(alpha: 0.65),
+                                      color: Colors.white.withValues(
+                                        alpha: 0.65,
+                                      ),
                                     ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
@@ -1333,8 +1334,9 @@ class _SucursalGlassCard extends StatelessWidget {
                                     'Hoy: ${_horarioHoy(r)}',
                                     style: TextStyle(
                                       fontSize: 11,
-                                      color:
-                                          Colors.white.withValues(alpha: 0.6),
+                                      color: Colors.white.withValues(
+                                        alpha: 0.6,
+                                      ),
                                     ),
                                   ),
                                   const SizedBox(width: 12),
@@ -1553,7 +1555,11 @@ class _GlassCard extends StatelessWidget {
                           width: 1,
                         ),
                       ),
-                      child: Icon(icon, color: AppColors.detailOnDark, size: 28),
+                      child: Icon(
+                        icon,
+                        color: AppColors.detailOnDark,
+                        size: 28,
+                      ),
                     ),
                     const Spacer(),
                     Text(
